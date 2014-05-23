@@ -9,7 +9,7 @@ from models import Package, Build
 log = logging.getLogger('submitter')
 
 def submit_builds(db_session, koji_session):
-    scheduled_builds = db_session.query(Build).filter_by(state='scheduled')
+    scheduled_builds = db_session.query(Build).filter_by(state=Build.SCHEDULED)
     for build in scheduled_builds:
         name = build.package.name
         build.state = 'running'
@@ -17,7 +17,7 @@ def submit_builds(db_session, koji_session):
         db_session.commit()
 
 def poll_tasks(db_session, koji_session):
-    running_builds = db_session.query(Build).filter_by(state='running')
+    running_builds = db_session.query(Build).filter_by(state=Build.RUNNING)
     for build in running_builds:
         name = build.package.name
         if not build.task_id:
@@ -28,9 +28,9 @@ def poll_tasks(db_session, koji_session):
                       .format(id=build.task_id, name=name, info=task_info))
             state = koji.TASK_STATES.getvalue(task_info['state'])
             state_transitions = {
-                    'CLOSED': 'complete',
-                    'CANCELED': 'canceled',
-                    'FAILED': 'failed'
+                    'CLOSED': Build.COMPLETE,
+                    'CANCELED': Build.CANCELED,
+                    'FAILED': Build.FAILED,
                 }
             if state in state_transitions.keys():
                 state = state_transitions[state]

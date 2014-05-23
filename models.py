@@ -21,24 +21,41 @@ class Package(Base):
     __tablename__ = 'package'
 
     id = Column(Integer, primary_key=True)
-    name = Column('name', String)
-    priority = Column('priority', Integer)
+    name = Column('name', String, nullable=False, unique=True)
+    priority = Column('priority', Integer, nullable=False, default=0)
     builds = relationship('Build', backref='package')
 
+    plugin_data = relationship('PluginData', backref='package', lazy='dynamic')
+
     def __repr__(self):
-        return '{0.id} (name={0.name}, prio={0.prio})'.format(self)
+        return '{0.id} (name={0.name}, priority={0.priority})'.format(self)
 
 class Build(Base):
     __tablename__ = 'build'
 
-    UNFINISHED_STATES = ['scheduled', 'running']
-    FINISHED_STATES = ['complete', 'failed', 'cancelled']
-    STATES = UNFINISHED_STATES + FINISHED_STATES
-
     id = Column(Integer, primary_key=True)
     package_id = Column(Integer, ForeignKey('package.id'))
-    state = Column(String)
+    state = Column(Integer, nullable=False, default=0)
     task_id = Column(Integer)
+
+    SCHEDULED = 0
+    RUNNING = 2
+    COMPLETE = 3
+    CANCELED = 4
+    FAILED = 5
+
+    UNFINISHED_STATES = [SCHEDULED, RUNNING]
+    FINISHED_STATES = [COMPLETE, FAILED, CANCELED]
+    STATES = UNFINISHED_STATES + FINISHED_STATES
 
     def __repr__(self):
         return '{0.id} (name={0.package.name}, state={0.state})'.format(self)
+
+class PluginData(Base):
+    __tablename__ = 'plugin_data'
+
+    id = Column(Integer, primary_key=True)
+    plugin_name = Column(String, nullable=False)
+    key = Column(String, nullable=False)
+    value = Column(String)
+
