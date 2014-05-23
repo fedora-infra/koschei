@@ -36,4 +36,4 @@ def koji_scratch_build(session, name):
     log.debug('Intiating koji build for {name}:\n\tsource={source}\
               \n\ttarget={target}\n\tbuild_opts={build_opts}'.format(**locals()))
     if not dry_run:
-        session.build(source, target, build_opts)
+        return session.build(source, target, build_opts)

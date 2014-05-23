@@ -26,7 +26,7 @@ class Package(Base):
     builds = relationship('Build', backref='package')
 
     def __repr__(self):
-        return '{} (prio = {})'.format(self.name, self.priority)
+        return '{0.id} (name={0.name}, prio={0.prio})'.format(self)
 
 class Build(Base):
     __tablename__ = 'build'
@@ -41,4 +41,4 @@ class Build(Base):
     task_id = Column(Integer)
 
     def __repr__(self):
-        return '{} {}'.format(self.package.name, self.state)
+        return '{0.id} (name={0.package.name}, state={0.state})'.format(self)
