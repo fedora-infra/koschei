@@ -3,7 +3,7 @@ from models import Session, Package, Build
 
 import logging
 
-priority_threshold = 100
+priority_threshold = 30
 time_slice = 4
 
 log = logging.getLogger('scheduler')

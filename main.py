@@ -10,6 +10,7 @@ import models
 import scheduler
 import submitter
 import util
+import plugins
 
 root_logger = logging.getLogger()
 root_logger.setLevel(logging.INFO)
@@ -45,14 +46,21 @@ def launch_task(fn, sleep_interval=3, thread=True):
     thread.start()
     return thread
 
+def main_process():
+    db_session = models.Session()
+    while True:
+        time.sleep(2)
+        plugins.call_hooks('timer_tick', db_session)
+        db_session.commit()
+
 def main():
+    plugins.load_plugins()
     try:
         launch_task(submitter.submit_builds)
         launch_task(submitter.poll_tasks)
         launch_task(scheduler.schedule_builds)
-        while True:
-            time.sleep(100)
-    except KeyboardInterrupt:
+        main_process()
+    except (KeyboardInterrupt, Exception):
         stop_event.set()
 
 if __name__ == '__main__':
