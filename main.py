@@ -4,6 +4,7 @@ import logging
 import sys
 import threading
 import time
+import argparse
 
 import models
 import scheduler
@@ -55,7 +56,9 @@ def main():
         stop_event.set()
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1 and sys.argv[1] == '--really':
-        util.dry_run = False
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dry-run', action='store_true')
+    options = parser.parse_args()
+    util.dry_run = options.dry_run
     main()
 
