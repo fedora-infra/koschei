@@ -33,7 +33,12 @@ def koji_scratch_build(session, name):
                  if ci.endswith('refs/heads/master')][0]
     source = '{}?#{}'.format(git_url, commit_id)
     target = 'f21-candidate'
-    log.debug('Intiating koji build for {name}:\n\tsource={source}\
-              \n\ttarget={target}\n\tbuild_opts={build_opts}'.format(**locals()))
+    log.info('Intiating koji build for {name}:\n\tsource={source}\
+              \n\ttarget={target}\n\tbuild_opts={build_opts}'.format(name=name,
+                  target=target, source=source, build_opts=build_opts))
     if not dry_run:
-        return session.build(source, target, build_opts)
+        task_id = session.build(source, target, build_opts)
+        log.info('Submitted koji scratch build for {name}, task_id={task_id}'\
+                  .format(name=name, task_id=task_id))
+        return task_id
+

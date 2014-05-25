@@ -35,8 +35,7 @@ def poll_tasks(db_session, koji_session):
             if state in state_transitions.keys():
                 state = state_transitions[state]
                 log.info('Setting build {build} state to {state}'\
-                          .format(build=build, state=state))
+                          .format(build=build, state=Build.REV_STATE_MAP[state]))
                 build.state = state
                 build.package.priority = 0
                 db_session.commit()
-

@@ -38,18 +38,26 @@ class Build(Base):
     state = Column(Integer, nullable=False, default=0)
     task_id = Column(Integer)
 
-    SCHEDULED = 0
-    RUNNING = 2
-    COMPLETE = 3
-    CANCELED = 4
-    FAILED = 5
+    STATE_MAP = {'scheduled': 0,
+                 'running': 2,
+                 'complete': 3,
+                 'canceled': 4,
+                 'failed': 5,
+                }
+    SCHEDULED = STATE_MAP['scheduled']
+    RUNNING = STATE_MAP['running']
+    COMPLETE = STATE_MAP['complete']
+    CANCELED = STATE_MAP['canceled']
+    FAILED = STATE_MAP['failed']
+    REV_STATE_MAP = {v: k for k, v in STATE_MAP.items()}
 
     UNFINISHED_STATES = [SCHEDULED, RUNNING]
     FINISHED_STATES = [COMPLETE, FAILED, CANCELED]
     STATES = UNFINISHED_STATES + FINISHED_STATES
 
     def __repr__(self):
-        return '{0.id} (name={0.package.name}, state={0.state})'.format(self)
+        return '{0.id} (name={0.package.name}, state={state})'.format(self,
+                    state=self.REV_STATE_MAP[self.state])
 
 class PluginData(Base):
     __tablename__ = 'plugin_data'
