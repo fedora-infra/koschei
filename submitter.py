@@ -12,7 +12,7 @@ def submit_builds(db_session, koji_session):
     scheduled_builds = db_session.query(Build).filter_by(state=Build.SCHEDULED)
     for build in scheduled_builds:
         name = build.package.name
-        build.state = 'running'
+        build.state = Build.RUNNING
         build.task_id = koji_scratch_build(koji_session, name)
         db_session.commit()
 
