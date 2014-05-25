@@ -55,6 +55,7 @@ class PluginData(Base):
     __tablename__ = 'plugin_data'
 
     id = Column(Integer, primary_key=True)
+    package_id = Column(Integer, ForeignKey('package.id'))
     plugin_name = Column(String, nullable=False)
     key = Column(String, nullable=False)
     value = Column(String)
