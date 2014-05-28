@@ -2,18 +2,22 @@ from __future__ import print_function
 
 import logging
 import koji
+import os
 
-from util import koji_scratch_build
+import util
+
 from models import Package, Build
 
 log = logging.getLogger('submitter')
+
+log_output_dir = 'tmp/'
 
 def submit_builds(db_session, koji_session):
     scheduled_builds = db_session.query(Build).filter_by(state=Build.SCHEDULED)
     for build in scheduled_builds:
         name = build.package.name
         build.state = Build.RUNNING
-        build.task_id = koji_scratch_build(koji_session, name)
+        build.task_id = util.koji_scratch_build(koji_session, name)
         db_session.commit()
 
 def poll_tasks(db_session, koji_session):
@@ -39,3 +43,18 @@ def poll_tasks(db_session, koji_session):
                 build.state = state
                 build.package.priority = 0
                 db_session.commit()
+
+def download_logs(db_session, koji_session):
+    def log_filter(filename):
+        return filename.endswith('.log')
+
+    to_download = db_session.query(Build).filter_by(logs_downloaded=False,
+                                                    state=Build.COMPLETE)
+    for build in to_download:
+        out_dir = os.path.join(log_output_dir, build.package.name,
+                               str(build.task_id))
+        os.makedirs(out_dir)
+        util.download_task_output(koji_session, build.task_id, out_dir,
+                                  filename_predicate=log_filter)
+        build.logs_downloaded = True
+        db_session.commit()

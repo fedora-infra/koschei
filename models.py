@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.engine.url import URL
@@ -37,6 +37,7 @@ class Build(Base):
     package_id = Column(Integer, ForeignKey('package.id'))
     state = Column(Integer, nullable=False, default=0)
     task_id = Column(Integer)
+    logs_downloaded = Column(Boolean, default=False, nullable=False)
 
     STATE_MAP = {'scheduled': 0,
                  'running': 2,

@@ -58,6 +58,7 @@ def main():
     try:
         launch_task(submitter.submit_builds)
         launch_task(submitter.poll_tasks)
+        launch_task(submitter.download_logs)
         launch_task(scheduler.schedule_builds)
         main_process()
     except (KeyboardInterrupt, Exception):

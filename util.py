@@ -42,3 +42,14 @@ def koji_scratch_build(session, name):
                   .format(name=name, task_id=task_id))
         return task_id
 
+def download_task_output(session, task_id, output_dir, filename_predicate=None):
+    subtasks = session.getTaskChildren(task_id)
+    build_tasks = [task for task in subtasks if task['method'] == 'buildArch']
+    for task in build_tasks:
+        files = session.listTaskOutput(task['id'])
+        downloads = filter(filename_predicate, files)
+        for download in downloads:
+            log.debug('Downloading {} (task_id={}) to {}'\
+                      .format(download, task['id'], output_dir))
+            with open(os.path.join(output_dir, download), 'w') as new_file:
+                new_file.write(session.downloadTaskOutput(task['id'], download))
