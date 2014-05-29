@@ -67,6 +67,10 @@ class Build(Base):
     FINISHED_STATES = [COMPLETE, FAILED, CANCELED]
     STATES = UNFINISHED_STATES + FINISHED_STATES
 
+    KOJI_STATE_MAP = {'CLOSED': COMPLETE,
+                      'CANCELED': CANCELED,
+                      'FAILED': FAILED}
+
     def __repr__(self):
         return '{0.id} (name={0.package.name}, state={state})'.format(self,
                     state=self.REV_STATE_MAP[self.state])

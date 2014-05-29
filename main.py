@@ -57,7 +57,7 @@ def main():
     plugins.load_plugins()
     try:
         launch_task(submitter.submit_builds)
-        launch_task(submitter.poll_tasks)
+        launch_task(submitter.poll_tasks, sleep_interval=120)
         launch_task(submitter.download_logs)
         launch_task(scheduler.schedule_builds)
         main_process()

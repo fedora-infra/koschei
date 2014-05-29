@@ -31,14 +31,9 @@ def poll_tasks(db_session, koji_session):
             log.debug('Polling task {id} ({name}): task_info={info}'\
                       .format(id=build.task_id, name=name, info=task_info))
             state = koji.TASK_STATES.getvalue(task_info['state'])
-            state_transitions = {
-                    'CLOSED': Build.COMPLETE,
-                    'CANCELED': Build.CANCELED,
-                    'FAILED': Build.FAILED,
-                }
-            if state in state_transitions.keys():
-                state = state_transitions[state]
-                log.info('Setting build {build} state to {state}'\
+            if state in Build.KOJI_STATE_MAP:
+                state = Build.KOJI_STATE_MAP[state]
+                log.info('polling: Setting build {build} state to {state}'\
                           .format(build=build, state=Build.REV_STATE_MAP[state]))
                 build.state = state
                 build.package.priority = 0
