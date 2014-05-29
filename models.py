@@ -1,19 +1,19 @@
+import json
+
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
                        ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.engine.url import URL
 
-db_settings = {'drivername': 'postgres',
-               'host': 'localhost',
-               'port': '5432',
-               'username': 'msimacek',
-               'password': 'fedorawtf',
-               'database': 'fedora-ci'}
+# TODO look for it in better place than $PWD
+config_path = 'config.json'
+with open(config_path) as config_file:
+    config = json.load(config_file)
 
 Base = declarative_base()
 
-engine = create_engine(URL(**db_settings), echo=False)
+engine = create_engine(URL(**config['database_config']), echo=False)
 
 Session = sessionmaker(bind=engine)
 

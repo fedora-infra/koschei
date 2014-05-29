@@ -1,0 +1,17 @@
+{
+    "database_config": {
+        "drivername": "postgres",
+        "host": "localhost",
+        "port": "5432",
+        "username": "msimacek",
+        "password": "fedorawtf",
+        "database": "fedora-ci"
+    },
+    "koji_config": {
+        "server": "http://koji.fedoraproject.org/kojihub",
+        "cert": "~/.fedora.cert",
+        "ca": "~/.fedora-server-ca.cert",
+        "server_ca": "~/.fedora-server-ca.cert"
+    }
+}
+
