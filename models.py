@@ -1,4 +1,5 @@
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
+                       ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.engine.url import URL
@@ -16,14 +17,24 @@ engine = create_engine(URL(**db_settings), echo=False)
 
 Session = sessionmaker(bind=engine)
 
+class Dependency(Base):
+    __tablename__ = 'dependency'
+    package_id = Column(Integer, ForeignKey('package.id'), primary_key=True)
+    dependency_id = Column(Integer, ForeignKey('package.id'), primary_key=True)
 
 class Package(Base):
     __tablename__ = 'package'
 
     id = Column(Integer, primary_key=True)
     name = Column('name', String, nullable=False, unique=True)
+    watched = Column('watched', Boolean, nullable=False, default=False)
     priority = Column('priority', Integer, nullable=False, default=0)
     builds = relationship('Build', backref='package')
+
+    dependencies = relationship(Dependency, backref='package',
+                                primaryjoin=(id == Dependency.package_id))
+    dependants = relationship(Dependency, backref='dependency',
+                                primaryjoin=(id == Dependency.dependency_id))
 
     plugin_data = relationship('PluginData', backref='package', lazy='dynamic')
 
