@@ -11,7 +11,13 @@
         "server": "http://koji.fedoraproject.org/kojihub",
         "cert": "~/.fedora.cert",
         "ca": "~/.fedora-server-ca.cert",
-        "server_ca": "~/.fedora-server-ca.cert"
-    }
+        "server_ca": "~/.fedora-server-ca.cert",
+        "target_tag": "f21-candidate"
+    },
+    "repos": [
+        "http://koji.fedoraproject.org/mash/rawhide/source/SRPMS/",
+        "http://koji.fedoraproject.org/mash/rawhide/x86_64/os/",
+        "http://koji.fedoraproject.org/mash/rawhide/i386/os/"
+    ]
 }
 

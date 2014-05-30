@@ -22,6 +22,9 @@ class Dependency(Base):
     package_id = Column(Integer, ForeignKey('package.id'), primary_key=True)
     dependency_id = Column(Integer, ForeignKey('package.id'), primary_key=True)
 
+    def __repr__(self):
+        return '{0.package.name} -> {0.dependency.name}'.format(self)
+
 class Package(Base):
     __tablename__ = 'package'
 
