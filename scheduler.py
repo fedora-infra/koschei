@@ -10,7 +10,8 @@ log = logging.getLogger('scheduler')
 
 def schedule_builds(db_session):
     candidates = db_session.query(Package)\
-            .filter(Package.priority >= priority_threshold)
+                            .filter(Package.watched == True,
+                                    Package.priority >= priority_threshold)
     for pkg in candidates:
         if db_session.query(Build).filter_by(package_id=pkg.id)\
                                .filter(Build.state.in_(Build.UNFINISHED_STATES))\
