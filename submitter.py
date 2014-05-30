@@ -7,6 +7,7 @@ import os
 import util
 
 from models import Package, Build
+from plugins import call_hooks
 
 log = logging.getLogger('submitter')
 
@@ -31,13 +32,16 @@ def poll_tasks(db_session, koji_session):
             log.debug('Polling task {id} ({name}): task_info={info}'\
                       .format(id=build.task_id, name=name, info=task_info))
             state = koji.TASK_STATES.getvalue(task_info['state'])
-            if state in Build.KOJI_STATE_MAP:
-                state = Build.KOJI_STATE_MAP[state]
-                log.info('polling: Setting build {build} state to {state}'\
-                          .format(build=build, state=Build.REV_STATE_MAP[state]))
-                build.state = state
-                build.package.priority = 0
-                db_session.commit()
+
+def update_koji_state(db_session, build, state):
+    if state in Build.KOJI_STATE_MAP:
+        state = Build.KOJI_STATE_MAP[state]
+        log.info('Setting build {build} state to {state}'\
+                  .format(build=build, state=Build.REV_STATE_MAP[state]))
+        build.state = state
+        build.package.priority = 0
+        db_session.commit()
+        call_hooks('state_change', db_session, build)
 
 def download_logs(db_session, koji_session):
     def log_filter(filename):
