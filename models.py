@@ -29,20 +29,21 @@ class Package(Base):
     __tablename__ = 'package'
 
     id = Column(Integer, primary_key=True)
-    name = Column('name', String, nullable=False, unique=True)
-    watched = Column('watched', Boolean, nullable=False, default=False)
-    priority = Column('priority', Integer, nullable=False, default=0)
+    name = Column(String, nullable=False, unique=True)
+    watched = Column(Boolean, nullable=False, default=False)
     builds = relationship('Build', backref='package')
+    static_priority = Column(Integer, nullable=False, default=0)
 
     dependencies = relationship(Dependency, backref='package',
                                 primaryjoin=(id == Dependency.package_id))
     dependants = relationship(Dependency, backref='dependency',
                                 primaryjoin=(id == Dependency.dependency_id))
 
-    plugin_data = relationship('PluginData', backref='package', lazy='dynamic')
+    priority_changes = relationship('PriorityChange', backref='package',
+                                    lazy='dynamic')
 
     def __repr__(self):
-        return '{0.id} (name={0.name}, priority={0.priority})'.format(self)
+        return '{0.id} (name={0.name})'.format(self)
 
 class Build(Base):
     __tablename__ = 'build'
@@ -52,6 +53,7 @@ class Build(Base):
     state = Column(Integer, nullable=False, default=0)
     task_id = Column(Integer)
     logs_downloaded = Column(Boolean, default=False, nullable=False)
+    triggered_by = relationship('PriorityChange', backref='applied_in')
 
     STATE_MAP = {'scheduled': 0,
                  'running': 2,
@@ -78,12 +80,13 @@ class Build(Base):
         return '{0.id} (name={0.package.name}, state={state})'.format(self,
                     state=self.REV_STATE_MAP[self.state])
 
-class PluginData(Base):
-    __tablename__ = 'plugin_data'
+class PriorityChange(Base):
+    __tablename__ = 'priority_change'
 
     id = Column(Integer, primary_key=True)
-    package_id = Column(Integer, ForeignKey('package.id'))
     plugin_name = Column(String, nullable=False)
-    key = Column(String, nullable=False)
-    value = Column(String)
-
+    package_id = Column(Integer, ForeignKey('package.id'))
+    value = Column(Integer, nullable=False)
+    effective = Column(Boolean, nullable=False, default=True)
+    applied_in_id = Column(Integer, ForeignKey('build.id'), nullable=True)
+    comment = Column(String, nullable=False)

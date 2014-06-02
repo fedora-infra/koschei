@@ -1,5 +1,6 @@
 from __future__ import print_function
-from models import Session, Package, Build
+from models import Session, Package, Build, PriorityChange
+from sqlalchemy import func
 
 import logging
 
@@ -9,10 +10,13 @@ time_slice = 4
 log = logging.getLogger('scheduler')
 
 def schedule_builds(db_session):
-    candidates = db_session.query(Package)\
-                            .filter(Package.watched == True,
-                                    Package.priority >= priority_threshold)
-    for pkg in candidates:
+    candidates = db_session.query(Package, func.sum(PriorityChange.value))\
+                                  .filter_by(watched=True)\
+                                  .outerjoin(PriorityChange).group_by(Package)
+    for pkg, priority in candidates:
+        # TODO do this in query
+        if priority < priority_threshold:
+            continue
         if db_session.query(Build).filter_by(package_id=pkg.id)\
                                .filter(Build.state.in_(Build.UNFINISHED_STATES))\
                                .count() == 0:
