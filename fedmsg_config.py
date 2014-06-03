@@ -1,1 +1,1 @@
-config = {'fedora-ci.koji-watcher': True}
+config = {'koschei.koji-watcher': True}

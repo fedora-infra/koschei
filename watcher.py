@@ -6,11 +6,11 @@ from models import Build, Session, Package
 from submitter import update_koji_state
 from plugins import call_hooks
 
-log = logging.getLogger('fedora-ci-watcher')
+log = logging.getLogger('koschei-watcher')
 
 class KojiWatcher(fedmsg.consumers.FedmsgConsumer):
     topic = 'org.fedoraproject.prod.buildsys.*'
-    config_key = 'fedora-ci.koji-watcher'
+    config_key = 'koschei.koji-watcher'
 
     def consume(self, msg):
         topic = msg['topic']

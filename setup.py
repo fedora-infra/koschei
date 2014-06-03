@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name='fedora-ci',
+    name='koschei',
     version='0.0.1',
     description='',
     author='',
@@ -11,7 +11,7 @@ setup(
     packages=[],
     entry_points={
         'moksha.consumer': (
-            'fedora-ci = watcher:KojiWatcher',
+            'koschei = watcher:KojiWatcher',
         ),
     },
 )
