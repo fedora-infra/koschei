@@ -24,7 +24,8 @@ def package_updated(db_session, package):
             pkg_ids = [pkg.id for pkg in pkgs]
             visited.update(pkg_ids)
             deps = db_session.query(Dependency)\
-                   .filter(Dependency.dependency_id.in_(pkg_ids)).all()
+                   .filter(Dependency.dependency_id.in_(pkg_ids),
+                           Dependency.runtime == (level != 1))
             pkgs_on_level = [dep.package for dep in deps if dep.package_id
                              not in visited]
             if pkgs_on_level:
