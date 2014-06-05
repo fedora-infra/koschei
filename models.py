@@ -43,11 +43,13 @@ class Package(Base):
     priority_changes = relationship('PriorityChange', backref='package',
                                     lazy='dynamic')
 
-    def get_finished_builds(self, since=None):
-        finished = Build.state.in_(Build.FINISHED_STATES)
+    def get_finished_builds(self, since=None, until=None):
+        filters = [Build.state.in_(Build.FINISHED_STATES)]
         if since:
-            return self.builds.filter(finished, Build.started >= since)
-        return self.builds.filter(finished)
+            filters.append(Build.started >= since)
+        if until:
+            filters.append(Build.started < until)
+        return self.builds.filter(*filters)
 
     def __repr__(self):
         return '{0.id} (name={0.name})'.format(self)
@@ -91,8 +93,7 @@ class Build(Base):
         return self.REV_STATE_MAP[self.state]
 
     def __repr__(self):
-        return '{0.id} (name={0.package.name}, state={state})'.format(self,
-                    state=self.state_string)
+        return '{0.id} (name={0.package.name}, state={self.state_string})'.format(self)
 
 class PriorityChange(Base):
     __tablename__ = 'priority_change'

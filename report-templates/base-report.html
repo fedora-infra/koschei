@@ -1,28 +1,37 @@
 <html>
 <head>
 <title>Koschei report</title>
+<link rel="stylesheet" type="text/css" href="report.css"/>
 </head>
 <body>
 <h1>Koschei report</h1>
+<div>Package rebuilds
+    {% if since.year > 2000 %}since {{ since|date }}{% endif %}
+    until {{ until|date }}</div>
 {% for package in packages %}
 <h2>{{ package.name }}</h2>
 <table>
+    {% set finished_builds = package.get_finished_builds(since=since, until=until).all() %}
+    {% if finished_builds %}
     <tr>
         <th>Builds</th>
         <th>Triggered by</th>
     </tr>
-    {% for build in package.get_finished_builds(since=since) %}
+    {% for build in finished_builds %}
     {% for change in build.triggered_by %}
     <tr>
-        <td>
-            {% if loop.first %}
+        {% if loop.first %}
+        <td rowspan="{{ loop.length }}">
             {{ build.state_string }} {{ build.task_id }}
-            {% endif %}
         </td>
+        {% endif %}
         <td>{{ change.comment }}</td>
     </tr>
     {% endfor %}
     {% endfor %}
+    {% else %}
+    <div>No builds</div>
+    {% endif %}
 </table>
 {% endfor %}
 </body>
