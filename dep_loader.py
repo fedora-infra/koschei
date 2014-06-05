@@ -1,6 +1,7 @@
 import subprocess
 
 from models import config, Package, Dependency, Session
+from plugins import plugin
 
 def refresh_repo():
     session = Session()
@@ -20,6 +21,7 @@ def get_repoquery_invocation():
         base_invocation.append('--repoid={}'.format(repoid))
     return base_invocation
 
+@plugin('add_package')
 def process_package(session, pkg):
     if pkg.watched:
         process_build_requires(session, pkg)
