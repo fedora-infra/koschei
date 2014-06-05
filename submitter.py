@@ -6,7 +6,9 @@ import os
 
 import util
 
-from models import Package, Build
+from datetime import datetime
+
+from models import Package, Build, current_priorities
 from plugins import call_hooks
 
 log = logging.getLogger('submitter')
@@ -19,6 +21,10 @@ def submit_builds(db_session, koji_session):
         name = build.package.name
         build.state = Build.RUNNING
         build.task_id = util.koji_scratch_build(koji_session, name)
+        build.started = datetime.now()
+        current_priorities(db_session).filter_by(package_id=build.package_id,
+                                                 effective=True)\
+                                      .update({'applied_in_id': build.id})
         db_session.commit()
 
 def poll_tasks(db_session, koji_session):
@@ -39,9 +45,9 @@ def update_koji_state(db_session, build, state):
         log.info('Setting build {build} state to {state}'\
                   .format(build=build, state=Build.REV_STATE_MAP[state]))
         build.state = state
-        build.package.priority = 0
         db_session.commit()
         call_hooks('state_change', db_session, build)
+        #TODO finish time
 
 def download_logs(db_session, koji_session):
     def log_filter(filename):

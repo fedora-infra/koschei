@@ -1,7 +1,7 @@
 import json
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
-                       ForeignKey
+                       ForeignKey, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.engine.url import URL
@@ -31,7 +31,7 @@ class Package(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
     watched = Column(Boolean, nullable=False, default=False)
-    builds = relationship('Build', backref='package')
+    builds = relationship('Build', backref='package', lazy='dynamic')
     static_priority = Column(Integer, nullable=False, default=0)
 
     dependencies = relationship(Dependency, backref='package',
@@ -41,6 +41,12 @@ class Package(Base):
 
     priority_changes = relationship('PriorityChange', backref='package',
                                     lazy='dynamic')
+
+    def get_finished_builds(self, since=None):
+        finished = Build.state.in_(Build.FINISHED_STATES)
+        if since:
+            return self.builds.filter(finished, Build.started >= since)
+        return self.builds.filter(finished)
 
     def __repr__(self):
         return '{0.id} (name={0.name})'.format(self)
@@ -53,7 +59,10 @@ class Build(Base):
     state = Column(Integer, nullable=False, default=0)
     task_id = Column(Integer)
     logs_downloaded = Column(Boolean, default=False, nullable=False)
-    triggered_by = relationship('PriorityChange', backref='applied_in')
+    triggered_by = relationship('PriorityChange', backref='applied_in',
+                                lazy='dynamic')
+    started = Column(DateTime)
+    finished = Column(DateTime)
 
     STATE_MAP = {'scheduled': 0,
                  'running': 2,
@@ -76,9 +85,13 @@ class Build(Base):
                       'CANCELED': CANCELED,
                       'FAILED': FAILED}
 
+    @property
+    def state_string(self):
+        return self.REV_STATE_MAP[self.state]
+
     def __repr__(self):
         return '{0.id} (name={0.package.name}, state={state})'.format(self,
-                    state=self.REV_STATE_MAP[self.state])
+                    state=self.state_string)
 
 class PriorityChange(Base):
     __tablename__ = 'priority_change'
@@ -90,3 +103,6 @@ class PriorityChange(Base):
     effective = Column(Boolean, nullable=False, default=True)
     applied_in_id = Column(Integer, ForeignKey('build.id'), nullable=True)
     comment = Column(String, nullable=False)
+
+def current_priorities(session):
+    return session.query(PriorityChange).filter_by(applied_in_id=None)

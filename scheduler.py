@@ -11,7 +11,8 @@ log = logging.getLogger('scheduler')
 
 def schedule_builds(db_session):
     candidates = db_session.query(Package, func.sum(PriorityChange.value))\
-                                  .filter_by(watched=True)\
+                                  .filter(Package.watched == True,
+                                          PriorityChange.applied_in_id == None)\
                                   .outerjoin(PriorityChange).group_by(Package)
     for pkg, priority in candidates:
         # TODO do this in query

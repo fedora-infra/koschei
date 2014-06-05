@@ -1,10 +1,10 @@
-from models import PriorityChange, Dependency
+from models import PriorityChange, Dependency, current_priorities
 from plugins import plugin
 
 @plugin('repo_done')
 def apply_depchange_priority(db_session):
-    db_session.query(PriorityChange).filter_by(plugin_name='dependency')\
-                                    .update({'effective': True})
+    current_priorities(db_session).filter_by(plugin_name='dependency')\
+                                  .update({'effective': True})
     db_session.commit()
 
 def add_dependency_change(db_session, dependency, package, new_priority):

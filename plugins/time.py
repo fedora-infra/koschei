@@ -5,7 +5,9 @@ from models import Package, PriorityChange
 def adjust_priorities(db_session):
     package_query = db_session.query(Package).filter_by(watched=True)
     for package in package_query:
-        time_priority = package.priority_changes.filter_by(plugin_name='time').first()
+        time_priority = package.priority_changes\
+                               .filter_by(plugin_name='time',
+                                          applied_in_id=None).first()
         if not time_priority:
             time_priority = PriorityChange(plugin_name='time', value=1, effective=True,
                                            comment='Time since last rebuild',
