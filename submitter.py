@@ -8,8 +8,8 @@ import util
 
 from datetime import datetime
 
-from models import Package, Build, current_priorities
-from plugins import call_hooks
+from models import Package, Build
+from plugins import dispatch_event
 
 log = logging.getLogger('submitter')
 
@@ -22,9 +22,7 @@ def submit_builds(db_session, koji_session):
         build.state = Build.RUNNING
         build.task_id = util.koji_scratch_build(koji_session, name)
         build.started = datetime.now()
-        current_priorities(db_session).filter_by(package_id=build.package_id,
-                                                 effective=True)\
-                                      .update({'applied_in_id': build.id})
+        dispatch_event('build_submitted', db_session, build)
         db_session.commit()
 
 def poll_tasks(db_session, koji_session):
@@ -38,6 +36,7 @@ def poll_tasks(db_session, koji_session):
             log.debug('Polling task {id} ({name}): task_info={info}'\
                       .format(id=build.task_id, name=name, info=task_info))
             state = koji.TASK_STATES.getvalue(task_info['state'])
+            update_koji_state(db_session, build, state)
 
 def update_koji_state(db_session, build, state):
     if state in Build.KOJI_STATE_MAP:
@@ -46,7 +45,7 @@ def update_koji_state(db_session, build, state):
                   .format(build=build, state=Build.REV_STATE_MAP[state]))
         build.state = state
         db_session.commit()
-        call_hooks('state_change', db_session, build)
+        dispatch_event('state_change', db_session, build)
         #TODO finish time
 
 def download_logs(db_session, koji_session):
