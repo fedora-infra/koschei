@@ -2,9 +2,11 @@ import json
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
                        ForeignKey, DateTime
+from sqlalchemy.sql.expression import extract, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.engine.url import URL
+from datetime import datetime
 
 # TODO look for it in better place than $PWD
 config_path = 'config.json'
@@ -40,16 +42,13 @@ class Package(Base):
     dependants = relationship(Dependency, backref='dependency',
                                 primaryjoin=(id == Dependency.dependency_id))
 
-    priority_changes = relationship('PriorityChange', backref='package',
-                                    lazy='dynamic')
-
-    def get_finished_builds(self, since=None, until=None):
-        filters = [Build.state.in_(Build.FINISHED_STATES)]
+    def get_builds_in_interval(self, since=None, until=None):
+        filters = [Build.state.in_(Build.FINISHED_STATES + [Build.RUNNING])]
         if since:
             filters.append(Build.started >= since)
         if until:
             filters.append(Build.started < until)
-        return self.builds.filter(*filters)
+        return self.builds.filter(*filters).order_by(Build.started)
 
     def __repr__(self):
         return '{0.id} (name={0.name})'.format(self)
@@ -62,10 +61,14 @@ class Build(Base):
     state = Column(Integer, nullable=False, default=0)
     task_id = Column(Integer)
     logs_downloaded = Column(Boolean, default=False, nullable=False)
-    triggered_by = relationship('PriorityChange', backref='applied_in',
+    triggered_by = relationship('BuildTrigger', backref='build',
                                 lazy='dynamic')
     started = Column(DateTime)
     finished = Column(DateTime)
+
+    @staticmethod
+    def time_since_last_build_expr():
+        return extract('EPOCH', datetime.now() - func.max(Build.started)) / 3600
 
     STATE_MAP = {'scheduled': 0,
                  'running': 2,
@@ -93,18 +96,11 @@ class Build(Base):
         return self.REV_STATE_MAP[self.state]
 
     def __repr__(self):
-        return '{0.id} (name={0.package.name}, state={self.state_string})'.format(self)
+        return '{0.id} (name={0.package.name}, state={0.state_string})'.format(self)
 
-class PriorityChange(Base):
-    __tablename__ = 'priority_change'
+class BuildTrigger(Base):
+    __tablename__ = 'build_trigger'
 
     id = Column(Integer, primary_key=True)
-    plugin_name = Column(String, nullable=False)
-    package_id = Column(Integer, ForeignKey('package.id'))
-    value = Column(Integer, nullable=False)
-    effective = Column(Boolean, nullable=False, default=True)
-    applied_in_id = Column(Integer, ForeignKey('build.id'), nullable=True)
+    build_id = Column(Integer, ForeignKey('build.id'))
     comment = Column(String, nullable=False)
-
-def current_priorities(session):
-    return session.query(PriorityChange).filter_by(applied_in_id=None)
