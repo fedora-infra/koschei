@@ -32,7 +32,7 @@ def koji_scratch_build(session, name):
     commit_id = [ci.split('\t')[0] for ci in commits.split('\n')
                  if ci.endswith('refs/heads/master')][0]
     source = '{}?#{}'.format(git_url, commit_id)
-    target = 'f21-candidate'
+    target = 'rawhide'
     log.info('Intiating koji build for {name}:\n\tsource={source}\
               \n\ttarget={target}\n\tbuild_opts={build_opts}'.format(name=name,
                   target=target, source=source, build_opts=build_opts))
