@@ -25,7 +25,7 @@ class KojiWatcher(fedmsg.consumers.FedmsgConsumer):
                 dispatch_event('repo_done', session)
                 session.close()
         elif topic == 'org.fedoraproject.prod.buildsys.tag':
-            if content.get('tag') == 'f21-build':
+            if content.get('instance') == 'primary' and content.get('tag') == 'f21':
                 session = Session()
                 pkg = session.query(Package).filter_by(name=content['name']).first()
                 if pkg:
