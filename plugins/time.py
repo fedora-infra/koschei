@@ -1,18 +1,33 @@
-from plugins import plugin
-from models import Package, PriorityChange
+from datetime import datetime
 
-@plugin('timer_tick')
-def adjust_priorities(db_session):
-    package_query = db_session.query(Package).filter_by(watched=True)
-    for package in package_query:
-        time_priority = package.priority_changes\
-                               .filter_by(plugin_name='time',
-                                          applied_in_id=None).first()
-        if not time_priority:
-            time_priority = PriorityChange(plugin_name='time', value=1, effective=True,
-                                           comment='Time since last rebuild',
-                                           package_id=package.id)
-            db_session.add(time_priority)
-        else:
-            time_priority.value += 1
-        db_session.commit()
+from plugins import Plugin, _Meta
+from models import Build, BuildTrigger
+
+class TimePlugin(Plugin):
+    order = 9999
+
+    def __init__(self):
+        super(TimePlugin, self).__init__()
+        self.register_event('get_priority_query', self.get_priority_query)
+        self.register_event('build_submitted', self.populate_triggers)
+
+    def get_priority_query(self, db_session):
+        q = db_session.query(Build.package_id, Build.time_since_last_build_expr())\
+                      .group_by(Build.package_id)
+        return q.subquery()
+
+    def populate_triggers(self, db_session, build):
+        if not db_session.query(build.triggered_by.exists()).scalar():
+            since = Build.time_since_last_build_expr()
+            hours = db_session.query(since)\
+                              .filter(Build.id != build.id)\
+                              .filter(Build.package_id == build.package_id)\
+                              .group_by(Build.package_id)\
+                              .order_by(since)\
+                              .first()
+            if hours:
+                comment = "Package hasn't been rebuilt for {} hours"\
+                          .format(int(hours[0]))
+                trigger = BuildTrigger(build_id=build.id, comment=comment)
+                db_session.add(trigger)
+                db_session.commit()
