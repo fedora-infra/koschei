@@ -1,0 +1,39 @@
+* {
+    font-family: Helvetica;
+}
+h1 {
+    font-size: 27px;
+}
+th, td {
+    align: left;
+    padding: 5px 10px;
+}
+table {
+    margin: 10px 25px;
+}
+h2.package {
+    color: White;
+    background-color: DarkSlateGray;
+    padding: 5px;
+    padding-left: 20px;
+    margin: 10px;
+}
+.no-builds {
+    background-color: LightBlue;
+    color: DarkBlue;
+}
+
+.state-complete {
+    background-color: LightGreen;
+}
+
+.state-failed {
+    background-color: LightPink;
+}
+
+.state-canceled {
+    background-color: LightGoldenRodYellow;
+}
+.state-running {
+    background-color: LightBlue;
+}

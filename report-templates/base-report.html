@@ -1,38 +1,57 @@
 <html>
 <head>
 <title>Koschei report</title>
-<link rel="stylesheet" type="text/css" href="report.css"/>
+<link rel="stylesheet" type="text/css" href="report-templates/report.css"/>
 </head>
 <body>
 <h1>Koschei report</h1>
+<h3>Continuous integration for Fedora packages</h3>
 <div>Package rebuilds
     {% if since.year > 2000 %}since {{ since|date }}{% endif %}
     until {{ until|date }}</div>
 {% for package in packages %}
-<h2>{{ package.name }}</h2>
+<div class="package">
+<h2 class="package">{{ package.name }}</h2>
 <table>
-    {% set finished_builds = package.get_finished_builds(since=since, until=until).all() %}
-    {% if finished_builds %}
+    {% set builds = package.get_builds_in_interval(since=since, until=until).all() %}
+    {% if builds %}
     <tr>
-        <th>Builds</th>
+        <th colspan="2">Build task</th>
+        <th>Build logs</th>
+        <th>Started</th>
         <th>Triggered by</th>
     </tr>
-    {% for build in finished_builds %}
-    {% for change in build.triggered_by %}
+    {% for build in builds %}
     <tr>
-        {% if loop.first %}
-        <td rowspan="{{ loop.length }}">
-            {{ build.state_string }} {{ build.task_id }}
+        <td class="state-{{ build.state_string }}">
+            {{ build.state_string }}
         </td>
-        {% endif %}
-        <td>{{ change.comment }}</td>
+        <td class="state-{{ build.state_string }}">
+            <a href="http://koji.fedoraproject.org/koji/taskinfo?taskID={{ build.task_id }}">
+                {{ build.task_id }}
+            </a>
+        </td>
+        <td>
+            {% if build.logs_downloaded %}
+            <!--FIXME hardcoded-->
+            <a href="build_logs/{{ build.id }}/">build logs</a>
+            {% endif %}
+        </td>
+        <td>
+            {{ build.started | date }}
+        </td>
+        <td>
+            {% for change in build.triggered_by.order_by(models.BuildTrigger.id) %}
+                {{ change.comment }}{% if not loop.last %}, {% endif %}
+            {% endfor %}
+        </td>
     </tr>
     {% endfor %}
-    {% endfor %}
     {% else %}
-    <div>No builds</div>
+    <tr class="no-builds"><td>No builds in given interval</td></tr>
     {% endif %}
 </table>
+</div>
 {% endfor %}
 </body>
 </html>
