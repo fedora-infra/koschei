@@ -20,7 +20,7 @@
 from datetime import datetime
 from jinja2 import Environment, FileSystemLoader
 
-import models
+from koschei import models
 
 jinja_env = Environment(loader=FileSystemLoader('./report-templates'))
 

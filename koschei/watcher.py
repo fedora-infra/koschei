@@ -20,9 +20,9 @@ import fedmsg
 import fedmsg.consumers
 import logging
 
-from models import Build, Session, Package
-from submitter import update_koji_state
-from plugins import dispatch_event, load_plugins
+from koschei.models import Build, Session, Package
+from koschei.submitter import update_koji_state
+from koschei.plugins import dispatch_event, load_plugins
 
 log = logging.getLogger('koschei-watcher')
 

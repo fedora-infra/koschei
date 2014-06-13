@@ -22,7 +22,7 @@ from sqlalchemy import func, union_all
 
 import logging
 
-from plugins import dispatch_event
+from koschei.plugins import dispatch_event
 
 priority_threshold = 30
 time_slice = 4

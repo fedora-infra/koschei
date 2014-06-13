@@ -24,11 +24,7 @@ import threading
 import time
 import argparse
 
-import models
-import scheduler
-import submitter
-import util
-import plugins
+from koschei import models, scheduler, submitter, util, plugins
 
 root_logger = logging.getLogger()
 root_logger.setLevel(logging.DEBUG)

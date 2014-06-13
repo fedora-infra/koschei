@@ -18,8 +18,8 @@
 
 from datetime import datetime
 
-from plugins import Plugin, _Meta
-from models import Build, BuildTrigger
+from koschei.plugins import Plugin, _Meta
+from koschei.models import Build, BuildTrigger
 
 class TimePlugin(Plugin):
     order = 9999

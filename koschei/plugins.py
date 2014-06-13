@@ -21,7 +21,7 @@ import os
 
 from collections import defaultdict
 
-from util import log
+from koschei.util import log
 
 plugin_dir = os.path.join(os.path.dirname(__file__), 'plugins')
 

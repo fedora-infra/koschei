@@ -20,8 +20,8 @@ from sqlalchemy import Column, Integer, ForeignKey, Boolean, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.expression import func
 
-from models import Dependency, BuildTrigger, Base, Package
-from plugins import Plugin
+from koschei.models import Dependency, BuildTrigger, Base, Package
+from koschei.plugins import Plugin
 
 class DependencyUpdate(Base):
     __tablename__ = 'dependency_update'

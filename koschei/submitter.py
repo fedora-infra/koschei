@@ -22,12 +22,11 @@ import logging
 import koji
 import os
 
-import util
-
 from datetime import datetime
 
-from models import Package, Build
-from plugins import dispatch_event
+from koschei import util
+from koschei.models import Build
+from koschei.plugins import dispatch_event
 
 log = logging.getLogger('submitter')
 
