@@ -3,9 +3,9 @@
         "drivername": "postgres",
         "host": "localhost",
         "port": "5432",
-        "username": "msimacek",
-        "password": "fedorawtf",
-        "database": "fedora-ci"
+        "username": "wookie",
+        "password": "koschei",
+        "database": "koschei"
     },
     "koji_config": {
         "server": "http://koji.fedoraproject.org/kojihub",
