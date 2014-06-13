@@ -18,17 +18,8 @@
 
 import subprocess
 
-from models import config, Package, Dependency, Session
-from plugins import plugin
-
-def refresh_repo():
-    session = Session()
-    try:
-        packages = session.query(Package)
-        for pkg in packages:
-            process_package(session, pkg)
-    finally:
-        session.close()
+from koschei.models import config, Package, Dependency, Session
+from koschei.plugins import Plugin
 
 def get_repoquery_invocation():
     repos = config['repos']
@@ -39,64 +30,63 @@ def get_repoquery_invocation():
         base_invocation.append('--repoid={}'.format(repoid))
     return base_invocation
 
-@plugin('add_package')
-def process_package(session, pkg):
-    if pkg.watched:
-        process_build_requires(session, pkg)
-    process_requires(session, pkg)
+class DepLoader(Plugin):
+    def __init__(self):
+        super(DepLoader, self).__init__()
+        self.register_event('add_package', self.process_new_package)
 
-def process_build_requires(session, pkg):
-    invocation = get_repoquery_invocation()
-    invocation += ['--requires', '--archlist', 'src', pkg.name]
-    deps = subprocess.check_output(invocation).split('\n')
-    deps = filter(None, deps)
-    build_requires = []
-    for dep in deps:
+    def process_new_package(self, session, pkg):
+        if pkg.watched:
+            self.process_build_requires(session, pkg)
+        self.process_requires(session, pkg)
+
+    def refresh_repo(self):
+        session = Session()
+        try:
+            packages = session.query(Package)
+            for pkg in packages:
+                self.process_new_package(session, pkg)
+        finally:
+            session.close()
+
+    def process_build_requires(self, session, pkg):
         invocation = get_repoquery_invocation()
-        invocation += ['--file', dep]
-        build_requires += subprocess.check_output(invocation).split('\n')
-    build_requires = filter(None, build_requires)
-    process_deps(session, pkg, build_requires, runtime=False)
+        invocation += ['--requires', '--archlist', 'src', pkg.name]
+        deps = subprocess.check_output(invocation).split('\n')
+        deps = filter(None, deps)
+        build_requires = []
+        for dep in deps:
+            invocation = get_repoquery_invocation()
+            invocation += ['--file', dep]
+            build_requires += subprocess.check_output(invocation).split('\n')
+        build_requires = filter(None, build_requires)
+        self.process_deps(session, pkg, build_requires, runtime=False)
 
-def process_requires(session, pkg):
-    invocation = get_repoquery_invocation()
-    invocation += ['--requires', '--resolve', 'src', pkg.name]
-    deps = subprocess.check_output(invocation).split('\n')
-    deps = filter(None, deps)
-    process_deps(session, pkg, deps, runtime=True)
+    def process_requires(self, session, pkg):
+        invocation = get_repoquery_invocation()
+        invocation += ['--requires', '--resolve', 'src', pkg.name]
+        deps = subprocess.check_output(invocation).split('\n')
+        deps = filter(None, deps)
+        self.process_deps(session, pkg, deps, runtime=True)
 
-def process_deps(session, pkg, deps, runtime):
-    existing = {assoc.dependency.name: assoc for assoc in pkg.dependencies
-                if assoc.runtime == runtime}
-    keep = set()
-    for dep_name in set(deps):
-        if dep_name in existing:
-            keep.add(existing[dep_name])
-        else:
-            dep_pkg = session.query(Package).filter_by(name=dep_name).first()
-            if not dep_pkg:
-                dep_pkg = Package(name=dep_name, watched=False)
-                session.add(dep_pkg)
+    def process_deps(self, session, pkg, deps, runtime):
+        existing = {assoc.dependency.name: assoc for assoc in pkg.dependencies
+                    if assoc.runtime == runtime}
+        keep = set()
+        for dep_name in set(deps):
+            if dep_name in existing:
+                keep.add(existing[dep_name])
+            else:
+                dep_pkg = session.query(Package).filter_by(name=dep_name).first()
+                if not dep_pkg:
+                    dep_pkg = Package(name=dep_name, watched=False)
+                    session.add(dep_pkg)
+                    session.commit()
+                    self.process_new_package(session, dep_pkg)
+                assoc = Dependency(package_id=pkg.id, dependency_id=dep_pkg.id,
+                                   runtime=runtime)
+                session.add(assoc)
                 session.commit()
-                process_package(session, dep_pkg)
-            assoc = Dependency(package_id=pkg.id, dependency_id=dep_pkg.id,
-                               runtime=runtime)
-            session.add(assoc)
+        for dep in set(existing.values()).difference(keep):
+            session.delete(dep)
             session.commit()
-    for dep in set(existing.values()).difference(keep):
-        session.delete(dep)
-        session.commit()
-
-def add_all_packages(session):
-    invocation = get_repoquery_invocation()
-    invocation += ['--all']
-    pkgs = subprocess.check_output(invocation).split('\n')
-    pkgs = set(filter(None, pkgs))
-    existing = {pkg.name for pkg in session.query(Package)}
-    for new in pkgs.difference(existing):
-        pkg = Package(name=new, watched=False)
-        session.add(pkg)
-        session.commit()
-
-if __name__ == '__main__':
-    refresh_repo()
