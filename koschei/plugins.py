@@ -21,6 +21,8 @@ import os
 
 from collections import defaultdict
 
+from util import log
+
 plugin_dir = os.path.join(os.path.dirname(__file__), 'plugins')
 
 plugins = {}
@@ -34,7 +36,7 @@ def load_plugins():
         if path.endswith('.py'):
             name = path[:-3]
             descriptor = imp.find_module(name, [plugin_dir])
-            print 'Loading {}'.format(name)
+            log.debug('Loading plugins from {}'.format(path))
             imp.load_module(name, *descriptor)
     for cls in plugin_classes:
         plugin = cls()
@@ -54,6 +56,7 @@ class _Meta(type):
     def __init__(cls, name, bases, members):
         super(_Meta, cls).__init__(name, bases, members)
         if name != 'Plugin':
+            log.info('Loading plugin {}'.format(name))
             plugin_classes.append(cls)
 
 class Plugin(object):

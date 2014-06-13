@@ -22,7 +22,7 @@ import os
 import koji
 import logging
 
-log = logging.getLogger('util')
+log = logging.getLogger('koschei')
 
 server = 'http://koji.fedoraproject.org/kojihub'
 cert = os.path.expanduser('~/.fedora.cert')

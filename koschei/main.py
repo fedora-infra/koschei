@@ -31,7 +31,7 @@ import util
 import plugins
 
 root_logger = logging.getLogger()
-root_logger.setLevel(logging.INFO)
+root_logger.setLevel(logging.DEBUG)
 root_logger.addHandler(logging.StreamHandler(sys.stderr))
 
 stop_event = threading.Event()
@@ -67,7 +67,7 @@ def launch_task(fn, sleep_interval=3, thread=True):
 def main_process():
     db_session = models.Session()
     while True:
-        time.sleep(2)
+        time.sleep(3600)
         plugins.call_hooks('timer_tick', db_session)
         db_session.commit()
 
@@ -75,7 +75,7 @@ def main():
     plugins.load_plugins()
     try:
         launch_task(submitter.submit_builds)
-        launch_task(submitter.poll_tasks, sleep_interval=120)
+        launch_task(submitter.poll_tasks, sleep_interval=60)
         launch_task(submitter.download_logs)
         launch_task(scheduler.schedule_builds)
         main_process()
@@ -88,4 +88,3 @@ if __name__ == '__main__':
     options = parser.parse_args()
     util.dry_run = options.dry_run
     main()
-

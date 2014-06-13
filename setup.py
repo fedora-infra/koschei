@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='koschei',
@@ -8,10 +8,11 @@ setup(
     author_email='',
     url='',
     install_requires=["fedmsg"],
-    packages=[],
     entry_points={
         'moksha.consumer': (
             'koschei = watcher:KojiWatcher',
         ),
     },
+    packages=find_packages(),
+    include_package_data=True,
 )
