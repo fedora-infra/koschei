@@ -75,11 +75,15 @@ def download_logs(db_session, koji_session):
 
     for build in to_download:
         out_dir = os.path.join(log_output_dir, str(build.id))
-        try:
-            os.makedirs(out_dir)
-        except OSError:
-            pass
-        util.download_task_output(koji_session, build.task_id, out_dir,
-                                  filename_predicate=log_filter, prefix_task_id=True)
+        for task in koji_session.getTaskChildren(build.task_id):
+            if task['method'] == 'buildArch':
+                arch_dir = os.path.join(out_dir, task['arch'])
+                util.mkdir_if_absent(arch_dir)
+                for file_name in koji_session.listTaskOutput(task['id']):
+                    if file_name.endswith('.log'):
+                        with open(os.path.join(arch_dir, file_name), 'w') as log_file:
+                            log.info('Downloading {} for {}'.format(file_name, build.task_id))
+                            log_file.write(koji_session.downloadTaskOutput(task['id'],
+                                                                           file_name))
         build.logs_downloaded = True
         db_session.commit()

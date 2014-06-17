@@ -75,3 +75,10 @@ def download_task_output(session, task_id, output_dir, filename_predicate=None,
                       .format(file_name, task['id'], output_dir))
             with open(os.path.join(output_dir, file_name), 'w') as new_file:
                 new_file.write(session.downloadTaskOutput(task['id'], download))
+
+def mkdir_if_absent(path):
+    try:
+        os.makedirs(path)
+    except OSError:
+        pass
+
