@@ -61,11 +61,8 @@ def launch_task(fn, sleep_interval=3, thread=True):
     return thread
 
 def main_process():
-    db_session = models.Session()
     while True:
         time.sleep(3600)
-        plugins.call_hooks('timer_tick', db_session)
-        db_session.commit()
 
 def main():
     plugins.load_plugins()
