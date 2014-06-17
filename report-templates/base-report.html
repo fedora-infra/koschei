@@ -2,6 +2,16 @@
 <head>
 <title>Koschei report</title>
 <link rel="stylesheet" type="text/css" href="report-templates/report.css"/>
+<script type="text/javascript">
+function toggle_visibility(id) {
+    element = document.getElementById(id);
+    if (element.style.display === "none") {
+        element.style.display = "block";
+    } else {
+        element.style.display = "none";
+    }
+}
+</script>
 </head>
 <body>
 <h1>Koschei report</h1>
@@ -21,9 +31,12 @@
         <th>Started</th>
         <th>Triggered by</th>
     </tr>
-    {% for build in builds %}
-    <tr>
+    {% for i in range(builds | length) %}
+    {% set build = builds[i] %}
+    <tr class="{% if loop.index % 2 %}odd{% else %}even{% endif %}">
         <td class="state-{{ build.state_string }}">
+            <img src="report-templates/arrow.png" width="18px" height="18px"
+            onclick='toggle_visibility("{{build.id}}-result");'/>
             {{ build.state_string }}
         </td>
         <td class="state-{{ build.state_string }}">
@@ -40,12 +53,34 @@
         <td>
             {{ build.started | date }}
         </td>
-        <td>
+        <td class="last">
             {% for change in build.triggered_by.order_by(models.BuildTrigger.id) %}
                 {{ change.comment }}{% if not loop.last %}, {% endif %}
             {% endfor %}
         </td>
     </tr>
+    {% if not loop.first %}
+    <tr style="display:none" id="{{build.id}}-result">
+        <td>
+            <table>
+                {% for arch, diff in log_diff(build, builds[i - 1]).items() %}
+                <tr>
+                    <th>
+                         Installed package differences for {{ arch }}
+                    </th>
+                </tr>
+                {% for line in diff %}
+                <tr>
+                    <td class="raw-pkg">
+                        {{ line }}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% endfor %}
+            </table>
+        </td>
+    </tr>
+    {% endif %}
     {% endfor %}
     {% else %}
     <tr class="no-builds"><td>No builds in given interval</td></tr>
