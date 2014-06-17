@@ -21,12 +21,19 @@ from __future__ import print_function
 import os
 import koji
 import logging
+import json
+
+# TODO look for it in better place than $PWD
+config_path = 'config.json'
+with open(config_path) as config_file:
+    config = json.load(config_file)
 
 log = logging.getLogger('koschei')
 
-server = 'http://koji.fedoraproject.org/kojihub'
-cert = os.path.expanduser('~/.fedora.cert')
-ca_cert = os.path.expanduser('~/.fedora-server-ca.cert')
+koji_config = config['koji_config']
+server = koji_config['server']
+cert = os.path.expanduser(koji_config['cert'])
+ca_cert = os.path.expanduser(koji_config['ca'])
 
 dry_run = True
 
