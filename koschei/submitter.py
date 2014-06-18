@@ -66,7 +66,7 @@ def update_koji_state(db_session, build, state):
 def main():
     import time
     db_session = Session()
-    koji_session = util.create_koji_session(anonymous=True)
+    koji_session = util.create_koji_session()
     print("submitter started")
     while True:
         submit_builds(db_session, koji_session)
