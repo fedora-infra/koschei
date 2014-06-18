@@ -26,10 +26,7 @@ from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.engine.url import URL
 from datetime import datetime
 
-# TODO look for it in better place than $PWD
-config_path = 'config.json'
-with open(config_path) as config_file:
-    config = json.load(config_file)
+from koschei.util import config
 
 Base = declarative_base()
 
