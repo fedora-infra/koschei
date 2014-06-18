@@ -30,7 +30,7 @@ from koschei.plugins import dispatch_event
 
 log = logging.getLogger('submitter')
 
-log_output_dir = 'build_logs/'
+log_output_dir = util.config['directories']['build_logs']
 
 def submit_builds(db_session, koji_session):
     scheduled_builds = db_session.query(Build).filter_by(state=Build.SCHEDULED)

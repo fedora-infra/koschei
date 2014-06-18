@@ -3,8 +3,8 @@
         "drivername": "postgres",
         "host": "localhost",
         "port": "5432",
-        "username": "wookie",
-        "password": "koschei",
+        "username": "koschei",
+        "password": "password",
         "database": "koschei"
     },
     "koji_config": {
@@ -12,7 +12,15 @@
         "cert": "~/.fedora.cert",
         "ca": "~/.fedora-server-ca.cert",
         "server_ca": "~/.fedora-server-ca.cert",
-        "target_tag": "f21-candidate"
+        "target_tag": "f21"
+    },
+    "directories": {
+        "build_logs": "build_logs",
+        // Relative path from www root used on report
+        "build_logs_relative": "build_logs",
+        "srpms": "srpms",
+        "repos": "repos",
+        "reports": "reports"
     },
     "repos": [
         "http://koji.fedoraproject.org/mash/rawhide/source/SRPMS/",

@@ -22,7 +22,7 @@ import os
 from datetime import datetime
 from jinja2 import Environment, FileSystemLoader
 
-from koschei import models, submitter
+from koschei import models, submitter, util
 
 jinja_env = Environment(loader=FileSystemLoader('./report-templates'))
 
@@ -72,7 +72,8 @@ def generate_report(template, since, until):
     packages = session.query(models.Package).filter_by(watched=True)\
                .order_by(models.Package.id).all()
     return template.render(packages=packages, since=since, until=until, models=models,
-                           log_diff=lambda b1, b2: log_diff(session, b1, b2))
+                           log_diff=lambda b1, b2: log_diff(session, b1, b2),
+                           log_dir=util.config['directories']['build_logs_relative'])
 
 if __name__ == '__main__':
     since = datetime.min

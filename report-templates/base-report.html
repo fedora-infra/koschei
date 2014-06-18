@@ -46,8 +46,7 @@ function toggle_visibility(id) {
         </td>
         <td>
             {% if build.logs_downloaded %}
-            <!--FIXME hardcoded-->
-            <a href="build_logs/{{ build.id }}/">build logs</a>
+            <a href="{{ log_dir }}/{{ build.id }}/">build logs</a>
             {% endif %}
         </td>
         <td>
