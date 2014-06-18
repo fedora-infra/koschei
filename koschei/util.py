@@ -35,6 +35,8 @@ server = koji_config['server']
 cert = os.path.expanduser(koji_config['cert'])
 ca_cert = os.path.expanduser(koji_config['ca'])
 
+git_reference = config.get('git_reference', 'origin/master')
+
 dry_run = True
 
 server_opts = {
@@ -51,12 +53,7 @@ def koji_scratch_build(session, name):
             'scratch': True,
         }
     git_url = 'git://pkgs.fedoraproject.org/{}'.format(name)
-    #TODO use pygit
-    import subprocess
-    commits = subprocess.check_output(['git', 'ls-remote', git_url])
-    commit_id = [ci.split('\t')[0] for ci in commits.split('\n')
-                 if ci.endswith('refs/heads/master')][0]
-    source = '{}?#{}'.format(git_url, commit_id)
+    source = '{}?#{}'.format(git_url, git_reference)
     target = 'rawhide'
     log.info('Intiating koji build for {name}:\n\tsource={source}\
               \n\ttarget={target}\n\tbuild_opts={build_opts}'.format(name=name,
