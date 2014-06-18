@@ -24,7 +24,7 @@ import koji
 from datetime import datetime
 
 from koschei import util
-from koschei.models import Build
+from koschei.models import Build, Session
 from koschei.plugins import dispatch_event
 
 log = logging.getLogger('submitter')
@@ -62,3 +62,16 @@ def update_koji_state(db_session, build, state):
         db_session.commit()
         dispatch_event('state_change', db_session, build)
         #TODO finish time
+
+def main():
+    import time
+    db_session = Session()
+    koji_session = util.create_koji_session(anonymous=True)
+    print("submitter started")
+    while True:
+        submit_builds(db_session, koji_session)
+        poll_tasks(db_session, koji_session)
+        time.sleep(3)
+
+if __name__ == '__main__':
+    main()

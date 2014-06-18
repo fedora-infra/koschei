@@ -50,3 +50,14 @@ def schedule_builds(db_session):
             db_session.add(build)
             db_session.commit()
             log.info('Scheduling build {} for {}'.format(build.id, build.package.name))
+
+def main():
+    import time
+    db_session = Session()
+    print("scheduler started")
+    while True:
+        schedule_builds(db_session)
+        time.sleep(3)
+
+if __name__ == '__main__':
+    main()
