@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import sys
+import md5
 
 from koschei import plugins, dep_loader
 from koschei.models import *
@@ -18,7 +19,9 @@ if __name__ == '__main__':
             prio = int(sys.argv[3])
         pkg = s.query(Package).filter_by(name=sys.argv[2]).first()
         if not pkg:
-            pkg = Package(name=sys.argv[2], watched=True, static_priority=prio)
+            name = sys.argv[2]
+            pkg = Package(name=name, watched=True, static_priority=prio,
+                          manual_priority=int(md5.md5(name).hexdigest(), 16) % 30)
             s.add(pkg)
         else:
             pkg.watched = True

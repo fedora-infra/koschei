@@ -54,6 +54,7 @@ class Package(Base):
     watched = Column(Boolean, nullable=False, default=False)
     builds = relationship('Build', backref='package', lazy='dynamic')
     static_priority = Column(Integer, nullable=False, default=0)
+    manual_priority = Column(Integer, nullable=False, default=0)
 
     dependencies = relationship(Dependency, backref='package',
                                 primaryjoin=(id == Dependency.package_id))

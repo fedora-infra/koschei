@@ -39,8 +39,9 @@ def submit_builds(db_session, koji_session):
         build.state = Build.RUNNING
         build.task_id = util.koji_scratch_build(koji_session, name)
         build.started = datetime.now()
-        dispatch_event('build_submitted', db_session, build)
+        build.package.manual_priority = 0
         db_session.commit()
+        dispatch_event('build_submitted', db_session, build)
 
 def poll_tasks(db_session, koji_session):
     running_builds = db_session.query(Build).filter_by(state=Build.RUNNING)
