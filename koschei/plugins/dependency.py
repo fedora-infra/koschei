@@ -22,6 +22,7 @@ from sqlalchemy.sql.expression import func
 
 from koschei.models import Dependency, BuildTrigger, Base, Package
 from koschei.plugins import Plugin
+from koschei import util
 
 class DependencyUpdate(Base):
     __tablename__ = 'dependency_update'

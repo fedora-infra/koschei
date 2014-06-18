@@ -26,7 +26,7 @@ from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.engine.url import URL
 from datetime import datetime
 
-from koschei.util import config
+from .util import config
 
 Base = declarative_base()
 

@@ -23,9 +23,9 @@ import koji
 
 from datetime import datetime
 
-from koschei import util
-from koschei.models import Build, Session
-from koschei.plugins import dispatch_event
+from . import util
+from .models import Build, Session
+from .plugins import dispatch_event
 
 log = logging.getLogger('submitter')
 

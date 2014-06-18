@@ -22,7 +22,7 @@ import os
 from datetime import datetime
 from jinja2 import Environment, FileSystemLoader
 
-from koschei import models, submitter, util
+from . import models, util
 
 jinja_env = Environment(loader=FileSystemLoader('./report-templates'))
 
