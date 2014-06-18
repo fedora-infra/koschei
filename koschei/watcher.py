@@ -28,29 +28,38 @@ log = logging.getLogger('koschei-watcher')
 
 load_plugins()
 
+topic_name = 'org.fedoraproject.prod.buildsys'
+
 class KojiWatcher(fedmsg.consumers.FedmsgConsumer):
-    topic = 'org.fedoraproject.prod.buildsys.*'
+    topic = '{}.*'.format(topic_name)
     config_key = 'koschei.koji-watcher'
+
+    def __init__(self, *args, **kwargs):
+        super(KojiWatcher, self).__init__(*args, **kwargs)
+        print 'Watcher initialized'
 
     def consume(self, msg):
         topic = msg['topic']
         content = msg['body']['msg']
-        if topic == 'org.fedoraproject.prod.buildsys.task.state.change':
-            update_build_state(content)
-        elif topic == 'org.fedoraproject.prod.buildsys.repo.done':
-            if content.get('tag') == 'f21-build':
-                session = Session()
-                dispatch_event('repo_done', session)
-                session.close()
-        elif topic == 'org.fedoraproject.prod.buildsys.tag':
-            if content.get('instance') == 'primary' and content.get('tag') == 'f21':
-                session = Session()
-                pkg = session.query(Package).filter_by(name=content['name']).first()
-                if pkg:
-                    print('Calling build tagged for {}'.format(pkg.name))
-                    dispatch_event('build_tagged', session, pkg,
-                                   content['version'], content['release'])
-                session.close()
+        consume(topic, content)
+
+def consume(topic, content):
+    if topic == 'org.fedoraproject.prod.buildsys.task.state.change':
+        update_build_state(content)
+    elif topic == 'org.fedoraproject.prod.buildsys.repo.done':
+        if content.get('tag') == 'f21-build':
+            session = Session()
+            dispatch_event('repo_done', session)
+            session.close()
+    elif topic == 'org.fedoraproject.prod.buildsys.tag':
+        if content.get('instance') == 'primary' and content.get('tag') == 'f21':
+            session = Session()
+            pkg = session.query(Package).filter_by(name=content['name']).first()
+            if pkg:
+                print('Calling build tagged for {}'.format(pkg.name))
+                dispatch_event('build_tagged', session, pkg,
+                               content['version'], content['release'])
+            session.close()
 
 def update_build_state(msg):
     assert msg['attribute'] == 'state'
@@ -61,3 +70,9 @@ def update_build_state(msg):
         state = msg['new']
         update_koji_state(session, build, state)
     session.close()
+
+if __name__ == '__main__':
+    print('watcher started')
+    for _, _, topic, msg in fedmsg.tail_messages():
+        if topic.startswith(topic_name + '.'):
+            consume(topic, msg)
