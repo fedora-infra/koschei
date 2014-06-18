@@ -19,9 +19,16 @@
 from __future__ import print_function
 
 import os
+import sys
 import koji
 import logging
 import json
+import urllib2 as urllib
+import subprocess
+
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.DEBUG)
+root_logger.addHandler(logging.StreamHandler(sys.stderr))
 
 # TODO look for it in better place than $PWD
 config_path = 'config.json'
