@@ -16,7 +16,6 @@
     },
     "directories": {
         "build_logs": "build_logs",
-        // Relative path from www root used on report
         "build_logs_relative": "build_logs",
         "srpms": "srpms",
         "repos": "repos",
