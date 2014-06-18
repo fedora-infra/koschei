@@ -37,8 +37,6 @@ ca_cert = os.path.expanduser(koji_config['ca'])
 
 git_reference = config.get('git_reference', 'origin/master')
 
-dry_run = True
-
 server_opts = {
 }
 
@@ -58,11 +56,10 @@ def koji_scratch_build(session, name):
     log.info('Intiating koji build for {name}:\n\tsource={source}\
               \n\ttarget={target}\n\tbuild_opts={build_opts}'.format(name=name,
                   target=target, source=source, build_opts=build_opts))
-    if not dry_run:
-        task_id = session.build(source, target, build_opts)
-        log.info('Submitted koji scratch build for {name}, task_id={task_id}'\
-                  .format(name=name, task_id=task_id))
-        return task_id
+    task_id = session.build(source, target, build_opts)
+    log.info('Submitted koji scratch build for {name}, task_id={task_id}'\
+              .format(name=name, task_id=task_id))
+    return task_id
 
 def download_task_output(session, task_id, output_dir, filename_predicate=None,
                          prefix_task_id=False):
