@@ -25,7 +25,6 @@ import logging
 from koschei.plugins import dispatch_event
 
 priority_threshold = 30
-time_slice = 4
 
 log = logging.getLogger('scheduler')
 
@@ -50,6 +49,10 @@ def schedule_builds(db_session):
             db_session.add(build)
             db_session.commit()
             log.info('Scheduling build {} for {}'.format(build.id, build.package.name))
+    # Bump priority of not built packages
+    db_session.query(Package).outerjoin(Build)\
+            .filter(Build.id == None)\
+            .update({Package.manual_priority: Package.manual_priority + 1})
 
 def main():
     import time
