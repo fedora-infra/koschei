@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import logging
 import koji
-import os
 
 from datetime import datetime
 
@@ -29,8 +28,6 @@ from koschei.models import Build
 from koschei.plugins import dispatch_event
 
 log = logging.getLogger('submitter')
-
-log_output_dir = util.config['directories']['build_logs']
 
 def submit_builds(db_session, koji_session):
     scheduled_builds = db_session.query(Build).filter_by(state=Build.SCHEDULED)
@@ -65,26 +62,3 @@ def update_koji_state(db_session, build, state):
         db_session.commit()
         dispatch_event('state_change', db_session, build)
         #TODO finish time
-
-def download_logs(db_session, koji_session):
-    def log_filter(filename):
-        return filename.endswith('.log')
-
-    to_download = db_session.query(Build)\
-                   .filter(Build.logs_downloaded == False,
-                           Build.state.in_(Build.FINISHED_STATES)).all()
-
-    for build in to_download:
-        out_dir = os.path.join(log_output_dir, str(build.id))
-        for task in koji_session.getTaskChildren(build.task_id):
-            if task['method'] == 'buildArch':
-                arch_dir = os.path.join(out_dir, task['arch'])
-                util.mkdir_if_absent(arch_dir)
-                for file_name in koji_session.listTaskOutput(task['id']):
-                    if file_name.endswith('.log'):
-                        with open(os.path.join(arch_dir, file_name), 'w') as log_file:
-                            log.info('Downloading {} for {}'.format(file_name, build.task_id))
-                            log_file.write(koji_session.downloadTaskOutput(task['id'],
-                                                                           file_name))
-        build.logs_downloaded = True
-        db_session.commit()
