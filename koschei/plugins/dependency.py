@@ -21,7 +21,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql.expression import func
 
 from koschei.models import Dependency, BuildTrigger, Base, Package
-from koschei.plugins import Plugin
+from koschei.plugin import Plugin
 from koschei import util
 
 class DependencyUpdate(Base):

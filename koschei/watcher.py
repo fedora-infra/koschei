@@ -22,7 +22,7 @@ import logging
 
 from .models import Build, Session, Package
 from .submitter import update_koji_state
-from .plugins import dispatch_event, load_plugins
+from .plugin import dispatch_event, load_plugins
 
 log = logging.getLogger('koschei-watcher')
 

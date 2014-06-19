@@ -19,7 +19,7 @@
 import subprocess
 
 from koschei.models import config, Package, Dependency, Session
-from koschei.plugins import Plugin
+from koschei.plugin import Plugin
 
 def get_repoquery_invocation():
     repos = config['repos']

@@ -18,7 +18,7 @@
 
 from datetime import datetime
 
-from koschei.plugins import Plugin, _Meta
+from koschei.plugin import Plugin, _Meta
 from koschei.models import Build, BuildTrigger
 
 class TimePlugin(Plugin):

@@ -25,7 +25,7 @@ from datetime import datetime
 
 from . import util
 from .models import Build, Session
-from .plugins import dispatch_event
+from .plugin import dispatch_event
 
 log = logging.getLogger('submitter')
 
