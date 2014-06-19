@@ -5,6 +5,7 @@ Summary:        Continuous integration for Fedora packages
 License:        GPLv2+
 URL:            TBD
 Source0:        %{name}-%{version}.tar.xz
+BuildArch:      noarch
 
 BuildRequires:  python-devel
 BuildRequires:  python-sqlalchemy
