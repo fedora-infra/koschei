@@ -30,8 +30,10 @@ root_logger = logging.getLogger()
 root_logger.setLevel(logging.DEBUG)
 root_logger.addHandler(logging.StreamHandler(sys.stderr))
 
-# TODO look for it in better place than $PWD
-config_path = 'config.json'
+if sys.argv[0].startswith('/usr'):
+    config_path = '/etc/koschei/config.json'
+else:
+    config_path = 'config.json'
 with open(config_path) as config_file:
     config = json.load(config_file)
 
