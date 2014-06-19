@@ -1,0 +1,12 @@
+[Unit]
+Description=Koschei - Fedora Continuous Integration - build scheduler
+After=syslog.target network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python -m koschei.scheduler
+User=koschei
+Group=koschei
+
+[Install]
+WantedBy=multi-user.target

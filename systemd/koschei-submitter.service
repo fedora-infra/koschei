@@ -1,0 +1,12 @@
+[Unit]
+Description=Koschei - Fedora Continuous Integration - build submitter
+After=syslog.target network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python -m koschei.submitter
+User=koschei
+Group=koschei
+
+[Install]
+WantedBy=multi-user.target
