@@ -75,4 +75,4 @@ if __name__ == '__main__':
     print('watcher started')
     for _, _, topic, msg in fedmsg.tail_messages():
         if topic.startswith(topic_name + '.'):
-            consume(topic, msg)
+            consume(topic, msg['msg'])
