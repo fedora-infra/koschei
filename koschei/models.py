@@ -34,15 +34,6 @@ engine = create_engine(URL(**config['database_config']), echo=False)
 
 Session = sessionmaker(bind=engine)
 
-class Dependency(Base):
-    __tablename__ = 'dependency'
-    package_id = Column(Integer, ForeignKey('package.id'), primary_key=True)
-    dependency_id = Column(Integer, ForeignKey('package.id'), primary_key=True)
-    runtime = Column(Boolean, nullable=False, primary_key=True)
-
-    def __repr__(self):
-        return '{0.package.name} -> {0.dependency.name}'.format(self)
-
 class Package(Base):
     __tablename__ = 'package'
 
@@ -52,11 +43,6 @@ class Package(Base):
     builds = relationship('Build', backref='package', lazy='dynamic')
     static_priority = Column(Integer, nullable=False, default=0)
     manual_priority = Column(Integer, nullable=False, default=0)
-
-    dependencies = relationship(Dependency, backref='package',
-                                primaryjoin=(id == Dependency.package_id))
-    dependants = relationship(Dependency, backref='dependency',
-                                primaryjoin=(id == Dependency.dependency_id))
 
     def get_builds_in_interval(self, since=None, until=None):
         filters = [Build.state.in_(Build.FINISHED_STATES + [Build.RUNNING])]
