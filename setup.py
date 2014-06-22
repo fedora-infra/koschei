@@ -10,7 +10,7 @@ setup(
     install_requires=["fedmsg"],
     entry_points={
         'moksha.consumer': (
-            'koschei = watcher:KojiWatcher',
+            'koschei = koschei.watcher:KojiWatcher',
         ),
     },
     packages=find_packages(),

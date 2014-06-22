@@ -52,8 +52,9 @@ def installed_pkgs_from_log(root_log):
         return pkgs
 
 def log_diff(session, build1, build2):
-    logdir1 = os.path.join(submitter.log_output_dir, str(build1.id))
-    logdir2 = os.path.join(submitter.log_output_dir, str(build2.id))
+    log_output_dir = util.config['directories']['build_logs']
+    logdir1 = os.path.join(log_output_dir, str(build1.id))
+    logdir2 = os.path.join(log_output_dir, str(build2.id))
     logdiffs = {}
     for arch in os.listdir(logdir1):
         pkgs1 = set(installed_pkgs_from_log(os.path.join(logdir1, arch, 'root.log')))
@@ -73,7 +74,8 @@ def generate_report(template, since, until):
                .order_by(models.Package.id).all()
     return template.render(packages=packages, since=since, until=until, models=models,
                            log_diff=lambda b1, b2: log_diff(session, b1, b2),
-                           log_dir=util.config['directories']['build_logs_relative'])
+                           log_dir=util.config['directories']['build_logs_relative'],
+                           koji_weburl=config['koji_config']['weburl'])
 
 if __name__ == '__main__':
     since = datetime.min

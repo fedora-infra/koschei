@@ -34,7 +34,7 @@ root_logger = logging.getLogger()
 root_logger.setLevel(logging.DEBUG)
 root_logger.addHandler(logging.StreamHandler(sys.stderr))
 
-if sys.argv[0].startswith('/usr'):
+if __file__.startswith('/usr'):
     config_path = '/etc/koschei/config.json'
 else:
     config_path = 'config.json'
@@ -47,14 +47,16 @@ koji_config = config['koji_config']
 server = koji_config['server']
 cert = os.path.expanduser(koji_config['cert'])
 ca_cert = os.path.expanduser(koji_config['ca'])
+server_opts = koji_config.get('server_opts', {})
+pathinfo = koji.PathInfo(topdir=koji_config['topurl'])
+scm_url = koji_config['scm_url']
+target_tag = koji_config['target_tag']
 
 git_reference = config.get('git_reference', 'origin/master')
 
-server_opts = {
-}
 
-srpm_dir = 'srpms'
-repodata_dir = 'repodata'
+srpm_dir = config['directories']['srpms']
+repodata_dir = config['directories']['repodata']
 
 def create_koji_session(anonymous=False):
     koji_session = koji.ClientSession(server, server_opts)
@@ -66,12 +68,10 @@ def koji_scratch_build(session, name):
     build_opts = {
             'scratch': True,
         }
-    git_url = 'git://pkgs.fedoraproject.org/{}'.format(name)
-    source = '{}?#{}'.format(git_url, git_reference)
-    target = 'rawhide'
+    source = '{}/{}?#{}'.format(scm_url, name, git_reference)
     log.info('Intiating koji build for {name}:\n\tsource={source}\
               \n\ttarget={target}\n\tbuild_opts={build_opts}'.format(name=name,
-                  target=target, source=source, build_opts=build_opts))
+                  target=target_tag, source=source, build_opts=build_opts))
     task_id = session.build(source, target, build_opts)
     log.info('Submitted koji scratch build for {name}, task_id={task_id}'\
               .format(name=name, task_id=task_id))
@@ -114,7 +114,6 @@ def get_srpm(url, srpm_name):
 def create_srpm_repo(package_names):
     koji_session = create_koji_session()
     koji_session.multicall = True
-    pathinfo = koji.PathInfo(topdir='http://kojipkgs.fedoraproject.org')
     for package_name in package_names:
         koji_session.listTagged('f21', latest=True, package=package_name)
     urls = []

@@ -9,6 +9,9 @@
     },
     "koji_config": {
         "server": "http://koji.fedoraproject.org/kojihub",
+        "topurl": "http://kojipkgs.fedoraproject.org",
+        "weburl": "http://koji.fedoraproject.org/koji",
+        "scm_url": "git://pkgs.fedoraproject.org",
         "cert": "~/.fedora.cert",
         "ca": "~/.fedora-server-ca.cert",
         "server_ca": "~/.fedora-server-ca.cert",
@@ -18,7 +21,7 @@
         "build_logs": "build_logs",
         "build_logs_relative": "build_logs",
         "srpms": "srpms",
-        "repos": "repos",
+        "repodata": "repodata",
         "reports": "reports"
     },
     "repos": [

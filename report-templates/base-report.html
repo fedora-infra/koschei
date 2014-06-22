@@ -40,7 +40,7 @@ function toggle_visibility(id) {
             {{ build.state_string }}
         </td>
         <td class="state-{{ build.state_string }}">
-            <a href="http://koji.fedoraproject.org/koji/taskinfo?taskID={{ build.task_id }}">
+            <a href="{{ koji_weburl }}/taskinfo?taskID={{ build.task_id }}">
                 {{ build.task_id }}
             </a>
         </td>
