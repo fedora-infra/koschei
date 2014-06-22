@@ -22,9 +22,8 @@
         "reports": "reports"
     },
     "repos": [
-        "http://koji.fedoraproject.org/mash/rawhide/source/SRPMS/",
-        "http://koji.fedoraproject.org/mash/rawhide/x86_64/os/",
-        "http://koji.fedoraproject.org/mash/rawhide/i386/os/"
+        "http://koji.fedoraproject.org/repos/f21-build/latest/x86_64",
+        "http://koji.fedoraproject.org/repos/f21-build/latest/i386"
     ]
 }
 
