@@ -22,11 +22,9 @@ import logging
 
 from .models import Build, Session, Package
 from .submitter import update_koji_state
-from .plugin import dispatch_event, load_plugins
+from .plugin import dispatch_event
 
 log = logging.getLogger('koschei-watcher')
-
-load_plugins()
 
 topic_name = 'org.fedoraproject.prod.buildsys'
 

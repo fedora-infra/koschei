@@ -69,3 +69,5 @@ class Plugin(object):
 
     def register_event(self, event_name, method):
         self._event_hooks[event_name].append(method)
+
+load_plugins()

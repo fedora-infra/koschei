@@ -7,7 +7,6 @@ from koschei.models import *
 
 if __name__ == '__main__':
     cmd = sys.argv[1]
-    plugins.load_plugins()
     s = Session()
     if cmd == 'createdb':
         Base.metadata.create_all(engine)
