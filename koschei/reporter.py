@@ -70,12 +70,12 @@ def log_diff(session, build1, build2):
 def generate_report(template, since, until):
     session = models.Session()
     template = jinja_env.get_template(template)
-    packages = session.query(models.Package).filter_by(watched=True)\
+    packages = session.query(models.Package)\
                .order_by(models.Package.id).all()
     return template.render(packages=packages, since=since, until=until, models=models,
                            log_diff=lambda b1, b2: log_diff(session, b1, b2),
                            log_dir=util.config['directories']['build_logs_relative'],
-                           koji_weburl=config['koji_config']['weburl'])
+                           koji_weburl=util.config['koji_config']['weburl'])
 
 if __name__ == '__main__':
     since = datetime.min

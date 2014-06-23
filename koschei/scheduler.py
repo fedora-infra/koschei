@@ -30,10 +30,8 @@ log = logging.getLogger('scheduler')
 
 def schedule_builds(db_session):
     priority_queries = dispatch_event('get_priority_query', db_session)
-    manual_priority = db_session.query(Package.id, Package.manual_priority)\
-                                .filter(Package.watched == True).subquery()
-    static_priority = db_session.query(Package.id, Package.static_priority)\
-                                .filter(Package.watched == True).subquery()
+    manual_priority = db_session.query(Package.id, Package.manual_priority).subquery()
+    static_priority = db_session.query(Package.id, Package.static_priority).subquery()
     union_query = union_all(*[q.select() for q in [static_priority, manual_priority]
                                                    + priority_queries])
     priorities = db_session.query(Package.id)\

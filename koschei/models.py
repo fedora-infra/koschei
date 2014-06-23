@@ -39,7 +39,6 @@ class Package(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
-    watched = Column(Boolean, nullable=False, default=False)
     builds = relationship('Build', backref='package', lazy='dynamic')
     static_priority = Column(Integer, nullable=False, default=0)
     manual_priority = Column(Integer, nullable=False, default=0)

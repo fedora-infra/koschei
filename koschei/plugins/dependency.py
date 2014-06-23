@@ -133,7 +133,7 @@ class DependencyPlugin(Plugin):
         self.register_event('build_submitted', self.populate_triggers)
 
     def repo_done(self, db_session):
-        packages = db_session.query(Package).filter_by(watched=True)
+        packages = db_session.query(Package)
         package_names = [pkg.name for pkg in packages]
         sack = util.create_sack(package_names)
         db_repo = Repo()

@@ -1,6 +1,5 @@
 #!/usr/bin/python
 import sys
-import md5
 
 from koschei import plugin
 from koschei.models import *
@@ -16,17 +15,18 @@ if __name__ == '__main__':
         prio = 0
         if len(sys.argv) > 3:
             prio = int(sys.argv[3])
-        pkg = s.query(Package).filter_by(name=sys.argv[2]).first()
-        if not pkg:
-            name = sys.argv[2]
-            pkg = Package(name=name, watched=True, static_priority=prio,
-                          manual_priority=int(md5.md5(name).hexdigest(), 16) % 30)
-            s.add(pkg)
-        else:
-            pkg.watched = True
-            pkg.static_priority = prio
+        name = sys.argv[2]
+        pkg = Package(name=name, static_priority=prio,
+                      manual_priority=30)
+        s.add(pkg)
         s.commit()
-        plugins.dispatch_event('add_package', s, pkg)
+    elif cmd == 'addpkgs':
+        x = 90
+        for name in sys.argv[1:]:
+            pkg = Package(name=name, manual_priority=x // 3)
+            s.add(pkg)
+            s.commit()
+            x -= 1
     else:
         print('No such command')
         sys.exit(1)
