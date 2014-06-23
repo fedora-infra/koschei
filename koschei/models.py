@@ -43,6 +43,11 @@ class Package(Base):
     builds = relationship('Build', backref='package', lazy='dynamic')
     static_priority = Column(Integer, nullable=False, default=0)
     manual_priority = Column(Integer, nullable=False, default=0)
+    added = Column(DateTime, nullable=False, default=datetime.now)
+
+    @staticmethod
+    def time_since_added():
+        return extract('EPOCH', datetime.now() - Package.added) / 3600
 
     def get_builds_in_interval(self, since=None, until=None):
         filters = [Build.state.in_(Build.FINISHED_STATES + [Build.RUNNING])]

@@ -17,7 +17,7 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 from __future__ import print_function
-from models import Session, Package, Build
+from .models import Session, Package, Build
 from sqlalchemy import func, union_all
 
 import logging
@@ -49,10 +49,6 @@ def schedule_builds(db_session):
             db_session.add(build)
             db_session.commit()
             log.info('Scheduling build {} for {}'.format(build.id, build.package.name))
-    # Bump priority of not built packages
-    for pkg in db_session.query(Package).outerjoin(Build)\
-                          .filter(Build.id == None):
-        pkg.manual_priority += 1
 
 def main():
     import time

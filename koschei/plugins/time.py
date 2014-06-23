@@ -16,22 +16,27 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-from datetime import datetime
-
-from koschei.plugin import Plugin, _Meta
-from koschei.models import Build, BuildTrigger
+from koschei.plugin import Plugin
+from koschei.models import Build, BuildTrigger, Package
 
 class TimePlugin(Plugin):
     order = 9999
 
     def __init__(self):
         super(TimePlugin, self).__init__()
-        self.register_event('get_priority_query', self.get_priority_query)
+        self.register_event('get_priority_query', self.get_build_time_priority)
+        self.register_event('get_priority_query', self.get_pkg_time_priority)
         self.register_event('build_submitted', self.populate_triggers)
 
-    def get_priority_query(self, db_session):
+    def get_build_time_priority(self, db_session):
         q = db_session.query(Build.package_id, Build.time_since_last_build_expr())\
                       .group_by(Build.package_id)
+        return q.subquery()
+
+    def get_pkg_time_priority(self, db_session):
+        q = db_session.query(Package.id, Package.time_since_added())\
+                      .outerjoin(Build)\
+                      .filter(Build.id == None)
         return q.subquery()
 
     def populate_triggers(self, db_session, build):
