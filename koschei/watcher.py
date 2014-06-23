@@ -42,6 +42,8 @@ class KojiWatcher(fedmsg.consumers.FedmsgConsumer):
         consume(topic, content)
 
 def consume(topic, content):
+    if not content.get('instance') == 'primary':
+        return
     if topic == 'org.fedoraproject.prod.buildsys.task.state.change':
         update_build_state(content)
     elif topic == 'org.fedoraproject.prod.buildsys.repo.done':
@@ -50,7 +52,7 @@ def consume(topic, content):
             dispatch_event('repo_done', session)
             session.close()
     elif topic == 'org.fedoraproject.prod.buildsys.tag':
-        if content.get('instance') == 'primary' and content.get('tag') == 'f21':
+        if content.get('tag') == 'f21':
             session = Session()
             pkg = session.query(Package).filter_by(name=content['name']).first()
             if pkg:
