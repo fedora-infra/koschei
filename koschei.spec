@@ -15,6 +15,7 @@ Requires:       postgresql-server
 Requires:       python-psycopg2
 Requires:       createrepo_c
 Requires:       python-jinja2
+Requires:       python-hawkey
 
 %description
 TBD.
