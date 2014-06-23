@@ -23,7 +23,7 @@ from datetime import datetime
 from sqlalchemy import Column, Integer, ForeignKey, String, DateTime, except_
 from sqlalchemy.sql.expression import func
 
-from koschei.models import BuildTrigger, Base, Package
+from koschei.models import BuildTrigger, Base, Package, Build
 from koschei.plugin import Plugin
 from koschei import util
 
@@ -162,7 +162,8 @@ class DependencyPlugin(Plugin):
                 trigger = BuildTrigger(build_id=build.id, comment=comment)
                 db_session.add(trigger)
                 db_session.commit()
-        else:
+        elif db_session.query(Package.id).filter(Build.id != build.id)\
+                       .filter(Package.id == build.package.id).first():
             comment = "Package's dependencies became satisfied"
             trigger = BuildTrigger(build_id=build.id, comment=comment)
             db_session.add(trigger)
