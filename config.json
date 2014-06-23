@@ -15,7 +15,8 @@
         "cert": "~/.fedora.cert",
         "ca": "~/.fedora-server-ca.cert",
         "server_ca": "~/.fedora-server-ca.cert",
-        "target_tag": "f21"
+        "target_tag": "f21",
+        "max_builds": 20
     },
     "directories": {
         "build_logs": "build_logs",

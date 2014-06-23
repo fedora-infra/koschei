@@ -22,6 +22,7 @@ import logging
 import koji
 
 from datetime import datetime
+from sqlalchemy.sql.expression import func
 
 from . import util
 from .models import Build, Session
@@ -29,8 +30,14 @@ from .plugin import dispatch_event
 
 log = logging.getLogger('submitter')
 
+max_builds = util.config['koji_config']['max_builds']
+
 def submit_builds(db_session, koji_session):
-    scheduled_builds = db_session.query(Build).filter_by(state=Build.SCHEDULED)
+    running_builds_count = db_session.query(func.count(Build.id))\
+                                     .filter_by(state=Build.RUNNING).scalar()
+    scheduled_builds = db_session.query(Build).filter_by(state=Build.SCHEDULED)\
+                                 .order_by(Build.id)\
+                                 .limit(max_builds - running_builds_count)
     for build in scheduled_builds:
         name = build.package.name
         build.state = Build.RUNNING
