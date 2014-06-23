@@ -8,11 +8,13 @@ Source0:        %{name}-%{version}.tar.xz
 BuildArch:      noarch
 
 BuildRequires:  python-devel
-BuildRequires:  python-sqlalchemy
-BuildRequires:  koji
-BuildRequires:  fedmsg
+Requires:       python-sqlalchemy
+Requires:       koji
+Requires:       fedmsg
 Requires:       postgresql-server
 Requires:       python-psycopg2
+Requires:       createrepo_c
+Requires:       python-jinja2
 
 %description
 TBD.
