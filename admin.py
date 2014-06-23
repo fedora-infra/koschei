@@ -21,8 +21,8 @@ if __name__ == '__main__':
         s.add(pkg)
         s.commit()
     elif cmd == 'addpkgs':
-        x = 90
-        for name in sys.argv[1:]:
+        x = 100
+        for name in sys.argv[2:]:
             pkg = Package(name=name, manual_priority=x // 3)
             s.add(pkg)
             s.commit()

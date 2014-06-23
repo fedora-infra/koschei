@@ -1,8 +1,6 @@
 {
     "database_config": {
         "drivername": "postgres",
-        "host": "localhost",
-        "port": "5432",
         "username": "koschei",
         "password": "password",
         "database": "koschei"
