@@ -36,6 +36,9 @@ for unit in systemd/*; do
     install -pm 644 $unit %{buildroot}%{_unitdir}/
 done
 
+mkdir -p %{buildroot}%{_bindir}
+install -pm 755 admin.py %{buildroot}%{_bindir}/koschei-admin
+
 %post
 %systemd_post koschei-scheduler.service
 %systemd_post koschei-submitter.service
@@ -56,6 +59,7 @@ done
 
 %files
 %doc LICENSE.txt
+%{_bindir}/koschei-admin
 %{python_sitelib}/*
 %dir %{_sysconfdir}/%{name}
 %config(noreplace) %{_sysconfdir}/%{name}/config.json
