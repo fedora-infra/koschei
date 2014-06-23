@@ -152,8 +152,19 @@ class DependencyPlugin(Plugin):
     def populate_triggers(self, db_session, build):
         changes = db_session.query(DependencyChange)\
                             .filter_by(package_id=build.package_id)
-        for change in changes:
-            comment = 'Dependency {} changed'.format(change.dep_name)
+        prev_repo = db_session.query(func.max(Repo.id) - 1).subquery()
+        was_resolvable = db_session.query(Dependency.package_id)\
+                                   .filter_by(package_id=build.package_id,
+                                              repo_id=prev_repo).first()
+        if was_resolvable:
+            for change in changes:
+                comment = 'Dependency {} changed'.format(change.dep_name)
+                trigger = BuildTrigger(build_id=build.id, comment=comment)
+                db_session.add(trigger)
+                db_session.commit()
+        else:
+            comment = "Package's dependencies became satisfied"
             trigger = BuildTrigger(build_id=build.id, comment=comment)
             db_session.add(trigger)
             db_session.commit()
+        changes.delete()
