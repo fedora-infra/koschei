@@ -34,10 +34,10 @@ root_logger = logging.getLogger()
 root_logger.setLevel(logging.DEBUG)
 root_logger.addHandler(logging.StreamHandler(sys.stderr))
 
-if __file__.startswith('/usr'):
-    config_path = '/etc/koschei/config.json'
-else:
+if os.path.exists('config.json'):
     config_path = 'config.json'
+else:
+    config_path = '/etc/koschei/config.json'
 with open(config_path) as config_file:
     config = json.load(config_file)
 

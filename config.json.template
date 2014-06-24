@@ -20,12 +20,12 @@
         }
     },
     "directories": {
-        "build_logs": "/var/www/html/build_logs",
+        "build_logs": "@OUTPUTDIR@/html/build_logs",
         "build_logs_relative": "build_logs",
-        "srpms": "/var/cache/koschei/srpms",
-        "repodata": "/var/cache/koschei/repodata",
-        "reports": "/var/www/html",
-        "report_templates": "/usr/share/koschei/report-templates"
+        "srpms": "@CACHEDIR@/koschei/srpms",
+        "repodata": "@CACHEDIR@/koschei/repodata",
+        "reports": "@OUTPUTDIR@/html",
+        "report_templates": "@DATADIR@/koschei/report-templates"
     },
     "repos": [
         "http://koji.fedoraproject.org/repos/f21-build/latest/x86_64",

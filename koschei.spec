@@ -24,6 +24,10 @@ TBD.
 %prep
 %setup -q -c -n %{name}
 
+sed 's|@CACHEDIR@|%{_localstatedir}/cache/%{name}|g
+     s|@OUTPUTDIR@|%{_localstatedir}/www/html|g
+     s|@DATADIR@|%{_datadir}/%{name}|g' config.json.template > config.json
+
 %build
 %{__python} setup.py build
 
