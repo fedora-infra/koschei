@@ -31,6 +31,15 @@ if __name__ == '__main__':
             pkgs.append(pkg)
             x -= 1
         plugin.dispatch_event('packages_added', s, pkgs)
+    elif cmd == 'setprio':
+        #TODO use argparse
+        if sys.argv[2] == '--static':
+            pkg = s.query(Package).filter_by(name=sys.argv[3]).one()
+            pkg.static_priority = int(sys.argv[4])
+        else:
+            pkg = s.query(Package).filter_by(name=sys.argv[2]).one()
+            pkg.manual_priority = int(sys.argv[3])
+        s.comit()
     else:
         print('No such command')
         sys.exit(1)
