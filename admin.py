@@ -20,13 +20,17 @@ if __name__ == '__main__':
                       manual_priority=30)
         s.add(pkg)
         s.commit()
+        plugin.dispatch_event('packages_added', s, [pkg])
     elif cmd == 'addpkgs':
+        pkgs = []
         x = 100
         for name in sys.argv[2:]:
             pkg = Package(name=name, manual_priority=x // 3)
             s.add(pkg)
             s.commit()
+            pkgs.append(pkg)
             x -= 1
+        plugin.dispatch_event('packages_added', s, pkgs)
     else:
         print('No such command')
         sys.exit(1)

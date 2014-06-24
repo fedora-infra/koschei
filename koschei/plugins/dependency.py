@@ -131,6 +131,18 @@ class DependencyPlugin(Plugin):
         self.register_event('repo_done', self.repo_done)
         self.register_event('get_priority_query', self.get_priority_query)
         self.register_event('build_submitted', self.populate_triggers)
+        self.register_event('packages_added', self.packages_added)
+
+    def packages_added(self, db_session, packages):
+        repo = db_session.query(Repo).order_by(Repo.id).first()
+        if not repo:
+            repo = Repo()
+            db_session.add(repo)
+            db_session.commit()
+        package_names = [pkg.name for pkg in packages]
+        sack = util.create_sack(package_names)
+        for pkg in packages:
+            resolve_dependencies(db_session, sack, repo, pkg)
 
     def repo_done(self, db_session):
         packages = db_session.query(Package)
