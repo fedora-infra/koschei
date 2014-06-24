@@ -68,8 +68,7 @@ def log_diff(session, build1, build2):
         logdiffs[arch] = sorted(diff, key=lambda x: x[1:])
     return logdiffs
 
-def generate_report(template, since, until):
-    session = models.Session()
+def generate_report(session, template, since, until):
     template = jinja_env.get_template(template)
     packages = session.query(models.Package)\
                .order_by(models.Package.id).all()
@@ -79,11 +78,12 @@ def generate_report(template, since, until):
                            koji_weburl=util.config['koji_config']['weburl'])
 
 def main():
+    session = models.Session()
     while True:
         since = datetime.min
         until = datetime.now()
         report_path = os.path.join(util.config['directories']['reports'], 'index.html')
-        report = generate_report('base-report.html', since, until)
+        report = generate_report(session, 'base-report.html', since, until)
         with open(report_path, 'w') as report_file:
             report_file.write(report)
         time.sleep(1)
