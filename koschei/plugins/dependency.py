@@ -61,10 +61,11 @@ def resolve_dependencies(db_session, sack, repo, package):
         #TODO set as unbuildable
         return False
     for install in installs:
-        dep = Dependency(repo_id=repo.id, package_id=package.id,
-                         name=install.name, evr=install.evr, arch=install.arch)
-        db_session.add(dep)
-        db_session.commit()
+        if install.arch != 'src':
+            dep = Dependency(repo_id=repo.id, package_id=package.id,
+                             name=install.name, evr=install.evr, arch=install.arch)
+            db_session.add(dep)
+            db_session.commit()
     return True
 
 def get_dependency_differences(db_session):
