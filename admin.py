@@ -39,7 +39,7 @@ if __name__ == '__main__':
         else:
             pkg = s.query(Package).filter_by(name=sys.argv[2]).one()
             pkg.manual_priority = int(sys.argv[3])
-        s.comit()
+        s.commit()
     else:
         print('No such command')
         sys.exit(1)
