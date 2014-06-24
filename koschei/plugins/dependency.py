@@ -185,8 +185,9 @@ class DependencyPlugin(Plugin):
                 trigger = BuildTrigger(build_id=build.id, comment=comment)
                 db_session.add(trigger)
                 db_session.commit()
-        elif db_session.query(Package.id).filter(Build.id != build.id)\
-                       .filter(Package.id == build.package.id).first():
+        elif db_session.query(Package.id)\
+                       .filter(Build.state.in_(Build.FINISHED_STATES))\
+                       .filter(Package.id == Build.package_id).first():
             comment = "Package's dependencies became satisfied"
             trigger = BuildTrigger(build_id=build.id, comment=comment)
             db_session.add(trigger)
