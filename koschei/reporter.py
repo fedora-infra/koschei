@@ -18,13 +18,14 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 import os
+import time
 
 from datetime import datetime
 from jinja2 import Environment, FileSystemLoader
 
 from . import models, util
 
-jinja_env = Environment(loader=FileSystemLoader('./report-templates'))
+jinja_env = Environment(loader=FileSystemLoader(util.config['directories']['report_templates']))
 
 def date_filter(date):
     return date.strftime("%x %X")
@@ -77,7 +78,15 @@ def generate_report(template, since, until):
                            log_dir=util.config['directories']['build_logs_relative'],
                            koji_weburl=util.config['koji_config']['weburl'])
 
+def main():
+    while True:
+        since = datetime.min
+        until = datetime.now()
+        report_path = os.path.join(util.config['directories']['reports'], 'index.html')
+        report = generate_report('base-report.html', since, until)
+        with open(report_path, 'w') as report_file:
+            report_file.write(report)
+        time.sleep(1)
+
 if __name__ == '__main__':
-    since = datetime.min
-    until = datetime.now()
-    print generate_report('base-report.html', since, until)
+    main()

@@ -21,7 +21,8 @@
         "build_logs_relative": "build_logs",
         "srpms": "/var/cache/koschei/srpms",
         "repodata": "/var/cache/koschei/repodata",
-        "reports": "reports"
+        "reports": "/var/www/html",
+        "report_templates": "/usr/share/koschei/report-templates"
     },
     "repos": [
         "http://koji.fedoraproject.org/repos/f21-build/latest/x86_64",

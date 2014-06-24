@@ -40,27 +40,36 @@ done
 mkdir -p %{buildroot}%{_bindir}
 install -pm 755 admin.py %{buildroot}%{_bindir}/koschei-admin
 
+mkdir -p %{buildroot}%{_localstatedir}/cache/%{name}
+
+mkdir -p %{buildroot}%{_datadir}/%{name}
+cp -pr report-templates %{buildroot}%{_datadir}/%{name}/
+
 %post
 %systemd_post koschei-scheduler.service
 %systemd_post koschei-submitter.service
 %systemd_post koschei-watcher.service
+%systemd_post koschei-reporter.service
 %systemd_post koschei-log-dowloader.service
 
 %preun
 %systemd_preun koschei-scheduler.service
 %systemd_preun koschei-submitter.service
 %systemd_preun koschei-watcher.service
+%systemd_preun koschei-reporter.service
 %systemd_preun koschei-log-dowloader.service
 
 %postun
 %systemd_postun_with_restart koschei-scheduler.service
 %systemd_postun_with_restart koschei-submitter.service
 %systemd_postun_with_restart koschei-watcher.service
+%systemd_postun_with_restart koschei-reporter.service
 %systemd_postun_with_restart koschei-log-dowloader.service
 
 %files
 %doc LICENSE.txt
 %{_bindir}/koschei-admin
+%{_datadir}/%{name}
 %{python_sitelib}/*
 %dir %{_sysconfdir}/%{name}
 %config(noreplace) %{_sysconfdir}/%{name}/config.json
