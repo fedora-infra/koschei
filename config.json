@@ -14,7 +14,10 @@
         "ca": "~/.fedora-server-ca.cert",
         "server_ca": "~/.fedora-server-ca.cert",
         "target_tag": "f21",
-        "max_builds": 20
+        "max_builds": 20,
+        "server_opts": {
+            "arch_override": "x86_64"
+        }
     },
     "directories": {
         "build_logs": "/var/www/html/build_logs",
