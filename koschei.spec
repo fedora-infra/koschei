@@ -14,6 +14,7 @@ Requires:       fedmsg
 Requires:       postgresql-server
 Requires:       python-psycopg2
 Requires:       createrepo_c
+Requires:       curl
 Requires:       python-jinja2
 Requires:       python-hawkey
 
