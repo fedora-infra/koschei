@@ -170,7 +170,18 @@ class DependencyPlugin(Plugin):
                                               repo_id=prev_repo).first()
         if was_resolvable:
             for change in changes:
-                comment = 'Dependency {} changed'.format(change.dep_name)
+                if change.prev_dep_evr and change.curr_dep_evr:
+                    if change.prev_dep_evr < change.curr_dep_evr:
+                        up_dn = 'updated'
+                    else:
+                        up_dn = 'downgraded'
+                    comment = 'Dependency {} was {} from {} to {}'\
+                              .format(change.dep_name, up_dn, change.prev_dep_evr,
+                                      change.curr_dep_evr)
+                elif change.prev_dep_evr:
+                    comment = 'Dependency {} disappeared'.format(change.dep_name)
+                else:
+                    comment = 'Dependency {} appeared'.format(change.dep_name)
                 trigger = BuildTrigger(build_id=build.id, comment=comment)
                 db_session.add(trigger)
                 db_session.commit()
