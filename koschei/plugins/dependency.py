@@ -50,8 +50,13 @@ class DependencyChange(Base):
     curr_dep_evr = Column(String)
     weight = Column(Integer)
 
+def get_srpm_pkg(sack, name):
+    hawk_pkg = hawkey.Query(sack).filter(name=name, arch='src',
+                                         latest_per_arch=True)[0]
+    return hawk_pkg
+
 def resolve_dependencies(db_session, sack, repo, package):
-    hawk_pkg = hawkey.Query(sack).filter(name=package.name, arch='src')[0]
+    hawk_pkg = get_srpm_pkg(sack, package.name)
     goal = hawkey.Goal(sack)
     goal.install(hawk_pkg)
     goal.run()
@@ -111,7 +116,7 @@ def compute_dependency_weight(db_session, sack, package):
     if not changes:
         return
     changes_map = {change.dep_name: change for change in changes}
-    hawk_pkg = hawkey.Query(sack).filter(name=package.name, arch='src')[0]
+    hawk_pkg = get_srpm_pkg(sack, package.name)
     visited = set()
     level = 1
     reldeps = hawk_pkg.requires
