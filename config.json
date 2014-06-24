@@ -17,10 +17,10 @@
         "max_builds": 20
     },
     "directories": {
-        "build_logs": "build_logs",
+        "build_logs": "/var/www/html/build_logs",
         "build_logs_relative": "build_logs",
-        "srpms": "srpms",
-        "repodata": "repodata",
+        "srpms": "/var/cache/koschei/srpms",
+        "repodata": "/var/cache/koschei/repodata",
         "reports": "reports"
     },
     "repos": [
