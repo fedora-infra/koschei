@@ -103,11 +103,10 @@ def get_srpm(url, srpm_name):
     url += '/' + srpm_name
     srpm_path = os.path.join(srpm_dir, os.path.basename(srpm_name))
     if not os.path.isfile(srpm_path):
-        tmp_filename = '.srpm.tmp'
-        with open(tmp_filename, 'w') as tmp_file:
-            log.info('downloading {}'.format(srpm_name))
-            srpm_content = urllib.urlopen(url).read()
-            tmp_file.write(srpm_content)
+        tmp_filename = '/tmp/.srpm.tmp'
+        log.info('downloading {}'.format(srpm_name))
+        subprocess.check_output('curl {}|tee {}|rpm -qp -R /dev/fd/0'
+                                .format(url, tmp_filename), shell=True)
         os.rename(tmp_filename, srpm_path)
     return srpm_path
 
