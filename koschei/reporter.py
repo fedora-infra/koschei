@@ -53,6 +53,8 @@ def installed_pkgs_from_log(root_log):
         return pkgs
 
 def log_diff(session, build1, build2):
+    if not build1.logs_downloaded or not build2.logs_downloaded:
+        return {}
     log_output_dir = util.config['directories']['build_logs']
     logdir1 = os.path.join(log_output_dir, str(build1.id))
     logdir2 = os.path.join(log_output_dir, str(build2.id))
