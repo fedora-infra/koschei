@@ -80,8 +80,8 @@ def get_dependency_differences(db_session):
     prev_repo = db_session.query(func.max(Repo.id) - 1).subquery()
     curr = get_deps_from_repo(curr_repo).subquery()
     prev = get_deps_from_repo(prev_repo).subquery()
-    add_diff = difference_query(prev, curr)
-    rm_diff = difference_query(curr, prev)
+    add_diff = difference_query(curr, prev)
+    rm_diff = difference_query(prev, curr)
     return add_diff, rm_diff
 
 def process_dependency_differences(db_session):
