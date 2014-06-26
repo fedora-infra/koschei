@@ -27,6 +27,9 @@
         "reports": "@OUTPUTDIR@/html",
         "report_templates": "@DATADIR@/koschei/report-templates"
     },
+    "alembic": {
+        "alembic_ini": "@DATADIR@/alembic.ini"
+    },
     "repos": [
         "http://koji.fedoraproject.org/repos/f21-build/latest/x86_64",
         "http://koji.fedoraproject.org/repos/f21-build/latest/i386"

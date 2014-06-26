@@ -3,12 +3,17 @@ import sys
 
 from koschei import plugin
 from koschei.models import *
+from koschei import util
 
 if __name__ == '__main__':
     cmd = sys.argv[1]
     s = Session()
     if cmd == 'createdb':
         Base.metadata.create_all(engine)
+        from alembic.config import Config
+        from alembic import command
+        alembic_cfg = Config(util.config['alembic']['alembic_ini'])
+        command.stamp(alembic_cfg, "head")
     elif cmd == 'dropdb':
         Base.metadata.drop_all(engine)
     elif cmd == 'addpkg':

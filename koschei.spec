@@ -17,6 +17,7 @@ Requires:       createrepo_c
 Requires:       curl
 Requires:       python-jinja2
 Requires:       python-hawkey
+Requires:       python-alembic
 
 %description
 TBD.
@@ -49,6 +50,8 @@ mkdir -p %{buildroot}%{_localstatedir}/cache/%{name}
 
 mkdir -p %{buildroot}%{_datadir}/%{name}
 cp -pr report-templates %{buildroot}%{_datadir}/%{name}/
+
+cp -pr alembic/ alembic.ini %{buildroot}%{_datadir}/%{name}/
 
 %post
 %systemd_post koschei-scheduler.service

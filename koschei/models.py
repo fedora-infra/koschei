@@ -30,8 +30,8 @@ from .util import config
 
 Base = declarative_base()
 
-engine = create_engine(URL(**config['database_config']), echo=False,
-         pool_size=10)
+db_url = URL(**config['database_config'])
+engine = create_engine(db_url, echo=False, pool_size=10)
 
 Session = sessionmaker(bind=engine)
 
