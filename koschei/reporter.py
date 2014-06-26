@@ -36,20 +36,17 @@ def installed_pkgs_from_log(root_log):
     with open(root_log) as log:
         pkgs = []
         lines = log.read().split('\n')
-        i = 0
-        while i < len(lines):
-            if lines[i].endswith('Installed packages:'):
-                # skip debug out
-                i += 2
-                break
-            i += 1
-        if i >= len(lines):
-            return
-        while i < len(lines):
-            if 'Child return code was:' in lines[i]:
-                break
-            pkgs.append(lines[i].split()[-1])
-            i += 1
+        reading = False
+        start_delimiters = ('Installed:', 'Dependency Installed:')
+        for line in lines:
+            if any(line.rstrip().endswith(section) for section
+                   in start_delimiters):
+                reading = True
+            elif 'Child return code was:' in line:
+                reading = False
+            elif reading:
+                pkg_line = line.split()[2:]
+                pkgs += [p1 + ' ' + p2 for p1, p2 in zip(pkg_line[::2], pkg_line[1::2])]
         return pkgs
 
 def log_diff(session, build1, build2):
