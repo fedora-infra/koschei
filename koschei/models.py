@@ -19,7 +19,7 @@
 import json
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
-                       ForeignKey, DateTime
+                       ForeignKey, DateTime, Enum
 from sqlalchemy.sql.expression import extract, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
@@ -44,6 +44,12 @@ class Package(Base):
     static_priority = Column(Integer, nullable=False, default=0)
     manual_priority = Column(Integer, nullable=False, default=0)
     added = Column(DateTime, nullable=False, default=datetime.now)
+
+    OK = 0
+    UNRESOLVED = 1
+    IGNORED = 2
+    RETIRED = 3
+    state = Column(Integer, nullable=False, server_default=str(OK))
 
     @staticmethod
     def time_since_added():
