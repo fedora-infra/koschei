@@ -25,10 +25,13 @@
         "srpms": "@CACHEDIR@/koschei/srpms",
         "repodata": "@CACHEDIR@/koschei/repodata",
         "reports": "@OUTPUTDIR@/html",
-        "report_templates": "@DATADIR@/koschei/report-templates"
+        "report_templates": "@DATADIR@/report-templates"
     },
     "alembic": {
         "alembic_ini": "@DATADIR@/alembic.ini"
+    },
+    "reports": {
+        "default_template": "base-report.html"
     },
     "repos": [
         "http://koji.fedoraproject.org/repos/f21-build/latest/x86_64",

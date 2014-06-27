@@ -18,6 +18,7 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 import os
+import sys
 import time
 
 from datetime import datetime
@@ -78,11 +79,15 @@ def generate_report(session, template, since, until):
 
 def main():
     session = models.Session()
+    if len(sys.argv) > 1:
+        template_name = sys.argv[1]
+    else:
+        template_name = util.config['reports']['default_template']
     while True:
         since = datetime.min
         until = datetime.now()
         report_path = os.path.join(util.config['directories']['reports'], 'index.html')
-        report = generate_report(session, 'base-report.html', since, until)
+        report = generate_report(session, template_name, since, until)
         with open(report_path, 'w') as report_file:
             report_file.write(report)
         time.sleep(1)
