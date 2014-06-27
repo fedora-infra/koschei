@@ -28,6 +28,7 @@ function toggle_visibility(id) {
     <tr>
         <th colspan="2">Build task</th>
         <th>Build logs</th>
+        <th>Buildroot differences</th>
         <th>Started</th>
         <th>Triggered by</th>
     </tr>
@@ -35,8 +36,6 @@ function toggle_visibility(id) {
     {% set build = builds[i] %}
     <tr class="{% if loop.index % 2 %}odd{% else %}even{% endif %}">
         <td class="state-{{ build.state_string }}">
-            <img src="report-templates/arrow.png" width="18px" height="18px"
-            onclick='toggle_visibility("{{build.id}}-result");'/>
             {{ build.state_string }}
         </td>
         <td class="state-{{ build.state_string }}">
@@ -50,6 +49,12 @@ function toggle_visibility(id) {
             {% endif %}
         </td>
         <td>
+            {% if build.id in root_diffs %}
+            {% for arch, path in root_diffs[build.id].items() %}
+            <a href="{{ path }}">{{ arch }}</a>
+            {% endfor %}
+            {% endif %}
+        <td>
             {{ build.started | date }}
         </td>
         <td class="last">
@@ -58,28 +63,6 @@ function toggle_visibility(id) {
             {% endfor %}
         </td>
     </tr>
-    {% if not loop.first %}
-    <tr style="display:none" id="{{build.id}}-result">
-        <td>
-            <table>
-                {% for arch, diff in log_diff(build, builds[i - 1]).items() %}
-                <tr>
-                    <th>
-                         Installed package differences for {{ arch }}
-                    </th>
-                </tr>
-                {% for line in diff %}
-                <tr>
-                    <td class="raw-pkg">
-                        {{ line }}
-                    </td>
-                </tr>
-                {% endfor %}
-                {% endfor %}
-            </table>
-        </td>
-    </tr>
-    {% endif %}
     {% endfor %}
     {% else %}
     <tr class="no-builds"><td>No builds in given interval</td></tr>

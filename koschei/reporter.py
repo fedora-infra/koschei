@@ -22,59 +22,39 @@ import sys
 import time
 
 from datetime import datetime
+from collections import defaultdict
 from jinja2 import Environment, FileSystemLoader
 
 from . import models, util
 
 jinja_env = Environment(loader=FileSystemLoader(util.config['directories']['report_templates']))
 
+log_output_dir = util.config['directories']['build_logs']
+relative_logdir = util.config['directories']['build_logs_relative']
+
 def date_filter(date):
     return date.strftime("%x %X")
 
 jinja_env.filters['date'] = date_filter
 
-def installed_pkgs_from_log(root_log):
-    with open(root_log) as log:
-        pkgs = []
-        lines = log.read().split('\n')
-        reading = False
-        start_delimiters = ('Installed:', 'Dependency Installed:')
-        for line in lines:
-            if any(line.rstrip().endswith(section) for section
-                   in start_delimiters):
-                reading = True
-            elif 'Child return code was:' in line:
-                reading = False
-            elif reading:
-                pkg_line = line.split()[2:]
-                pkgs += [p1 + ' ' + p2 for p1, p2 in zip(pkg_line[::2], pkg_line[1::2])]
-        return pkgs
-
-def log_diff(session, build1, build2):
-    if not build1.logs_downloaded or not build2.logs_downloaded:
-        return {}
-    log_output_dir = util.config['directories']['build_logs']
-    logdir1 = os.path.join(log_output_dir, str(build1.id))
-    logdir2 = os.path.join(log_output_dir, str(build2.id))
-    logdiffs = {}
-    for arch in os.listdir(logdir1):
-        pkgs1 = set(installed_pkgs_from_log(os.path.join(logdir1, arch, 'root.log')))
-        pkgs2 = set(installed_pkgs_from_log(os.path.join(logdir2, arch, 'root.log')))
-        if arch == 'noarch':
-            pkgs1 = {'.'.join(pkg.split('.')[:-1]) for pkg in pkgs1}
-            pkgs2 = {'.'.join(pkg.split('.')[:-1]) for pkg in pkgs2}
-        diff = ['+ {}'.format(pkg) for pkg in pkgs1.difference(pkgs2)]
-        diff += ['- {}'.format(pkg) for pkg in pkgs2.difference(pkgs1)]
-        logdiffs[arch] = sorted(diff, key=lambda x: x[1:])
-    return logdiffs
-
 def generate_report(session, template, since, until):
     template = jinja_env.get_template(template)
     packages = session.query(models.Package)\
                .order_by(models.Package.id).all()
+    # FIXME remember this in DB
+    builds = session.query(models.Build.id)
+    root_diffs = defaultdict(dict)
+    for [build_id] in builds:
+        logdir = os.path.join(log_output_dir, str(build_id))
+        if not os.path.isdir(logdir):
+            continue
+        arches = os.listdir(logdir)
+        for arch in arches:
+            diff_path = os.path.join(logdir, arch, 'root_diff.log')
+            if os.path.exists(diff_path):
+                root_diffs[build_id][arch] = os.path.join(relative_logdir, str(build_id), arch, 'root_diff.log')
     return template.render(packages=packages, since=since, until=until, models=models,
-                           log_diff=lambda b1, b2: log_diff(session, b1, b2),
-                           log_dir=util.config['directories']['build_logs_relative'],
+                           root_diffs=root_diffs, log_dir=relative_logdir,
                            koji_weburl=util.config['koji_config']['weburl'])
 
 def main():
