@@ -45,11 +45,20 @@ def load_plugins():
         ordered_plugins.append((key, plugin))
     ordered_plugins.sort()
 
+def get_plugin_name(plugin):
+    return plugin.__module__.split('.')[-1]
+
 def dispatch_event(event_name, *args, **kwargs):
     ret = []
+    return_name = kwargs.get('return_name')
+    if 'return_name' in kwargs:
+        del kwargs['return_name']
     for _, plugin in ordered_plugins:
         for method in plugin._event_hooks[event_name]:
-            ret.append(method(*args, **kwargs))
+            if return_name:
+                ret.append((get_plugin_name(plugin), method(*args, **kwargs)))
+            else:
+                ret.append(method(*args, **kwargs))
     return ret
 
 class _Meta(type):
