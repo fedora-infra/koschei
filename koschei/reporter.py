@@ -25,7 +25,7 @@ from datetime import datetime
 from collections import defaultdict
 from jinja2 import Environment, FileSystemLoader
 
-from . import models, util
+from . import models, util, plugin
 
 jinja_env = Environment(loader=FileSystemLoader(util.config['directories']['report_templates']))
 
@@ -41,6 +41,8 @@ def generate_report(session, template, since, until):
     template = jinja_env.get_template(template)
     packages = session.query(models.Package)\
                .order_by(models.Package.id).all()
+    priorities = plugin.dispatch_event('get_priority_query', session, return_name=True)
+    priorities = [(name, dict(priority)) for name, priority in priorities]
     # FIXME remember this in DB
     builds = session.query(models.Build.id)
     root_diffs = defaultdict(dict)
@@ -55,6 +57,7 @@ def generate_report(session, template, since, until):
                 root_diffs[build_id][arch] = os.path.join(relative_logdir, str(build_id), arch, 'root_diff.log')
     return template.render(packages=packages, since=since, until=until, models=models,
                            root_diffs=root_diffs, log_dir=relative_logdir,
+                           priorities=priorities,
                            koji_weburl=util.config['koji_config']['weburl'])
 
 def main():

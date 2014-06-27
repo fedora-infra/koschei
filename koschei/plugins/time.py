@@ -31,13 +31,13 @@ class TimePlugin(Plugin):
     def get_build_time_priority(self, db_session):
         q = db_session.query(Build.package_id, Build.time_since_last_build_expr())\
                       .group_by(Build.package_id)
-        return q.subquery()
+        return q
 
     def get_pkg_time_priority(self, db_session):
         q = db_session.query(Package.id, Package.time_since_added())\
                       .outerjoin(Build)\
                       .filter(Build.id == None)
-        return q.subquery()
+        return q
 
     def populate_triggers(self, db_session, build):
         if not db_session.query(build.triggered_by.exists()).scalar():

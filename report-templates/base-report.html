@@ -21,7 +21,14 @@ function toggle_visibility(id) {
     until {{ until|date }}</div>
 {% for package in packages %}
 <div class="package">
-<h2 class="package">{{ package.name }}</h2>
+    <div class="package_header">
+        <span class="package_name">{{ package.name }}</span>
+        <span class="priority">
+            {% for name, priority in priorities %}
+            {{ name }}: {{ (priority[package.id] or 0)|int }}
+            {% endfor %}
+        </span>
+    </div>
 <table>
     {% set builds = package.get_builds_in_interval(since=since, until=until).all() %}
     {% if builds %}

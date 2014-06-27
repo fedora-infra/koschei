@@ -165,7 +165,7 @@ class DependencyPlugin(Plugin):
 
     def get_priority_query(self, db_session):
         q = db_session.query(DependencyChange.package_id, DependencyChange.weight)
-        return q.subquery()
+        return q
 
     def populate_triggers(self, db_session, build):
         changes = db_session.query(DependencyChange)\

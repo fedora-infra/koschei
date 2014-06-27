@@ -24,13 +24,21 @@ table {
     border: 1px solid #edf3fe;
     font-size: 14px;
 }
-h2.package {
+.package_header {
     color: f0f0ff;
     background-color: #34548F;
     padding: 5px;
     padding-left: 20px;
     margin: 10px;
     margin-bottom: 0px;
+}
+.package_name {
+    font-weight: Bold;
+    font-size: 20px;
+}
+.priority {
+    float: right;
+    margin-right: 30px;
 }
 .no-builds {
     background-color: LightBlue;
