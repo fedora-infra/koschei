@@ -22,8 +22,8 @@
     "directories": {
         "build_logs": "@OUTPUTDIR@/html/build_logs",
         "build_logs_relative": "build_logs",
-        "srpms": "@CACHEDIR@/koschei/srpms",
-        "repodata": "@CACHEDIR@/koschei/repodata",
+        "srpms": "@CACHEDIR@/srpms",
+        "repodata": "@CACHEDIR@/repodata",
         "reports": "@OUTPUTDIR@/html",
         "report_templates": "@DATADIR@/report-templates"
     },

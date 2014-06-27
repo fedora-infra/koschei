@@ -26,7 +26,7 @@ TBD.
 %setup -q -c -n %{name}
 
 sed 's|@CACHEDIR@|%{_localstatedir}/cache/%{name}|g
-     s|@OUTPUTDIR@|%{_localstatedir}/www/html|g
+     s|@OUTPUTDIR@|%{_localstatedir}/www|g
      s|@DATADIR@|%{_datadir}/%{name}|g' config.json.template > config.json
 
 %build
