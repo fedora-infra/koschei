@@ -90,8 +90,6 @@ class Build(Base):
     state = Column(Integer, nullable=False, default=0)
     task_id = Column(Integer)
     logs_downloaded = Column(Boolean, default=False, nullable=False)
-    triggered_by = relationship('BuildTrigger', backref='build',
-                                lazy='dynamic')
     started = Column(DateTime)
     finished = Column(DateTime)
 
