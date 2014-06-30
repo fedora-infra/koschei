@@ -25,7 +25,7 @@ from datetime import datetime
 from sqlalchemy.sql.expression import func
 
 from . import util
-from .models import Build, Session, BuildTrigger
+from .models import Build, Session, PackageStateChange, DependencyChange
 from .plugin import dispatch_event
 
 log = logging.getLogger('submitter')
@@ -44,20 +44,9 @@ def submit_builds(db_session, koji_session):
         build.task_id = util.koji_scratch_build(koji_session, name)
         build.started = datetime.now()
         build.package.manual_priority = 0
+        for cls in PackageStateChange, DependencyChange:
+            cls.build_submitted(db_session)
         db_session.commit()
-        prev_build = db_session.query(Build).filter_by(package_id=build.package_id)\
-                               .filter(Build.id != build.id).first()
-        if not prev_build:
-            comment = 'Package added'
-            trigger = BuildTrigger(build_id=build.id, comment=comment)
-            db_session.add(trigger)
-            db_session.commit()
-        elif build.package.manual_priority:
-            comment = 'Priority manually increased'
-            trigger = BuildTrigger(build_id=build.id, comment=comment)
-            db_session.add(trigger)
-            db_session.commit()
-        dispatch_event('build_submitted', db_session, build)
 
 def poll_tasks(db_session, koji_session):
     running_builds = db_session.query(Build).filter_by(state=Build.RUNNING)

@@ -126,7 +126,7 @@ class Build(Base):
     def __repr__(self):
         return '{0.id} (name={0.package.name}, state={0.state_string})'.format(self)
 
-class Change(Base):
+class Change(object):
     id = Column(Integer, primary_key=True)
     package_id = Column(ForeignKey('package.id'), nullable=False)
     applied_in_id = Column(ForeignKey('build.id'), nullable=True, default=None)
@@ -146,7 +146,7 @@ class Change(Base):
     def get_trigger(self):
         raise NotImplementedError()
 
-class PackageStateChange(Change):
+class PackageStateChange(Change, Base):
     __tablename__ = 'package_change'
     prev_state = Column(Integer)
     curr_state = Column(Integer)
@@ -193,7 +193,7 @@ class Dependency(Base):
     evr = Column(String, nullable=False)
     arch = Column(String, nullable=False)
 
-class DependencyChange(Change):
+class DependencyChange(Change, Base):
     __tablename__ = 'dependency_change'
     dep_name = Column(String, nullable=False)
     prev_dep_evr = Column(String)

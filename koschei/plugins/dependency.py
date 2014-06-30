@@ -21,7 +21,7 @@ import hawkey
 from sqlalchemy import except_
 from sqlalchemy.sql.expression import func
 
-from koschei.models import Package, Build, Dependency, DependencyChange, Repo
+from koschei.models import Package, Dependency, DependencyChange, Repo
 from koschei.plugin import Plugin
 from koschei import util
 
