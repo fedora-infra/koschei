@@ -22,7 +22,6 @@ from sqlalchemy import except_
 from sqlalchemy.sql.expression import func
 
 from koschei.models import Package, Dependency, DependencyChange, Repo
-from koschei.plugin import Plugin
 from koschei import util
 
 def get_srpm_pkg(sack, name):
@@ -106,32 +105,15 @@ def compute_dependency_weight(db_session, sack, package):
                 db_session.commit()
         level += 1
 
-class DependencyPlugin(Plugin):
-    def __init__(self):
-        super(DependencyPlugin, self).__init__()
-        self.register_event('repo_done', self.repo_done)
-        self.register_event('packages_added', self.packages_added)
-
-    def packages_added(self, db_session, packages):
-        repo = db_session.query(Repo).order_by(Repo.id).first()
-        if not repo:
-            repo = Repo()
-            db_session.add(repo)
-            db_session.commit()
-        package_names = [pkg.name for pkg in packages]
-        sack = util.create_sack(package_names)
-        for pkg in packages:
-            resolve_dependencies(db_session, sack, repo, pkg)
-
-    def repo_done(self, db_session):
-        packages = db_session.query(Package)
-        package_names = [pkg.name for pkg in packages]
-        sack = util.create_sack(package_names)
-        db_repo = Repo()
-        db_session.add(db_repo)
-        db_session.commit()
-        for pkg in packages:
-            resolve_dependencies(db_session, sack, db_repo, pkg)
-        process_dependency_differences(db_session)
-        for pkg in packages:
-            compute_dependency_weight(db_session, sack, pkg)
+def repo_done(self, db_session):
+    packages = db_session.query(Package)
+    package_names = [pkg.name for pkg in packages]
+    sack = util.create_sack(package_names)
+    db_repo = Repo()
+    db_session.add(db_repo)
+    db_session.commit()
+    for pkg in packages:
+        resolve_dependencies(db_session, sack, db_repo, pkg)
+    process_dependency_differences(db_session)
+    for pkg in packages:
+        compute_dependency_weight(db_session, sack, pkg)

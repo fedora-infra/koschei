@@ -22,8 +22,6 @@ from sqlalchemy import func, union_all
 
 import logging
 
-from .plugin import dispatch_event
-
 priority_threshold = 30
 
 log = logging.getLogger('scheduler')
@@ -33,8 +31,10 @@ def get_priority_queries(db_session):
     priorities = {name: db_session.query(Package.id, col) for name, col in prio}
     changes = ('dependency', DependencyChange), ('state', PackageStateChange)
     priorities.update({name: cls.get_priority_query(db_session) for name, cls in changes})
-    #FIXME move time here
-    priorities['time'] = dispatch_event('get_priority_query', db_session)[0]
+    priorities['time'] = db_session.query(Build.package_id,
+                                          Build.time_since_last_build_expr())\
+                                   .group_by(Build.package_id)
+    return priorities
 
 def schedule_builds(db_session):
     queries = get_priority_queries(db_session).values()

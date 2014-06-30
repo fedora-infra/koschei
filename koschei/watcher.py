@@ -22,7 +22,7 @@ import logging
 
 from .models import Build, Session, Package
 from .submitter import update_koji_state
-from .plugin import dispatch_event
+from .dependency import repo_done
 
 log = logging.getLogger('koschei-watcher')
 
@@ -49,16 +49,7 @@ def consume(topic, content):
     elif topic == 'org.fedoraproject.prod.buildsys.repo.done':
         if content.get('tag') == 'f21-build':
             session = Session()
-            dispatch_event('repo_done', session)
-            session.close()
-    elif topic == 'org.fedoraproject.prod.buildsys.tag':
-        if content.get('tag') == 'f21':
-            session = Session()
-            pkg = session.query(Package).filter_by(name=content['name']).first()
-            if pkg:
-                print('Calling build tagged for {}'.format(pkg.name))
-                dispatch_event('build_tagged', session, pkg,
-                               content['version'], content['release'])
+            repo_done()
             session.close()
 
 def update_build_state(msg):

@@ -26,7 +26,6 @@ from sqlalchemy.sql.expression import func
 
 from . import util
 from .models import Build, Session, PackageStateChange, DependencyChange
-from .plugin import dispatch_event
 
 log = logging.getLogger('submitter')
 
@@ -68,7 +67,6 @@ def update_koji_state(db_session, build, state):
                   .format(build=build, state=Build.REV_STATE_MAP[state]))
         build.state = state
         db_session.commit()
-        dispatch_event('state_change', db_session, build)
         #TODO finish time
 
 def main():

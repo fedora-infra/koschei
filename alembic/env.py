@@ -3,9 +3,6 @@ from alembic import context
 from logging.config import fileConfig
 from koschei.models import Base
 
-# loads tables from plugins
-from koschei import plugin
-
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

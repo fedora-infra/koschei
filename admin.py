@@ -1,7 +1,6 @@
 #!/usr/bin/python
 import sys
 
-from koschei import plugin
 from koschei.models import *
 from koschei import util
 
@@ -25,7 +24,6 @@ if __name__ == '__main__':
                       manual_priority=30)
         s.add(pkg)
         s.commit()
-        plugin.dispatch_event('packages_added', s, [pkg])
     elif cmd == 'addpkgs':
         pkgs = []
         x = 100
@@ -35,7 +33,6 @@ if __name__ == '__main__':
             s.commit()
             pkgs.append(pkg)
             x -= 1
-        plugin.dispatch_event('packages_added', s, pkgs)
     elif cmd == 'setprio':
         #TODO use argparse
         if sys.argv[2] == '--static':
