@@ -19,7 +19,8 @@
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
                        ForeignKey, DateTime, literal_column
 from sqlalchemy.sql.expression import extract, func
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.declarative import declarative_base, AbstractConcreteBase, \
+                                       declared_attr
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.engine.url import URL
 from datetime import datetime
@@ -126,10 +127,15 @@ class Build(Base):
     def __repr__(self):
         return '{0.id} (name={0.package.name}, state={0.state_string})'.format(self)
 
-class Change(object):
+class Change(AbstractConcreteBase, Base):
+    __abstract__ = True
     id = Column(Integer, primary_key=True)
-    package_id = Column(ForeignKey('package.id'), nullable=False)
-    applied_in_id = Column(ForeignKey('build.id'), nullable=True, default=None)
+    @declared_attr
+    def package_id(self):
+        return Column(ForeignKey('package.id'), nullable=False)
+    @declared_attr
+    def applied_in_id(self):
+        return Column(ForeignKey('build.id'), nullable=True, default=None)
 
     @classmethod
     def query(cls, db_session, *what):
@@ -146,7 +152,7 @@ class Change(object):
     def get_trigger(self):
         raise NotImplementedError()
 
-class PackageStateChange(Change, Base):
+class PackageStateChange(Change):
     __tablename__ = 'package_change'
     prev_state = Column(Integer)
     curr_state = Column(Integer)
@@ -193,7 +199,7 @@ class Dependency(Base):
     evr = Column(String, nullable=False)
     arch = Column(String, nullable=False)
 
-class DependencyChange(Change, Base):
+class DependencyChange(Change):
     __tablename__ = 'dependency_change'
     dep_name = Column(String, nullable=False)
     prev_dep_evr = Column(String)

@@ -17,7 +17,7 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 from koschei.plugin import Plugin
-from koschei.models import Build, BuildTrigger, Package
+from koschei.models import Build, Package
 
 class TimePlugin(Plugin):
     order = 9999
@@ -26,7 +26,7 @@ class TimePlugin(Plugin):
         super(TimePlugin, self).__init__()
         self.register_event('get_priority_query', self.get_build_time_priority)
         self.register_event('get_priority_query', self.get_pkg_time_priority)
-        self.register_event('build_submitted', self.populate_triggers)
+        #self.register_event('build_submitted', self.populate_triggers)
 
     def get_build_time_priority(self, db_session):
         q = db_session.query(Build.package_id, Build.time_since_last_build_expr())\
@@ -39,6 +39,7 @@ class TimePlugin(Plugin):
                       .filter(Build.id == None)
         return q
 
+"""
     def populate_triggers(self, db_session, build):
         if not db_session.query(build.triggered_by.exists()).scalar():
             since = Build.time_since_last_build_expr()
@@ -54,3 +55,4 @@ class TimePlugin(Plugin):
                 trigger = BuildTrigger(build_id=build.id, comment=comment)
                 db_session.add(trigger)
                 db_session.commit()
+                """
