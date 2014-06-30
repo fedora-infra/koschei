@@ -18,37 +18,12 @@
 
 import hawkey
 
-from datetime import datetime
-
-from sqlalchemy import Column, Integer, ForeignKey, String, DateTime, except_
+from sqlalchemy import except_
 from sqlalchemy.sql.expression import func
 
-from koschei.models import BuildTrigger, Base, Package, Build
+from koschei.models import Package, Build, Dependency, DependencyChange, Repo
 from koschei.plugin import Plugin
 from koschei import util
-
-class Repo(Base):
-    __tablename__ = 'repo'
-    id = Column(Integer, primary_key=True)
-    generated = Column(DateTime, nullable=False, default=datetime.now)
-
-class Dependency(Base):
-    __tablename__ = 'dependency'
-    id = Column(Integer, primary_key=True)
-    repo_id = Column(Integer, ForeignKey('repo.id'))
-    package_id = Column(ForeignKey('package.id'))
-    name = Column(String, nullable=False)
-    evr = Column(String, nullable=False)
-    arch = Column(String, nullable=False)
-
-class DependencyChange(Base):
-    __tablename__ = 'dependency_change'
-    id = Column(Integer, primary_key=True)
-    package_id = Column(ForeignKey('package.id'))
-    dep_name = Column(String, nullable=False)
-    prev_dep_evr = Column(String)
-    curr_dep_evr = Column(String)
-    weight = Column(Integer)
 
 def get_srpm_pkg(sack, name):
     hawk_pkg = hawkey.Query(sack).filter(name=name, arch='src',
@@ -110,7 +85,7 @@ def process_dependency_differences(db_session):
         db_session.commit()
 
 def compute_dependency_weight(db_session, sack, package):
-    changes = db_session.query(DependencyChange)\
+    changes = DependencyChange.query(db_session)\
                         .filter(DependencyChange.package_id == package.id,
                                 DependencyChange.curr_dep_evr != None).all()
     if not changes:
@@ -135,8 +110,6 @@ class DependencyPlugin(Plugin):
     def __init__(self):
         super(DependencyPlugin, self).__init__()
         self.register_event('repo_done', self.repo_done)
-        self.register_event('get_priority_query', self.get_priority_query)
-        self.register_event('build_submitted', self.populate_triggers)
         self.register_event('packages_added', self.packages_added)
 
     def packages_added(self, db_session, packages):
@@ -162,40 +135,3 @@ class DependencyPlugin(Plugin):
         process_dependency_differences(db_session)
         for pkg in packages:
             compute_dependency_weight(db_session, sack, pkg)
-
-    def get_priority_query(self, db_session):
-        q = db_session.query(DependencyChange.package_id, DependencyChange.weight)
-        return q
-
-    def populate_triggers(self, db_session, build):
-        changes = db_session.query(DependencyChange)\
-                            .filter_by(package_id=build.package_id)
-        prev_repo = db_session.query(func.max(Repo.id) - 1).subquery()
-        was_resolvable = db_session.query(Dependency.package_id)\
-                                   .filter_by(package_id=build.package_id,
-                                              repo_id=prev_repo).first()
-        if was_resolvable:
-            for change in changes:
-                if change.prev_dep_evr and change.curr_dep_evr:
-                    if change.prev_dep_evr < change.curr_dep_evr:
-                        up_dn = 'updated'
-                    else:
-                        up_dn = 'downgraded'
-                    comment = 'Dependency {} was {} from {} to {}'\
-                              .format(change.dep_name, up_dn, change.prev_dep_evr,
-                                      change.curr_dep_evr)
-                elif change.prev_dep_evr:
-                    comment = 'Dependency {} disappeared'.format(change.dep_name)
-                else:
-                    comment = 'Dependency {} appeared'.format(change.dep_name)
-                trigger = BuildTrigger(build_id=build.id, comment=comment)
-                db_session.add(trigger)
-                db_session.commit()
-        elif db_session.query(Package.id)\
-                       .filter(Build.state.in_(Build.FINISHED_STATES))\
-                       .filter(Package.id == Build.package_id).first():
-            comment = "Package's dependencies became satisfied"
-            trigger = BuildTrigger(build_id=build.id, comment=comment)
-            db_session.add(trigger)
-            db_session.commit()
-        changes.delete()
