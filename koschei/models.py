@@ -32,7 +32,7 @@ Base = declarative_base()
 db_url = URL(**config['database_config'])
 engine = create_engine(db_url, echo=False, pool_size=10)
 
-Session = sessionmaker(bind=engine)
+Session = sessionmaker(bind=engine, autocommit=False)
 
 def hours_since(since):
     return extract('EPOCH', datetime.now() - since) / 3600

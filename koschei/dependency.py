@@ -45,7 +45,7 @@ def resolve_dependencies(db_session, sack, repo, package):
             dep = Dependency(repo_id=repo.id, package_id=package.id,
                              name=install.name, evr=install.evr, arch=install.arch)
             db_session.add(dep)
-            db_session.commit()
+            db_session.flush()
     return True
 
 def get_dependency_differences(db_session):
@@ -82,7 +82,7 @@ def process_dependency_differences(db_session):
             changes[(pkg_id, dep_name)] = change
     for change in changes.values():
         db_session.add(change)
-        db_session.commit()
+    db_session.flush()
 
 def compute_dependency_weight(db_session, sack, package):
     changes = DependencyChange.query(db_session)\
@@ -103,8 +103,8 @@ def compute_dependency_weight(db_session, sack, package):
         for pkg in pkgs_on_level:
             if pkg.name in changes_map and not changes_map[pkg.name].weight:
                 changes_map[pkg.name].weight = 30 // level
-                db_session.commit()
         level += 1
+    db_session.flush()
 
 def repo_done(self, db_session):
     packages = db_session.query(Package)
@@ -112,9 +112,10 @@ def repo_done(self, db_session):
     sack = util.create_sack(package_names)
     db_repo = Repo()
     db_session.add(db_repo)
-    db_session.commit()
+    db_session.flush()
     for pkg in packages:
         resolve_dependencies(db_session, sack, db_repo, pkg)
     process_dependency_differences(db_session)
     for pkg in packages:
         compute_dependency_weight(db_session, sack, pkg)
+    db_session.commit()
