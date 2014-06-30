@@ -18,7 +18,7 @@
 
 import hawkey
 
-from sqlalchemy import except_
+from sqlalchemy import except_, or_
 from sqlalchemy.sql.expression import func
 
 from koschei.models import Package, Dependency, DependencyChange, Repo, \
@@ -54,13 +54,18 @@ def get_dependency_differences(db_session):
                                 Dependency.evr)\
                          .filter(Dependency.repo_id == repo)
     def difference_query(q1, q2):
+        resolved = [db_session.query(Dependency.package_id)\
+                              .select_entity_from(q.subquery().select())
+                    for q in (q2, q1)]
+        filtered = [q.filter(Dependency.package_id.in_(r)).subquery().select()
+                    for q, r in zip((q1, q2), resolved)]
         return db_session.query(Dependency.package_id, Dependency.name,
                                 Dependency.evr)\
-                         .select_entity_from(except_(q1.select(), q2.select()))
+                         .select_entity_from(except_(*filtered))
     curr_repo = db_session.query(func.max(Repo.id)).subquery()
     prev_repo = db_session.query(func.max(Repo.id) - 1).subquery()
-    curr = get_deps_from_repo(curr_repo).subquery()
-    prev = get_deps_from_repo(prev_repo).subquery()
+    curr = get_deps_from_repo(curr_repo)
+    prev = get_deps_from_repo(prev_repo)
     add_diff = difference_query(curr, prev)
     rm_diff = difference_query(prev, curr)
     return add_diff, rm_diff
@@ -107,7 +112,9 @@ def compute_dependency_weight(db_session, sack, package):
     db_session.flush()
 
 def repo_done(self, db_session):
-    packages = db_session.query(Package)
+    packages = db_session.query(Package)\
+                         .filter(or_(Package.state == Package.OK,
+                                     Package.state == Package.UNRESOLVED))
     package_names = [pkg.name for pkg in packages]
     sack = util.create_sack(package_names)
     db_repo = Repo()
