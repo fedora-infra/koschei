@@ -17,7 +17,7 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 from __future__ import print_function
-from .models import Session, Package, Build
+from .models import Session, Package, Build, DependencyChange, PackageStateChange
 from sqlalchemy import func, union_all
 
 import logging
@@ -28,15 +28,20 @@ priority_threshold = 30
 
 log = logging.getLogger('scheduler')
 
+def get_priority_queries(db_session):
+    prio = ('manual', Package.manual_priority), ('static', Package.static_priority)
+    priorities = {name: db_session.query(Package.id, col) for name, col in prio}
+    changes = ('dependency', DependencyChange), ('state', PackageStateChange)
+    priorities.update({name: cls.get_priority_query(db_session) for name, cls in changes})
+    #FIXME move time here
+    priorities['time'] = dispatch_event('get_priority_query', db_session)[0]
+
 def schedule_builds(db_session):
-    priority_queries = dispatch_event('get_priority_query', db_session)
-    manual_priority = db_session.query(Package.id, Package.manual_priority)
-    static_priority = db_session.query(Package.id, Package.static_priority)
-    union_query = union_all(*[q.subquery().select() for q in
-                            [static_priority, manual_priority] + priority_queries])
+    queries = get_priority_queries(db_session).values()
+    union_query = union_all(*(q.subquery().select() for q in queries))
     priorities = db_session.query(Package.id)\
                            .select_entity_from(union_query)\
-                           .having(func.sum(Package.static_priority)
+                           .having(func.sum(Package.manual_priority)
                                    >= priority_threshold)\
                            .group_by(Package.id)
     for pkg_id in [p.id for p in priorities]:
