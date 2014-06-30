@@ -21,7 +21,8 @@ import hawkey
 from sqlalchemy import except_
 from sqlalchemy.sql.expression import func
 
-from koschei.models import Package, Dependency, DependencyChange, Repo
+from koschei.models import Package, Dependency, DependencyChange, Repo, \
+                           PackageStateChange
 from koschei import util
 
 def get_srpm_pkg(sack, name):
@@ -37,7 +38,7 @@ def resolve_dependencies(db_session, sack, repo, package):
     try:
         installs = goal.list_installs()
     except hawkey.RuntimeException:
-        #TODO set as unbuildable
+        package.state = Package.UNRESOLVED
         return False
     for install in installs:
         if install.arch != 'src':

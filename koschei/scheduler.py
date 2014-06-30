@@ -38,7 +38,8 @@ def get_priority_queries(db_session):
 
 def schedule_builds(db_session):
     queries = get_priority_queries(db_session).values()
-    union_query = union_all(*(q.subquery().select() for q in queries))
+    union_query = union_all(*(q.filter(Package.state == Package.OK).subquery().select()
+                              for q in queries))
     priorities = db_session.query(Package.id)\
                            .select_entity_from(union_query)\
                            .having(func.sum(Package.manual_priority)
@@ -51,7 +52,7 @@ def schedule_builds(db_session):
             build = Build(package_id=pkg_id, state=Build.SCHEDULED)
             db_session.add(build)
             db_session.commit()
-            log.info('Scheduling build {} for {}'.format(build.id, build.package.name))
+            log.info('Scheduling build {0.id} for {0.package.name}'.format(build))
 
 def main():
     import time
