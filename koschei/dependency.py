@@ -111,7 +111,7 @@ def compute_dependency_weight(db_session, sack, package):
         level += 1
     db_session.flush()
 
-def repo_done(self, db_session):
+def repo_done(db_session):
     packages = db_session.query(Package)\
                          .filter(or_(Package.state == Package.OK,
                                      Package.state == Package.UNRESOLVED))
