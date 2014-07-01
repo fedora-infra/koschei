@@ -17,6 +17,7 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 import hawkey
+import logging
 
 from sqlalchemy import except_, or_
 from sqlalchemy.sql.expression import func
