@@ -16,12 +16,11 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-import json
-
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
-                       ForeignKey, DateTime, Enum
+                       ForeignKey, DateTime, literal_column
 from sqlalchemy.sql.expression import extract, func
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.declarative import declarative_base, AbstractConcreteBase, \
+                                       declared_attr
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.engine.url import URL
 from datetime import datetime
@@ -33,7 +32,24 @@ Base = declarative_base()
 db_url = URL(**config['database_config'])
 engine = create_engine(db_url, echo=False, pool_size=10)
 
-Session = sessionmaker(bind=engine)
+Session = sessionmaker(bind=engine, autocommit=False)
+
+def hours_since(since):
+    return extract('EPOCH', datetime.now() - since) / 3600
+
+# TODO trigger?
+#class ChangeExtension(SessionExtension):
+#    def before_flush(self, session, flush_context, instances):
+#        for instance in session.dirty:
+#            if not session.is_modified(instance, passive=True):
+#                continue
+#            if not attributes.instance_state(instance).has_identity:
+#                continue
+#            if isinstance(instance, Package):
+#                change = PackageChange(package_id=instance.id,
+#                                       prev_state=instance)
+#                instance.new_version(session)
+#                session.add(instance)
 
 class Package(Base):
     __tablename__ = 'package'
@@ -74,8 +90,6 @@ class Build(Base):
     state = Column(Integer, nullable=False, default=0)
     task_id = Column(Integer)
     logs_downloaded = Column(Boolean, default=False, nullable=False)
-    triggered_by = relationship('BuildTrigger', backref='build',
-                                lazy='dynamic')
     started = Column(DateTime)
     finished = Column(DateTime)
 
@@ -108,12 +122,114 @@ class Build(Base):
     def state_string(self):
         return self.REV_STATE_MAP[self.state]
 
+    @property
+    def triggers(self):
+        s = Session.object_session(self)
+        triggers = []
+        for cls in PackageStateChange, DependencyChange:
+            changes = s.query(cls).filter_by(applied_in_id=self.id).all()
+            if changes:
+                triggers += [change.get_trigger() for change in changes]
+                break
+        return triggers
+
     def __repr__(self):
         return '{0.id} (name={0.package.name}, state={0.state_string})'.format(self)
 
-class BuildTrigger(Base):
-    __tablename__ = 'build_trigger'
-
+class Change(AbstractConcreteBase, Base):
+    __abstract__ = True
     id = Column(Integer, primary_key=True)
-    build_id = Column(Integer, ForeignKey('build.id'))
-    comment = Column(String, nullable=False)
+    @declared_attr
+    def package_id(self):
+        return Column(ForeignKey('package.id'), nullable=False)
+    @declared_attr
+    def applied_in_id(self):
+        return Column(ForeignKey('build.id'), nullable=True, default=None)
+
+    @classmethod
+    def query(cls, db_session, *what):
+        return db_session.query(*what or (cls,)).filter_by(applied_in_id=None)
+
+    @classmethod
+    def get_priority_query(cls, db_session):
+        raise NotImplementedError()
+
+    @classmethod
+    def build_submitted(cls, db_session, build):
+        cls.query(db_session).update({'applied_in_id': build.id})
+
+    def get_trigger(self):
+        raise NotImplementedError()
+
+class PackageStateChange(Change):
+    __tablename__ = 'package_change'
+    prev_state = Column(Integer)
+    curr_state = Column(Integer)
+
+    @classmethod
+    def get_priority_query(cls, db_session):
+        # workaroud for literal_column not working, cls.curr_state is 0
+        return cls.query(db_session, cls.package_id, cls.curr_state + 30)\
+                  .filter(cls.prev_state != Package.OK)\
+                  .filter(cls.curr_state == Package.OK)
+
+#    @classmethod
+#    def build_submitted(cls, db_session, build):
+#        # squash changes between builds
+#        unapplied_query = cls.query(db_session)
+#        unapplied = unapplied_query.all()
+#        if len(unapplied) > 1:
+#            new_change = cls(package_id=unapplied[0].package_id,
+#                             prev_state=unapplied[0].prev_state,
+#                             curr_state=unapplied[-1].curr_state)
+#            db_session.add(new_change)
+#            unapplied_query.delete()
+#            db_session.commit()
+
+    def get_trigger(self):
+        if self.curr_state != Package.OK:
+            return {
+                Package.UNRESOLVED: 'Package dependencies became satisfied',
+                Package.IGNORED: 'Package became watched again',
+                Package.RETIRED: 'Package unretired',
+                None: 'Package added'
+            }[self.prev_state]
+
+class Repo(Base):
+    __tablename__ = 'repo'
+    id = Column(Integer, primary_key=True)
+    generated = Column(DateTime, nullable=False, default=datetime.now)
+
+class Dependency(Base):
+    __tablename__ = 'dependency'
+    id = Column(Integer, primary_key=True)
+    repo_id = Column(Integer, ForeignKey('repo.id'))
+    package_id = Column(ForeignKey('package.id'))
+    name = Column(String, nullable=False)
+    evr = Column(String, nullable=False)
+    arch = Column(String, nullable=False)
+
+class DependencyChange(Change):
+    __tablename__ = 'dependency_change'
+    dep_name = Column(String, nullable=False)
+    prev_dep_evr = Column(String)
+    curr_dep_evr = Column(String)
+    weight = Column(Integer)
+
+    @classmethod
+    def get_priority_query(cls, db_session):
+        return cls.query(db_session, cls.package_id, cls.weight)
+
+    def get_trigger(self):
+        if self.prev_dep_evr and self.curr_dep_evr:
+            if self.prev_dep_evr < self.curr_dep_evr:
+                up_dn = 'updated'
+            else:
+                up_dn = 'downgraded'
+            return 'Dependency {} was {} from {} to {}'\
+                   .format(self.dep_name, up_dn, self.prev_dep_evr,
+                           self.curr_dep_evr)
+        elif self.prev_dep_evr:
+            return 'Dependency {} disappeared'.format(self.dep_name)
+        else:
+            return 'Dependency {} appeared'.format(self.dep_name)

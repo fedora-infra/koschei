@@ -17,26 +17,32 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 from __future__ import print_function
-from .models import Session, Package, Build
+from .models import Session, Package, Build, DependencyChange, PackageStateChange
 from sqlalchemy import func, union_all
 
 import logging
-
-from .plugin import dispatch_event
 
 priority_threshold = 30
 
 log = logging.getLogger('scheduler')
 
+def get_priority_queries(db_session):
+    prio = ('manual', Package.manual_priority), ('static', Package.static_priority)
+    priorities = {name: db_session.query(Package.id, col) for name, col in prio}
+    changes = ('dependency', DependencyChange), ('state', PackageStateChange)
+    priorities.update({name: cls.get_priority_query(db_session) for name, cls in changes})
+    priorities['time'] = db_session.query(Build.package_id,
+                                          Build.time_since_last_build_expr())\
+                                   .group_by(Build.package_id)
+    return priorities
+
 def schedule_builds(db_session):
-    priority_queries = dispatch_event('get_priority_query', db_session)
-    manual_priority = db_session.query(Package.id, Package.manual_priority)
-    static_priority = db_session.query(Package.id, Package.static_priority)
-    union_query = union_all(*[q.subquery().select() for q in
-                            [static_priority, manual_priority] + priority_queries])
+    queries = get_priority_queries(db_session).values()
+    union_query = union_all(*(q.filter(Package.state == Package.OK).subquery().select()
+                              for q in queries))
     priorities = db_session.query(Package.id)\
                            .select_entity_from(union_query)\
-                           .having(func.sum(Package.static_priority)
+                           .having(func.sum(Package.manual_priority)
                                    >= priority_threshold)\
                            .group_by(Package.id)
     for pkg_id in [p.id for p in priorities]:
@@ -46,7 +52,7 @@ def schedule_builds(db_session):
             build = Build(package_id=pkg_id, state=Build.SCHEDULED)
             db_session.add(build)
             db_session.commit()
-            log.info('Scheduling build {} for {}'.format(build.id, build.package.name))
+            log.info('Scheduling build {0.id} for {0.package.name}'.format(build))
 
 def main():
     import time

@@ -25,7 +25,7 @@ from datetime import datetime
 from collections import defaultdict
 from jinja2 import Environment, FileSystemLoader
 
-from . import models, util, plugin
+from . import models, util, scheduler
 
 jinja_env = Environment(loader=FileSystemLoader(util.config['directories']['report_templates']))
 
@@ -41,7 +41,7 @@ def generate_report(session, template, since, until):
     template = jinja_env.get_template(template)
     packages = session.query(models.Package)\
                .order_by(models.Package.id).all()
-    priorities = plugin.dispatch_event('get_priority_query', session, return_name=True)
+    priorities = scheduler.get_priority_queries(session)
     priorities = [(name, dict(priority)) for name, priority in priorities]
     # FIXME remember this in DB
     builds = session.query(models.Build.id)
