@@ -44,7 +44,7 @@ def submit_builds(db_session, koji_session):
         build.started = datetime.now()
         build.package.manual_priority = 0
         for cls in PackageStateChange, DependencyChange:
-            cls.build_submitted(db_session)
+            cls.build_submitted(db_session, build)
         db_session.commit()
 
 def poll_tasks(db_session, koji_session):

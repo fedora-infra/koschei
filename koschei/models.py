@@ -148,7 +148,7 @@ class Change(AbstractConcreteBase, Base):
 
     @classmethod
     def query(cls, db_session, *what):
-        return db_session.query(*what or cls).filter_by(applied_in_id=None)
+        return db_session.query(*what or (cls,)).filter_by(applied_in_id=None)
 
     @classmethod
     def get_priority_query(cls, db_session):
@@ -168,7 +168,8 @@ class PackageStateChange(Change):
 
     @classmethod
     def get_priority_query(cls, db_session):
-        return cls.query(db_session, cls.package_id, literal_column("30"))\
+        # workaroud for literal_column not working, cls.curr_state is 0
+        return cls.query(db_session, cls.package_id, cls.curr_state + 30)\
                   .filter(cls.prev_state != Package.OK)\
                   .filter(cls.curr_state == Package.OK)
 
