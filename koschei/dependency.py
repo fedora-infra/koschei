@@ -19,7 +19,7 @@
 import hawkey
 import logging
 
-from sqlalchemy import except_, or_
+from sqlalchemy import except_, or_, intersect
 from sqlalchemy.sql.expression import func
 
 from koschei.models import Package, Dependency, DependencyChange, Repo, \
@@ -64,21 +64,20 @@ def get_dependency_differences(db_session):
         return db_session.query(Dependency.package_id, Dependency.name,
                                 Dependency.evr)\
                          .filter(Dependency.repo_id == repo)
-    def difference_query(q1, q2):
-        resolved = [db_session.query(Dependency.package_id)\
-                              .select_entity_from(q.subquery().select())
-                    for q in (q2, q1)]
-        filtered = [q.filter(Dependency.package_id.in_(r)).subquery().select()
-                    for q, r in zip((q1, q2), resolved)]
+    def difference_query(*repos):
+        resolved = intersect(*(db_session.query(Dependency.package_id)\
+                               .filter(Dependency.repo_id == r) for r in repos))
+        deps = (db_session.query(Dependency.package_id, Dependency.name,
+                                 Dependency.evr)\
+                          .filter(Dependency.repo_id == r) for r in repos)
         return db_session.query(Dependency.package_id, Dependency.name,
                                 Dependency.evr)\
-                         .select_entity_from(except_(*filtered))
+                         .select_entity_from(except_(*deps))\
+                         .filter(Dependency.package_id.in_(resolved))
     curr_repo = db_session.query(func.max(Repo.id)).subquery()
     prev_repo = db_session.query(func.max(Repo.id) - 1).subquery()
-    curr = get_deps_from_repo(curr_repo)
-    prev = get_deps_from_repo(prev_repo)
-    add_diff = difference_query(curr, prev)
-    rm_diff = difference_query(prev, curr)
+    add_diff = difference_query(curr_repo, prev_repo)
+    rm_diff = difference_query(prev_repo, curr_repo)
     return add_diff, rm_diff
 
 def process_dependency_differences(db_session):
