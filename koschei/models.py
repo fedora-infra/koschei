@@ -122,6 +122,17 @@ class Build(Base):
     def state_string(self):
         return self.REV_STATE_MAP[self.state]
 
+    @property
+    def triggers(self):
+        s = Session.object_session(self)
+        triggers = []
+        for cls in PackageStateChange, DependencyChange:
+            changes = s.query(cls).filter_by(applied_in_id=self.id).all()
+            if changes:
+                triggers += [change.get_trigger() for change in changes]
+                break
+        return triggers
+
     def __repr__(self):
         return '{0.id} (name={0.package.name}, state={0.state_string})'.format(self)
 
