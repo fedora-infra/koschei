@@ -42,7 +42,7 @@ def generate_report(session, template, since, until):
     packages = session.query(models.Package)\
                .order_by(models.Package.id).all()
     priorities = scheduler.get_priority_queries(session)
-    priorities = [(name, dict(priority)) for name, priority in priorities]
+    priorities = [(name, dict(priority)) for name, priority in priorities.items()]
     # FIXME remember this in DB
     builds = session.query(models.Build.id)
     root_diffs = defaultdict(dict)
