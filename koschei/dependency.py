@@ -25,6 +25,8 @@ from koschei.models import Package, Dependency, DependencyChange, Repo, \
                            PackageStateChange
 from koschei import util
 
+log = logging.getLogger('dependency')
+
 def get_srpm_pkg(sack, name):
     hawk_pkg = hawkey.Query(sack).filter(name=name, arch='src',
                                          latest_per_arch=True)[0]
@@ -116,13 +118,18 @@ def repo_done(db_session):
                          .filter(or_(Package.state == Package.OK,
                                      Package.state == Package.UNRESOLVED))
     package_names = [pkg.name for pkg in packages]
+    log.info("Generating new repo")
     sack = util.create_sack(package_names)
     db_repo = Repo()
     db_session.add(db_repo)
     db_session.flush()
+    log.info("Resolving dependencies")
     for pkg in packages:
         resolve_dependencies(db_session, sack, db_repo, pkg)
+    log.info("Computing dependency differences")
     process_dependency_differences(db_session)
+    log.info("Computing dependency distances")
     for pkg in packages:
         compute_dependency_weight(db_session, sack, pkg)
     db_session.commit()
+    log.info("New repo done")
