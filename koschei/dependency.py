@@ -39,6 +39,14 @@ def resolve_dependencies(db_session, sack, repo, package):
     goal.run()
     try:
         installs = goal.list_installs()
+
+        if package.state == Package.UNRESOLVED:
+            change = PackageStateChange(package_id=package.id,
+                                        prev_state=package.state,
+                                        curr_state=Package.OK)
+            package.state = Package.OK
+            db_session.add(change)
+            db_session.flush()
     except hawkey.RuntimeException:
         package.state = Package.UNRESOLVED
         return False
