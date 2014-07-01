@@ -65,8 +65,8 @@ function toggle_visibility(id) {
             {{ build.started | date }}
         </td>
         <td class="last">
-            {% for change in build.triggered_by.order_by(models.BuildTrigger.id) %}
-                {{ change.comment }}{% if not loop.last %}, {% endif %}
+            {% for change in build.triggers %}
+                {{ change }}{% if not loop.last %}, {% endif %}
             {% endfor %}
         </td>
     </tr>
