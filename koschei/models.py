@@ -156,7 +156,8 @@ class Change(AbstractConcreteBase, Base):
 
     @classmethod
     def build_submitted(cls, db_session, build):
-        cls.query(db_session).update({'applied_in_id': build.id})
+        cls.query(db_session).filter_by(package_id=build.package_id)\
+                             .update({'applied_in_id': build.id})
 
     def get_trigger(self):
         raise NotImplementedError()
