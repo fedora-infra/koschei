@@ -17,11 +17,11 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
-                       ForeignKey, DateTime, literal_column
-from sqlalchemy.sql.expression import extract, func
+                       ForeignKey, DateTime
+from sqlalchemy.sql.expression import extract, func, select, join
 from sqlalchemy.ext.declarative import declarative_base, AbstractConcreteBase, \
                                        declared_attr
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm import sessionmaker, relationship, mapper
 from sqlalchemy.engine.url import URL
 from datetime import datetime
 
@@ -61,6 +61,8 @@ class Package(Base):
     static_priority = Column(Integer, nullable=False, default=0)
     manual_priority = Column(Integer, nullable=False, default=0)
     added = Column(DateTime, nullable=False, default=datetime.now)
+
+    # last_build defined later
 
     OK = 0
     UNRESOLVED = 1
@@ -235,3 +237,12 @@ class DependencyChange(Change):
             return 'Dependency {} disappeared'.format(self.dep_name)
         else:
             return 'Dependency {} appeared'.format(self.dep_name)
+
+def max_relationship(cls, group_by):
+    max_expr = select([func.max(cls.id).label('m'), group_by])\
+                     .group_by(group_by).alias()
+    joined = select([cls]).select_from(join(cls, max_expr,
+                                            cls.id == max_expr.c.m)).alias()
+    return relationship(mapper(cls, joined, non_primary=True), uselist=False)
+
+Package.last_build = max_relationship(Build, Build.package_id)

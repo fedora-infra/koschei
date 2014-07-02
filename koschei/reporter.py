@@ -25,6 +25,7 @@ from datetime import datetime
 from collections import defaultdict
 from jinja2 import Environment, FileSystemLoader
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 
 from . import models, util, scheduler
 from .models import Session, Package, Build
@@ -66,10 +67,9 @@ def generate_overview(session):
     template = jinja_env.get_template('package-overview.html')
     last_builds = session.query(Build.package_id, func.max(Build.id))\
                          .group_by(Build.package_id).subquery()
-    packages_with_builds = session.query(Package, Build)\
-                                  .outerjoin(last_builds)\
-                                  .order_by(Package.name).all()
-    return template.render(packages_with_builds=packages_with_builds,
+    packages = session.query(Package)\
+                      .options(joinedload(Package.last_build)).all()
+    return template.render(packages=packages,
                            koji_weburl=util.config['koji_config']['weburl'])
 
 def main():
