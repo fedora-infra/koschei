@@ -238,11 +238,16 @@ class DependencyChange(Change):
         else:
             return 'Dependency {} appeared'.format(self.dep_name)
 
-def max_relationship(cls, group_by):
+def max_relationship(cls, group_by, filt=None):
     max_expr = select([func.max(cls.id).label('m'), group_by])\
-                     .group_by(group_by).alias()
+                     .group_by(group_by)
+    if filt:
+        max_expr = max_expr.filter(filt)
+    max_expr = max_expr.alias()
     joined = select([cls]).select_from(join(cls, max_expr,
                                             cls.id == max_expr.c.m)).alias()
     return relationship(mapper(cls, joined, non_primary=True), uselist=False)
 
 Package.last_build = max_relationship(Build, Build.package_id)
+Package.last_successful_build = max_relationship(Build, Build.package_id,
+                                                 filt=Build.state == Build.COMPLETE)

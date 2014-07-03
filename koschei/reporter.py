@@ -65,8 +65,6 @@ def generate_report(session, template, since, until):
 
 def generate_overview(session):
     template = jinja_env.get_template('package-overview.html')
-    last_builds = session.query(Build.package_id, func.max(Build.id))\
-                         .group_by(Build.package_id).subquery()
     packages = session.query(Package)\
                       .options(joinedload(Package.last_build)).all()
     return template.render(packages=packages,
