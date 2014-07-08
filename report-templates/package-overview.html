@@ -26,10 +26,12 @@
         </td>
         <td>{{ last_build.started | date }}</td>
         <td class="last">
+            {% if last_build.triggers %}
             Triggered by:
             {% for change in last_build.triggers %}
                 {{ change }}{% if not loop.last %}, {% endif %}
             {% endfor %}
+            {% endif %}
         </td>
     </tr>
     {% if last_build != last_successful %}
