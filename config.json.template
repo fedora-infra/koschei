@@ -17,7 +17,8 @@
         "max_builds": 20,
         "server_opts": {
             "arch_override": "x86_64"
-        }
+        },
+        "load_threshold": 0.3
     },
     "directories": {
         "build_logs": "@OUTPUTDIR@/html/build_logs",
