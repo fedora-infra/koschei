@@ -47,7 +47,7 @@ def consume(topic, content):
     if topic == 'org.fedoraproject.prod.buildsys.task.state.change':
         update_build_state(content)
     elif topic == 'org.fedoraproject.prod.buildsys.repo.done':
-        if content.get('tag') == 'f21-build':
+        if content.get('tag') == 'f22-build':
             session = Session()
             repo_done(session)
             session.close()

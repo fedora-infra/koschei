@@ -13,7 +13,7 @@
         "cert": "~/.fedora.cert",
         "ca": "~/.fedora-server-ca.cert",
         "server_ca": "~/.fedora-server-ca.cert",
-        "target_tag": "f21",
+        "target_tag": "f22",
         "max_builds": 20,
         "server_opts": {
             "arch_override": "x86_64"
@@ -35,8 +35,8 @@
         "default_template": "base-report.html"
     },
     "repos": [
-        "http://koji.fedoraproject.org/repos/f21-build/latest/x86_64",
-        "http://koji.fedoraproject.org/repos/f21-build/latest/i386"
+        "http://koji.fedoraproject.org/repos/f22-build/latest/x86_64",
+        "http://koji.fedoraproject.org/repos/f22-build/latest/i386"
     ]
 }
 
