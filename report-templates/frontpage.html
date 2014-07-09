@@ -18,7 +18,7 @@ Package rebuilds {% if since.year > 2000 %}since {{ since|date }}{% endif %} unt
     {% set last_build = package.last_build %}
 
     <tr class="row-odd">
-      <td><a href="http://admin.fedoraproject.org/pkgdb/package/{{ package.name }}">{{ package.name }}</a></td>
+      <td><a href="package/{{ package.name }}.html">{{ package.name }}</a></td>
       <td class="complete"><img class="stateimg" src="http://koji.fedoraproject.org/koji-static/images/complete.png" title="complete" alt="complete"/></td>
       <td><a href="{{ koji_weburl }}/taskinfo?taskID={{ last_build.task_id }}">{{ last_build.task_id }}</a></td>
       <td>{% if last_build.logs_downloaded %}<a href="{{ log_dir }}/{{ last_build.id }}/">build logs</a>{% endif %}</td>

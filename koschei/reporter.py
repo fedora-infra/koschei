@@ -77,7 +77,8 @@ def generate_details(session):
                 root_diffs[build_id][arch] = os.path.join(relative_logdir, str(build_id), arch, 'root_diff.log')
 
     for package in packages:
-        generate_page('package-detail.html', package.name, package=package)
+        path = os.path.join('package', package.name) + '.html'
+        generate_page('package-detail.html', path, package=package)
 
 def generate_overview(session):
     template = jinja_env.get_template('package-overview.html')
@@ -88,6 +89,7 @@ def generate_overview(session):
 
 def main():
     session = Session()
+    util.mkdir_if_absent(os.path.join(outdir, 'package'))
     while True:
         since = datetime.min
         until = datetime.now()
