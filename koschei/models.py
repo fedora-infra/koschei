@@ -248,6 +248,7 @@ def max_relationship(cls, group_by, filt=None):
                                             cls.id == max_expr.c.m)).alias()
     return relationship(mapper(cls, joined, non_primary=True), uselist=False)
 
-Package.last_build = max_relationship(Build, Build.package_id)
+Package.last_build = max_relationship(Build, Build.package_id,
+                                      filt=Build.state != Build.SCHEDULED)
 Package.last_successful_build = max_relationship(Build, Build.package_id,
                                                  filt=Build.state == Build.COMPLETE)

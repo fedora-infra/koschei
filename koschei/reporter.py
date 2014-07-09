@@ -36,7 +36,8 @@ log_output_dir = util.config['directories']['build_logs']
 relative_logdir = util.config['directories']['build_logs_relative']
 
 def date_filter(date):
-    return date.strftime("%x %X")
+    if date:
+        return date.strftime("%x %X")
 
 jinja_env.filters['date'] = date_filter
 
