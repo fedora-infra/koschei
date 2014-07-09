@@ -17,37 +17,29 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 import fedmsg
-import fedmsg.consumers
 import logging
 
-from .models import Build, Session, Package
+from . import util
+from .models import Build, Session
 from .submitter import update_koji_state
 from .dependency import repo_done
 
 log = logging.getLogger('koschei-watcher')
 
-topic_name = 'org.fedoraproject.prod.buildsys'
+topic_name = util.config['fedmsg']['topic']
+tag = util.config['fedmsg']['tag']
+instance = util.config['fedmsg']['tag']
 
-class KojiWatcher(fedmsg.consumers.FedmsgConsumer):
-    topic = '{}.*'.format(topic_name)
-    config_key = 'koschei.koji-watcher'
-
-    def __init__(self, *args, **kwargs):
-        super(KojiWatcher, self).__init__(*args, **kwargs)
-        print 'Watcher initialized'
-
-    def consume(self, msg):
-        topic = msg['topic']
-        content = msg['body']['msg']
-        consume(topic, content)
+def get_topic(name):
+    return '{}.{}'.format(topic_name, name)
 
 def consume(topic, content):
-    if not content.get('instance') == 'primary':
+    if not content.get('instance') == instance:
         return
-    if topic == 'org.fedoraproject.prod.buildsys.task.state.change':
+    if topic == get_topic('task.state.change'):
         update_build_state(content)
-    elif topic == 'org.fedoraproject.prod.buildsys.repo.done':
-        if content.get('tag') == 'f22-build':
+    elif topic == get_topic('repo.done'):
+        if content.get('tag') == tag:
             session = Session()
             repo_done(session)
             session.close()
@@ -62,8 +54,11 @@ def update_build_state(msg):
         update_koji_state(session, build, state)
     session.close()
 
-if __name__ == '__main__':
+def main():
     print('watcher started')
     for _, _, topic, msg in fedmsg.tail_messages():
         if topic.startswith(topic_name + '.'):
             consume(topic, msg['msg'])
+
+if __name__ == '__main__':
+    main()

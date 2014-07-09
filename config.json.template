@@ -20,6 +20,11 @@
         },
         "load_threshold": 0.3
     },
+    "fedmsg": {
+        "topic": "org.fedoraproject.prod.buildsys",
+        "tag": "f22-build",
+        "instance": "primary"
+    },
     "directories": {
         "build_logs": "@OUTPUTDIR@/html/build_logs",
         "build_logs_relative": "build_logs",

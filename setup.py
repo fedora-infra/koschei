@@ -8,11 +8,6 @@ setup(
     author_email='',
     url='',
     install_requires=["fedmsg"],
-    entry_points={
-        'moksha.consumer': (
-            'koschei = koschei.watcher:KojiWatcher',
-        ),
-    },
     packages=find_packages(),
     include_package_data=True,
 )
