@@ -18,22 +18,23 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 import os
-import sys
 import time
 
 from datetime import datetime
 from collections import defaultdict
 from jinja2 import Environment, FileSystemLoader
-from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
-from . import models, util, scheduler
+from . import util, scheduler
 from .models import Session, Package, Build
 
 jinja_env = Environment(loader=FileSystemLoader(util.config['directories']['report_templates']))
 
 log_output_dir = util.config['directories']['build_logs']
 relative_logdir = util.config['directories']['build_logs_relative']
+outdir = util.config['directories']['reports']
+base_vars = {'log_dir': relative_logdir,
+             'koji_weburl': util.config['koji_config']['weburl']}
 
 def date_filter(date):
     if date:
@@ -41,10 +42,25 @@ def date_filter(date):
 
 jinja_env.filters['date'] = date_filter
 
-def generate_report(session, template, since, until):
-    template = jinja_env.get_template(template)
+def generate_page(template_name, filename=None, **kwargs):
+    filename = filename or template_name
+    template = jinja_env.get_template(template_name)
+    context = dict(base_vars)
+    context.update(kwargs)
+    content = template.render(**context)
+    path = os.path.join(outdir, filename)
+    with open(path, 'w') as f:
+        f.write(content)
+
+def generate_frontpage(session, since, until):
     packages = session.query(Package)\
-               .order_by(Package.id).all()
+                      .options(joinedload(Package.last_build))\
+                      .order_by(Package.id).all()
+    generate_page('frontpage.html', 'index.html', packages=packages,
+                  since=since, until=until)
+
+def generate_details(session):
+    packages = session.query(Package).all()
     priorities = scheduler.get_priority_queries(session)
     priorities = [(name, dict(priority)) for name, priority in priorities.items()]
     # FIXME remember this in DB
@@ -59,10 +75,9 @@ def generate_report(session, template, since, until):
             diff_path = os.path.join(logdir, arch, 'root_diff.log')
             if os.path.exists(diff_path):
                 root_diffs[build_id][arch] = os.path.join(relative_logdir, str(build_id), arch, 'root_diff.log')
-    return template.render(packages=packages, since=since, until=until, models=models,
-                           root_diffs=root_diffs, log_dir=relative_logdir,
-                           priorities=priorities,
-                           koji_weburl=util.config['koji_config']['weburl'])
+
+    for package in packages:
+        generate_page('package-detail.html', package.name, package=package)
 
 def generate_overview(session):
     template = jinja_env.get_template('package-overview.html')
@@ -73,23 +88,12 @@ def generate_overview(session):
 
 def main():
     session = Session()
-    if len(sys.argv) > 1:
-        template_name = sys.argv[1]
-    else:
-        template_name = util.config['reports']['default_template']
     while True:
         since = datetime.min
         until = datetime.now()
-        outdir = util.config['directories']['reports']
-        report_path = os.path.join(outdir, 'index.html')
-        overview_path = os.path.join(outdir, 'overview.html')
-        report = generate_report(session, template_name, since, until)
-        with open(report_path, 'w') as report_file:
-            report_file.write(report)
-        overview = generate_overview(session)
-        with open(overview_path, 'w') as overview_file:
-            overview_file.write(overview)
-        time.sleep(1)
+        generate_frontpage(session, since, until)
+        generate_details(session)
+        time.sleep(2)
 
 if __name__ == '__main__':
     main()
