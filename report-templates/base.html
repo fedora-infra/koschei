@@ -1,0 +1,47 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<title>{% block title %}Koschei{% endblock %}</title>
+<!--<link rel="shortcut icon" href="http://koji.fedoraproject.org/koji-static/images/koji.ico"/>-->
+<link rel="stylesheet" type="text/css" media="screen" title="Koji Style"
+href="http://koji.fedoraproject.org/koji-static/koji.css"/>
+</head>
+<body id="summary">
+<div id="wrap">
+    <div id="innerwrap">
+        <div id="header">
+            <img src="http://koji.fedoraproject.org/koji-static/images/koji.png" alt="Koji Logo" id="kojiLogo"/>
+        </div>
+
+        <div id="mainNav">
+            <h4 class="hide">Main Site Links:</h4>
+            <ul>
+                <li id="summaryTab"><a href="index">Summary</a></li>
+                <li id="packagesTab"><a href="packages">Packages</a></li>
+                <li id="buildsTab"><a href="https://github.com/msimacek/koschei">Source code</a></li>
+            </ul>
+        </div>
+
+        <span id="loginInfo">
+            {% block statusline %}
+            {% endblock %}
+        </span>
+
+        <div id="content">
+            {% block content %}
+            {% endblock %}
+        </div>
+        <p id="footer">
+        Copyright &copy; 2014 Red Hat
+        <a href="http://fedorahosted.org/koji/">
+            <img src="http://koji.fedoraproject.org/koji-static/images/powered-by-koji.png"
+            alt="Powered By Koji" id="PoweredByKojiLogo"/>
+        </a>
+        </p>
+    </div>
+</div>
+</body>
+</html>
