@@ -242,7 +242,7 @@ def max_relationship(cls, group_by, filt=None):
     max_expr = select([func.max(cls.id).label('m'), group_by])\
                      .group_by(group_by)
     if filt:
-        max_expr = max_expr.filter(filt)
+        max_expr = max_expr.where(filt)
     max_expr = max_expr.alias()
     joined = select([cls]).select_from(join(cls, max_expr,
                                             cls.id == max_expr.c.m)).alias()
