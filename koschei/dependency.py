@@ -53,6 +53,7 @@ def set_unresolved(db_session, package, problems):
         db_session.add(change)
     result = ResolutionResult(package_id=package.id, resolved=False)
     db_session.add(result)
+    db_session.flush()
     for problem in problems:
         entry = ResolutionProblem(resolution_id=result.id, problem=problem)
         db_session.add(entry)
