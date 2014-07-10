@@ -24,6 +24,8 @@ from sqlalchemy.ext.declarative import declarative_base, AbstractConcreteBase, \
 from sqlalchemy.orm import sessionmaker, relationship, mapper
 from sqlalchemy.engine.url import URL
 from datetime import datetime
+# Python 2 only
+from itertools import izip_longest
 
 from .util import config
 
@@ -157,6 +159,12 @@ class BuildrootDiff(Base):
     arch = Column(String)
     added = Column(String)
     removed = Column(String)
+
+    @property
+    def zipped_diff(self):
+        added = self.added.split(',')
+        removed = self.removed.split(',')
+        return izip_longest(added, removed)
 
 class Change(AbstractConcreteBase, Base):
     __abstract__ = True

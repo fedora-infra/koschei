@@ -17,13 +17,23 @@
     {% for arch, diff in build.buildroot_diff_per_arch %}
     <tr>
         <th>Buildroot differences for {{ arch }}</th>
-        <td>
-            {% for added in diff.added.split(',') %}
-            +{{ added }}<br/>
-            {% endfor %}
-            {% for removed in diff.removed.split(',') %}
-            -{{ removed }}<br/>
-            {% endfor %}
+        <td style="width: 80%">
+            <table class="nested">
+                {% for added, removed in diff.zipped_diff %}
+                <tr>
+                    <td>
+                        {% if added %}
+                        +{{ added }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if removed %}
+                        -{{ removed }}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
         </td>
     </tr>
     {% endfor %}
