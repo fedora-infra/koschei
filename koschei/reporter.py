@@ -23,6 +23,7 @@ import time
 from datetime import datetime
 from collections import defaultdict
 from jinja2 import Environment, FileSystemLoader
+from sqlalchemy import desc
 from sqlalchemy.orm import joinedload
 
 from . import util, scheduler
@@ -60,7 +61,10 @@ def generate_frontpage(session, since, until):
                   since=since, until=until)
 
 def generate_details(session):
-    packages = session.query(Package).all()
+    packages = session.query(Package)\
+                      .join(Build)\
+                      .options(joinedload(Package.all_builds))\
+                      .order_by(desc(Build.id)).all()
     priorities = scheduler.get_priority_queries(session)
     priorities = [(name, dict(priority)) for name, priority in priorities.items()]
     # FIXME remember this in DB
