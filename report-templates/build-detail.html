@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="pageHeader">{{ build.package.name }} - {{ build.task_id }}</div>
+<table>
+    <tr>
+      <th>Status</th>
+      <td class="{{ build.koji_ui_state }}">{{ build.state_string }}</td>
+    </tr>
+    <tr>
+      <th>Koji task ID</th>
+      <td>{{ build.task_id }}</td>
+    </tr>
+</table>
+{% endblock %}

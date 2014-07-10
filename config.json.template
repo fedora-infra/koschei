@@ -36,9 +36,6 @@
     "alembic": {
         "alembic_ini": "@DATADIR@/alembic.ini"
     },
-    "reports": {
-        "default_template": "base-report.html"
-    },
     "repos": [
         "http://koji.fedoraproject.org/repos/f22-build/latest/x86_64",
         "http://koji.fedoraproject.org/repos/f22-build/latest/i386"
