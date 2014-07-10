@@ -83,9 +83,13 @@ def main():
     db_session = Session()
     koji_session = util.create_koji_session()
     print("submitter started")
+    poll = 0
     while True:
         submit_builds(db_session, koji_session)
-        poll_tasks(db_session, koji_session)
+        poll += 1
+        if poll > 0:
+            poll_tasks(db_session, koji_session)
+            poll = -1200
         db_session.expire_all()
         time.sleep(3)
 
