@@ -60,6 +60,7 @@ def main():
     print("scheduler started")
     while True:
         schedule_builds(db_session)
+        db_session.expire_all()
         time.sleep(3)
 
 if __name__ == '__main__':

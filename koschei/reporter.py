@@ -102,6 +102,7 @@ def main():
         until = datetime.now()
         generate_frontpage(session, since, until)
         generate_details(session)
+        session.expire_all()
         time.sleep(2)
 
 if __name__ == '__main__':

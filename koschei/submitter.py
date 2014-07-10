@@ -86,6 +86,7 @@ def main():
     while True:
         submit_builds(db_session, koji_session)
         poll_tasks(db_session, koji_session)
+        db_session.expire_all()
         time.sleep(3)
 
 if __name__ == '__main__':
