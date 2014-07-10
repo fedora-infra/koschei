@@ -28,15 +28,15 @@ log = logging.getLogger('koschei-watcher')
 
 topic_name = util.config['fedmsg']['topic']
 tag = util.config['fedmsg']['tag']
-instance = util.config['fedmsg']['tag']
+instance = util.config['fedmsg']['instance']
 
 def get_topic(name):
     return '{}.{}'.format(topic_name, name)
 
 def consume(topic, content):
-    log.info('consuming ' + topic)
     if not content.get('instance') == instance:
         return
+    log.info('consuming ' + topic)
     if topic == get_topic('task.state.change'):
         update_build_state(content)
     elif topic == get_topic('repo.done'):
