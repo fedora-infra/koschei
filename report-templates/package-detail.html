@@ -1,6 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="pageHeader">{{ package.name }}</div>
+{% if package.state_string == 'unresolved' %}
+<table class="nested-data-list">
+    <tr class="list-header">
+        <th>Dependency problems</th>
+    </tr>
+    {% for problem in package.resolution_result.problems %}
+    <tr>
+        <td>{{ problem.problem }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
 <table class="nested data-list">
     <tr class="list-header">
         <th>State</th>

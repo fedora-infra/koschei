@@ -83,6 +83,13 @@ class Package(Base):
             filters.append(Build.started < until)
         return self.builds.filter(*filters).order_by(Build.started)
 
+    @property
+    def state_string(self):
+        if self.state == self.OK:
+            return self.last_build.state_string
+        elif self.state == self.UNRESOLVED:
+            return 'unresolved'
+
     def __repr__(self):
         return '{0.id} (name={0.name})'.format(self)
 
@@ -249,6 +256,7 @@ class ResolutionResult(Base):
     id = Column(Integer, primary_key=True)
     package_id = Column(ForeignKey('package.id'))
     resolved = Column(Boolean, nullable=False)
+    problems = relationship('ResolutionProblem')
 
 class ResolutionProblem(Base):
     __tablename__ = 'resolution_result_element'
@@ -307,5 +315,6 @@ Package.last_build = max_relationship(Build, Build.package_id,
 Package.last_successful_build = max_relationship(Build, Build.package_id,
                                                  filt=Build.state == Build.COMPLETE)
 Package.all_builds = relationship(Build, order_by=Build.id.desc())
+Package.resolution_result = max_relationship(ResolutionResult, ResolutionResult.package_id)
 Build.buildroot_diff = relationship(BuildrootDiff,
             primaryjoin=(BuildrootDiff.curr_build_id == Build.id))
