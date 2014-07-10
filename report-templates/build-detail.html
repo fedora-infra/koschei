@@ -7,8 +7,25 @@
       <td class="{{ build.koji_ui_state }}">{{ build.state_string }}</td>
     </tr>
     <tr>
-      <th>Koji task ID</th>
-      <td>{{ build.task_id }}</td>
+      <th>Koji task</th>
+      <td>
+          <a href="{{ koji_weburl }}/taskinfo?taskID={{ build.task_id }}">
+              {{ build.task_id }}
+          </a>
+      </td>
     </tr>
+    {% for arch, diff in build.buildroot_diff_per_arch %}
+    <tr>
+        <th>Buildroot differences for {{ arch }}</th>
+        <td>
+            {% for added in diff.added.split(',') %}
+            +{{ added }}<br/>
+            {% endfor %}
+            {% for removed in diff.removed.split(',') %}
+            -{{ removed }}<br/>
+            {% endfor %}
+        </td>
+    </tr>
+    {% endfor %}
 </table>
 {% endblock %}

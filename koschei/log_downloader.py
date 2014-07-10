@@ -21,7 +21,7 @@ import os
 from collections import defaultdict
 
 from koschei import util
-from koschei.models import Build, Session
+from koschei.models import Build, Session, BuildrootDiff
 
 log_output_dir = util.config['directories']['build_logs']
 
@@ -87,12 +87,13 @@ def make_log_diff(db_session, build):
                     pkgs[arch][i] = installed
         for arch, installed in pkgs.items():
             if installed[0] is not None and installed[1] is not None:
-                diff_path = os.path.join(logdir, arch, 'root_diff.log')
-                diff = ['+ {}'.format(pkg) for pkg in installed[0].difference(installed[1])]
-                diff += ['- {}'.format(pkg) for pkg in installed[1].difference(installed[0])]
-                diff.sort(key=lambda x: x[2:])
-                with open(diff_path, 'w') as diff_file:
-                    diff_file.write('\n'.join(diff))
+                added = sorted(installed[0].difference(installed[1]))
+                removed = sorted(installed[1].difference(installed[0]))
+                diff_obj = BuildrootDiff(prev_build_id=prev.id, curr_build_id=build.id,
+                                         arch=arch, added=','.join(added),
+                                         removed=','.join(removed))
+                db_session.add(diff_obj)
+                db_session.commit()
 
 def main():
     import time

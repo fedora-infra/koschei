@@ -142,8 +142,21 @@ class Build(Base):
                 break
         return triggers
 
+    @property
+    def buildroot_diff_per_arch(self):
+        return [(diff.arch, diff) for diff in self.buildroot_diff]
+
     def __repr__(self):
         return '{0.id} (name={0.package.name}, state={0.state_string})'.format(self)
+
+class BuildrootDiff(Base):
+    __tablename__ = 'buildroot_diff'
+    id = Column(Integer, primary_key=True)
+    prev_build_id = Column(ForeignKey(Build.id))
+    curr_build_id = Column(ForeignKey(Build.id))
+    arch = Column(String)
+    added = Column(String)
+    removed = Column(String)
 
 class Change(AbstractConcreteBase, Base):
     __abstract__ = True
@@ -261,3 +274,5 @@ Package.last_build = max_relationship(Build, Build.package_id,
 Package.last_successful_build = max_relationship(Build, Build.package_id,
                                                  filt=Build.state == Build.COMPLETE)
 Package.all_builds = relationship(Build, order_by=Build.id.desc())
+Build.buildroot_diff = relationship(BuildrootDiff,
+            primaryjoin=(BuildrootDiff.curr_build_id == Build.id))
