@@ -23,7 +23,7 @@ from sqlalchemy import except_, or_, intersect
 from sqlalchemy.sql.expression import func
 
 from koschei.models import Package, Dependency, DependencyChange, Repo, \
-                           PackageStateChange
+                           PackageStateChange, ResolutionResult, ResolutionProblem
 from koschei import util
 
 log = logging.getLogger('dependency')
@@ -33,37 +33,50 @@ def get_srpm_pkg(sack, name):
                                          latest_per_arch=True)[0]
     return hawk_pkg
 
+def set_resolved(db_session, package):
+    if package.state == Package.UNRESOLVED:
+        change = PackageStateChange(package_id=package.id,
+                                    prev_state=package.state,
+                                    curr_state=Package.OK)
+        package.state = Package.OK
+        db_session.add(change)
+    result = ResolutionResult(package_id=package.id, resolved=True)
+    db_session.add(result)
+    db_session.flush()
+
+def set_unresolved(db_session, package, problems):
+    if package.state == Package.OK:
+        change = PackageStateChange(package_id=package.id,
+                                    prev_state=package.state,
+                                    curr_state=Package.UNRESOLVED)
+        package.state = Package.UNRESOLVED
+        db_session.add(change)
+    result = ResolutionResult(package_id=package.id, resolved=False)
+    db_session.add(result)
+    for problem in problems:
+        entry = ResolutionProblem(resolution_id=result.id, problem=problem)
+        db_session.add(entry)
+    db_session.flush()
+
 def resolve_dependencies(db_session, sack, repo, package):
     hawk_pkg = get_srpm_pkg(sack, package.name)
     goal = hawkey.Goal(sack)
     goal.install(hawk_pkg)
-    goal.run()
-    try:
+    if goal.run():
+        set_resolved(db_session, package)
         installs = goal.list_installs()
-
-        if package.state == Package.UNRESOLVED:
-            change = PackageStateChange(package_id=package.id,
-                                        prev_state=package.state,
-                                        curr_state=Package.OK)
-            package.state = Package.OK
-            db_session.add(change)
-            db_session.flush()
-    except hawkey.RuntimeException:
-        package.state = Package.UNRESOLVED
+        for install in installs:
+            if install.arch != 'src':
+                dep = Dependency(repo_id=repo.id, package_id=package.id,
+                                 name=install.name, evr=install.evr, arch=install.arch)
+                db_session.add(dep)
+                db_session.flush()
+        return True
+    else:
+        set_unresolved(db_session, package, goal.problems)
         return False
-    for install in installs:
-        if install.arch != 'src':
-            dep = Dependency(repo_id=repo.id, package_id=package.id,
-                             name=install.name, evr=install.evr, arch=install.arch)
-            db_session.add(dep)
-            db_session.flush()
-    return True
 
 def get_dependency_differences(db_session):
-    def get_deps_from_repo(repo):
-        return db_session.query(Dependency.package_id, Dependency.name,
-                                Dependency.evr)\
-                         .filter(Dependency.repo_id == repo)
     def difference_query(*repos):
         resolved = intersect(*(db_session.query(Dependency.package_id)\
                                .filter(Dependency.repo_id == r) for r in repos))
