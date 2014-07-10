@@ -86,6 +86,19 @@ class Package(Base):
     def __repr__(self):
         return '{0.id} (name={0.name})'.format(self)
 
+class PackageGroupRelation(Base):
+    __tablename__ = 'package_group_relation'
+    group_id = Column(Integer, ForeignKey('package_group.id'), primary_key=True)
+    package_id = Column(Integer, ForeignKey('package.id'), primary_key=True)
+
+class PackageGroup(Base):
+    __tablename__ = 'package_group'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+
+    packages = relationship(Package, secondary=PackageGroupRelation.__table__)
+
 class Build(Base):
     __tablename__ = 'build'
 
