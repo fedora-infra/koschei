@@ -7,6 +7,7 @@
         <th>Task ID</th>
         <th>Started</th>
         <th>Triggered by</th>
+        <th>Build details</th>
     </tr>
     {% for build in package.all_builds %}
     <tr class="row-odd">
@@ -25,6 +26,9 @@
             {% for change in build.triggers %}
                 {{ change }}{% if not loop.last %}, {% endif %}
             {% endfor %}
+        </td>
+        <td>
+            <a href="{{ package.name }}/{{ build.id }}.html">details</a>
         </td>
     </tr>
     {% endfor %}

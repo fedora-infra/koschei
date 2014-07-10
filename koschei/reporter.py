@@ -82,7 +82,9 @@ def generate_details(session):
         path = os.path.join('package', package.name) + '.html'
         generate_page('package-detail.html', path, package=package)
         for build in package.all_builds:
-            build_path = os.path.join('build', str(build.id)) + '.html'
+            pkg_dir = os.path.join('package', package.name)
+            util.mkdir_if_absent(os.path.join(outdir, pkg_dir))
+            build_path = os.path.join(pkg_dir, str(build.id)) + '.html'
             generate_page('build-detail.html', build_path, build=build)
 
 def generate_overview(session):
@@ -95,7 +97,6 @@ def generate_overview(session):
 def main():
     session = Session()
     util.mkdir_if_absent(os.path.join(outdir, 'package'))
-    util.mkdir_if_absent(os.path.join(outdir, 'build'))
     while True:
         since = datetime.min
         until = datetime.now()
