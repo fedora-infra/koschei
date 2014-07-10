@@ -19,10 +19,10 @@ Package rebuilds {% if since.year > 2000 %}since {{ since|date }}{% endif %} unt
 
     <tr class="row-odd">
       <td><a href="package/{{ package.name }}.html">{{ package.name }}</a></td>
-      <td class="{{ build.koji_ui_state }}">
+      <td class="{{ last_build.koji_ui_state }}">
           <img class="stateimg"
-               src="http://koji.fedoraproject.org/koji-static/images/{{ build.koji_ui_state }}.png"
-               title="{{ build.state_string }}" alt="{{ build.state_string }}"/>
+               src="http://koji.fedoraproject.org/koji-static/images/{{ last_build.koji_ui_state }}.png"
+               title="{{ last_build.state_string }}" alt="{{ last_build.state_string }}"/>
       </td>
       <td><a href="{{ koji_weburl }}/taskinfo?taskID={{ last_build.task_id }}">{{ last_build.task_id }}</a></td>
       <td>{% if last_build.logs_downloaded %}<a href="{{ log_dir }}/{{ last_build.id }}/">build logs</a>{% endif %}</td>

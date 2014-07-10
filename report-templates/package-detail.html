@@ -1,5 +1,27 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="pageHeader">{{ package.name }} - Detail</div>
-TBD
+<table class="nested data-list">
+    <tr class="list-header">
+        <th>Build task</th>
+        <th>Started</th>
+        <th>Comment</th>
+    </tr>
+    {% for build in package.all_builds %}
+    <tr class="row-odd">
+        <td>
+            <a href="{{ koji_weburl }}/taskinfo?taskID={{ build.task_id }}">
+                {{ build.task_id }}
+            </a>
+        </td>
+        <td>
+            {{ build.started | date }}
+        </td>
+        <td class="{{ build.koji_ui_state }}">
+            <img class="stateimg" src="/koji-static/images/{{ build.koji_ui_state }}.png"
+            title="{{ build.state_string }}" alt="{{ build.state_string }}"/>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
 {% endblock %}
