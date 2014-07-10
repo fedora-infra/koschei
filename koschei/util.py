@@ -101,12 +101,13 @@ def mkdir_if_absent(path):
 
 def get_srpm(url, srpm_name):
     url += '/' + srpm_name
+    mkdir_if_absent(srpm_dir)
     srpm_path = os.path.join(srpm_dir, os.path.basename(srpm_name))
     if not os.path.isfile(srpm_path):
-        tmp_filename = '/tmp/.srpm.tmp'
+        tmp_filename = os.path.join(srpm_dir, '.srpm.tmp')
         log.info('downloading {}'.format(srpm_name))
-        subprocess.check_output('curl {}|tee {}|rpm -qp -R /dev/fd/0'
-                                .format(url, tmp_filename), shell=True)
+        cmd = 'curl {}|tee {}|rpm -qp -R /dev/fd/0'.format(url, tmp_filename)
+        subprocess.call(['bash', '-e', '-c', cmd])
         os.rename(tmp_filename, srpm_path)
     return srpm_path
 
