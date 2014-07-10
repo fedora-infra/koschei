@@ -57,7 +57,6 @@ class Package(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
     builds = relationship('Build', backref='package', lazy='dynamic')
-    all_builds = relationship('Build')
     static_priority = Column(Integer, nullable=False, default=0)
     manual_priority = Column(Integer, nullable=False, default=0)
     added = Column(DateTime, nullable=False, default=datetime.now)
@@ -255,7 +254,10 @@ def max_relationship(cls, group_by, filt=None):
                                             cls.id == max_expr.c.m)).alias()
     return relationship(mapper(cls, joined, non_primary=True), uselist=False)
 
+# Relationships
+
 Package.last_build = max_relationship(Build, Build.package_id,
                                       filt=Build.state != Build.SCHEDULED)
 Package.last_successful_build = max_relationship(Build, Build.package_id,
                                                  filt=Build.state == Build.COMPLETE)
+Package.all_builds = relationship(Build, order_by=Build.id.desc())

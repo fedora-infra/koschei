@@ -62,9 +62,7 @@ def generate_frontpage(session, since, until):
 
 def generate_details(session):
     packages = session.query(Package)\
-                      .join(Build)\
-                      .options(joinedload(Package.all_builds))\
-                      .order_by(desc(Build.id)).all()
+                      .options(joinedload(Package.all_builds)).all()
     priorities = scheduler.get_priority_queries(session)
     priorities = [(name, dict(priority)) for name, priority in priorities.items()]
     # FIXME remember this in DB
