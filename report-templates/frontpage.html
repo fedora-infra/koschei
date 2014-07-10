@@ -10,7 +10,6 @@ Package rebuilds {% if since.year > 2000 %}since {{ since|date }}{% endif %} unt
       <th>Name <img src="http://koji.fedoraproject.org/koji-static/images/gray-triangle-down.gif" class="sort" alt="descending sort"/></th>
       <th>State</th>
       <th>Task ID</th>
-      <th>Build Logs</th>
       <th>Started</th>
     </tr>
 
@@ -24,7 +23,6 @@ Package rebuilds {% if since.year > 2000 %}since {{ since|date }}{% endif %} unt
       </td>
       {% if package.state_string != 'unresolved' %}
       <td><a href="{{ koji_weburl }}/taskinfo?taskID={{ last_build.task_id }}">{{ last_build.task_id }}</a></td>
-      <td>{% if last_build.logs_downloaded %}<a href="{{ log_dir }}/{{ last_build.id }}/">build logs</a>{% endif %}</td>
       <td>{{ last_build.started | date }}</td>
       {% else %}
       <td colspan="2"/>
