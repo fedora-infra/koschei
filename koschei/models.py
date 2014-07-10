@@ -244,6 +244,18 @@ class Repo(Base):
     id = Column(Integer, primary_key=True)
     generated = Column(DateTime, nullable=False, default=datetime.now)
 
+class ResolutionResult(Base):
+    __tablename__ = 'resolution_result'
+    id = Column(Integer, primary_key=True)
+    package_id = Column(ForeignKey('package.id'))
+    resolved = Column(Boolean, nullable=False)
+
+class ResolutionProblem(Base):
+    __tablename__ = 'resolution_result_element'
+    id = Column(Integer, primary_key=True)
+    resolution_id = Column(Integer, ForeignKey(ResolutionResult.id))
+    problem = Column(String, nullable=False)
+
 class Dependency(Base):
     __tablename__ = 'dependency'
     id = Column(Integer, primary_key=True)
