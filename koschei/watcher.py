@@ -34,6 +34,7 @@ def get_topic(name):
     return '{}.{}'.format(topic_name, name)
 
 def consume(topic, content):
+    log.info('consuming ' + topic)
     if not content.get('instance') == instance:
         return
     if topic == get_topic('task.state.change'):
