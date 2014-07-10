@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block tab_id %}packages{% endblock %}
+{% block content %}
+<div class="pageHeader">Groups</div>
+<table class="nested data-list">
+    <tr class="list-header">
+        <th>Group</th>
+        <th>Number of packages</th>
+    </tr>
+    {% for group in groups %}
+    <tr class="row-odd">
+        <td>
+            <a href="group/{{ group.id }}.html">{{ group.name }}</a>
+        </td>
+        <td>
+            {{ group.packages | length }}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}
+

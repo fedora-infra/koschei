@@ -9,7 +9,7 @@
 <link rel="stylesheet" type="text/css" media="screen" title="Koji Style"
 href="http://koji.fedoraproject.org/koji-static/koji.css"/>
 </head>
-<body id="summary">
+<body id="{% block tab_id %}summary{% endblock %}">
 <div id="wrap">
     <div id="innerwrap">
         <div id="header">
@@ -19,8 +19,8 @@ href="http://koji.fedoraproject.org/koji-static/koji.css"/>
         <div id="mainNav">
             <h4 class="hide">Main Site Links:</h4>
             <ul>
-                <li id="summaryTab"><a href="index">Summary</a></li>
-                <li id="packagesTab"><a href="packages">Packages</a></li>
+                <li id="summaryTab"><a href="index.html">Summary</a></li>
+                <li id="packagesTab"><a href="groups.html">Groups</a></li>
                 <li id="buildsTab"><a href="https://github.com/msimacek/koschei">Source code</a></li>
             </ul>
         </div>

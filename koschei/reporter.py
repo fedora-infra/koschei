@@ -27,7 +27,7 @@ from sqlalchemy import desc
 from sqlalchemy.orm import joinedload
 
 from . import util, scheduler
-from .models import Session, Package, Build
+from .models import Session, Package, Build, PackageGroup
 
 jinja_env = Environment(loader=FileSystemLoader(util.config['directories']['report_templates']))
 
@@ -59,6 +59,14 @@ def generate_frontpage(session, since, until):
                       .order_by(Package.id).all()
     generate_page('frontpage.html', 'index.html', packages=packages,
                   since=since, until=until)
+
+def generate_groups(session):
+    util.mkdir_if_absent(os.path.join(outdir, 'group'))
+    groups = session.query(PackageGroup).order_by(PackageGroup.name).all()
+    generate_page('groups.html', groups=groups)
+    for group in groups:
+        path = os.path.join('group', str(group.id)) + '.html'
+        generate_page('group-detail.html', path, group=group)
 
 def generate_details(session):
     packages = session.query(Package)\
@@ -101,6 +109,7 @@ def main():
         since = datetime.min
         until = datetime.now()
         generate_frontpage(session, since, until)
+        generate_groups(session)
         generate_details(session)
         session.expire_all()
         time.sleep(2)
