@@ -95,13 +95,6 @@ def generate_details(session):
             build_path = os.path.join(pkg_dir, str(build.id)) + '.html'
             generate_page('build-detail.html', build_path, build=build)
 
-def generate_overview(session):
-    template = jinja_env.get_template('package-overview.html')
-    packages = session.query(Package)\
-                      .options(joinedload(Package.last_build)).all()
-    return template.render(packages=packages,
-                           koji_weburl=util.config['koji_config']['weburl'])
-
 def main():
     session = Session()
     util.mkdir_if_absent(os.path.join(outdir, 'package'))
