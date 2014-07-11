@@ -16,7 +16,8 @@
         "source_tag": "f22",
         "target_tag": "f22",
         "max_builds": 20,
-        "server_opts": {
+        "build_opts": {
+            "scratch": true,
             "arch_override": "x86_64"
         },
         "load_threshold": 0.3,

@@ -47,7 +47,7 @@ koji_config = config['koji_config']
 server = koji_config['server']
 cert = os.path.expanduser(koji_config['cert'])
 ca_cert = os.path.expanduser(koji_config['ca'])
-server_opts = koji_config.get('server_opts', {})
+build_opts = koji_config.get('build_opts', {})
 pathinfo = koji.PathInfo(topdir=koji_config['topurl'])
 rel_pathinfo = koji.PathInfo(topdir='..')
 scm_url = koji_config['scm_url']
@@ -61,16 +61,12 @@ srpm_dir = config['directories']['srpms']
 repodata_dir = config['directories']['repodata']
 
 def create_koji_session(anonymous=False):
-    koji_session = koji.ClientSession(server, server_opts)
+    koji_session = koji.ClientSession(server)
     if not anonymous:
         koji_session.ssl_login(cert, ca_cert, ca_cert)
     return koji_session
 
 def koji_scratch_build(session, name):
-    build_opts = {
-            'scratch': True,
-        }
-
     source = '{}/{}?#{}'.format(scm_url, name, git_reference)
 
     info = session.listTagged(source_tag, latest=True, package=name)
