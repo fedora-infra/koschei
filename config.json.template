@@ -13,6 +13,7 @@
         "cert": "~/.fedora.cert",
         "ca": "~/.fedora-server-ca.cert",
         "server_ca": "~/.fedora-server-ca.cert",
+        "source_tag": "f22",
         "target_tag": "f22",
         "max_builds": 20,
         "server_opts": {

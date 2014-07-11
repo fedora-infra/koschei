@@ -49,7 +49,9 @@ cert = os.path.expanduser(koji_config['cert'])
 ca_cert = os.path.expanduser(koji_config['ca'])
 server_opts = koji_config.get('server_opts', {})
 pathinfo = koji.PathInfo(topdir=koji_config['topurl'])
+rel_pathinfo = koji.PathInfo(topdir='..')
 scm_url = koji_config['scm_url']
+source_tag = koji_config['source_tag']
 target_tag = koji_config['target_tag']
 
 git_reference = config.get('git_reference', 'origin/master')
@@ -68,7 +70,15 @@ def koji_scratch_build(session, name):
     build_opts = {
             'scratch': True,
         }
+
     source = '{}/{}?#{}'.format(scm_url, name, git_reference)
+
+    info = session.listTagged(source_tag, latest=True, package=name)
+    if len(info) > 0:
+        srpms = session.listRPMs(buildID=info[0]['build_id'], arches='src')
+        if len(srpms) > 0:
+            source = rel_pathinfo.build(info[0]) + '/' + rel_pathinfo.rpm(srpms[0])
+
     log.info('Intiating koji build for {name}:\n\tsource={source}\
               \n\ttarget={target}\n\tbuild_opts={build_opts}'.format(name=name,
                   target=target_tag, source=source, build_opts=build_opts))
