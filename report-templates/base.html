@@ -19,9 +19,11 @@ href="http://koji.fedoraproject.org/koji-static/koji.css"/>
         <div id="mainNav">
             <h4 class="hide">Main Site Links:</h4>
             <ul>
-                <li id="summaryTab"><a href="index.html">Summary</a></li>
-                <li id="packagesTab"><a href="groups.html">Groups</a></li>
+                {% block navigation %}
+                <li id="summaryTab"><a href="../index.html">Summary</a></li>
+                <li id="packagesTab"><a href="../groups.html">Groups</a></li>
                 <li id="buildsTab"><a href="https://github.com/msimacek/koschei">Source code</a></li>
+                {% endblock %}
             </ul>
         </div>
 
