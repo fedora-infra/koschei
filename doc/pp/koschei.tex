@@ -1,0 +1,391 @@
+\RHpresentationHead{
+  \documentclass[pdftex,unicode,xcolor=table]{beamer}
+}
+
+\mode<presentation> {
+  \usetheme{Fedora}
+  \setbeamertemplate{navigation symbols}{}
+  \setbeamercovered{transparent=5}
+}
+
+\usepackage{beamerredhat}
+\usepackage{etex}
+\usepackage[utf8]{inputenc}
+\usepackage{setspace,amsfonts,calc,upquote,hyperref,floatflt,graphicx}
+\usepackage[table]{xcolor}
+\usepackage{colortbl}
+\usepackage[absolute,overlay]{textpos}\textposquirk
+
+
+\title{Koschei}
+\subtitle{Continuous integration in Koji}
+\author{Author: \\
+  \em{Mikolaj Izdebski}
+  \tt{mizdebsk@redhat.com}}
+\date{Date: \em{11th July 2014}}
+
+
+\fancySectionOpens
+%\fancyPartOpens
+
+\begin{document}
+
+\begin{rhbg}
+  \begin{frame}
+    \titlepage
+    \begin{abstract}
+Koschei is a service for scratch-rebuilding RPM packages in Fedora Koji
+instance when their build-dependencies change or after some time elapse.
+
+This presentation is about the problem Koschei is trying to solve, design decisions,
+system structure, current status, plans for the nearest future and further
+evolution possibilities.
+    \end{abstract}
+  \end{frame}
+\end{rhbg}
+
+
+\section{The problem}
+\Large
+\begin{frame}
+  \frametitle{Where is the problem?}
+  \begin{itemize}
+  \item Buildability as a measure of software quality
+    \begin{itemize}
+      \item tests ran during build
+    \end{itemize}
+  \item Constantly growing number of packages
+    \begin{itemize}
+      \item software collections
+    \end{itemize}
+  \item People are unaware of FTBFS
+    \begin{itemize}
+      \item bugs are not seen until mass rebuild
+      \item or worse, until there is critical bug to fix
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Time elapse}
+  Time elapse increases cost of fixing bugs
+  \begin{itemize}
+  \item People forget what they were working on
+  \item More bugs appear
+    \begin{itemize}
+      \item Harder to discover where the real problem is
+      \item Fixing means working in recursive, parallel mode
+      \begin{itemize}
+        \item to fix A you need to fix B first
+        \item Koji repo regeneration
+        \item ARM builders
+      \end{itemize}
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+\section{The solution}
+\Large
+\begin{frame}
+  \frametitle{What can be done}
+  Continuous integration
+  \begin{itemize}
+    \item continuous monitoring of package buildability
+    \item helping maintainers to reason on FTBFS
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{How?}
+  \begin{itemize}
+  \item Rebuild all packages from time to time
+    \begin{itemize}
+      \item weekly?
+      \item too long delay
+    \end{itemize}
+  \item Rebuild important packages more often
+    \begin{itemize}
+      \item nightly?
+      \item only a few packages can be rebuilt
+    \end{itemize}
+  \item Rebuild all rev deps after each update
+    \begin{itemize}
+      \item way too much resources needed
+    \end{itemize}
+  \item Middle ground solution?
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Where?}
+  \begin{itemize}
+  \item Options considered
+    \begin{itemize}
+      \item maintainers' machines
+      \item Fedora Koji
+      \item Copr
+      \item cloud
+    \end{itemize}
+  \item The choice -- Fedora Koji
+    \begin{itemize}
+      \item existing, stable platform
+      \item spare resources
+      \item maintained by Fedora infrastructure
+      \item no networking problems
+      \item canonical build environment
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+\Large
+\begin{frame}
+  \frametitle{Koschei}
+  A tool for continuously scratch-rebuilding
+  packages using Fedora build infrastructure -- Koji
+\end{frame}
+
+\large
+\begin{frame}[fragile]
+  \frametitle{Etymology}
+\textbf{KO}ji \textbf{C}continuous \textbf{I}ntegration
+\vspace{30 pt}
+\begin{block}{Where did the name came from}
+\begin{verbatim}
+$ grep -xi ko*c*i /usr/share/dict/words
+Koschei
+\end{verbatim}
+\end{block}
+\end{frame}
+
+\section{Design}
+\begin{frame}
+  \frametitle{The concept}
+  \begin{itemize}
+  \item A set of packages
+  \item Reporting buildability
+  \item Resource monitoring
+  \item Rebuild prioritizing
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Priority}
+  \begin{itemize}
+    \item Time since last rebuild
+    \item Dependency changes
+    \begin{itemize}
+      \item consider distances
+    \end{itemize}
+    \item Previous state
+    \begin{itemize}
+      \item prioritize failures
+    \end{itemize}
+    \item Importance
+    \begin{itemize}
+      \item aka static priority
+    \end{itemize}
+    \item Manual trigger
+    \begin{itemize}
+      \item aka dynamic priority
+    \end{itemize}
+    \item Plugins
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Database}
+  \begin{itemize}
+    \item Packages
+    \begin{itemize}
+      \item name
+      \item priorities
+    \end{itemize}
+    \item Builds
+    \begin{itemize}
+      \item status
+      \item Koji task ID
+      \item time stamps
+      \item logs
+    \end{itemize}
+    \item Repositories
+    \begin{itemize}
+      \item dependencies
+    \end{itemize}
+    \item Package groups
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Architecture overview}
+  \begin{center}
+    \includegraphics[scale=0.25]{koschei.eps}
+  \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Watcher}
+  \begin{itemize}
+    \item Await Koji build state changes
+    \begin{itemize}
+      \item fedmsg
+      \item periodic polling as fallback
+    \end{itemize}
+    \item Await new Koji repos
+    \begin{itemize}
+      \item not builds, not tags
+      \item fedmsg
+      \item no polling
+    \end{itemize}
+    \item Analyze dependency changes
+    \begin{itemize}
+      \item hawkey
+      \item download SRPM headers
+    \end{itemize}
+    \item Update priorities
+    \begin{itemize}
+      \item increase priority on dependency change
+      \item reset priority on build success
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Scheduler}
+  \begin{itemize}
+    \item Schedule builds for execution
+    \begin{itemize}
+      \item priority scheduling
+    \end{itemize}
+    \item Conditions
+    \begin{itemize}
+      \item package is not disabled
+      \item build dependencies are resolvable
+      \item priority is high enough
+      \item Koji load is low enough
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Submitter}
+  \begin{itemize}
+    \item Request scratch builds on Koji
+    \begin{itemize}
+      \item from existing SRPM
+      \item very low priority
+      \item needs Koji certificate
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Reporter}
+  \begin{itemize}
+    \item Generate HTML reports
+    \item Per group, not per maintainer
+    \item Failures separately
+    \item Dependency problems
+    \item Detailed package history
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{RPC}
+  \begin{itemize}
+    \item Add and disable packages
+    \item Adjust package importance
+    \item Force build
+  \end{itemize}
+\end{frame}
+
+\section{Implementation}
+\begin{frame}
+  \frametitle{Implementation}
+  \begin{itemize}
+    \item Python
+    \item PostgreSQL
+    \item SQLAlchemy, Alembic
+    \item Modularity
+    \item systemd
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Current state}
+  \begin{itemize}
+    \item code at Github
+    \item packaged as RPM
+    \begin{itemize}
+      \item not yet in Fedora
+    \end{itemize}
+    \item running at Openstack
+  \end{itemize}
+\end{frame}
+
+\small
+\begin{frame}[fragile]
+\begin{block}{Creating SRPM metadata}
+\begin{verbatim}
+$ curl http://koji.fp.o/.../eclipse-4.4.0-5.fc21.src.rpm \
+| tee package.src.rpm \
+| rpm -qp /dev/stdin >/dev/null
+curl: (23) Failed writing body (2332 != 4096)
+
+$ ls -go
+total 20
+-rw-rw-r--. 1 20480 Jul 11 09:10 package.src.rpm
+
+$ createrepo .
+Spawning worker 0 with 1 pkgs
+Workers Finished
+Saving Primary metadata
+Saving file lists metadata
+Saving other metadata
+Generating sqlite DBs
+Sqlite DBs complete
+\end{verbatim}
+\end{block}
+\end{frame}
+
+\section{Future}
+\begin{frame}
+  \frametitle{TODO}
+  \begin{itemize}
+    \item Move to Fedora
+    \begin{itemize}
+      \item within of scope of Env and Stacks WG
+      \item already announced
+      \item cloud machine
+      \item Koji certificate
+      \item extra Koji hardware?
+      \item storage?
+    \end{itemize}
+    \item Improve reporting
+    \begin{itemize}
+      \item feedback and new ideas needed!
+    \end{itemize}
+    \item Generate SRPM metadata
+    \begin{itemize}
+      \item compose is too late
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Links}
+  \begin{itemize}
+    \item Code repository
+    \begin{itemize}
+      \item \url{https://github.com/msimacek/koschei}
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+\mode<presentation> {
+  \Rhbg{\frame{\theend}}
+}
+
+\end{document}
