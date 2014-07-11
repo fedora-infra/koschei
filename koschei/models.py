@@ -143,13 +143,6 @@ class Build(Base):
                       'FAILED': FAILED}
 
     @property
-    def koji_ui_state(self):
-        state = self.state_string
-        if state == 'running':
-            return 'building'
-        return state
-
-    @property
     def state_string(self):
         return self.REV_STATE_MAP[self.state]
 
