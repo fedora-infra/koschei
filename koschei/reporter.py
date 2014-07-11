@@ -47,6 +47,7 @@ def generate_page(template_name, filename=None, **kwargs):
     filename = filename or template_name
     template = jinja_env.get_template(template_name)
     context = dict(base_vars)
+    context['toplink'] = os.path.relpath('.', os.path.dirname(filename))
     context.update(kwargs)
     content = template.render(**context)
     path = os.path.join(outdir, filename)

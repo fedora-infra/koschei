@@ -2,11 +2,6 @@
 {% block statusline %}
 Package rebuilds {% if since.year > 2000 %}since {{ since|date }}{% endif %} until {{ until|date }}
 {% endblock %}
-{% block navigation %}
-<li id="summaryTab"><a href="index.html">Summary</a></li>
-<li id="packagesTab"><a href="groups.html">Groups</a></li>
-<li id="buildsTab"><a href="https://github.com/msimacek/koschei">Source code</a></li>
-{% endblock %}
 {% block content %}
   <div class="pageHeader">Package summary</div>
   <div class="dataHeader noPaginate" id="buildlist">All packages</div>
