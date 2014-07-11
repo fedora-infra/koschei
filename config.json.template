@@ -18,7 +18,8 @@
         "server_opts": {
             "arch_override": "x86_64"
         },
-        "load_threshold": 0.3
+        "load_threshold": 0.3,
+        "task_priority": 30
     },
     "fedmsg": {
         "topic": "org.fedoraproject.prod.buildsys",

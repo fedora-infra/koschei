@@ -72,7 +72,8 @@ def koji_scratch_build(session, name):
     log.info('Intiating koji build for {name}:\n\tsource={source}\
               \n\ttarget={target}\n\tbuild_opts={build_opts}'.format(name=name,
                   target=target_tag, source=source, build_opts=build_opts))
-    task_id = session.build(source, target_tag, build_opts)
+    task_id = session.build(source, target_tag, build_opts,
+                            priority=koji_config['task_priority'])
     log.info('Submitted koji scratch build for {name}, task_id={task_id}'\
               .format(name=name, task_id=task_id))
     return task_id
