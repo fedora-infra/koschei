@@ -17,8 +17,7 @@
         "target_tag": "f22",
         "max_builds": 20,
         "build_opts": {
-            "scratch": true,
-            "arch_override": "x86_64"
+            "scratch": true
         },
         "load_threshold": 0.3,
         "task_priority": 30
