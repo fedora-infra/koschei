@@ -47,7 +47,7 @@ koji_config = config['koji_config']
 server = koji_config['server']
 cert = os.path.expanduser(koji_config['cert'])
 ca_cert = os.path.expanduser(koji_config['ca'])
-build_opts = koji_config.get('build_opts', {})
+base_build_opts = koji_config.get('build_opts', {})
 pathinfo = koji.PathInfo(topdir=koji_config['topurl'])
 rel_pathinfo = koji.PathInfo(topdir='..')
 scm_url = koji_config['scm_url']
@@ -67,6 +67,8 @@ def create_koji_session(anonymous=False):
     return koji_session
 
 def koji_scratch_build(session, name):
+    build_opts = base_build_opts.copy()
+    build_opts['scratch'] = True
     source = '{}/{}?#{}'.format(scm_url, name, git_reference)
 
     info = session.listTagged(source_tag, latest=True, package=name)
