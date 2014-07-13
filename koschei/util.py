@@ -108,6 +108,10 @@ def mkdir_if_absent(path):
     except OSError:
         pass
 
+def reset_sigpipe():
+    import signal
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
 def get_srpm(url, srpm_name):
     url += '/' + srpm_name
     mkdir_if_absent(srpm_dir)
@@ -116,7 +120,7 @@ def get_srpm(url, srpm_name):
         tmp_filename = os.path.join(srpm_dir, '.srpm.tmp')
         log.info('downloading {}'.format(srpm_name))
         cmd = 'curl {}|tee {}|rpm -qp -R /dev/fd/0'.format(url, tmp_filename)
-        subprocess.call(['bash', '-e', '-c', cmd])
+        subprocess.call(['bash', '-e', '-c', cmd], preexec_fn=reset_sigpipe)
         os.rename(tmp_filename, srpm_path)
     return srpm_path
 
