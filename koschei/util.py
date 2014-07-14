@@ -128,7 +128,7 @@ def create_srpm_repo(package_names):
     koji_session = create_koji_session()
     koji_session.multicall = True
     for package_name in package_names:
-        koji_session.listTagged('f21', latest=True, package=package_name)
+        koji_session.listTagged(source_tag, latest=True, package=package_name)
     urls = []
     infos = koji_session.multiCall()
     koji_session.multicall = True
