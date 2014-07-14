@@ -231,13 +231,13 @@ class PackageStateChange(Change):
 #            db_session.commit()
 
     def get_trigger(self):
-        if self.curr_state != Package.OK:
+        if self.curr_state == Package.OK:
             return {
                 Package.UNRESOLVED: 'Package dependencies became satisfied',
                 Package.IGNORED: 'Package became watched again',
                 Package.RETIRED: 'Package unretired',
                 None: 'Package added'
-            }[self.prev_state]
+            }.get(self.prev_state)
 
 class Repo(Base):
     __tablename__ = 'repo'
