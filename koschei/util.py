@@ -189,3 +189,11 @@ def create_sack(package_names):
     sack.load_yum_repo(srpm_repo, load_filelists=True)
     load_repos(sack)
     return sack
+
+def get_koji_packages(package_names):
+    session = create_koji_session(anonymous=True)
+    session.multicall = True
+    for name in package_names:
+        session.getPackage(name)
+    pkgs = session.multiCall()
+    return [pkg for [pkg] in pkgs]

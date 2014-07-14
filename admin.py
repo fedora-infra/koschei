@@ -82,6 +82,10 @@ class AddPkg(Command):
                                  .filter(Package.name.in_(names))]
         if existing:
             fail("Packages already exist: " + ','.join(existing))
+        koji_pkgs = util.get_koji_packages(names)
+        nonexistent = [name for name, pkg in zip(names, koji_pkgs) if not pkg]
+        if nonexistent:
+            fail("Packages don't exist: " + ','.join(nonexistent))
         pkgs = []
         for name in names:
             pkg = Package(name=name)
