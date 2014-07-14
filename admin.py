@@ -4,7 +4,8 @@ from __future__ import print_function
 import sys
 import argparse
 
-from koschei.models import engine, Session, Base, Package
+from koschei.models import engine, Session, Base, Package, PackageGroup, \
+                           PackageGroupRelation
 from koschei import util
 
 def fail(msg):
@@ -64,20 +65,36 @@ class AddPkg(Command):
         parser.add_argument('names', nargs='+')
         parser.add_argument('-s', '--static-priority', type=int)
         parser.add_argument('-m', '--manual-priority', type=int)
-        parser.add_argument('-g', '--group', nargs='*')
+        parser.add_argument('-g', '--group')
 
-    #TODO group
-    def execute(self, db_session, names, group, static, manual):
+    def execute(self, db_session, names, group, static_priority, manual_priority):
+        existing = [x for [x] in db_session.query(Package.name)\
+                                 .filter(Package.name.in_(names))]
+        if existing:
+            fail("Packages already exist: " + ','.join(existing))
+        if group:
+            group_obj = db_session.query(PackageGroup).filter_by(name=group).first()
+            if not group_obj:
+                group_obj = PackageGroup(name=group)
+                db_session.add(group_obj)
+                db_session.flush()
+        pkgs = []
         for name in names:
-            pkg = db_session.query(Package).filter_by(name=name).first()
-            if not pkg:
-                pkg = Package(name=name)
-                db_session.add(pkg)
-            pkg.static_priority = static or 0
-            pkg.manual_priority = manual or 30
+            pkg = Package(name=name)
+            pkg.static_priority = static_priority or 0
+            pkg.manual_priority = manual_priority or 30
+            db_session.add(pkg)
+            pkgs.append(pkg)
+        db_session.flush()
+        if group:
+            for pkg in pkgs:
+                rel = PackageGroupRelation(group_id=group_obj.id, package_id=pkg.id)
+                db_session.add(rel)
+        db_session.commit()
+
 
 class SetPrio(Command):
-    """ Sets pacakges priority to given value """
+    """ Sets packages priority to given value """
 
     def setup_parser(self, parser):
         parser.add_argument('name')
