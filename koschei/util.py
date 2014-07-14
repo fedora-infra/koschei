@@ -60,6 +60,9 @@ git_reference = config.get('git_reference', 'origin/master')
 srpm_dir = config['directories']['srpms']
 repodata_dir = config['directories']['repodata']
 
+class PackageBlocked(Exception):
+    pass
+
 def create_koji_session(anonymous=False):
     koji_session = koji.ClientSession(server)
     if not anonymous:
@@ -76,6 +79,11 @@ def koji_scratch_build(session, name):
         srpms = session.listRPMs(buildID=info[0]['build_id'], arches='src')
         if len(srpms) > 0:
             source = rel_pathinfo.build(info[0]) + '/' + rel_pathinfo.rpm(srpms[0])
+    else:
+        pkg_id = session.getPackageID(name)
+        [pkg_info] = session.listPackages(pkgID=pkg_id)
+        if pkg_info['blocked']:
+            raise PackageBlocked()
 
     log.info('Intiating koji build for {name}:\n\tsource={source}\
               \n\ttarget={target}\n\tbuild_opts={build_opts}'.format(name=name,

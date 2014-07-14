@@ -25,7 +25,7 @@ from datetime import datetime
 from sqlalchemy.sql.expression import func
 
 from . import util
-from .models import Build, Session, PackageStateChange, DependencyChange
+from .models import Build, Session, Package, PackageStateChange, DependencyChange
 
 log = logging.getLogger('submitter')
 
@@ -43,7 +43,14 @@ def submit_builds(db_session, koji_session):
     for build in scheduled_builds:
         name = build.package.name
         build.state = Build.RUNNING
-        build.task_id = util.koji_scratch_build(koji_session, name)
+        try:
+            build.task_id = util.koji_scratch_build(koji_session, name)
+        except util.PackageBlocked:
+            package = build.package
+            package.state = Package.RETIRED
+            db_session.delete(build)
+            db_session.commit()
+            continue
         build.started = datetime.now()
         build.package.manual_priority = 0
         for cls in PackageStateChange, DependencyChange:
