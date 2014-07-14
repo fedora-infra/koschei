@@ -133,8 +133,9 @@ def create_srpm_repo(package_names):
     infos = koji_session.multiCall()
     koji_session.multicall = True
     for [info] in infos:
-        koji_session.listRPMs(buildID=info[0]['build_id'], arches='src')
-        urls.append(pathinfo.build(info[0]))
+        if info:
+            koji_session.listRPMs(buildID=info[0]['build_id'], arches='src')
+            urls.append(pathinfo.build(info[0]))
     srpms = koji_session.multiCall()
     for [srpm], url in zip(srpms, urls):
         srpm_name = pathinfo.rpm(srpm[0])
