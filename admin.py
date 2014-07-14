@@ -58,6 +58,16 @@ class CreateDb(Command):
         alembic_cfg = Config(util.config['alembic']['alembic_ini'])
         command.stamp(alembic_cfg, "head")
 
+def add_group(db_session, group, pkgs):
+    group_obj = db_session.query(PackageGroup).filter_by(name=group).first()
+    if not group_obj:
+        group_obj = PackageGroup(name=group)
+        db_session.add(group_obj)
+        db_session.flush()
+    for pkg in pkgs:
+        rel = PackageGroupRelation(group_id=group_obj.id, package_id=pkg.id)
+        db_session.add(rel)
+
 class AddPkg(Command):
     """ Adds given packages to database """
 
@@ -72,12 +82,6 @@ class AddPkg(Command):
                                  .filter(Package.name.in_(names))]
         if existing:
             fail("Packages already exist: " + ','.join(existing))
-        if group:
-            group_obj = db_session.query(PackageGroup).filter_by(name=group).first()
-            if not group_obj:
-                group_obj = PackageGroup(name=group)
-                db_session.add(group_obj)
-                db_session.flush()
         pkgs = []
         for name in names:
             pkg = Package(name=name)
@@ -87,14 +91,24 @@ class AddPkg(Command):
             pkgs.append(pkg)
         db_session.flush()
         if group:
-            for pkg in pkgs:
-                rel = PackageGroupRelation(group_id=group_obj.id, package_id=pkg.id)
-                db_session.add(rel)
-        db_session.commit()
+            add_group(db_session, group, pkgs)
 
+class AddGrp(Command):
+
+    def setup_parser(self, parser):
+        parser.add_argument('group')
+        parser.add_argument('pkgs', nargs='*')
+
+    def execute(self, db_session, group, pkgs):
+        pkg_objs = db_session.query(Package)\
+                             .filter(Package.name.in_(pkgs)).all()
+        names = {pkg.name for pkg in pkg_objs}
+        if names != set(pkgs):
+            fail("Packages not found: " + ','.join(set(pkgs).difference(names)))
+        add_group(db_session, group, pkg_objs)
 
 class SetPrio(Command):
-    """ Sets packages priority to given value """
+    """ Sets package's priority to given value """
 
     def setup_parser(self, parser):
         parser.add_argument('name')
