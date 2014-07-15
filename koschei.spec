@@ -83,7 +83,7 @@ cp -p %{name}.wsgi %{buildroot}%{_datadir}/%{name}/
 %{_datadir}/%{name}
 %{python_sitelib}/*
 %dir %{_sysconfdir}/%{name}
-%config(noreplace) %{_sysconfdir}/%{name}/config.cfg
+%config %{_sysconfdir}/%{name}/config.cfg
 %{_unitdir}/*
 
 %changelog
