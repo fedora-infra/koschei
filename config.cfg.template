@@ -41,6 +41,8 @@ config = {
         "reports": "@OUTPUTDIR@/html",
         "report_templates": "@DATADIR@/report-templates"
     },
+    "flask": {
+    },
     "alembic": {
         "alembic_ini": "@DATADIR@/alembic.ini"
     },
