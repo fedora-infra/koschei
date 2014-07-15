@@ -30,8 +30,9 @@ log = logging.getLogger('dependency')
 
 def get_srpm_pkg(sack, name):
     hawk_pkg = hawkey.Query(sack).filter(name=name, arch='src',
-                                         latest_per_arch=True)[0]
-    return hawk_pkg
+                                         latest_per_arch=True)
+    if hawk_pkg:
+        return hawk_pkg[0]
 
 def set_resolved(db_session, package):
     if package.state == Package.UNRESOLVED:
@@ -61,6 +62,8 @@ def set_unresolved(db_session, package, problems):
 
 def resolve_dependencies(db_session, sack, repo, package):
     hawk_pkg = get_srpm_pkg(sack, package.name)
+    if not hawk_pkg:
+        return
     goal = hawkey.Goal(sack)
     goal.install(hawk_pkg)
     if goal.run():
@@ -72,10 +75,8 @@ def resolve_dependencies(db_session, sack, repo, package):
                                  name=install.name, evr=install.evr, arch=install.arch)
                 db_session.add(dep)
                 db_session.flush()
-        return True
     else:
         set_unresolved(db_session, package, goal.problems)
-        return False
 
 def get_dependency_differences(db_session):
     def difference_query(*repos):
@@ -114,13 +115,15 @@ def process_dependency_differences(db_session):
     db_session.flush()
 
 def compute_dependency_weight(db_session, sack, package):
+    hawk_pkg = get_srpm_pkg(sack, package.name)
+    if not hawk_pkg:
+        return
     changes = DependencyChange.query(db_session)\
                         .filter(DependencyChange.package_id == package.id,
                                 DependencyChange.curr_dep_evr != None).all()
     if not changes:
         return
     changes_map = {change.dep_name: change for change in changes}
-    hawk_pkg = get_srpm_pkg(sack, package.name)
     visited = set()
     level = 1
     reldeps = hawk_pkg.requires
