@@ -6,12 +6,15 @@ Package rebuilds {% if since.year > 2000 %}since {{ since|date }}{% endif %} unt
   <div class="pageHeader">Package summary</div>
   <div class="dataHeader noPaginate" id="buildlist">All packages</div>
   <table class="data-list">
+    <thead>
     <tr class="list-header">
-      <th>Name <img src="{{ toplink }}/static/images/gray-triangle-down.gif" class="sort" alt="descending sort"/></th>
+      <th>Name</th>
       <th>State</th>
       <th>Task ID</th>
       <th>Started</th>
     </tr>
+    </thead>
+    <tbody>
 
     {% for package in packages %}
     {% set last_build = package.last_build %}
@@ -29,5 +32,6 @@ Package rebuilds {% if since.year > 2000 %}since {{ since|date }}{% endif %} unt
 
     {% endfor %}
 
+  </tbody>
   </table>
 {% endblock %}

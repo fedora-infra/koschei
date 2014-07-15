@@ -2,13 +2,16 @@
 {% block tab_id %}packages{% endblock %}
 {% block content %}
 <div class="pageHeader">{{ group.name }}</div>
-<table class="nested data-list">
+  <table class="nested data-list">
+  <thead>
     <tr class="list-header">
-      <th>Name <img src="{{ toplink }}/static/images/gray-triangle-down.gif" class="sort" alt="descending sort"/></th>
+      <th>Name</th>
       <th>State</th>
       <th>Task ID</th>
       <th>Started</th>
     </tr>
+  </thead>
+  <tbody>
     {% for package in group.packages %}
     {% set last_build = package.last_build %}
 
@@ -23,7 +26,8 @@
       {% endif %}
     </tr>
     {% endfor %}
-</table>
+  </tbody>
+  </table>
 {% endblock %}
 
 

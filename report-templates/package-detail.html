@@ -14,6 +14,7 @@
 </table>
 {% endif %}
 <table class="nested data-list">
+  <thead>
     <tr class="list-header">
         <th>State</th>
         <th>Koji task</th>
@@ -21,6 +22,8 @@
         <th>Triggered by</th>
         <th>Build details</th>
     </tr>
+  </thead>
+  <tbody>
     {% for build in package.all_builds %}
     <tr class="row-odd">
         <td><img src="{{ toplink }}/static/images/{{ build.state_string }}.png"/></td>
@@ -42,5 +45,6 @@
         </td>
     </tr>
     {% endfor %}
+  </tbody>
 </table>
 {% endblock %}

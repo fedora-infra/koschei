@@ -1,11 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="pageHeader">{{ build.package.name }} - {{ build.task_id }}</div>
-<table>
+  <table class="data-list">
     <tr>
       <th>Status</th>
       <td><img src="{{ toplink }}/static/images/{{ build.state_string }}.png"/></td>
     </tr>
+  </table>
+
+  <table class="data-list">
+    <thead>
     <tr>
       <th>Koji task</th>
       <td>
@@ -14,6 +18,8 @@
           </a>
       </td>
     </tr>
+    </thead>
+    <tbody>
     {% for arch, diff in build.buildroot_diff_per_arch %}
     <tr>
         <th>Buildroot differences for {{ arch }}</th>
@@ -37,5 +43,6 @@
         </td>
     </tr>
     {% endfor %}
-</table>
+    </tbody>
+  </table>
 {% endblock %}

@@ -372,6 +372,21 @@ table.data-list td {
     padding-left:3px;
 }
 
+table.data-list thead tr .header {
+    background-repeat: no-repeat;
+    background-position: center left;
+    cursor: pointer;
+    padding: 0 0 0 14px;
+}
+
+table.data-list thead tr .headerSortUp {
+    background-image: url(images/gray-triangle-up.gif);
+}
+
+table.data-list thead tr .headerSortDown {
+    background-image: url(images/gray-triangle-down.gif);
+}
+
 tr.list-header {
     background-color: #fff;
 }

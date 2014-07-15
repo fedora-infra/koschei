@@ -3,10 +3,13 @@
 {% block content %}
 <div class="pageHeader">Groups</div>
 <table class="nested data-list">
+    <thead>
     <tr class="list-header">
         <th>Group</th>
         <th>Number of packages</th>
     </tr>
+    </thead>
+    <tbody>
     {% for group in groups %}
     <tr class="row-odd">
         <td>
@@ -17,6 +20,7 @@
         </td>
     </tr>
     {% endfor %}
+    </tbody>
 </table>
 {% endblock %}
 
