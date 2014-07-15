@@ -18,6 +18,8 @@ Requires:       curl
 Requires:       python-jinja2
 Requires:       python-hawkey
 Requires:       python-alembic
+Requires:       python-flask
+Requires:       mod_wsgi
 
 %description
 TBD.
