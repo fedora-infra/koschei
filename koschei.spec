@@ -27,7 +27,7 @@ TBD.
 
 sed 's|@CACHEDIR@|%{_localstatedir}/cache/%{name}|g
      s|@OUTPUTDIR@|%{_localstatedir}/www|g
-     s|@DATADIR@|%{_datadir}/%{name}|g' config.json.template > config.json
+     s|@DATADIR@|%{_datadir}/%{name}|g' config.cfg.template > config.cfg
 
 %build
 %{__python} setup.py build
@@ -36,7 +36,7 @@ sed 's|@CACHEDIR@|%{_localstatedir}/cache/%{name}|g
 %{__python} setup.py install --skip-build --root %{buildroot}
 
 mkdir -p %{buildroot}%{_sysconfdir}/%{name}
-cp -p config.json %{buildroot}%{_sysconfdir}/%{name}/
+cp -p config.cfg %{buildroot}%{_sysconfdir}/%{name}/
 
 install -dm 755 %{buildroot}%{_unitdir}
 for unit in systemd/*; do
@@ -80,7 +80,7 @@ cp -pr alembic/ alembic.ini %{buildroot}%{_datadir}/%{name}/
 %{_datadir}/%{name}
 %{python_sitelib}/*
 %dir %{_sysconfdir}/%{name}
-%config(noreplace) %{_sysconfdir}/%{name}/config.json
+%config(noreplace) %{_sysconfdir}/%{name}/config.cfg
 %{_unitdir}/*
 
 %changelog

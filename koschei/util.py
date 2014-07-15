@@ -22,7 +22,6 @@ import os
 import sys
 import koji
 import logging
-import json
 import urllib2 as urllib
 import subprocess
 import hawkey
@@ -34,12 +33,14 @@ root_logger = logging.getLogger()
 root_logger.setLevel(logging.DEBUG)
 root_logger.addHandler(logging.StreamHandler(sys.stderr))
 
-if os.path.exists('config.json'):
-    config_path = 'config.json'
+config = None
+if os.path.exists('config.cfg'):
+    config_path = 'config.cfg'
 else:
-    config_path = '/etc/koschei/config.json'
+    config_path = '/etc/koschei/config.cfg'
 with open(config_path) as config_file:
-    config = json.load(config_file)
+    code = compile(config_file.read(), config_path, 'exec')
+    exec(code)
 
 log = logging.getLogger('koschei')
 

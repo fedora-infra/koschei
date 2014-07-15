@@ -1,4 +1,4 @@
-{
+config = {
     "database_config": {
         "drivername": "postgres",
         "username": "koschei",
