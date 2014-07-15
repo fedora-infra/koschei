@@ -13,7 +13,7 @@
     {% set last_build = package.last_build %}
 
     <tr class="row-odd">
-      <td><a href="package/{{ package.name }}.html">{{ package.name }}</a></td>
+      <td><a href="{{ toplink }}/package/{{ package.name }}.html">{{ package.name }}</a></td>
       <td class="{{ last_build.koji_ui_state }}">
           {{ package.state_string }}
       </td>
