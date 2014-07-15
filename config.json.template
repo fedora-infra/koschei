@@ -24,6 +24,7 @@
     "priorities": {
         "build_threshold": 168,
         "package_update": 50,
+        "time_coefficient": 75,
         "package_state_change": 167
     },
     "fedmsg": {
