@@ -4,7 +4,7 @@
 <div class="pageHeader">{{ group.name }}</div>
 <table class="nested data-list">
     <tr class="list-header">
-      <th>Name <img src="http://koji.fedoraproject.org/koji-static/images/gray-triangle-down.gif" class="sort" alt="descending sort"/></th>
+      <th>Name <img src="{{ toplink }}/static/images/gray-triangle-down.gif" class="sort" alt="descending sort"/></th>
       <th>State</th>
       <th>Task ID</th>
       <th>Started</th>
@@ -14,9 +14,7 @@
 
     <tr class="row-odd">
       <td><a href="{{ toplink }}/package/{{ package.name }}.html">{{ package.name }}</a></td>
-      <td class="{{ last_build.koji_ui_state }}">
-          {{ package.state_string }}
-      </td>
+      <td><img src="{{ toplink }}/static/images/{{ package.state_string }}.png"/></td>
       {% if package.state_string != 'unresolved' %}
       <td><a href="{{ koji_weburl }}/taskinfo?taskID={{ last_build.task_id }}">{{ last_build.task_id }}</a></td>
       <td>{{ last_build.started | date }}</td>

@@ -7,7 +7,7 @@ Package rebuilds {% if since.year > 2000 %}since {{ since|date }}{% endif %} unt
   <div class="dataHeader noPaginate" id="buildlist">All packages</div>
   <table class="data-list">
     <tr class="list-header">
-      <th>Name <img src="static/images/gray-triangle-down.gif" class="sort" alt="descending sort"/></th>
+      <th>Name <img src="{{ toplink }}/static/images/gray-triangle-down.gif" class="sort" alt="descending sort"/></th>
       <th>State</th>
       <th>Task ID</th>
       <th>Started</th>
@@ -17,8 +17,8 @@ Package rebuilds {% if since.year > 2000 %}since {{ since|date }}{% endif %} unt
     {% set last_build = package.last_build %}
 
     <tr class="row-odd">
-      <td><a href="package/{{ package.name }}.html">{{ package.name }}</a></td>
-      <td><img src="static/images/{{ package.state_string }}.png"/></td>
+      <td><a href="{{ toplink }}/package/{{ package.name }}.html">{{ package.name }}</a></td>
+      <td><img src="{{ toplink }}/static/images/{{ package.state_string }}.png"/></td>
       {% if package.state_string != 'unresolved' %}
       <td><a href="{{ koji_weburl }}/taskinfo?taskID={{ last_build.task_id }}">{{ last_build.task_id }}</a></td>
       <td>{{ last_build.started | date }}</td>
