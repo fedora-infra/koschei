@@ -26,7 +26,7 @@
   <tbody>
     {% for build in package.all_builds %}
     <tr class="row-odd">
-        <td><img src="{{ toplink }}/static/images/{{ build.state_string }}.png"/></td>
+        <td><img src="{{ toplink }}/static/images/{{ build.state_string }}.png" alt="{{ package.state_string }}"/></td>
         <td>
             <a href="{{ koji_weburl }}/taskinfo?taskID={{ build.task_id }}">
                 {{ build.task_id }}

@@ -17,7 +17,7 @@
 
     <tr class="row-odd">
       <td><a href="{{ toplink }}/package/{{ package.name }}.html">{{ package.name }}</a></td>
-      <td><img src="{{ toplink }}/static/images/{{ package.state_string }}.png"/></td>
+      <td><img src="{{ toplink }}/static/images/{{ package.state_string }}.png" alt="{{ package.state_string }}"/></td>
       {% if package.state_string != 'unresolved' %}
       <td><a href="{{ koji_weburl }}/taskinfo?taskID={{ last_build.task_id }}">{{ last_build.task_id }}</a></td>
       <td>{{ last_build.started | date }}</td>
