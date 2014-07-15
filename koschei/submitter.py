@@ -73,9 +73,14 @@ def poll_tasks(db_session, koji_session):
 def update_koji_state(db_session, build, state):
     if state in Build.KOJI_STATE_MAP:
         state = Build.KOJI_STATE_MAP[state]
-        log.info('Setting build {build} state to {state}'\
-                  .format(build=build, state=Build.REV_STATE_MAP[state]))
-        build.state = state
+        if state == Build.CANCELED:
+            db_session.delete(build)
+            log.info('Deleting build {build} because it was canceled'\
+                     .format(build))
+        else:
+            log.info('Setting build {build} state to {state}'\
+                      .format(build=build, state=Build.REV_STATE_MAP[state]))
+            build.state = state
         db_session.commit()
         #TODO finish time
 
