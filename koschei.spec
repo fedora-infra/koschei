@@ -52,6 +52,7 @@ mkdir -p %{buildroot}%{_datadir}/%{name}
 cp -pr report-templates %{buildroot}%{_datadir}/%{name}/
 
 cp -pr alembic/ alembic.ini %{buildroot}%{_datadir}/%{name}/
+cp -p %{name}.wsgi %{buildroot}%{_datadir}/%{name}/
 
 %post
 %systemd_post koschei-scheduler.service
