@@ -54,6 +54,8 @@ mkdir -p %{buildroot}%{_datadir}/%{name}
 cp -pr report-templates %{buildroot}%{_datadir}/%{name}/
 
 cp -pr alembic/ alembic.ini %{buildroot}%{_datadir}/%{name}/
+cp -pr theme %{buildroot}%{_datadir}/%{name}/
+ln -s theme/fedora/static %{buildroot}%{_datadir}/%{name}/static
 cp -p %{name}.wsgi %{buildroot}%{_datadir}/%{name}/
 
 %post
