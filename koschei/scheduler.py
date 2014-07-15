@@ -21,10 +21,10 @@ from .models import Session, Package, Build, DependencyChange, PackageStateChang
 from . import util
 from sqlalchemy import func, union_all
 
+import math
 import logging
 
 priority_threshold = util.config['priorities']['build_threshold']
-time_coefficient = util.config['priorities']['time_coefficient']
 
 log = logging.getLogger('scheduler')
 
@@ -33,7 +33,11 @@ def get_priority_queries(db_session):
     priorities = {name: db_session.query(Package.id, col) for name, col in prio}
     changes = ('dependency', DependencyChange), ('state', PackageStateChange)
     priorities.update({name: cls.get_priority_query(db_session) for name, cls in changes})
-    time_expr = func.log(Build.time_since_last_build_expr()) * time_coefficient
+    t0 = util.config['priorities']['t0']
+    t1 = util.config['priorities']['t1']
+    a = priority_threshold / (math.log10(t1) - math.log10(t0))
+    b = -a * math.log10(t0)
+    time_expr = func.greatest(a * func.log(Build.time_since_last_build_expr()) + b, -30)
     priorities['time'] = db_session.query(Build.package_id, time_expr)\
                                    .group_by(Build.package_id)
     return priorities
