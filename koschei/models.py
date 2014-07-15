@@ -205,6 +205,8 @@ class Change(AbstractConcreteBase, Base):
     def get_trigger(self):
         raise NotImplementedError()
 
+state_change_weight = config['priorities']['package_state_change']
+
 class PackageStateChange(Change):
     __tablename__ = 'package_change'
     prev_state = Column(Integer)
@@ -213,7 +215,8 @@ class PackageStateChange(Change):
     @classmethod
     def get_priority_query(cls, db_session):
         # workaroud for literal_column not working, cls.curr_state is 0
-        return cls.query(db_session, cls.package_id, cls.curr_state + 30)\
+        return cls.query(db_session, cls.package_id,
+                         cls.curr_state + state_change_weight)\
                   .filter(cls.prev_state != Package.OK)\
                   .filter(cls.curr_state == Package.OK)
 

@@ -28,6 +28,8 @@ from koschei import util
 
 log = logging.getLogger('dependency')
 
+update_weight = util.config['priorities']['package_update']
+
 def get_srpm_pkg(sack, name):
     hawk_pkg = hawkey.Query(sack).filter(name=name, arch='src',
                                          latest_per_arch=True)
@@ -127,14 +129,14 @@ def compute_dependency_weight(db_session, sack, package):
     visited = set()
     level = 1
     reldeps = hawk_pkg.requires
-    while level < 4 and reldeps:
+    while level < 8 and reldeps:
         pkgs_on_level = set(hawkey.Query(sack).filter(provides=reldeps))
         reldeps = {req for pkg in pkgs_on_level if pkg not in visited
                            for req in pkg.requires}
         visited.update(pkgs_on_level)
         for pkg in pkgs_on_level:
             if pkg.name in changes_map and not changes_map[pkg.name].weight:
-                changes_map[pkg.name].weight = 30 // level
+                changes_map[pkg.name].weight = update_weight // level
         level += 1
     db_session.flush()
 

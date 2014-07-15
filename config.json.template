@@ -21,6 +21,11 @@
         "load_threshold": 0.3,
         "task_priority": 30
     },
+    "priorities": {
+        "build_threshold": 168,
+        "package_update": 50,
+        "package_state_change": 167
+    },
     "fedmsg": {
         "topic": "org.fedoraproject.prod.buildsys",
         "tag": "f22-build",

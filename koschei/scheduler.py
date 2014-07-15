@@ -18,11 +18,12 @@
 
 from __future__ import print_function
 from .models import Session, Package, Build, DependencyChange, PackageStateChange
+from . import util
 from sqlalchemy import func, union_all
 
 import logging
 
-priority_threshold = 30
+priority_threshold = util.config['priorities']['build_threshold']
 
 log = logging.getLogger('scheduler')
 
