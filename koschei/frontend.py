@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import Flask
+from flask import Flask, abort
 from sqlalchemy.orm import scoped_session, sessionmaker, joinedload
 
 from .models import engine, Package
@@ -28,6 +28,14 @@ def frontpage():
                          .order_by(Package.id).all()
     return jinja_env.get_template("frontpage.html")\
                     .render(packages=packages, since=since, until=until)
+
+@app.route('/package/<name>.html')
+def package_detail(name):
+    package = db_session.query(Package).filter_by(name=name).first()
+    if not package:
+        abort(404)
+    return jinja_env.get_template("package-detail.html").render(package=package)
+
 
 if __name__ == '__main__':
     app.run()
