@@ -39,7 +39,7 @@ config = {
         "srpms": "@CACHEDIR@/srpms",
         "repodata": "@CACHEDIR@/repodata",
         "reports": "@OUTPUTDIR@/html",
-        "report_templates": "@DATADIR@/report-templates"
+        "templates": "@DATADIR@/templates"
     },
     "flask": {
     },

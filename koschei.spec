@@ -51,7 +51,7 @@ install -pm 755 admin.py %{buildroot}%{_bindir}/koschei-admin
 mkdir -p %{buildroot}%{_localstatedir}/cache/%{name}
 
 mkdir -p %{buildroot}%{_datadir}/%{name}
-cp -pr report-templates %{buildroot}%{_datadir}/%{name}/
+cp -pr templates %{buildroot}%{_datadir}/%{name}/
 
 cp -pr alembic/ alembic.ini %{buildroot}%{_datadir}/%{name}/
 cp -pr theme %{buildroot}%{_datadir}/%{name}/

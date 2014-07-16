@@ -29,7 +29,7 @@ from sqlalchemy.orm import joinedload
 from . import util, scheduler
 from .models import Session, Package, Build, PackageGroup
 
-jinja_env = Environment(loader=FileSystemLoader(util.config['directories']['report_templates']))
+jinja_env = Environment(loader=FileSystemLoader(util.config['directories']['templates']))
 
 log_output_dir = util.config['directories']['build_logs']
 relative_logdir = util.config['directories']['build_logs_relative']
