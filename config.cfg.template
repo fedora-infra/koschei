@@ -1,3 +1,4 @@
+# vim: set filetype=python
 config = {
     "database_config": {
         "drivername": "postgres",
@@ -23,10 +24,10 @@ config = {
     },
     "priorities": {
         "build_threshold": 168,
-        "package_update": 50,
+        "package_update": 20,
         "t0": 6,
         "t1": 7 * 24,
-        "package_state_change": 167
+        "package_state_change": 1
     },
     "fedmsg": {
         "topic": "org.fedoraproject.prod.buildsys",
