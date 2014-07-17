@@ -39,7 +39,8 @@ config = {
         "srpms": "@CACHEDIR@/srpms",
         "repodata": "@CACHEDIR@/repodata",
         "reports": "@OUTPUTDIR@/html",
-        "templates": "@DATADIR@/templates"
+        "templates": "@DATADIR@/templates",
+        "static": "@DATADIR@/static",
     },
     "flask": {
     },
