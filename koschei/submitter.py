@@ -74,9 +74,9 @@ def update_koji_state(db_session, build, state):
     if state in Build.KOJI_STATE_MAP:
         state = Build.KOJI_STATE_MAP[state]
         if state == Build.CANCELED:
-            db_session.delete(build)
-            log.info('Deleting build {build} because it was canceled'\
+            log.info('Deleting build {0} because it was canceled'\
                      .format(build))
+            db_session.delete(build)
         else:
             log.info('Setting build {build} state to {state}'\
                       .format(build=build, state=Build.REV_STATE_MAP[state]))
