@@ -269,16 +269,20 @@ class Dependency(Base):
     evr = Column(String, nullable=False)
     arch = Column(String, nullable=False)
 
+update_weight = config['priorities']['package_update']
+
 class DependencyChange(Change):
     __tablename__ = 'dependency_change'
     dep_name = Column(String, nullable=False)
     prev_dep_evr = Column(String)
     curr_dep_evr = Column(String)
-    weight = Column(Integer)
+    distance = Column(Integer)
 
     @classmethod
     def get_priority_query(cls, db_session):
-        return cls.query(db_session, cls.package_id, cls.weight)
+        return cls.query(db_session, cls.package_id,
+                         update_weight / cls.distance)\
+                  .filter(cls.distance > 0)
 
     def get_trigger(self):
         if self.prev_dep_evr and self.curr_dep_evr:

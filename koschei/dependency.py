@@ -28,8 +28,6 @@ from koschei import util
 
 log = logging.getLogger('dependency')
 
-update_weight = util.config['priorities']['package_update']
-
 def get_srpm_pkg(sack, name):
     hawk_pkg = hawkey.Query(sack).filter(name=name, arch='src',
                                          latest_per_arch=True)
@@ -116,7 +114,7 @@ def process_dependency_differences(db_session):
         db_session.add(change)
     db_session.flush()
 
-def compute_dependency_weight(db_session, sack, package):
+def compute_dependency_distance(db_session, sack, package):
     hawk_pkg = get_srpm_pkg(sack, package.name)
     if not hawk_pkg:
         return
@@ -135,8 +133,8 @@ def compute_dependency_weight(db_session, sack, package):
                            for req in pkg.requires}
         visited.update(pkgs_on_level)
         for pkg in pkgs_on_level:
-            if pkg.name in changes_map and not changes_map[pkg.name].weight:
-                changes_map[pkg.name].weight = update_weight // level
+            if pkg.name in changes_map and not changes_map[pkg.name].distance:
+                changes_map[pkg.name].distance = level
         level += 1
     db_session.flush()
 
@@ -157,6 +155,6 @@ def repo_done(db_session):
     process_dependency_differences(db_session)
     log.info("Computing dependency distances")
     for pkg in packages:
-        compute_dependency_weight(db_session, sack, pkg)
+        compute_dependency_distance(db_session, sack, pkg)
     db_session.commit()
     log.info("New repo done")
