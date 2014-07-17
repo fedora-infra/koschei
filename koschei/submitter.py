@@ -24,7 +24,7 @@ import koji
 from datetime import datetime
 
 from . import util
-from .models import Build, Session, Package, PackageStateChange, DependencyChange
+from .models import Build, Session, Package, DependencyChange
 
 log = logging.getLogger('submitter')
 
@@ -43,8 +43,7 @@ def submit_builds(db_session, koji_session):
             continue
         build.started = datetime.now()
         build.package.manual_priority = 0
-        for cls in PackageStateChange, DependencyChange:
-            cls.build_submitted(db_session, build)
+        DependencyChange.build_submitted(db_session, build)
         db_session.commit()
 
 def poll_tasks(db_session, koji_session):

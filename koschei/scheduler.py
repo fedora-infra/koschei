@@ -17,7 +17,7 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 from __future__ import print_function
-from .models import Session, Package, Build, DependencyChange, PackageStateChange
+from .models import Session, Package, Build, DependencyChange
 from . import util
 from sqlalchemy import func, union_all, or_
 
@@ -32,8 +32,7 @@ log = logging.getLogger('scheduler')
 def get_priority_queries(db_session):
     prio = ('manual', Package.manual_priority), ('static', Package.static_priority)
     priorities = {name: db_session.query(Package.id, col) for name, col in prio}
-    changes = ('dependency', DependencyChange), ('state', PackageStateChange)
-    priorities.update({name: cls.get_priority_query(db_session) for name, cls in changes})
+    priorities['dependency'] = DependencyChange.get_priority_query(db_session)
     t0 = util.config['priorities']['t0']
     t1 = util.config['priorities']['t1']
     a = priority_threshold / (math.log10(t1) - math.log10(t0))

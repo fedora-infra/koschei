@@ -23,7 +23,7 @@ from sqlalchemy import except_, or_, intersect
 from sqlalchemy.sql.expression import func
 
 from koschei.models import Package, Dependency, DependencyChange, Repo, \
-                           PackageStateChange, ResolutionResult, ResolutionProblem
+                           ResolutionResult, ResolutionProblem
 from koschei import util
 
 log = logging.getLogger('dependency')
@@ -35,23 +35,11 @@ def get_srpm_pkg(sack, name):
         return hawk_pkg[0]
 
 def set_resolved(db_session, package):
-    if package.state == Package.UNRESOLVED:
-        change = PackageStateChange(package_id=package.id,
-                                    prev_state=package.state,
-                                    curr_state=Package.OK)
-        package.state = Package.OK
-        db_session.add(change)
     result = ResolutionResult(package_id=package.id, resolved=True)
     db_session.add(result)
     db_session.flush()
 
 def set_unresolved(db_session, package, problems):
-    if package.state == Package.OK:
-        change = PackageStateChange(package_id=package.id,
-                                    prev_state=package.state,
-                                    curr_state=Package.UNRESOLVED)
-        package.state = Package.UNRESOLVED
-        db_session.add(change)
     result = ResolutionResult(package_id=package.id, resolved=False)
     db_session.add(result)
     db_session.flush()

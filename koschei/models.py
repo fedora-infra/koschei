@@ -116,6 +116,7 @@ class Build(Base):
     logs_downloaded = Column(Boolean, default=False, nullable=False)
     started = Column(DateTime)
     finished = Column(DateTime)
+    dependency_changes = relationship('DependencyChange', backref='applied_in')
 
     @staticmethod
     def time_since_last_build_expr():
@@ -148,14 +149,7 @@ class Build(Base):
 
     @property
     def triggers(self):
-        s = Session.object_session(self)
-        triggers = []
-        for cls in PackageStateChange, DependencyChange:
-            changes = s.query(cls).filter_by(applied_in_id=self.id).all()
-            if changes:
-                triggers += [change.get_trigger() for change in changes]
-                break
-        return triggers
+        return [change.get_trigger() for change in self.dependency_changes]
 
     @property
     def buildroot_diff_per_arch(self):
@@ -204,43 +198,6 @@ class Change(AbstractConcreteBase, Base):
 
     def get_trigger(self):
         raise NotImplementedError()
-
-state_change_weight = config['priorities']['package_state_change']
-
-class PackageStateChange(Change):
-    __tablename__ = 'package_change'
-    prev_state = Column(Integer)
-    curr_state = Column(Integer)
-
-    @classmethod
-    def get_priority_query(cls, db_session):
-        # workaroud for literal_column not working, cls.curr_state is 0
-        return cls.query(db_session, cls.package_id,
-                         cls.curr_state + state_change_weight)\
-                  .filter(cls.prev_state != Package.OK)\
-                  .filter(cls.curr_state == Package.OK)
-
-#    @classmethod
-#    def build_submitted(cls, db_session, build):
-#        # squash changes between builds
-#        unapplied_query = cls.query(db_session)
-#        unapplied = unapplied_query.all()
-#        if len(unapplied) > 1:
-#            new_change = cls(package_id=unapplied[0].package_id,
-#                             prev_state=unapplied[0].prev_state,
-#                             curr_state=unapplied[-1].curr_state)
-#            db_session.add(new_change)
-#            unapplied_query.delete()
-#            db_session.commit()
-
-    def get_trigger(self):
-        if self.curr_state == Package.OK:
-            return {
-                Package.UNRESOLVED: 'Package dependencies became satisfied',
-                Package.IGNORED: 'Package became watched again',
-                Package.RETIRED: 'Package unretired',
-                None: 'Package added'
-            }.get(self.prev_state)
 
 class Repo(Base):
     __tablename__ = 'repo'
