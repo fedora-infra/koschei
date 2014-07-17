@@ -207,3 +207,9 @@ def get_koji_packages(package_names):
         session.getPackage(name)
     pkgs = session.multiCall()
     return [pkg for [pkg] in pkgs]
+
+def get_koji_load(koji_session):
+    hosts = koji_session.listHosts(ready=True)
+    capacity = sum(host['capacity'] for host in hosts)
+    load = sum(host['task_load'] for host in hosts)
+    return load / capacity

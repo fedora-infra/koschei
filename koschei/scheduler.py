@@ -19,12 +19,13 @@
 from __future__ import print_function
 from .models import Session, Package, Build, DependencyChange, PackageStateChange
 from . import util
-from sqlalchemy import func, union_all
+from sqlalchemy import func, union_all, or_
 
 import math
 import logging
 
 priority_threshold = util.config['priorities']['build_threshold']
+max_builds = util.config['koji_config']['max_builds']
 
 log = logging.getLogger('scheduler')
 
@@ -42,30 +43,45 @@ def get_priority_queries(db_session):
                                    .group_by(Build.package_id)
     return priorities
 
-def schedule_builds(db_session):
+def schedule_builds(db_session, koji_session):
+    load_threshold = util.config['koji_config'].get('load_threshold')
+    if load_threshold and util.get_koji_load(koji_session) > load_threshold:
+        return
+    incomplete_builds = db_session.query(func.count(Build.id))\
+                                  .filter(or_(Build.state == Build.RUNNING,
+                                              Build.state == Build.SCHEDULED))\
+                                  .scalar()
+    limit = max_builds - incomplete_builds
+    if limit <= 0:
+        return
     queries = get_priority_queries(db_session).values()
-    union_query = union_all(*(q.filter(Package.state == Package.OK).subquery().select()
-                              for q in queries))
-    priorities = db_session.query(Package.id)\
+    union_query = union_all(*(q.subquery().select() for q in queries))
+    # manual priority now contains all priorities from union
+    current_priority = func.sum(Package.manual_priority)
+    candidates = db_session.query(Package.id, current_priority)\
                            .select_entity_from(union_query)\
-                           .having(func.sum(Package.manual_priority)
-                                   >= priority_threshold)\
-                           .group_by(Package.id)
-    for pkg_id in [p.id for p in priorities]:
-        if db_session.query(Build).filter_by(package_id=pkg_id)\
-                               .filter(Build.state.in_(Build.UNFINISHED_STATES))\
-                               .count() == 0:
+                           .having(current_priority >= priority_threshold)\
+                           .group_by(Package.id)\
+                           .order_by(current_priority.desc())\
+                           .limit(limit)
+    for pkg_id, priority in candidates:
+        if (not db_session.query(Build).filter_by(package_id=pkg_id)\
+                                       .filter(Build.state.in_(Build.UNFINISHED_STATES))\
+                                       .first()
+            and db_session.query(Package).get(pkg_id).state == Package.OK):
             build = Build(package_id=pkg_id, state=Build.SCHEDULED)
             db_session.add(build)
             db_session.commit()
-            log.info('Scheduling build {0.id} for {0.package.name}'.format(build))
+            log.info('Scheduling build {0.id} for {0.package.name}, priority {1}'\
+                     .format(build, priority))
 
 def main():
     import time
     db_session = Session()
+    koji_session = util.create_koji_session(anonymous=True)
     print("scheduler started")
     while True:
-        schedule_builds(db_session)
+        schedule_builds(db_session, koji_session)
         db_session.expire_all()
         time.sleep(3)
 
