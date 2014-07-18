@@ -25,8 +25,9 @@ def date_filter(date):
     return date.strftime("%F %T") if date else ''
 
 @app.context_processor
-def inject_dates():
-    return {'since': datetime.min, 'until': datetime.now()}
+def inject_defaults():
+    return {'since': datetime.min, 'until': datetime.now(),
+            'koji_weburl': util.config['koji_config']['weburl']}
 
 @app.route('/')
 @app.route('/index.html')
