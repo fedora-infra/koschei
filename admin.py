@@ -3,6 +3,7 @@ from __future__ import print_function
 
 import sys
 import argparse
+import json
 
 from koschei.models import engine, Session, Base, Package, PackageGroup, \
                            PackageGroupRelation
@@ -127,6 +128,26 @@ class SetPrio(Command):
             pkg.static_priority = value
         else:
             pkg.manual_priority = value
+
+class SetOpts(Command):
+    """ Sets per package build options """
+
+    def setup_parser(self, parser):
+        parser.add_argument('name')
+        parser.add_argument('build-opts',
+                help="JSON object representing build options passed to Koji")
+
+    def execute(self, db_session, name, build_opts):
+        try:
+            decoded = json.loads(build_opts)
+        except ValueError as e:
+            fail(e.message)
+        if not isinstance(decoded, dict):
+            fail("Not a JSON object")
+        pkg = db_session.query(Package).filter_by(name=name).first()
+        if not pkg:
+            fail("Package {} not found".format(name))
+        pkg.build_opts = build_opts
 
 if __name__ == '__main__':
     main()

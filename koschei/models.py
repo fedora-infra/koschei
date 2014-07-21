@@ -63,6 +63,8 @@ class Package(Base):
     manual_priority = Column(Integer, nullable=False, default=0)
     added = Column(DateTime, nullable=False, default=datetime.now)
 
+    build_opts = Column(String)
+
     # last_build defined later
 
     OK = 0

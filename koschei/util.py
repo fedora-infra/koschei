@@ -70,8 +70,10 @@ def create_koji_session(anonymous=False):
         koji_session.ssl_login(cert, ca_cert, ca_cert)
     return koji_session
 
-def koji_scratch_build(session, name):
+def koji_scratch_build(session, name, opts=None):
     build_opts = base_build_opts.copy()
+    if opts:
+        build_opts.update(opts)
     build_opts['scratch'] = True
     source = '{}/{}?#{}'.format(scm_url, name, git_reference)
 

@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import logging
 import koji
+import json
 
 from datetime import datetime
 
@@ -31,12 +32,15 @@ log = logging.getLogger('submitter')
 def submit_builds(db_session, koji_session):
     scheduled_builds = db_session.query(Build).filter_by(state=Build.SCHEDULED)
     for build in scheduled_builds:
-        name = build.package.name
+        package = build.package
+        name = package.name
         build.state = Build.RUNNING
+        build_opts = None
+        if package.build_opts:
+            build_opts = json.loads(package.build_opts)
         try:
-            build.task_id = util.koji_scratch_build(koji_session, name)
+            build.task_id = util.koji_scratch_build(koji_session, name, build_opts)
         except util.PackageBlocked:
-            package = build.package
             package.state = Package.RETIRED
             db_session.delete(build)
             db_session.commit()
