@@ -129,25 +129,38 @@ class SetPrio(Command):
         else:
             pkg.manual_priority = value
 
+def validate_opts(build_opts):
+    try:
+        decoded = json.loads(build_opts)
+    except ValueError as e:
+        fail(e.message)
+    if not isinstance(decoded, dict):
+        fail("Not a JSON object")
+
 class SetOpts(Command):
     """ Sets per package build options """
 
     def setup_parser(self, parser):
-        parser.add_argument('name')
-        parser.add_argument('build-opts',
+        parser.add_argument('name',
+                help="Package name or group name if --group is specified")
+        parser.add_argument('build_opts',
                 help="JSON object representing build options passed to Koji")
+        parser.add_argument('--group', action='store_true',
+                help="Apply on entire group instead of single package")
 
-    def execute(self, db_session, name, build_opts):
-        try:
-            decoded = json.loads(build_opts)
-        except ValueError as e:
-            fail(e.message)
-        if not isinstance(decoded, dict):
-            fail("Not a JSON object")
-        pkg = db_session.query(Package).filter_by(name=name).first()
-        if not pkg:
-            fail("Package {} not found".format(name))
-        pkg.build_opts = build_opts
+    def execute(self, db_session, name, build_opts, group):
+        validate_opts(build_opts)
+        if group:
+            group_obj = db_session.query(PackageGroup).filter_by(name=name).first()
+            if not group_obj:
+                fail("Group {} not found".format(name))
+            for pkg in group_obj.packages:
+                pkg.build_opts = build_opts
+        else:
+            pkg = db_session.query(Package).filter_by(name=name).first()
+            if not pkg:
+                fail("Package {} not found".format(name))
+            pkg.build_opts = build_opts
 
 if __name__ == '__main__':
     main()
