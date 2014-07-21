@@ -16,14 +16,14 @@ config = {
         "server_ca": "~/.fedora-server-ca.cert",
         "source_tag": "f22",
         "target_tag": "f22",
-        "max_builds": 20,
+        "max_builds": 5,
         "build_opts": {
         },
         "load_threshold": 0.3,
         "task_priority": 30
     },
     "priorities": {
-        "build_threshold": 168,
+        "build_threshold": 256,
         "package_update": 20,
         "t0": 6,
         "t1": 7 * 24,
