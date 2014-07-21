@@ -237,8 +237,8 @@ class DependencyChange(Change):
 
     @classmethod
     def get_priority_query(cls, db_session):
-        return cls.query(db_session, cls.package_id,
-                         update_weight / cls.distance)\
+        return cls.query(db_session, cls.package_id.label('pkg_id'),
+                         (update_weight / cls.distance).label('priority'))\
                   .filter(cls.distance > 0)
 
     def get_trigger(self):

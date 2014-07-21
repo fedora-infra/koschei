@@ -31,14 +31,17 @@ log = logging.getLogger('scheduler')
 
 def get_priority_queries(db_session):
     prio = ('manual', Package.manual_priority), ('static', Package.static_priority)
-    priorities = {name: db_session.query(Package.id, col) for name, col in prio}
+    priorities = {name: db_session.query(Package.id.label('pkg_id'),
+                                         col.label('priority'))
+                    for name, col in prio}
     priorities['dependency'] = DependencyChange.get_priority_query(db_session)
     t0 = util.config['priorities']['t0']
     t1 = util.config['priorities']['t1']
     a = priority_threshold / (math.log10(t1) - math.log10(t0))
     b = -a * math.log10(t0)
     time_expr = func.greatest(a * func.log(Build.time_since_last_build_expr()) + b, -30)
-    priorities['time'] = db_session.query(Build.package_id, time_expr)\
+    priorities['time'] = db_session.query(Build.package_id.label('pkg_id'),
+                                          time_expr.label('priority'))\
                                    .group_by(Build.package_id)
     return priorities
 
@@ -54,25 +57,28 @@ def schedule_builds(db_session, koji_session):
     if limit <= 0:
         return
     queries = get_priority_queries(db_session).values()
-    union_query = union_all(*(q.subquery().select() for q in queries))
-    # manual priority now contains all priorities from union
-    current_priority = func.sum(Package.manual_priority)
-    candidates = db_session.query(Package.id, current_priority)\
-                           .select_entity_from(union_query)\
+    union_query = union_all(*queries).alias('un')
+    pkg_id = union_query.c.pkg_id
+    current_priority = func.sum(union_query.c.priority).label('curr_priority')
+    candidates = db_session.query(pkg_id, current_priority)\
                            .having(current_priority >= priority_threshold)\
-                           .group_by(Package.id)\
-                           .order_by(current_priority.desc())\
-                           .limit(limit)
-    for pkg_id, priority in candidates:
-        if (not db_session.query(Build).filter_by(package_id=pkg_id)\
-                                       .filter(Build.state.in_(Build.UNFINISHED_STATES))\
-                                       .first()
-            and db_session.query(Package).get(pkg_id).state == Package.OK):
-            build = Build(package_id=pkg_id, state=Build.SCHEDULED)
-            db_session.add(build)
-            db_session.commit()
-            log.info('Scheduling build {0.id} for {0.package.name}, priority {1}'\
-                     .format(build, priority))
+                           .group_by(pkg_id).subquery()
+    unfinished = db_session.query(Build.package_id)\
+                           .filter(Build.state.in_(Build.UNFINISHED_STATES))\
+                           .subquery()
+    to_schedule = db_session.query(Package, candidates.c.curr_priority)\
+                            .join(candidates, Package.id == candidates.c.pkg_id)\
+                            .filter(Package.state == Package.OK)\
+                            .filter(Package.id.notin_(unfinished))\
+                            .order_by(candidates.c.curr_priority.desc())\
+                            .limit(limit)
+
+    for package, priority in to_schedule:
+        build = Build(package_id=package.id, state=Build.SCHEDULED)
+        db_session.add(build)
+        db_session.commit()
+        log.info('Scheduling build {0} for {1}, priority {2}'\
+                 .format(build.id, package.name, priority))
 
 def main():
     import time
