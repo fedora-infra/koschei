@@ -41,14 +41,21 @@ def frontpage():
 @app.route('/package/<name>.html')
 def package_detail(name):
     package = db_session.query(Package).filter_by(name=name)\
-                        .options(subqueryload(Package.all_builds)).first()
+                        .options(subqueryload(Package.all_builds),
+                                 subqueryload(Package.all_builds,
+                                              Build.dependency_changes))\
+                        .first()
     if not package:
         abort(404)
     return render_template("package-detail.html", package=package)
 
 @app.route('/package/<name>/<int:build_id>.html')
 def build_detail(name, build_id):
-    build = db_session.query(Build).filter_by(id=build_id).first()
+    #pylint: disable=E1101
+    build = db_session.query(Build)\
+            .options(joinedload(Build.package),
+                     subqueryload(Build.buildroot_diff))\
+            .filter_by(id=build_id).first()
     if not build or build.package.name != name:
         abort(404)
     return render_template("build-detail.html", build=build)
