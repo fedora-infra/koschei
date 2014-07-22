@@ -19,8 +19,7 @@
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
                        ForeignKey, DateTime
 from sqlalchemy.sql.expression import extract, func, select, join
-from sqlalchemy.ext.declarative import declarative_base, AbstractConcreteBase, \
-                                       declared_attr
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, mapper
 from sqlalchemy.engine.url import URL
 from datetime import datetime
@@ -38,20 +37,6 @@ Session = sessionmaker(bind=engine, autocommit=False)
 
 def hours_since(since):
     return extract('EPOCH', datetime.now() - since) / 3600
-
-# TODO trigger?
-#class ChangeExtension(SessionExtension):
-#    def before_flush(self, session, flush_context, instances):
-#        for instance in session.dirty:
-#            if not session.is_modified(instance, passive=True):
-#                continue
-#            if not attributes.instance_state(instance).has_identity:
-#                continue
-#            if isinstance(instance, Package):
-#                change = PackageChange(package_id=instance.id,
-#                                       prev_state=instance)
-#                instance.new_version(session)
-#                session.add(instance)
 
 class Package(Base):
     __tablename__ = 'package'
@@ -176,32 +161,6 @@ class BuildrootDiff(Base):
         removed = self.removed.split(',')
         return izip_longest(added, removed)
 
-class Change(AbstractConcreteBase, Base):
-    __abstract__ = True
-    id = Column(Integer, primary_key=True)
-    @declared_attr
-    def package_id(self):
-        return Column(ForeignKey('package.id'), nullable=False)
-    @declared_attr
-    def applied_in_id(self):
-        return Column(ForeignKey('build.id'), nullable=True, default=None)
-
-    @classmethod
-    def query(cls, db_session, *what):
-        return db_session.query(*what or (cls,)).filter_by(applied_in_id=None)
-
-    @classmethod
-    def get_priority_query(cls, db_session):
-        raise NotImplementedError()
-
-    @classmethod
-    def build_submitted(cls, db_session, build):
-        cls.query(db_session).filter_by(package_id=build.package_id)\
-                             .update({'applied_in_id': build.id})
-
-    def get_trigger(self):
-        raise NotImplementedError()
-
 class Repo(Base):
     __tablename__ = 'repo'
     id = Column(Integer, primary_key=True)
@@ -231,8 +190,11 @@ class Dependency(Base):
 
 update_weight = config['priorities']['package_update']
 
-class DependencyChange(Change):
+class DependencyChange(Base):
     __tablename__ = 'dependency_change'
+    id = Column(Integer, primary_key=True)
+    package_id = Column(ForeignKey('package.id'), nullable=False)
+    applied_in_id = Column(ForeignKey('build.id'), nullable=True, default=None)
     dep_name = Column(String, nullable=False)
     prev_dep_evr = Column(String)
     curr_dep_evr = Column(String)
@@ -240,9 +202,16 @@ class DependencyChange(Change):
 
     @classmethod
     def get_priority_query(cls, db_session):
-        return cls.query(db_session, cls.package_id.label('pkg_id'),
-                         (update_weight / cls.distance).label('priority'))\
-                  .filter(cls.distance > 0)
+        return db_session.query(cls.package_id.label('pkg_id'),
+                             (update_weight / cls.distance).label('priority'))\
+                         .filter_by(applied_in_id=None)\
+                         .filter(cls.distance > 0)
+
+    @classmethod
+    def build_submitted(cls, db_session, build):
+        db_session.query(cls).filter_by(package_id=build.package_id)\
+                             .filter_by(applied_in_id=None)\
+                             .update({'applied_in_id': build.id})
 
     def get_trigger(self):
         if self.prev_dep_evr and self.curr_dep_evr:

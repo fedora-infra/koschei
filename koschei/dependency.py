@@ -106,8 +106,9 @@ def compute_dependency_distance(db_session, sack, package):
     hawk_pkg = get_srpm_pkg(sack, package.name)
     if not hawk_pkg:
         return
-    changes = DependencyChange.query(db_session)\
+    changes = db_session.query(DependencyChange)\
                         .filter(DependencyChange.package_id == package.id,
+                                DependencyChange.applied_in_id == None,
                                 DependencyChange.curr_dep_evr != None).all()
     if not changes:
         return

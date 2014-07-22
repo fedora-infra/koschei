@@ -20,12 +20,11 @@
 import os
 
 from datetime import datetime
-from collections import defaultdict
 from jinja2 import Environment, FileSystemLoader
 from sqlalchemy.orm import joinedload
 
 from . import util, scheduler
-from .models import Package, Build, PackageGroup
+from .models import Package, PackageGroup
 from .service import service_main
 
 jinja_env = Environment(loader=FileSystemLoader(util.config['directories']['templates']))
@@ -73,18 +72,6 @@ def generate_details(session):
                       .options(joinedload(Package.all_builds)).all()
     priorities = scheduler.get_priority_queries(session)
     priorities = [(name, dict(priority)) for name, priority in priorities.items()]
-    # FIXME remember this in DB
-    builds = session.query(Build.id)
-    root_diffs = defaultdict(dict)
-    for [build_id] in builds:
-        logdir = os.path.join(log_output_dir, str(build_id))
-        if not os.path.isdir(logdir):
-            continue
-        arches = os.listdir(logdir)
-        for arch in arches:
-            diff_path = os.path.join(logdir, arch, 'root_diff.log')
-            if os.path.exists(diff_path):
-                root_diffs[build_id][arch] = os.path.join(relative_logdir, str(build_id), arch, 'root_diff.log')
 
     for package in packages:
         path = os.path.join('package', package.name) + '.html'
