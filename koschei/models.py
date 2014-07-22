@@ -106,7 +106,8 @@ class PackageGroup(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
 
-    packages = relationship(Package, secondary=PackageGroupRelation.__table__)
+    packages = relationship(Package, secondary=PackageGroupRelation.__table__,
+                            order_by=Package.name)
 
 class Build(Base):
     __tablename__ = 'build'

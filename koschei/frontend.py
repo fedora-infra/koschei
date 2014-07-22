@@ -34,7 +34,7 @@ def inject_defaults():
 def frontpage():
     packages = db_session.query(Package)\
                          .options(joinedload(Package.last_build))\
-                         .order_by(Package.id).all()
+                         .order_by(Package.name).all()
     return render_template("frontpage.html", packages=packages)
 
 @app.route('/package/<name>.html')
