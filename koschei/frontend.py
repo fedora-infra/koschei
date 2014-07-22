@@ -1,6 +1,7 @@
 from datetime import datetime
 from flask import Flask, abort, render_template
-from sqlalchemy.orm import scoped_session, sessionmaker, joinedload, subqueryload
+from sqlalchemy.orm import scoped_session, sessionmaker, joinedload, \
+                           subqueryload, undefer
 
 from .models import engine, Package, Build, PackageGroup
 from . import util
@@ -54,12 +55,18 @@ def build_detail(name, build_id):
 
 @app.route('/groups.html')
 def groups_overview():
-    groups = db_session.query(PackageGroup).order_by(PackageGroup.name).all()
+    groups = db_session.query(PackageGroup)\
+                       .options(undefer(PackageGroup.package_count))\
+                       .order_by(PackageGroup.name).all()
     return render_template("groups.html", groups=groups)
 
 @app.route('/group/<int:group_id>.html')
 def group_detail(group_id):
-    group = db_session.query(PackageGroup).filter_by(id=group_id).first()
+    group = db_session.query(PackageGroup)\
+                      .options(subqueryload(PackageGroup.packages),
+                               joinedload(PackageGroup.packages,
+                                          Package.last_build))\
+                      .filter_by(id=group_id).first()
     if not group:
         abort(404)
     return render_template("group-detail.html", group=group)

@@ -20,7 +20,7 @@ from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
                        ForeignKey, DateTime
 from sqlalchemy.sql.expression import extract, func, select, join
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship, mapper
+from sqlalchemy.orm import sessionmaker, relationship, mapper, column_property
 from sqlalchemy.engine.url import URL
 from datetime import datetime
 # Python 2 only
@@ -247,3 +247,9 @@ Package.all_builds = relationship(Build, order_by=Build.id.desc())
 Package.resolution_result = max_relationship(ResolutionResult, ResolutionResult.package_id)
 Build.buildroot_diff = relationship(BuildrootDiff,
             primaryjoin=(BuildrootDiff.curr_build_id == Build.id))
+
+PackageGroup.package_count = column_property(
+        select([func.count(PackageGroupRelation.group_id)],
+               PackageGroupRelation.group_id == PackageGroup.id)\
+               .correlate(PackageGroup).as_scalar(),
+        deferred=True)
