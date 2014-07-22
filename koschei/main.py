@@ -15,28 +15,26 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 # Author: Michael Simacek <msimacek@redhat.com>
-
 from __future__ import print_function
 
-import logging
-import koji
+import sys
 
-from .submitter import update_koji_state
-from .models import Build
-from .service import service_main
+if __name__ != '__main__':
+    print("This module shall not be imported", file=sys.stderr)
+    sys.exit(2)
 
-log = logging.getLogger('polling')
+from .service import services
 
-@service_main()
-def poll_tasks(db_session, koji_session):
-    running_builds = db_session.query(Build).filter_by(state=Build.RUNNING)
-    for build in running_builds:
-        name = build.package.name
-        if not build.task_id:
-            log.warn('No task id assigned to build {0})'.format(build))
-        else:
-            task_info = koji_session.getTaskInfo(build.task_id)
-            log.debug('Polling task {id} ({name}): task_info={info}'\
-                      .format(id=build.task_id, name=name, info=task_info))
-            state = koji.TASK_STATES.getvalue(task_info['state'])
-            update_koji_state(db_session, build, state)
+# Importing all modules that define services
+# pylint: disable=W0611
+from . import scheduler, submitter, log_downloader, polling, watcher, reporter
+
+if len(sys.argv) < 2:
+    print("Requires service name", file=sys.stderr)
+    sys.exit(2)
+name = sys.argv[1]
+if name not in services:
+    print("No such service", file=sys.stderr)
+    sys.exit(2)
+services[name]()
+

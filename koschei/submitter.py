@@ -29,6 +29,7 @@ from .models import Build, Package, DependencyChange
 
 log = logging.getLogger('submitter')
 
+@service_main(koji_anonymous=False)
 def submit_builds(db_session, koji_session):
     scheduled_builds = db_session.query(Build).filter_by(state=Build.SCHEDULED)
     for build in scheduled_builds:
@@ -63,6 +64,3 @@ def update_koji_state(db_session, build, state):
             build.state = state
         db_session.commit()
         #TODO finish time
-
-if __name__ == '__main__':
-    service_main(submit_builds, koji_anonymous=False)

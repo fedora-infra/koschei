@@ -26,6 +26,7 @@ from .service import service_main
 
 log_output_dir = util.config['directories']['build_logs']
 
+@service_main()
 def download_logs(db_session, koji_session):
     to_download = db_session.query(Build)\
                    .filter(Build.logs_downloaded == False,
@@ -95,6 +96,3 @@ def make_log_diff(db_session, build):
                                          removed=','.join(removed))
                 db_session.add(diff_obj)
                 db_session.commit()
-
-if __name__ == '__main__':
-    service_main(download_logs)

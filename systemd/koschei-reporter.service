@@ -4,7 +4,7 @@ After=syslog.target network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python -m koschei.reporter
+ExecStart=/usr/bin/python -m koschei.main reporter
 User=koschei
 Group=koschei
 

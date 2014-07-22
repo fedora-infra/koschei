@@ -18,16 +18,15 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 import os
-import time
 
 from datetime import datetime
 from collections import defaultdict
 from jinja2 import Environment, FileSystemLoader
-from sqlalchemy import desc
 from sqlalchemy.orm import joinedload
 
 from . import util, scheduler
-from .models import Session, Package, Build, PackageGroup
+from .models import Package, Build, PackageGroup
+from .service import service_main
 
 jinja_env = Environment(loader=FileSystemLoader(util.config['directories']['templates']))
 
@@ -96,17 +95,11 @@ def generate_details(session):
             build_path = os.path.join(pkg_dir, str(build.id)) + '.html'
             generate_page('build-detail.html', build_path, build=build)
 
-def main():
-    session = Session()
+@service_main(needs_koji=False)
+def main(db_session):
     util.mkdir_if_absent(os.path.join(outdir, 'package'))
-    while True:
-        since = datetime.min
-        until = datetime.now()
-        generate_frontpage(session, since, until)
-        generate_groups(session)
-        generate_details(session)
-        session.expire_all()
-        time.sleep(2)
-
-if __name__ == '__main__':
-    main()
+    since = datetime.min
+    until = datetime.now()
+    generate_frontpage(db_session, since, until)
+    generate_groups(db_session)
+    generate_details(db_session)

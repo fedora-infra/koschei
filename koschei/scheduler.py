@@ -46,6 +46,7 @@ def get_priority_queries(db_session):
                                    .group_by(Build.package_id)
     return priorities
 
+@service_main()
 def schedule_builds(db_session, koji_session):
     load_threshold = util.config['koji_config'].get('load_threshold')
     if load_threshold and util.get_koji_load(koji_session) > load_threshold:
@@ -80,6 +81,3 @@ def schedule_builds(db_session, koji_session):
         db_session.commit()
         log.info('Scheduling build {0} for {1}, priority {2}'\
                  .format(build.id, package.name, priority))
-
-if __name__ == '__main__':
-    service_main(schedule_builds)

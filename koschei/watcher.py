@@ -20,7 +20,8 @@ import fedmsg
 import logging
 
 from . import util
-from .models import Build, Session
+from .service import service_main
+from .models import Build
 from .submitter import update_koji_state
 from .dependency import repo_done
 
@@ -33,33 +34,27 @@ instance = util.config['fedmsg']['instance']
 def get_topic(name):
     return '{}.{}'.format(topic_name, name)
 
-def consume(topic, content):
+def consume(db_session, topic, content):
     if not content.get('instance') == instance:
         return
     log.info('consuming ' + topic)
     if topic == get_topic('task.state.change'):
-        update_build_state(content)
+        update_build_state(db_session, content)
     elif topic == get_topic('repo.done'):
         if content.get('tag') == tag:
-            session = Session()
-            repo_done(session)
-            session.close()
+            repo_done(db_session)
 
-def update_build_state(msg):
+def update_build_state(db_session, msg):
     assert msg['attribute'] == 'state'
-    session = Session()
     task_id = msg['id']
-    build = session.query(Build).filter_by(task_id=task_id).first()
+    build = db_session.query(Build).filter_by(task_id=task_id).first()
     if build:
         state = msg['new']
-        update_koji_state(session, build, state)
-    session.close()
+        update_koji_state(db_session, build, state)
+    db_session.close()
 
-def main():
-    print('watcher started')
+@service_main(needs_koji=False)
+def main(db_session):
     for _, _, topic, msg in fedmsg.tail_messages():
         if topic.startswith(topic_name + '.'):
-            consume(topic, msg['msg'])
-
-if __name__ == '__main__':
-    main()
+            consume(db_session, topic, msg['msg'])

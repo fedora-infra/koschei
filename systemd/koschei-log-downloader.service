@@ -4,7 +4,7 @@ After=syslog.target network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python -m koschei.log_downloader
+ExecStart=/usr/bin/python -m koschei.main log_downloader
 User=koschei
 Group=koschei
 
