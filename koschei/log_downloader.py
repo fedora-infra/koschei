@@ -20,8 +20,9 @@ import os
 
 from collections import defaultdict
 
-from koschei import util
-from koschei.models import Build, Session, BuildrootDiff
+from . import util
+from .models import Build, BuildrootDiff
+from .service import service_main
 
 log_output_dir = util.config['directories']['build_logs']
 
@@ -95,14 +96,5 @@ def make_log_diff(db_session, build):
                 db_session.add(diff_obj)
                 db_session.commit()
 
-def main():
-    import time
-    db_session = Session()
-    koji_session = util.create_koji_session(anonymous=True)
-    print("log_downloader started")
-    while True:
-        download_logs(db_session, koji_session)
-        time.sleep(3)
-
 if __name__ == '__main__':
-    main()
+    service_main(download_logs)

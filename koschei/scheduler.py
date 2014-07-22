@@ -17,7 +17,8 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 from __future__ import print_function
-from .models import Session, Package, Build, DependencyChange
+from .models import Package, Build, DependencyChange
+from .service import service_main
 from . import util
 from sqlalchemy import func, union_all, or_
 
@@ -80,15 +81,5 @@ def schedule_builds(db_session, koji_session):
         log.info('Scheduling build {0} for {1}, priority {2}'\
                  .format(build.id, package.name, priority))
 
-def main():
-    import time
-    db_session = Session()
-    koji_session = util.create_koji_session(anonymous=True)
-    print("scheduler started")
-    while True:
-        schedule_builds(db_session, koji_session)
-        db_session.expire_all()
-        time.sleep(3)
-
 if __name__ == '__main__':
-    main()
+    service_main(schedule_builds)

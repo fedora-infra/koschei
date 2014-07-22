@@ -24,7 +24,8 @@ import json
 from datetime import datetime
 
 from . import util
-from .models import Build, Session, Package, DependencyChange
+from .service import service_main
+from .models import Build, Package, DependencyChange
 
 log = logging.getLogger('submitter')
 
@@ -63,15 +64,5 @@ def update_koji_state(db_session, build, state):
         db_session.commit()
         #TODO finish time
 
-def main():
-    import time
-    db_session = Session()
-    koji_session = util.create_koji_session()
-    print("submitter started")
-    while True:
-        submit_builds(db_session, koji_session)
-        db_session.expire_all()
-        time.sleep(3)
-
 if __name__ == '__main__':
-    main()
+    service_main(submit_builds, koji_anonymous=False)
