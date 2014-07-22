@@ -64,6 +64,7 @@ cp -p %{name}.wsgi %{buildroot}%{_datadir}/%{name}/
 %systemd_post koschei-watcher.service
 %systemd_post koschei-reporter.service
 %systemd_post koschei-log-dowloader.service
+%systemd_post koschei-polling.service
 
 %preun
 %systemd_preun koschei-scheduler.service
@@ -71,6 +72,7 @@ cp -p %{name}.wsgi %{buildroot}%{_datadir}/%{name}/
 %systemd_preun koschei-watcher.service
 %systemd_preun koschei-reporter.service
 %systemd_preun koschei-log-dowloader.service
+%systemd_preun koschei-polling.service
 
 %postun
 %systemd_postun_with_restart koschei-scheduler.service
@@ -78,6 +80,7 @@ cp -p %{name}.wsgi %{buildroot}%{_datadir}/%{name}/
 %systemd_postun_with_restart koschei-watcher.service
 %systemd_postun_with_restart koschei-reporter.service
 %systemd_postun_with_restart koschei-log-dowloader.service
+%systemd_postun_with_restart koschei-polling.service
 
 %files
 %doc LICENSE.txt

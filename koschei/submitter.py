@@ -19,7 +19,6 @@
 from __future__ import print_function
 
 import logging
-import koji
 import json
 
 from datetime import datetime
@@ -50,19 +49,6 @@ def submit_builds(db_session, koji_session):
         DependencyChange.build_submitted(db_session, build)
         db_session.commit()
 
-def poll_tasks(db_session, koji_session):
-    running_builds = db_session.query(Build).filter_by(state=Build.RUNNING)
-    for build in running_builds:
-        name = build.package.name
-        if not build.task_id:
-            log.warn('No task id assigned to build {0})'.format(build))
-        else:
-            task_info = koji_session.getTaskInfo(build.task_id)
-            log.debug('Polling task {id} ({name}): task_info={info}'\
-                      .format(id=build.task_id, name=name, info=task_info))
-            state = koji.TASK_STATES.getvalue(task_info['state'])
-            update_koji_state(db_session, build, state)
-
 def update_koji_state(db_session, build, state):
     if state in Build.KOJI_STATE_MAP:
         state = Build.KOJI_STATE_MAP[state]
@@ -82,13 +68,8 @@ def main():
     db_session = Session()
     koji_session = util.create_koji_session()
     print("submitter started")
-    poll = 0
     while True:
         submit_builds(db_session, koji_session)
-        poll += 1
-        if poll > 0:
-            poll_tasks(db_session, koji_session)
-            poll = -1200
         db_session.expire_all()
         time.sleep(3)
 

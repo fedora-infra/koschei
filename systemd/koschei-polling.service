@@ -1,0 +1,12 @@
+[Unit]
+Description=Koschei - Fedora Continuous Integration - Koji polling
+After=syslog.target network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python -m koschei.polling
+User=koschei
+Group=koschei
+
+[Install]
+WantedBy=multi-user.target
