@@ -39,3 +39,24 @@
     </tbody>
 </table>
 {% endmacro %}
+{% macro depchange_table(changes) %}
+<table class="nested-data-list" style="width:100%">
+    {% for change in changes[:10] %}
+    <tr>
+        <td>{{ change.dep_name }}</td>
+        <td>{{ change.prev_dep_evr or '' }}</td>
+        <td>
+            {% if change.prev_dep_evr > change.curr_dep_evr %}
+            &lt;&lt;&lt;
+            {% else %}
+            &gt;&gt;&gt;
+            {% endif %}
+        </td>
+        <td>{{ change.curr_dep_evr or '' }}</td>
+    </tr>
+    {% if loop.index == 10 %}
+    <tr><td colspan="4">...</td></tr>
+    {% endif %}
+    {% endfor %}
+</table>
+{% endmacro %}

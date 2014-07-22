@@ -104,7 +104,8 @@ class Build(Base):
     logs_downloaded = Column(Boolean, default=False, nullable=False)
     started = Column(DateTime)
     finished = Column(DateTime)
-    dependency_changes = relationship('DependencyChange', backref='applied_in')
+    dependency_changes = relationship('DependencyChange', backref='applied_in',
+                                      order_by='DependencyChange.distance')
 
     @staticmethod
     def time_since_last_build_expr():
@@ -212,20 +213,6 @@ class DependencyChange(Base):
         db_session.query(cls).filter_by(package_id=build.package_id)\
                              .filter_by(applied_in_id=None)\
                              .update({'applied_in_id': build.id})
-
-    def get_trigger(self):
-        if self.prev_dep_evr and self.curr_dep_evr:
-            if self.prev_dep_evr < self.curr_dep_evr:
-                up_dn = 'updated'
-            else:
-                up_dn = 'downgraded'
-            return 'Dependency {} was {} from {} to {}'\
-                   .format(self.dep_name, up_dn, self.prev_dep_evr,
-                           self.curr_dep_evr)
-        elif self.prev_dep_evr:
-            return 'Dependency {} disappeared'.format(self.dep_name)
-        else:
-            return 'Dependency {} appeared'.format(self.dep_name)
 
 def max_relationship(cls, group_by, filt=None):
     max_expr = select([func.max(cls.id).label('m'), group_by])\

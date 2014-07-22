@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "macros.html" as macros %}
 {% block content %}
 <div class="pageHeader">{{ package.name }}</div>
 {% if package.state_string == 'unresolved' %}
@@ -35,10 +36,8 @@
         <td>
             {{ build.started | date }}
         </td>
-        <td style="word-wrap: break-word; width: 70%">
-            {% for change in build.triggers %}
-                {{ change }}{% if not loop.last %}, {% endif %}
-            {% endfor %}
+        <td>
+            {{ macros.depchange_table(build.dependency_changes) }}
         </td>
         <td>
             <a href="{{ package.name }}/{{ build.id }}.html">details</a>
