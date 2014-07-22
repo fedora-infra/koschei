@@ -30,6 +30,11 @@ def inject_defaults():
     return {'since': datetime.min, 'until': datetime.now(),
             'koji_weburl': util.config['koji_config']['weburl']}
 
+@app.route('/static/<path:path>')
+def serve_static(path):
+    import os
+    return app.send_static_file(os.path.join('static', path))
+
 @app.route('/')
 @app.route('/index.html')
 def frontpage():
