@@ -1,33 +1,9 @@
 {% extends "base.html" %}
 {% block tab_id %}packages{% endblock %}
+{% import "macros.html" as macros %}
 {% block content %}
 <div class="pageHeader">{{ group.name }}</div>
-  <table class="nested data-list">
-  <thead>
-    <tr class="list-header">
-      <th>Name</th>
-      <th>State</th>
-      <th>Task ID</th>
-      <th>Started</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for package in group.packages %}
-    {% set last_build = package.last_build %}
-
-    <tr class="row-odd">
-      <td><a href="{{ toplink }}/package/{{ package.name }}.html">{{ package.name }}</a></td>
-      <td><div class="hidden">{{ package.state_string }}</div><img src="{{ toplink }}/static/images/{{ package.state_string }}.png" title="{{ package.state_string }}" alt="{{ package.state_string }}"/></td>
-      {% if package.state_string != 'unresolved' %}
-      <td><a href="{{ koji_weburl }}/taskinfo?taskID={{ last_build.task_id }}">{{ last_build.task_id }}</a></td>
-      <td>{{ last_build.started | date }}</td>
-      {% else %}
-      <td colspan="2"/>
-      {% endif %}
-    </tr>
-    {% endfor %}
-  </tbody>
-  </table>
+{{ macros.package_table(group.packages) }}
 {% endblock %}
 
 
