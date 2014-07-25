@@ -133,7 +133,8 @@ def repo_done(db_session):
                                      Package.state == Package.UNRESOLVED))
     package_names = [pkg.name for pkg in packages]
     log.info("Generating new repo")
-    sack = util.create_sack(package_names)
+    # FIXME all arches
+    sack = util.create_sacks(package_names)[0][1]
     db_repo = Repo()
     db_session.add(db_repo)
     db_session.flush()

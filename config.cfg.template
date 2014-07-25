@@ -22,6 +22,14 @@ config = {
         "load_threshold": 0.3,
         "task_priority": 30
     },
+    "dependency": {
+        "build_group": "build",
+        "noarch_repo": "x86_64",
+        "repos": {
+            "x86_64": "http://koji.fedoraproject.org/repos/f22-build/latest/x86_64",
+            "i386": "http://koji.fedoraproject.org/repos/f22-build/latest/i386".
+        },
+    },
     "priorities": {
         "build_threshold": 256,
         "package_update": 20,
@@ -53,9 +61,5 @@ config = {
     "alembic": {
         "alembic_ini": "@DATADIR@/alembic.ini"
     },
-    "repos": [
-        "http://koji.fedoraproject.org/repos/f22-build/latest/x86_64",
-        "http://koji.fedoraproject.org/repos/f22-build/latest/i386"
-    ]
 }
 

@@ -22,9 +22,9 @@ import os
 import sys
 import koji
 import logging
-import urllib2 as urllib
 import subprocess
 import hawkey
+import librepo
 import shutil
 
 from lxml import etree
@@ -155,52 +155,56 @@ def create_srpm_repo(package_names):
     out = subprocess.check_output(['createrepo_c', srpm_dir])
     log.debug(out)
 
-def get_paths_from_repomd(repomd_string, data=('primary', 'filelists')):
-    nsmap = {'r': 'http://linux.duke.edu/metadata/repo'}
-    repomd = etree.fromstring(repomd_string)
-    def repomd_get_file(name):
-        link = repomd.xpath('/r:repomd/r:data[@type="{}"]/r:location/@href'\
-                            .format(name), namespaces=nsmap)[0]
-        return link
-    return {name: repomd_get_file(name) for name in data}
+def get_srpm_repodata():
+    h = librepo.Handle()
+    h.local = True
+    h.repotype = librepo.LR_YUMREPO
+    h.urls = [srpm_dir]
+    return h.perform(librepo.Result())
 
-def load_repos(sack):
-    for i, repo_path in enumerate(config['repos']):
-        repoid = 'repo' + str(i)
-        repo = hawkey.Repo(repoid)
-        repomd_path = repo_path + '/repodata/repomd.xml'
-        repomd_string = urllib.urlopen(repomd_path).read()
-        repodir = os.path.join(repodata_dir, repoid)
-        repodata = os.path.join(repodir, 'repodata')
-        if os.path.exists(repodir):
-            shutil.rmtree(repodir)
-        os.makedirs(repodata)
-        repomd_files = get_paths_from_repomd(repomd_string)
-        for link in repomd_files.values():
-            path = '{}/{}'.format(repo_path, link)
-            local = os.path.join(repodir, link)
-            with open(local, 'w') as local_file:
-                local_file.write(urllib.urlopen(path).read())
-        repo.repomd_fn = os.path.join(repodata, 'repomd.xml')
-        with open(repo.repomd_fn, 'w') as repomd_file:
-            repomd_file.write(repomd_string)
-        repo.primary_fn = os.path.join(repodir, repomd_files['primary'])
-        repo.filelists_fn = os.path.join(repodir, repomd_files['filelists'])
-        sack.load_yum_repo(repo, load_filelists=True)
+def download_koji_repos():
+    repos = {}
+    for arch, repo_url in config['dependency']['repos'].items():
+        h = librepo.Handle()
+        h.destdir = os.path.join(repodata_dir, arch)
+        if os.path.exists(h.destdir):
+            shutil.rmtree(h.destdir)
+        os.mkdir(h.destdir)
+        h.repotype = librepo.LR_YUMREPO
+        h.urls = [repo_url]
+        h.yumdlist = ['primary', 'filelists', 'group']
+        log.info("Downloading {arch} repo from {url}".format(arch=arch, url=repo_url))
+        result = h.perform(librepo.Result())
+        repos[arch] = result
+    return repos
 
-def create_sack(package_names):
+def add_repo_to_sack(repoid, repo_result, sack):
+    repodata = repo_result.yum_repo
+    repo = hawkey.Repo(repoid)
+    repo.repomd_fn = repodata['repomd']
+    repo.primary_fn = repodata['primary']
+    repo.filelists_fn = repodata['filelists']
+    sack.load_yum_repo(repo, load_filelists=True)
+
+def create_sacks(package_names):
     create_srpm_repo(package_names)
-    srpm_repo = hawkey.Repo('srpm')
-    repomd_path = os.path.join(srpm_dir, 'repodata', 'repomd.xml')
-    with open(repomd_path) as repomd:
-        repomd_files = get_paths_from_repomd(repomd.read())
-    srpm_repo.repomd_fn = repomd_path
-    srpm_repo.primary_fn = os.path.join(srpm_dir, repomd_files['primary'])
-    srpm_repo.filelists_fn = os.path.join(srpm_dir, repomd_files['filelists'])
-    sack = hawkey.Sack()
-    sack.load_yum_repo(srpm_repo, load_filelists=True)
-    load_repos(sack)
-    return sack
+    repos = download_koji_repos()
+    srpm_repo = get_srpm_repodata()
+    sacks = {}
+    for arch, repo in repos.items():
+        sack = hawkey.Sack()
+        add_repo_to_sack('srpm', srpm_repo, sack)
+        add_repo_to_sack(arch, repo, sack)
+        sacks[arch] = sack
+    return sacks
+
+def get_build_group(groupfile_path):
+    group = config['dependency']['build_group']
+    group_xml = etree.parse(groupfile_path)
+    packages = group_xml.xpath(
+        '/comps/group[id="{group}"]/packagelist/packagereq/text()'\
+                .format(group=group))
+    return packages
 
 def get_koji_packages(package_names):
     session = create_koji_session(anonymous=True)
