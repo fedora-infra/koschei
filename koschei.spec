@@ -48,7 +48,8 @@ done
 mkdir -p %{buildroot}%{_bindir}
 install -pm 755 admin.py %{buildroot}%{_bindir}/koschei-admin
 
-mkdir -p %{buildroot}%{_localstatedir}/cache/%{name}
+install -dm 755 %{buildroot}%{_localstatedir}/cache/%{name}/repodata
+install -dm 755 %{buildroot}%{_localstatedir}/cache/%{name}/srpms
 
 mkdir -p %{buildroot}%{_datadir}/%{name}
 cp -pr templates %{buildroot}%{_datadir}/%{name}/
@@ -86,6 +87,7 @@ cp -p %{name}.wsgi %{buildroot}%{_datadir}/%{name}/
 %doc LICENSE.txt
 %{_bindir}/koschei-admin
 %{_datadir}/%{name}
+%{_localstatedir}/cache/%{name}
 %{python_sitelib}/*
 %dir %{_sysconfdir}/%{name}
 %config %{_sysconfdir}/%{name}/config.cfg
