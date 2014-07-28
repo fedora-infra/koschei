@@ -189,12 +189,13 @@ def add_repo_to_sack(repoid, repo_result, sack):
 def create_sacks(package_names):
     create_srpm_repo(package_names)
     repos = download_koji_repos()
-    srpm_repo = get_srpm_repodata()
+    arches = repos.keys()
+    repos['srpm'] = get_srpm_repodata()
     sacks = {}
-    for arch, repo in repos.items():
-        sack = hawkey.Sack()
-        add_repo_to_sack('srpm', srpm_repo, sack)
-        add_repo_to_sack(arch, repo, sack)
+    for arch in arches:
+        sack = hawkey.Sack(arch=arch)
+        for repo_arch, repo in repos.items():
+            add_repo_to_sack(repo_arch, repo, sack)
         sacks[arch] = sack
     return sacks
 
