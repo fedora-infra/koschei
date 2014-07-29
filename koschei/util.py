@@ -186,11 +186,14 @@ def add_repo_to_sack(repoid, repo_result, sack):
     repo.filelists_fn = repodata['filelists']
     sack.load_yum_repo(repo, load_filelists=True)
 
-def create_sacks(package_names):
+def sync_repos(package_names):
     create_srpm_repo(package_names)
     repos = download_koji_repos()
     arches = repos.keys()
     repos['srpm'] = get_srpm_repodata()
+    return arches, repos
+
+def create_sacks(arches, repos):
     sacks = {}
     for arch in arches:
         sack = hawkey.Sack(arch=arch)
@@ -199,7 +202,10 @@ def create_sacks(package_names):
         sacks[arch] = sack
     return sacks
 
-def get_build_group(groupfile_path):
+def get_build_group(repo_result):
+    return extract_build_group(repo_result.yum_repo['group'])
+
+def extract_build_group(groupfile_path):
     group = config['dependency']['build_group']
     group_xml = etree.parse(groupfile_path)
     packages = group_xml.xpath(

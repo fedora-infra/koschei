@@ -48,12 +48,13 @@ def set_unresolved(db_session, package, problems):
         db_session.add(entry)
     db_session.flush()
 
-def resolve_dependencies(db_session, sack, repo, package):
+def resolve_dependencies(db_session, sack, repo, package, hawk_group):
     hawk_pkg = get_srpm_pkg(sack, package.name)
     if not hawk_pkg:
         return
     goal = hawkey.Goal(sack)
-    goal.install(hawk_pkg)
+    for pkg in [hawk_pkg] + hawk_group:
+        goal.install(pkg)
     if goal.run():
         set_resolved(db_session, package)
         # pylint: disable=E1101
@@ -139,13 +140,17 @@ def repo_done(db_session):
     package_names = [pkg.name for pkg in packages]
     log.info("Generating new repo")
     for_arch = util.config['dependency']['for_arch']
-    sack = util.create_sacks(package_names)[for_arch]
+    _, repos = util.sync_repos(package_names)
+    sack = util.create_sacks([for_arch], repos)[for_arch]
+    group = util.get_build_group(repos[for_arch])
     db_repo = Repo()
     db_session.add(db_repo)
     db_session.flush()
+    hawk_group = hawkey.Query(sack).filter(name=group, arch=for_arch,
+                                           latest_per_arch=True).run()
     log.info("Resolving dependencies")
     for pkg in packages:
-        resolve_dependencies(db_session, sack, db_repo, pkg)
+        resolve_dependencies(db_session, sack, db_repo, pkg, hawk_group)
     log.info("Computing dependency differences")
     process_dependency_differences(db_session)
     log.info("Computing dependency distances")
