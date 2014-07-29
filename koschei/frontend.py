@@ -1,5 +1,6 @@
 from datetime import datetime
 from flask import Flask, abort, render_template
+from flask_sqlalchemy import BaseQuery
 from sqlalchemy.orm import scoped_session, sessionmaker, joinedload, \
                            subqueryload, undefer
 
@@ -11,7 +12,11 @@ app = Flask('koschei', template_folder=dirs['templates'],
             static_folder=dirs['static_folder'], static_url_path=dirs['static_url'])
 app.config.from_object(util.config['flask'])
 
-db_session = scoped_session(sessionmaker(autocommit=False, bind=engine))
+frontend_config = util.config['frontend']
+items_per_page = frontend_config['items_per_page']
+
+db_session = scoped_session(sessionmaker(autocommit=False, bind=engine,
+                            query_cls=BaseQuery))
 
 # Following will make pylint shut up about missing query method
 if False:
@@ -44,9 +49,7 @@ def package_detail(name):
                         .options(subqueryload(Package.all_builds),
                                  subqueryload(Package.all_builds,
                                               Build.dependency_changes))\
-                        .first()
-    if not package:
-        abort(404)
+                        .first_or_404()
     return render_template("package-detail.html", package=package)
 
 @app.route('/package/<name>/<int:build_id>')
@@ -60,22 +63,20 @@ def build_detail(name, build_id):
         abort(404)
     return render_template("build-detail.html", build=build)
 
-@app.route('/groups.html')
+@app.route('/groups')
 def groups_overview():
     groups = db_session.query(PackageGroup)\
                        .options(undefer(PackageGroup.package_count))\
                        .order_by(PackageGroup.name).all()
     return render_template("groups.html", groups=groups)
 
-@app.route('/group/<int:group_id>.html')
+@app.route('/group/<int:group_id>')
 def group_detail(group_id):
     group = db_session.query(PackageGroup)\
                       .options(subqueryload(PackageGroup.packages),
                                joinedload(PackageGroup.packages,
                                           Package.last_build))\
-                      .filter_by(id=group_id).first()
-    if not group:
-        abort(404)
+                      .filter_by(id=group_id).first_or_404()
     return render_template("group-detail.html", group=group)
 
 if __name__ == '__main__':

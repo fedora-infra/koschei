@@ -19,6 +19,7 @@ Requires:       python-jinja2
 Requires:       python-hawkey
 Requires:       python-alembic
 Requires:       python-flask
+Requires:       python-flask-sqlalchemy
 Requires:       mod_wsgi
 
 %description
