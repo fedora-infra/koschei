@@ -81,6 +81,10 @@ def get_dependency_differences(db_session):
                          .filter(Dependency.package_id.in_(resolved))
     curr_repo = db_session.query(func.max(Repo.id)).subquery()
     prev_repo = db_session.query(func.max(Repo.id) - 1).subquery()
+    last_repos = db_session.query(Repo.id).order_by(Repo.id.desc()).limit(2).all()
+    if len(last_repos) != 2:
+        return [], []
+    [curr_repo], [prev_repo] = last_repos
     add_diff = difference_query(curr_repo, prev_repo)
     rm_diff = difference_query(prev_repo, curr_repo)
     return add_diff, rm_diff
