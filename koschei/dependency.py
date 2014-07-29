@@ -56,11 +56,14 @@ def resolve_dependencies(db_session, sack, repo, package):
     goal.install(hawk_pkg)
     if goal.run():
         set_resolved(db_session, package)
+        # pylint: disable=E1101
         installs = goal.list_installs()
         for install in installs:
             if install.arch != 'src':
                 dep = Dependency(repo_id=repo.id, package_id=package.id,
-                                 name=install.name, evr=install.evr, arch=install.arch)
+                                 name=install.name, epoch=install.epoch,
+                                 version=install.version, release=install.release,
+                                 arch=install.arch)
                 db_session.add(dep)
                 db_session.flush()
     else:
@@ -70,11 +73,9 @@ def get_dependency_differences(db_session):
     def difference_query(*repos):
         resolved = intersect(*(db_session.query(Dependency.package_id)\
                                .filter(Dependency.repo_id == r) for r in repos))
-        deps = (db_session.query(Dependency.package_id, Dependency.name,
-                                 Dependency.evr)\
+        deps = (db_session.query(Dependency.package_id, *Dependency.nevra)
                           .filter(Dependency.repo_id == r) for r in repos)
-        return db_session.query(Dependency.package_id, Dependency.name,
-                                Dependency.evr)\
+        return db_session.query(Dependency.package_id, *Dependency.nevra)\
                          .select_entity_from(except_(*deps))\
                          .filter(Dependency.package_id.in_(resolved))
     curr_repo = db_session.query(func.max(Repo.id)).subquery()
@@ -86,18 +87,22 @@ def get_dependency_differences(db_session):
 def process_dependency_differences(db_session):
     add_diff, rm_diff = get_dependency_differences(db_session)
     changes = {}
-    for pkg_id, dep_name, dep_evr in add_diff:
+    for pkg_id, dep_name, epoch, version, release, arch in add_diff:
         change = DependencyChange(package_id=pkg_id, dep_name=dep_name,
-                                  curr_dep_evr=dep_evr)
-        changes[(pkg_id, dep_name)] = change
-    for pkg_id, dep_name, dep_evr in rm_diff:
-        update = changes.get((pkg_id, dep_name))
+                                  curr_epoch=epoch, curr_version=version,
+                                  curr_release=release)
+        changes[(pkg_id, dep_name, arch)] = change
+    for pkg_id, dep_name, epoch, version, release, arch in rm_diff:
+        update = changes.get((pkg_id, dep_name, arch))
         if update:
-            update.prev_dep_evr = dep_evr
+            update.prev_epoch = epoch
+            update.prev_version = version
+            update.prev_release = release
         else:
             change = DependencyChange(package_id=pkg_id, dep_name=dep_name,
-                                      curr_dep_evr=dep_evr)
-            changes[(pkg_id, dep_name)] = change
+                                      curr_epoch=epoch, curr_version=version,
+                                      curr_release=release)
+            changes[(pkg_id, dep_name, arch)] = change
     for change in changes.values():
         db_session.add(change)
     db_session.flush()
@@ -109,7 +114,7 @@ def compute_dependency_distance(db_session, sack, package):
     changes = db_session.query(DependencyChange)\
                         .filter(DependencyChange.package_id == package.id,
                                 DependencyChange.applied_in_id == None,
-                                DependencyChange.curr_dep_evr != None).all()
+                                DependencyChange.curr_version != None).all()
     if not changes:
         return
     changes_map = {change.dep_name: change for change in changes}

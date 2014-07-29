@@ -186,8 +186,12 @@ class Dependency(Base):
     repo_id = Column(Integer, ForeignKey('repo.id'))
     package_id = Column(ForeignKey('package.id'))
     name = Column(String, nullable=False)
-    evr = Column(String, nullable=False)
+    epoch = Column(Integer)
+    version = Column(String, nullable=False)
+    release = Column(String, nullable=False)
     arch = Column(String, nullable=False)
+
+    nevra = (name, epoch, version, release, arch)
 
 update_weight = config['priorities']['package_update']
 
@@ -197,8 +201,12 @@ class DependencyChange(Base):
     package_id = Column(ForeignKey('package.id'), nullable=False)
     applied_in_id = Column(ForeignKey('build.id'), nullable=True, default=None)
     dep_name = Column(String, nullable=False)
-    prev_dep_evr = Column(String)
-    curr_dep_evr = Column(String)
+    prev_epoch = Column(Integer)
+    prev_version = Column(String)
+    prev_release = Column(String)
+    curr_epoch = Column(Integer)
+    curr_version = Column(String)
+    curr_release = Column(String)
     distance = Column(Integer)
 
     @classmethod
