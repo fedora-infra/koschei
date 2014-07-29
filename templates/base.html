@@ -5,25 +5,24 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
 <title>{% block title %}Koschei{% endblock %}</title>
-<!--<link rel="shortcut icon" href="{{ toplink }}/static/images/koji.ico"/>-->
 <link rel="stylesheet" type="text/css" media="screen" title="Koji Style"
-href="{{ toplink }}/static/koji.css"/>
-<script type="text/javascript" src="{{ toplink }}/static/jquery-2.1.1.min.js"></script>
-<script type="text/javascript" src="{{ toplink }}/static/jquery.tablesorter.js"></script>
+href="{{ url_for('static', filename='koji.css') }}"/>
+<script type="text/javascript" src="{{ url_for('static', filename='jquery-2.1.1.min.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='jquery.tablesorter.js') }}"></script>
 <script type="text/javascript">$(document).ready(function() { $(".data-list").tablesorter(); } );</script>
 </head>
 <body id="{% block tab_id %}summary{% endblock %}">
 <div id="wrap">
     <div id="innerwrap">
         <div id="header">
-            <img src="{{ toplink }}/static/images/logo.png" alt="Koschei Logo" id="kojiLogo"/>
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Koschei Logo" id="kojiLogo"/>
         </div>
 
         <div id="mainNav">
             <h4 class="hide">Main Site Links:</h4>
             <ul>
-                <li id="summaryTab"><a href="{{ toplink }}/index.html">Summary</a></li>
-                <li id="packagesTab"><a href="{{ toplink }}/groups.html">Groups</a></li>
+                <li id="summaryTab"><a href="{{ url_for('frontpage') }}">Summary</a></li>
+                <li id="packagesTab"><a href="{{ url_for('groups_overview') }}">Groups</a></li>
                 <li id="buildsTab"><a href="https://github.com/msimacek/koschei">Source code</a></li>
             </ul>
         </div>
@@ -40,7 +39,7 @@ href="{{ toplink }}/static/koji.css"/>
         <p id="footer">
         Copyright &copy; 2014 Red Hat
         <a href="http://fedorahosted.org/koji/">
-            <img src="{{ toplink }}/static/images/powered-by-koji.png"
+            <img src="{{ url_for('static', filename='images/powered-by-koji.png') }}"
             alt="Powered By Koji" id="PoweredByKojiLogo"/>
         </a>
         </p>

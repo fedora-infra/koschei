@@ -54,7 +54,8 @@ config = {
         "repodata": "@CACHEDIR@/repodata",
         "reports": "@OUTPUTDIR@/html",
         "templates": "@DATADIR@/templates",
-        "static": "@DATADIR@/static",
+        "static_folder": "@DATADIR@/static",
+        "static_url": "/static",
     },
     "flask": {
     },

@@ -15,12 +15,14 @@
 
     <tr class="row-odd">
         <td>
-            <a href="{{ toplink }}/package/{{ package.name }}.html">{{ package.name }}</a>
+            <a href="{{ url_for('package_detail', name=package.name) }}">{{ package.name }}</a>
         </td>
         <td>
             <div class="hidden">{{ package.state_string }}</div>
-            <img src="{{ toplink }}/static/images/{{ package.state_string }}.png"
+            {% if package.state_string %}
+            <img src="{{ url_for('static', filename='images/' ~ package.state_string ~ '.png') }}"
                  title="{{ package.state_string }}" alt="{{ package.state_string }}"/>
+            {% endif %}
         </td>
         {% if package.state_string != 'unresolved' %}
         <td>

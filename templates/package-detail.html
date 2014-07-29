@@ -27,7 +27,9 @@
   <tbody>
     {% for build in package.all_builds %}
     <tr class="row-odd">
-        <td><div class="hidden">{{ build.state_string }}</div><img src="{{ toplink }}/static/images/{{ build.state_string }}.png" title="{{ build.state_string }}" alt="{{ build.state_string }}"/></td>
+        <td><div class="hidden">{{ build.state_string }}</div>
+            <img src="{{ url_for('static', filename='images/' ~ build.state_string ~ '.png') }}"
+                 title="{{ build.state_string }}" alt="{{ build.state_string }}"/></td>
         <td>
             <a href="{{ koji_weburl }}/taskinfo?taskID={{ build.task_id }}">
                 {{ build.task_id }}
@@ -40,7 +42,7 @@
             {{ macros.depchange_table(build.dependency_changes) }}
         </td>
         <td>
-            <a href="{{ package.name }}/{{ build.id }}.html">details</a>
+            <a href="{{ url_for('build_detail', name=package.name, build_id=build.id) }}">details</a>
         </td>
     </tr>
     {% endfor %}
