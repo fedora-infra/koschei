@@ -52,7 +52,6 @@ config = {
         "build_logs_relative": "build_logs",
         "srpms": "@CACHEDIR@/srpms",
         "repodata": "@CACHEDIR@/repodata",
-        "reports": "@OUTPUTDIR@/html",
         "templates": "@DATADIR@/templates",
         "static_folder": "@DATADIR@/static",
         "static_url": "/static",

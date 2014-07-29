@@ -58,12 +58,13 @@ cp -pr alembic/ alembic.ini %{buildroot}%{_datadir}/%{name}/
 cp -pr theme %{buildroot}%{_datadir}/%{name}/
 ln -s theme/fedora/static %{buildroot}%{_datadir}/%{name}/static
 cp -p %{name}.wsgi %{buildroot}%{_datadir}/%{name}/
+mkdir -p %{_sysconfdir}/httpd.conf
+cp -p httpd.conf %{_sysconfdir}/httpd.conf/%{name}.conf
 
 %post
 %systemd_post koschei-scheduler.service
 %systemd_post koschei-submitter.service
 %systemd_post koschei-watcher.service
-%systemd_post koschei-reporter.service
 %systemd_post koschei-log-dowloader.service
 %systemd_post koschei-polling.service
 
@@ -71,7 +72,6 @@ cp -p %{name}.wsgi %{buildroot}%{_datadir}/%{name}/
 %systemd_preun koschei-scheduler.service
 %systemd_preun koschei-submitter.service
 %systemd_preun koschei-watcher.service
-%systemd_preun koschei-reporter.service
 %systemd_preun koschei-log-dowloader.service
 %systemd_preun koschei-polling.service
 
@@ -79,7 +79,6 @@ cp -p %{name}.wsgi %{buildroot}%{_datadir}/%{name}/
 %systemd_postun_with_restart koschei-scheduler.service
 %systemd_postun_with_restart koschei-submitter.service
 %systemd_postun_with_restart koschei-watcher.service
-%systemd_postun_with_restart koschei-reporter.service
 %systemd_postun_with_restart koschei-log-dowloader.service
 %systemd_postun_with_restart koschei-polling.service
 
@@ -90,7 +89,9 @@ cp -p %{name}.wsgi %{buildroot}%{_datadir}/%{name}/
 %{_localstatedir}/cache/%{name}
 %{python_sitelib}/*
 %dir %{_sysconfdir}/%{name}
+# TODO add back noreplace
 %config %{_sysconfdir}/%{name}/config.cfg
+%config %{_sysconfdir}/httpd.conf.d/%{name}.conf
 %{_unitdir}/*
 
 %changelog
