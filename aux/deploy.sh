@@ -1,21 +1,30 @@
 #!/bin/sh
 set -e
 
-MACHINE=koschei.cloud.fedoraproject.org
+cd "$(git rev-parse --show-toplevel)"
 
-git archive master | xz >koschei-0.0.1.tar.xz
-rpmbuild -bb koschei.spec
-cat noarch/koschei-0.0.1-1.fc20.noarch.rpm | ssh root@$MACHINE '
+MACHINE=koschei.cloud.fedoraproject.org
+pushd systemd
+SERVICES=$(echo *.service)
+popd
+VERSION="$(python setup.py -V)"
+RELEASE="$(rpmspec -q koschei.spec --qf='%{release}')"
+
+git archive HEAD | xz >koschei-${VERSION}.tar.xz
+rpmbuild -bb koschei.spec -D"_sourcedir $PWD" -D"_rpmdir $PWD"
+cat noarch/koschei-$VERSION-${RELEASE}.noarch.rpm | ssh root@$MACHINE "
 
 set -e
-trap "rm -f koschei.rpm" 0
+trap 'rm -f koschei.rpm' 0
 
 cat >koschei.rpm
+# stop for possible migration
+for service in $SERVICE; do systemctl stop \$service; done
 yum reinstall -y koschei.rpm
 
-systemctl daemon-reload
-for service in scheduler submitter watcher reporter log-downloader polling; do
-    systemctl restart koschei-$service
-done
+cd /usr/share/koschei
+su koschei -c 'alembic upgrade head'
 
-'
+systemctl daemon-reload
+for service in $SERVICE; do systemctl start \$service; done
+"
