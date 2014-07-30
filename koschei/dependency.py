@@ -20,7 +20,6 @@ import hawkey
 import logging
 
 from sqlalchemy import except_, or_, intersect
-from sqlalchemy.sql.expression import func
 
 from koschei.models import Package, Dependency, DependencyChange, Repo, \
                            ResolutionResult, ResolutionProblem
@@ -34,13 +33,13 @@ def get_srpm_pkg(sack, name):
     if hawk_pkg:
         return hawk_pkg[0]
 
-def set_resolved(db_session, package):
-    result = ResolutionResult(package_id=package.id, resolved=True)
+def set_resolved(db_session, repo, package):
+    result = ResolutionResult(package_id=package.id, resolved=True, repo_id=repo.id)
     db_session.add(result)
     db_session.flush()
 
-def set_unresolved(db_session, package, problems):
-    result = ResolutionResult(package_id=package.id, resolved=False)
+def set_unresolved(db_session, repo, package, problems):
+    result = ResolutionResult(package_id=package.id, resolved=False, repo_id=repo.id)
     db_session.add(result)
     db_session.flush()
     for problem in problems:
@@ -56,7 +55,7 @@ def resolve_dependencies(db_session, sack, repo, package, hawk_group):
     for pkg in [hawk_pkg] + hawk_group:
         goal.install(pkg)
     if goal.run():
-        set_resolved(db_session, package)
+        set_resolved(db_session, repo, package)
         # pylint: disable=E1101
         installs = goal.list_installs()
         for install in installs:
@@ -68,7 +67,7 @@ def resolve_dependencies(db_session, sack, repo, package, hawk_group):
                 db_session.add(dep)
                 db_session.flush()
     else:
-        set_unresolved(db_session, package, goal.problems)
+        set_unresolved(db_session, repo, package, goal.problems)
 
 def get_dependency_differences(db_session):
     def difference_query(*repos):
@@ -79,8 +78,6 @@ def get_dependency_differences(db_session):
         return db_session.query(Dependency.package_id, *Dependency.nevra)\
                          .select_entity_from(except_(*deps))\
                          .filter(Dependency.package_id.in_(resolved))
-    curr_repo = db_session.query(func.max(Repo.id)).subquery()
-    prev_repo = db_session.query(func.max(Repo.id) - 1).subquery()
     last_repos = db_session.query(Repo.id).order_by(Repo.id.desc()).limit(2).all()
     if len(last_repos) != 2:
         return [], []

@@ -171,6 +171,7 @@ class ResolutionResult(Base):
     __tablename__ = 'resolution_result'
     id = Column(Integer, primary_key=True)
     package_id = Column(ForeignKey('package.id'))
+    repo_id = Column(ForeignKey('repo.id'))
     resolved = Column(Boolean, nullable=False)
     problems = relationship('ResolutionProblem')
 
