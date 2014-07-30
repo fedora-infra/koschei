@@ -27,7 +27,7 @@ config = {
         "for_arch": "x86_64",
         "repos": {
             "x86_64": "http://koji.fedoraproject.org/repos/f22-build/latest/x86_64",
-            "i386": "http://koji.fedoraproject.org/repos/f22-build/latest/i386".
+            "i386": "http://koji.fedoraproject.org/repos/f22-build/latest/i386",
         },
     },
     "priorities": {
