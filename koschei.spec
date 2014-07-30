@@ -21,6 +21,7 @@ Requires:       python-alembic
 Requires:       python-flask
 Requires:       python-flask-sqlalchemy
 Requires:       mod_wsgi
+Requires:       httpd
 
 %description
 TBD.
@@ -59,8 +60,8 @@ cp -pr alembic/ alembic.ini %{buildroot}%{_datadir}/%{name}/
 cp -pr theme %{buildroot}%{_datadir}/%{name}/
 ln -s theme/fedora/static %{buildroot}%{_datadir}/%{name}/static
 cp -p %{name}.wsgi %{buildroot}%{_datadir}/%{name}/
-mkdir -p %{_sysconfdir}/httpd.conf
-cp -p httpd.conf %{_sysconfdir}/httpd.conf/%{name}.conf
+mkdir -p %{buildroot}%{_sysconfdir}/httpd/conf.d
+cp -p httpd.conf %{buildroot}%{_sysconfdir}/httpd/conf.d/%{name}.conf
 
 %post
 %systemd_post koschei-scheduler.service
@@ -92,7 +93,7 @@ cp -p httpd.conf %{_sysconfdir}/httpd.conf/%{name}.conf
 %dir %{_sysconfdir}/%{name}
 # TODO add back noreplace
 %config %{_sysconfdir}/%{name}/config.cfg
-%config %{_sysconfdir}/httpd.conf.d/%{name}.conf
+%config %{_sysconfdir}/httpd/conf.d/%{name}.conf
 %{_unitdir}/*
 
 %changelog
