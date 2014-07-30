@@ -65,7 +65,6 @@ def resolve_dependencies(db_session, sack, repo, package, hawk_group):
                                  version=install.version, release=install.release,
                                  arch=install.arch)
                 db_session.add(dep)
-                db_session.flush()
     else:
         set_unresolved(db_session, repo, package, goal.problems)
 
@@ -74,10 +73,10 @@ def get_dependency_differences(db_session):
         resolved = intersect(*(db_session.query(Dependency.package_id)\
                                .filter(Dependency.repo_id == r) for r in repos))
         deps = (db_session.query(Dependency.package_id, *Dependency.nevra)
-                          .filter(Dependency.repo_id == r) for r in repos)
-        return db_session.query(Dependency.package_id, *Dependency.nevra)\
-                         .select_entity_from(except_(*deps))\
-                         .filter(Dependency.package_id.in_(resolved))
+                          .filter(Dependency.repo_id == r)
+                          .filter(Dependency.package_id.in_(resolved))
+                    for r in repos)
+        return db_session.get_bind().execute(except_(*deps))
     last_repos = db_session.query(Repo.id).order_by(Repo.id.desc()).limit(2).all()
     if len(last_repos) != 2:
         return [], []
