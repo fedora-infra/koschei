@@ -27,6 +27,7 @@ import logging
 
 priority_threshold = util.config['priorities']['build_threshold']
 max_builds = util.config['koji_config']['max_builds']
+load_threshold = util.config['koji_config'].get('load_threshold')
 
 log = logging.getLogger('scheduler')
 
@@ -48,9 +49,6 @@ def get_priority_queries(db_session):
 
 @service_main()
 def schedule_builds(db_session, koji_session):
-    load_threshold = util.config['koji_config'].get('load_threshold')
-    if load_threshold and util.get_koji_load(koji_session) > load_threshold:
-        return
     incomplete_builds = db_session.query(func.count(Build.id))\
                                   .filter(or_(Build.state == Build.RUNNING,
                                               Build.state == Build.SCHEDULED))\
@@ -73,9 +71,12 @@ def schedule_builds(db_session, koji_session):
                             .filter(Package.state == Package.OK)\
                             .filter(Package.id.notin_(unfinished))\
                             .order_by(candidates.c.curr_priority.desc())\
-                            .limit(limit)
+                            .first()
 
-    for package, priority in to_schedule:
+    if to_schedule:
+        if load_threshold and util.get_koji_load(koji_session) > load_threshold:
+            return
+        package, priority = to_schedule
         build = Build(package_id=package.id, state=Build.SCHEDULED)
         db_session.add(build)
         db_session.commit()
