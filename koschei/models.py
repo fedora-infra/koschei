@@ -16,6 +16,8 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+import re
+
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
                        ForeignKey, DateTime
 from sqlalchemy.sql.expression import extract, func, select, join
@@ -200,6 +202,22 @@ class Dependency(Base):
 
 update_weight = config['priorities']['package_update']
 
+def format_evr(epoch, version, release):
+    if not version or not release:
+        return ''
+    if epoch:
+        return '{}:{}-{}'.format(epoch, version, release)
+    return '{}-{}'.format(version, release)
+
+vercmp_re = re.compile(r'(\d+)')
+
+def vercmp(components1, components2):
+    def tokenize(s):
+        return [int(x) if x.isdigit() else x
+                for part in s
+                for x in vercmp_re.split(str(part or ''))]
+    return tokenize(components1) > tokenize(components2)
+
 class DependencyChange(Base):
     __tablename__ = 'dependency_change'
     id = Column(Integer, primary_key=True)
@@ -213,6 +231,20 @@ class DependencyChange(Base):
     curr_version = Column(String)
     curr_release = Column(String)
     distance = Column(Integer)
+
+    @property
+    def prev_dep_evr(self):
+        return format_evr(self.prev_epoch, self.prev_version, self.prev_release)
+
+    @property
+    def curr_dep_evr(self):
+        return format_evr(self.curr_epoch, self.curr_version, self.curr_release)
+
+    @property
+    def is_update(self):
+        return vercmp((self.curr_epoch, self.curr_version, self.curr_release),
+                      (self.prev_epoch, self.prev_version, self.prev_release))
+
 
     @classmethod
     def get_priority_query(cls, db_session):

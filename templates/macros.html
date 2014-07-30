@@ -48,10 +48,10 @@
         <td>{{ change.dep_name }}</td>
         <td>{{ change.prev_dep_evr or '' }}</td>
         <td>
-            {% if change.prev_dep_evr > change.curr_dep_evr %}
-            &lt;&lt;&lt;
-            {% else %}
+            {% if change.is_update %}
             &gt;&gt;&gt;
+            {% else %}
+            &lt;&lt;&lt;
             {% endif %}
         </td>
         <td>{{ change.curr_dep_evr or '' }}</td>
