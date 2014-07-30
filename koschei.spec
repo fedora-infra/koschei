@@ -23,6 +23,7 @@ Requires:       python-flask-sqlalchemy
 Requires:       mod_wsgi
 Requires:       httpd
 Requires:       python-librepo
+Requires(pre):  shadow-utils
 
 %description
 TBD.
@@ -63,6 +64,13 @@ cp -p %{name}.wsgi %{buildroot}%{_datadir}/%{name}/
 mkdir -p %{buildroot}%{_sysconfdir}/httpd/conf.d
 cp -p httpd.conf %{buildroot}%{_sysconfdir}/httpd/conf.d/%{name}.conf
 
+%pre
+getent group %{name} >/dev/null || groupadd -r %{name}
+getent passwd %{name} >/dev/null || \
+    useradd -r -g %{name} -d %{_datadir}/%{name} -s /bin/sh \
+    -c "Runs koschei services" %{name}
+exit 0
+
 %post
 %systemd_post koschei-scheduler.service
 %systemd_post koschei-submitter.service
@@ -88,7 +96,7 @@ cp -p httpd.conf %{buildroot}%{_sysconfdir}/httpd/conf.d/%{name}.conf
 %doc LICENSE.txt
 %{_bindir}/koschei-admin
 %{_datadir}/%{name}
-%{_localstatedir}/cache/%{name}
+%attr(755, %{name}, %{name}) %{_localstatedir}/cache/%{name}
 %{python_sitelib}/*
 %dir %{_sysconfdir}/%{name}
 %config(noreplace) %{_sysconfdir}/%{name}/config.cfg
