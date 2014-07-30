@@ -528,3 +528,11 @@ span#loginInfo {
     color: red;
 }
 
+
+.pkg-ignored {
+    display: none;
+}
+
+.pkg-retired {
+    display: none;
+}

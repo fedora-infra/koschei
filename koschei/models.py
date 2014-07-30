@@ -76,6 +76,10 @@ class Package(Base):
             return self.last_build.state_string
         elif self.state == self.UNRESOLVED:
             return 'unresolved'
+        elif self.state == self.IGNORED:
+            return 'ignored'
+        elif self.state == self.RETIRED:
+            return 'retired'
 
     def __repr__(self):
         return '{0.id} (name={0.name})'.format(self)

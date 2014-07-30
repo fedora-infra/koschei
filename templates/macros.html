@@ -13,7 +13,7 @@
     {% for package in packages %}
     {% set last_build = package.last_build %}
 
-    <tr class="row-odd">
+    <tr class="row-odd pkg-{{ package.state_string }}">
         <td>
             <a href="{{ url_for('package_detail', name=package.name) }}">{{ package.name }}</a>
         </td>
