@@ -19,12 +19,14 @@ trap 'rm -f koschei.rpm' 0
 
 cat >koschei.rpm
 # stop for possible migration
-for service in $SERVICE; do systemctl stop \$service; done
+for service in $SERVICES; do systemctl stop \$service; done
 yum reinstall -y koschei.rpm
 
 cd /usr/share/koschei
 su koschei -c 'alembic upgrade head'
 
 systemctl daemon-reload
-for service in $SERVICE; do systemctl start \$service; done
+for service in $SERVICES; do systemctl start \$service; done
+sleep 1
+for service in $SERVICES; do systemctl status \$service; done
 "
