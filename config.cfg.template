@@ -48,8 +48,7 @@ config = {
         "instance": "primary"
     },
     "directories": {
-        "build_logs": "@OUTPUTDIR@/html/build_logs",
-        "build_logs_relative": "build_logs",
+        "build_logs": "@CACHEDIR@/build_logs",
         "srpms": "@CACHEDIR@/srpms",
         "repodata": "@CACHEDIR@/repodata",
         "templates": "@DATADIR@/templates",
