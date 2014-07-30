@@ -26,6 +26,7 @@ import subprocess
 import hawkey
 import librepo
 import shutil
+import errno
 
 from lxml import etree
 
@@ -116,8 +117,9 @@ def download_task_output(session, task_id, output_dir, filename_predicate=None,
 def mkdir_if_absent(path):
     try:
         os.makedirs(path)
-    except OSError:
-        pass
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
 
 def reset_sigpipe():
     import signal
