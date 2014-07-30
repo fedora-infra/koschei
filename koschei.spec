@@ -91,9 +91,8 @@ cp -p httpd.conf %{buildroot}%{_sysconfdir}/httpd/conf.d/%{name}.conf
 %{_localstatedir}/cache/%{name}
 %{python_sitelib}/*
 %dir %{_sysconfdir}/%{name}
-# TODO add back noreplace
-%config %{_sysconfdir}/%{name}/config.cfg
-%config %{_sysconfdir}/httpd/conf.d/%{name}.conf
+%config(noreplace) %{_sysconfdir}/%{name}/config.cfg
+%config %{_sysconfdir}/httpd.conf.d/%{name}.conf
 %{_unitdir}/*
 
 %changelog
