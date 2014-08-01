@@ -66,7 +66,7 @@ class PackageBlocked(Exception):
     pass
 
 def create_koji_session(anonymous=False):
-    koji_session = koji.ClientSession(server)
+    koji_session = koji.ClientSession(server, {'timeout': 3600})
     if not anonymous:
         koji_session.ssl_login(cert, ca_cert, ca_cert)
     return koji_session
