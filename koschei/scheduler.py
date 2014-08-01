@@ -41,7 +41,8 @@ def get_priority_queries(db_session):
     t1 = util.config['priorities']['t1']
     a = priority_threshold / (math.log10(t1) - math.log10(t0))
     b = -a * math.log10(t0)
-    time_expr = func.greatest(a * func.log(Build.time_since_last_build_expr()) + b, -30)
+    time_expr = func.greatest(a * func.log(Build.time_since_last_build_expr()
+                                           + 0.00001) + b, -30)
     priorities['time'] = db_session.query(Build.package_id.label('pkg_id'),
                                           time_expr.label('priority'))\
                                    .group_by(Build.package_id)
