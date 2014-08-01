@@ -21,6 +21,7 @@ import koji
 import logging
 import signal
 import sys
+import socket
 import time
 
 from . import util
@@ -50,7 +51,7 @@ def service_main(needs_koji=True, koji_anonymous=True):
                     args['db_session'].expire_all()
                     retry_attempts = 0
                     time.sleep(interval)
-                except koji.GenericError as e:
+                except (koji.GenericError, socket.error) as e:
                     retry_attempts += 1
                     try:
                         args['koji_session'].logout()
