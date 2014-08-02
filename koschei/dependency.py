@@ -36,6 +36,8 @@ def get_srpm_pkg(sack, name):
 def set_resolved(db_session, repo, package):
     result = ResolutionResult(package_id=package.id, resolved=True, repo_id=repo.id)
     db_session.add(result)
+    package.state = Package.OK
+    db_session.add(package)
     db_session.flush()
 
 def set_unresolved(db_session, repo, package, problems):
@@ -45,6 +47,8 @@ def set_unresolved(db_session, repo, package, problems):
     for problem in problems:
         entry = ResolutionProblem(resolution_id=result.id, problem=problem)
         db_session.add(entry)
+    package.state = Package.UNRESOLVED
+    db_session.add(package)
     db_session.flush()
 
 def resolve_dependencies(db_session, sack, repo, package, hawk_group):
