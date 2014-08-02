@@ -17,6 +17,7 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 import re
+import rpm
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
                        ForeignKey, DateTime
@@ -209,15 +210,6 @@ def format_evr(epoch, version, release):
         return '{}:{}-{}'.format(epoch, version, release)
     return '{}-{}'.format(version, release)
 
-vercmp_re = re.compile(r'(\d+)')
-
-def vercmp(components1, components2):
-    def tokenize(s):
-        return [int(x) if x.isdigit() else x
-                for part in s
-                for x in vercmp_re.split(str(part or ''))]
-    return tokenize(components1) > tokenize(components2)
-
 class DependencyChange(Base):
     __tablename__ = 'dependency_change'
     id = Column(Integer, primary_key=True)
@@ -242,9 +234,9 @@ class DependencyChange(Base):
 
     @property
     def is_update(self):
-        return vercmp((self.curr_epoch, self.curr_version, self.curr_release),
-                      (self.prev_epoch, self.prev_version, self.prev_release))
-
+        prev = (str(self.prev_epoch), self.prev_version, self.prev_release)
+        curr = (str(self.curr_epoch), self.curr_version, self.curr_release)
+        return rpm.labelCompare(prev, curr) < 0
 
     @classmethod
     def get_priority_query(cls, db_session):

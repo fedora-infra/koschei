@@ -24,6 +24,7 @@ Requires:       mod_wsgi
 Requires:       httpd
 Requires:       python-librepo
 Requires:       python-libcomps
+Requires:       rpm-python
 Requires(pre):  shadow-utils
 
 %description
