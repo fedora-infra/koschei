@@ -84,8 +84,7 @@ def koji_scratch_build(session, name, opts=None):
         if len(srpms) > 0:
             source = rel_pathinfo.build(info[0]) + '/' + rel_pathinfo.rpm(srpms[0])
     else:
-        pkg_id = session.getPackageID(name)
-        [pkg_info] = session.listPackages(pkgID=pkg_id)
+        [pkg_info] = session.listPackages(pkgID=name)
         if pkg_info['blocked']:
             raise PackageBlocked()
 
