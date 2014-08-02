@@ -23,6 +23,7 @@ Requires:       python-flask-sqlalchemy
 Requires:       mod_wsgi
 Requires:       httpd
 Requires:       python-librepo
+Requires:       python-libcomps
 Requires(pre):  shadow-utils
 
 %description

@@ -146,7 +146,7 @@ def repo_done(db_session):
     for_arch = util.config['dependency']['for_arch']
     _, repos = util.sync_repos(package_names)
     sack = util.create_sacks([for_arch], repos)[for_arch]
-    group = util.get_build_group(repos[for_arch])
+    group = util.get_build_group()
     db_repo = Repo()
     db_session.add(db_repo)
     db_session.flush()

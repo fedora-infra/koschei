@@ -24,6 +24,7 @@ config = {
     },
     "dependency": {
         "build_group": "build",
+        "comps_url": "http://koji.fedoraproject.org/repos/f22-build/latest/groups/comps.xml",
         "for_arch": "x86_64",
         "repos": {
             "x86_64": "http://koji.fedoraproject.org/repos/f22-build/latest/x86_64",

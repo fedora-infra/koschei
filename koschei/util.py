@@ -27,8 +27,8 @@ import hawkey
 import librepo
 import shutil
 import errno
-
-from lxml import etree
+import libcomps
+import urllib2
 
 root_logger = logging.getLogger()
 root_logger.setLevel(logging.DEBUG)
@@ -206,16 +206,13 @@ def create_sacks(arches, repos):
         sacks[arch] = sack
     return sacks
 
-def get_build_group(repo_result):
-    return extract_build_group(repo_result.yum_repo['group'])
-
-def extract_build_group(groupfile_path):
-    group = config['dependency']['build_group']
-    group_xml = etree.parse(groupfile_path)
-    packages = group_xml.xpath(
-        '/comps/group[id="{group}"]/packagelist/packagereq/text()'\
-                .format(group=group))
-    return packages
+def get_build_group():
+    comps_url = config['dependency']['comps_url']
+    group_name = config['dependency']['build_group']
+    comps = libcomps.Comps()
+    comps.fromxml_str(urllib2.urlopen(comps_url).read())
+    [group] = [group for group in comps.groups if group.name == group_name]
+    return [pkg.name for pkg in group.packages]
 
 def get_koji_packages(package_names):
     session = create_koji_session(anonymous=True)
