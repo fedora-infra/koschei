@@ -223,7 +223,9 @@ def get_koji_packages(package_names):
     return [pkg for [pkg] in pkgs]
 
 def get_koji_load(koji_session):
-    hosts = koji_session.listHosts(ready=True)
+    channel = koji_session.getChannel('default')
+    hosts = koji_session.listHosts(channelID=channel['id'], enabled=True)
     capacity = sum(host['capacity'] for host in hosts)
-    load = sum(host['task_load'] for host in hosts)
+    load = sum(host['task_load'] if host['ready']
+               else host['capacity'] for host in hosts)
     return load / capacity
