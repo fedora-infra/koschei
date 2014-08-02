@@ -139,20 +139,22 @@ def get_srpm(url, srpm_name):
 
 def create_srpm_repo(package_names):
     koji_session = create_koji_session()
-    koji_session.multicall = True
-    for package_name in package_names:
-        koji_session.listTagged(source_tag, latest=True, package=package_name)
-    urls = []
-    infos = koji_session.multiCall()
-    koji_session.multicall = True
-    for [info] in infos:
-        if info:
-            koji_session.listRPMs(buildID=info[0]['build_id'], arches='src')
-            urls.append(pathinfo.build(info[0]))
-    srpms = koji_session.multiCall()
-    for [srpm], url in zip(srpms, urls):
-        srpm_name = pathinfo.rpm(srpm[0])
-        get_srpm(url, srpm_name)
+    while package_names:
+        koji_session.multicall = True
+        for package_name in package_names[:50]:
+            koji_session.listTagged(source_tag, latest=True, package=package_name)
+        urls = []
+        infos = koji_session.multiCall()
+        koji_session.multicall = True
+        for [info] in infos:
+            if info:
+                koji_session.listRPMs(buildID=info[0]['build_id'], arches='src')
+                urls.append(pathinfo.build(info[0]))
+        srpms = koji_session.multiCall()
+        for [srpm], url in zip(srpms, urls):
+            srpm_name = pathinfo.rpm(srpm[0])
+            get_srpm(url, srpm_name)
+        package_names = package_names[50:]
     log.debug('createrepo_c')
     out = subprocess.check_output(['createrepo_c', srpm_dir])
     log.debug(out)
