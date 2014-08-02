@@ -132,7 +132,7 @@ def get_srpm(url, srpm_name):
     if not os.path.isfile(srpm_path):
         tmp_filename = os.path.join(srpm_dir, '.srpm.tmp')
         log.info('downloading {}'.format(srpm_name))
-        cmd = 'curl {}|tee {}|rpm -qp -R /dev/fd/0'.format(url, tmp_filename)
+        cmd = 'curl -s {} | tee {} | rpm -qp /dev/fd/0'.format(url, tmp_filename)
         subprocess.call(['bash', '-e', '-c', cmd], preexec_fn=reset_sigpipe)
         os.rename(tmp_filename, srpm_path)
     return srpm_path
