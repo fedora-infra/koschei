@@ -51,13 +51,15 @@ def set_unresolved(db_session, repo, package, problems):
     db_session.add(package)
     db_session.flush()
 
-def resolve_dependencies(db_session, sack, repo, package, hawk_group):
+def resolve_dependencies(db_session, sack, repo, package, group):
     hawk_pkg = get_srpm_pkg(sack, package.name)
     if not hawk_pkg:
         return
     goal = hawkey.Goal(sack)
-    for pkg in [hawk_pkg] + hawk_group:
-        goal.install(pkg)
+    for name in group:
+        sltr = hawkey.Selector(sack).set(name=name)
+        goal.install(select=sltr)
+    goal.install(hawk_pkg)
     if goal.run():
         set_resolved(db_session, repo, package)
         # pylint: disable=E1101
@@ -150,11 +152,9 @@ def repo_done(db_session):
     db_repo = Repo()
     db_session.add(db_repo)
     db_session.flush()
-    hawk_group = hawkey.Query(sack).filter(name=group, arch=for_arch,
-                                           latest_per_arch=True).run()
     log.info("Resolving dependencies")
     for pkg in packages:
-        resolve_dependencies(db_session, sack, db_repo, pkg, hawk_group)
+        resolve_dependencies(db_session, sack, db_repo, pkg, group)
     log.info("Computing dependency differences")
     process_dependency_differences(db_session)
     log.info("Computing dependency distances")
