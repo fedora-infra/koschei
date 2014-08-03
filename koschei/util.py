@@ -62,6 +62,9 @@ git_reference = config.get('git_reference', 'origin/master')
 srpm_dir = config['directories']['srpms']
 repodata_dir = config['directories']['repodata']
 
+dep_config = config['dependency']
+koji_repos = dep_config['repos']
+
 class PackageBlocked(Exception):
     pass
 
@@ -167,7 +170,7 @@ def get_srpm_repodata():
 
 def download_koji_repos():
     repos = {}
-    for arch, repo_url in config['dependency']['repos'].items():
+    for arch, repo_url in koji_repos.items():
         h = librepo.Handle()
         h.destdir = os.path.join(repodata_dir, arch)
         if os.path.exists(h.destdir):
@@ -179,6 +182,17 @@ def download_koji_repos():
         log.info("Downloading {arch} repo from {url}".format(arch=arch, url=repo_url))
         result = h.perform(librepo.Result())
         repos[arch] = result
+    return repos
+
+def load_local_repos():
+    repos = {}
+    for arch in koji_repos.keys():
+        h = librepo.Handle()
+        h.local = True
+        h.repotype = librepo.LR_YUMREPO
+        h.urls = [os.path.join(repodata_dir, arch)]
+        h.yumdlist = ['primary', 'filelists', 'group']
+        repos[arch] = h.perform(librepo.Result())
     return repos
 
 def add_repo_to_sack(repoid, repo_result, sack):
@@ -206,8 +220,8 @@ def create_sacks(arches, repos):
     return sacks
 
 def get_build_group():
-    comps_url = config['dependency']['comps_url']
-    group_name = config['dependency']['build_group']
+    comps_url = dep_config['comps_url']
+    group_name = dep_config['build_group']
     comps = libcomps.Comps()
     comps.fromxml_str(urllib2.urlopen(comps_url).read())
     [group] = [group for group in comps.groups if group.name == group_name]
