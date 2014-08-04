@@ -39,16 +39,15 @@ def submit_builds(db_session, koji_session):
         build_opts = None
         if package.build_opts:
             build_opts = json.loads(package.build_opts)
-        try:
-            build.task_id = util.koji_scratch_build(koji_session, name, build_opts)
-        except util.PackageBlocked:
+        source = util.get_srpm_url(koji_session, name)
+        if source:
+            build.task_id = util.koji_scratch_build(koji_session, name, source, build_opts)
+            build.started = datetime.now()
+            build.package.manual_priority = 0
+            DependencyChange.build_submitted(db_session, build)
+        else:
             package.state = Package.RETIRED
             db_session.delete(build)
-            db_session.commit()
-            continue
-        build.started = datetime.now()
-        build.package.manual_priority = 0
-        DependencyChange.build_submitted(db_session, build)
         db_session.commit()
 
 def update_koji_state(db_session, build, state):

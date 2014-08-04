@@ -65,32 +65,28 @@ repodata_dir = config['directories']['repodata']
 dep_config = config['dependency']
 koji_repos = dep_config['repos']
 
-class PackageBlocked(Exception):
-    pass
-
 def create_koji_session(anonymous=False):
     koji_session = koji.ClientSession(server, {'timeout': 3600})
     if not anonymous:
         koji_session.ssl_login(cert, ca_cert, ca_cert)
     return koji_session
 
-def koji_scratch_build(session, name, opts=None):
+def prepare_build_opts(opts=None):
     build_opts = base_build_opts.copy()
     if opts:
         build_opts.update(opts)
     build_opts['scratch'] = True
-    source = '{}/{}?#{}'.format(scm_url, name, git_reference)
+    return build_opts
 
-    info = session.listTagged(source_tag, latest=True, package=name)
+def get_srpm_url(koji_session, name):
+    info = koji_session.listTagged(source_tag, latest=True, package=name)
     if len(info) > 0:
-        srpms = session.listRPMs(buildID=info[0]['build_id'], arches='src')
+        srpms = koji_session.listRPMs(buildID=info[0]['build_id'], arches='src')
         if len(srpms) > 0:
-            source = rel_pathinfo.build(info[0]) + '/' + rel_pathinfo.rpm(srpms[0])
-    else:
-        [pkg_info] = session.listPackages(pkgID=name)
-        if pkg_info['blocked']:
-            raise PackageBlocked()
+            return rel_pathinfo.build(info[0]) + '/' + rel_pathinfo.rpm(srpms[0])
 
+def koji_scratch_build(session, name, source, build_opts):
+    build_opts = prepare_build_opts(build_opts)
     log.info('Intiating koji build for {name}:\n\tsource={source}\
               \n\ttarget={target}\n\tbuild_opts={build_opts}'.format(name=name,
                   target=target_tag, source=source, build_opts=build_opts))
