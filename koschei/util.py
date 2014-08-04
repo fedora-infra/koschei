@@ -78,12 +78,13 @@ def prepare_build_opts(opts=None):
     build_opts['scratch'] = True
     return build_opts
 
-def get_srpm_url(koji_session, name):
+def get_last_srpm(koji_session, name):
     info = koji_session.listTagged(source_tag, latest=True, package=name)
-    if len(info) > 0:
+    if info:
         srpms = koji_session.listRPMs(buildID=info[0]['build_id'], arches='src')
-        if len(srpms) > 0:
-            return rel_pathinfo.build(info[0]) + '/' + rel_pathinfo.rpm(srpms[0])
+        if srpms:
+            return (srpms[0],
+                    rel_pathinfo.build(info[0]) + '/' + rel_pathinfo.rpm(srpms[0]))
 
 def koji_scratch_build(session, name, source, build_opts):
     build_opts = prepare_build_opts(build_opts)

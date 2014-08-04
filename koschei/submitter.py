@@ -39,11 +39,15 @@ def submit_builds(db_session, koji_session):
         build_opts = None
         if package.build_opts:
             build_opts = json.loads(package.build_opts)
-        source = util.get_srpm_url(koji_session, name)
-        if source:
-            build.task_id = util.koji_scratch_build(koji_session, name, source, build_opts)
+        srpm, srpm_url = util.get_last_srpm(koji_session, name)
+        if srpm_url:
+            build.task_id = util.koji_scratch_build(koji_session, name,
+                                                    srpm_url, build_opts)
             build.started = datetime.now()
             build.package.manual_priority = 0
+            build.epoch = srpm['epoch']
+            build.version = srpm['version']
+            build.release = srpm['release']
             DependencyChange.build_submitted(db_session, build)
         else:
             package.state = Package.RETIRED

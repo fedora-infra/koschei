@@ -111,6 +111,9 @@ class Build(Base):
     logs_downloaded = Column(Boolean, default=False, nullable=False)
     started = Column(DateTime)
     finished = Column(DateTime)
+    epoch = Column(Integer)
+    version = Column(String)
+    release = Column(String)
     dependency_changes = relationship('DependencyChange', backref='applied_in',
                                       order_by='DependencyChange.distance')
 
