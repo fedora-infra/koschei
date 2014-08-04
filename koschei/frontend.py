@@ -1,10 +1,10 @@
 from datetime import datetime
-from flask import Flask, abort, render_template
+from flask import Flask, abort, render_template, request
 from flask_sqlalchemy import BaseQuery
 from sqlalchemy.orm import scoped_session, sessionmaker, joinedload, \
                            subqueryload, undefer
 
-from .models import engine, Package, Build, PackageGroup
+from .models import engine, Package, Build, PackageGroup, PackageGroupRelation
 from . import util
 
 dirs = util.config['directories']
@@ -22,7 +22,8 @@ db_session = scoped_session(sessionmaker(autocommit=False, bind=engine,
 if False:
     db_session.query = lambda *args: None
 
-app.jinja_env.globals['koji_weburl'] = util.config['koji_config']['weburl']
+app.jinja_env.globals.update(koji_weburl=util.config['koji_config']['weburl'],
+                             min=min, max=max)
 
 @app.teardown_appcontext
 def shutdown_session(exception=None):
@@ -38,10 +39,12 @@ def inject_times():
 
 @app.route('/')
 def frontpage():
-    packages = db_session.query(Package)\
-                         .options(joinedload(Package.last_build))\
-                         .order_by(Package.name).all()
-    return render_template("frontpage.html", packages=packages)
+    page_no = int(request.args.get('page', 1))
+    page = db_session.query(Package)\
+                     .options(joinedload(Package.last_build))\
+                     .order_by(Package.name)\
+                     .paginate(page=page_no, per_page=items_per_page)
+    return render_template("frontpage.html", packages=page.items, page=page)
 
 @app.route('/package/<name>')
 def package_detail(name):
@@ -72,12 +75,18 @@ def groups_overview():
 
 @app.route('/group/<int:group_id>')
 def group_detail(group_id):
+    page_no = int(request.args.get('page', 1))
     group = db_session.query(PackageGroup)\
-                      .options(subqueryload(PackageGroup.packages),
-                               joinedload(PackageGroup.packages,
-                                          Package.last_build))\
                       .filter_by(id=group_id).first_or_404()
-    return render_template("group-detail.html", group=group)
+    page = db_session.query(Package)\
+                     .outerjoin(PackageGroupRelation)\
+                     .filter(PackageGroupRelation.group_id == group.id)\
+                     .options(joinedload(Package.last_build))\
+                     .order_by(Package.name)\
+                     .paginate(page=page_no, per_page=items_per_page)
+
+    return render_template("group-detail.html", group=group, packages=page.items,
+                           page=page)
 
 if __name__ == '__main__':
     app.run()

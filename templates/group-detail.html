@@ -3,7 +3,5 @@
 {% import "macros.html" as macros %}
 {% block content %}
 <div class="pageHeader">{{ group.name }}</div>
-{{ macros.package_table(group.packages) }}
+{{ macros.package_table(packages, page) }}
 {% endblock %}
-
-

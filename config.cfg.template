@@ -59,7 +59,7 @@ config = {
     "flask": {
     },
     "frontend": {
-        "items_per_page": 30,
+        "items_per_page": 5000,
     },
     "alembic": {
         "alembic_ini": "@DATADIR@/alembic.ini"
