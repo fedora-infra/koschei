@@ -116,6 +116,8 @@ class Build(Base):
     release = Column(String)
     dependency_changes = relationship('DependencyChange', backref='applied_in',
                                       order_by='DependencyChange.distance')
+    # was the build done by koschei or was it real build done by packager
+    real = Column(Boolean, nullable=False, server_default='false')
 
     @staticmethod
     def time_since_last_build_expr():
