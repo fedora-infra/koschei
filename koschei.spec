@@ -8,6 +8,7 @@ Source0:        %{name}-%{version}.tar.xz
 BuildArch:      noarch
 
 BuildRequires:  python-devel
+BuildRequires:  systemd
 Requires:       python-sqlalchemy
 Requires:       koji
 Requires:       fedmsg
@@ -26,6 +27,9 @@ Requires:       python-librepo
 Requires:       python-libcomps
 Requires:       rpm-python
 Requires(pre):  shadow-utils
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
 
 %description
 TBD.
