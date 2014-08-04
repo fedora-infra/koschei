@@ -3,7 +3,7 @@ Version:        0.0.1
 Release:        1%{?dist}
 Summary:        Continuous integration for Fedora packages
 License:        GPLv2+
-URL:            TBD
+URL:            https://github.com/msimacek/koschei
 Source0:        %{name}-%{version}.tar.xz
 BuildArch:      noarch
 
@@ -32,7 +32,9 @@ Requires(preun): systemd
 Requires(postun): systemd
 
 %description
-TBD.
+Service tracking dependency changes in Fedora and rebuilding packages whose
+dependencies change too much. It uses Koji scratch builds to do the rebuilds and
+provides a web interface to the results.
 
 %prep
 %setup -q -c -n %{name}
