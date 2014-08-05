@@ -15,13 +15,16 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 # Author: Michael Simacek <msimacek@redhat.com>
+# Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 import fedmsg
 import logging
+import thread
+import threading
 
 from . import util
 from .service import service_main
-from .models import Build
+from .models import Build, Session
 from .submitter import update_koji_state
 from .dependency import repo_done
 
@@ -30,6 +33,20 @@ log = logging.getLogger('koschei-watcher')
 topic_name = util.config['fedmsg']['topic']
 tag = util.config['fedmsg']['tag']
 instance = util.config['fedmsg']['instance']
+eager = util.config['services']['watcher']['eager_repo_done']
+
+repo_free = thread.allocate_lock()
+repo_full = thread.allocate_lock()
+(repo_free if eager else repo_full).acquire()
+
+def new_repo_entry():
+    db_session = Session()
+    while True:
+        repo_full.acquire()
+        repo_free.release()
+        repo_done(db_session)
+
+repo_thread = thread.start_new_thread(new_repo_entry, ())
 
 def get_topic(name):
     return '{}.{}'.format(topic_name, name)
@@ -41,8 +58,8 @@ def consume(db_session, topic, content):
     if topic == get_topic('task.state.change'):
         update_build_state(db_session, content)
     elif topic == get_topic('repo.done'):
-        if content.get('tag') == tag:
-            repo_done(db_session)
+        if content.get('tag') == tag and repo_free.acquire(False):
+            repo_full.release()
 
 def update_build_state(db_session, msg):
     assert msg['attribute'] == 'state'

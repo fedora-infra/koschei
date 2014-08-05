@@ -1,4 +1,4 @@
-# vim: set filetype=python
+# vim: set filetype=python -*- python -*-
 config = {
     "database_config": {
         "drivername": "postgres",
@@ -42,6 +42,10 @@ config = {
         "polling": {
             "interval": 20 * 60,
         },
+	"watcher": {
+            # Whether new repo should be processed as soon as the service is started.
+            "eager_repo_done": False,
+	}
     },
     "fedmsg": {
         "topic": "org.fedoraproject.prod.buildsys",
