@@ -242,7 +242,7 @@ img.sort {
     height: 9px;
 }
 
-td.paginate {
+.paginate {
     text-align: center;
 }
 

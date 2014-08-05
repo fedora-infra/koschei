@@ -1,36 +1,36 @@
 {% macro pagination_row(page, what) %}
-<tr>
-    <td class="paginate">{{ what }} from {{ (page.page - 1) * page.per_page + 1}} to
-                         {{ min(page.page * page.per_page, page.total) }} from total
-                         {{ page.total }}</td>
-    <td>
-        <form class="pageJump" action="">
-            Page:
-            <select onchange="javascript: window.location = '?page=' + this.value;">
-                {% for i in range(1, page.page) %}
-                <option value="{{ i }}">{{ i }}</option>
-                {% endfor %}
-                <option value="{{ page.page }}" selected="selected">{{ page.page }}</option>
-                {% for i in range(page.page + 1, page.pages + 1) %}
-                <option value="{{ i }}">{{ i }}</option>
-                {% endfor %}
-            </select>
-        </form>
-    </td>
- </tr>
+<div>
+    <span class="paginate">{{ what }} from {{ (page.page - 1) * page.per_page + 1}} to
+                           {{ min(page.page * page.per_page, page.total) }} from total
+                           {{ page.total }}</span>
+    <form class="pageJump" action="">
+        Page:
+        <select onchange="javascript: window.location = '?page=' + this.value;">
+            {% for i in range(1, page.page) %}
+            <option value="{{ i }}">{{ i }}</option>
+            {% endfor %}
+            <option value="{{ page.page }}" selected="selected">{{ page.page }}</option>
+            {% for i in range(page.page + 1, page.pages + 1) %}
+            <option value="{{ i }}">{{ i }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
 {% endmacro %}
 {% macro package_table(packages, page) %}
+{% if page %}
+{{ pagination_row(page, 'Packages') }}
+{% endif %}
 <table class="data-list">
-    <tbody>
-    {% if page %}
-    {{ pagination_row(page, 'Packages') }}
+    <thead>
         <tr class="list-header">
             <th>Name</th>
             <th>State</th>
             <th>Task ID</th>
             <th>Started</th>
         </tr>
-    {% endif %}
+    </thead>
+    <tbody>
 
     {% for package in packages %}
     {% set last_build = package.last_build %}
