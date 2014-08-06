@@ -1,0 +1,26 @@
+Things to do related to Koschei:  -*- outline -*-
+
+
+* Koji
+
+** Immediate scratch build purging
+
+   Implement an option (boolean flag) for Koji build RPC call which
+   once set for scratch builds would make Koji delete build results
+   (except for logs) immediately after build is completed.
+
+   Advantages: reduces storage usage for Koji
+
+** SRPM repo generation
+
+   Make new repo Koji tasks generate YUM repositories for source RPMs
+   in addition to binary RPMs.
+
+   Advantages:
+    * a lot of code removed
+    * reduced network usage
+    * other (not Koschei related)
+
+** Policy for scratch builds from repo ID
+
+   Advantages: Reduced hazard
