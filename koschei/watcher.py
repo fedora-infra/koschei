@@ -19,8 +19,7 @@
 
 import fedmsg
 import logging
-import thread
-import threading
+import concurrent.futures
 
 from . import util
 from .service import service_main
@@ -33,33 +32,37 @@ log = logging.getLogger('koschei-watcher')
 topic_name = util.config['fedmsg']['topic']
 tag = util.config['fedmsg']['tag']
 instance = util.config['fedmsg']['instance']
-eager = util.config['services']['watcher']['eager_repo_done']
 
-repo_free = thread.allocate_lock()
-repo_full = thread.allocate_lock()
-(repo_free if eager else repo_full).acquire()
+repo_done_excutor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+repo_done_future = None
 
 def new_repo_entry():
     db_session = Session()
-    while True:
-        repo_full.acquire()
-        repo_free.release()
+    try:
         repo_done(db_session)
-
-repo_thread = thread.start_new_thread(new_repo_entry, ())
+    except:
+        db_session.rollback()
+        raise
+    finally:
+        db_session.close()
 
 def get_topic(name):
     return '{}.{}'.format(topic_name, name)
 
 def consume(db_session, topic, content):
+    global repo_done_future
+    if repo_done_future and repo_done_future.done():
+        # This will raise an exception if the thread crashed
+        repo_done_future.result()
     if not content.get('instance') == instance:
         return
     log.info('consuming ' + topic)
     if topic == get_topic('task.state.change'):
         update_build_state(db_session, content)
     elif topic == get_topic('repo.done'):
-        if content.get('tag') == tag and repo_free.acquire(False):
-            repo_full.release()
+        if content.get('tag') == tag:
+            if not repo_done_future or repo_done_future.done():
+                repo_done_future = repo_done_excutor.submit(new_repo_entry)
 
 def update_build_state(db_session, msg):
     assert msg['attribute'] == 'state'
