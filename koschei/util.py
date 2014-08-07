@@ -155,7 +155,13 @@ def create_srpm_repo(package_names):
             get_srpm(url, srpm_name)
         package_names = package_names[50:]
     log.debug('createrepo_c')
-    out = subprocess.check_output(['createrepo_c', srpm_dir])
+    createrepo = subprocess.Popen(['createrepo_c', srpm_dir], stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)
+    out, err = createrepo.communicate()
+    ret = createrepo.wait()
+    if ret:
+        raise Exception("Createrepo failed: return code {ret}\n{err}"
+                        .format(ret=ret, err=err))
     log.debug(out)
 
 def get_srpm_repodata():
