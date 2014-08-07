@@ -139,6 +139,12 @@ def compute_dependency_distance(db_session, sack, package):
         level += 1
     db_session.flush()
 
+def cleanup_deps(db_session, current_repo):
+    assert current_repo.id is not None
+    db_session.query(Dependency).filter(Dependency.repo_id != current_repo.id)\
+              .delete()
+    db_session.commit()
+
 def repo_done(db_session):
     packages = db_session.query(Package)\
                          .filter(or_(Package.state == Package.OK,
@@ -161,4 +167,5 @@ def repo_done(db_session):
     for pkg in packages:
         compute_dependency_distance(db_session, sack, pkg)
     db_session.commit()
+    cleanup_deps(db_session, db_repo)
     log.info("New repo done")
