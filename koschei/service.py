@@ -54,10 +54,6 @@ def service_main(needs_koji=True, koji_anonymous=True):
                 except (koji.GenericError, socket.error) as e:
                     retry_attempts += 1
                     args['db_session'].rollback()
-                    try:
-                        args['koji_session'].logout()
-                    except (koji.GenericError, KeyError, AttributeError):
-                        pass
                     args.pop('koji_session', None)
                     log.error("Koji error: {}".format(e))
                     sleep = retry_in * retry_attempts
