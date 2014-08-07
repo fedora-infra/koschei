@@ -20,6 +20,7 @@
 import fedmsg
 import logging
 import concurrent.futures
+import koji
 
 from . import util
 from .service import service_main
@@ -32,6 +33,7 @@ log = logging.getLogger('koschei-watcher')
 topic_name = util.config['fedmsg']['topic']
 tag = util.config['fedmsg']['tag']
 instance = util.config['fedmsg']['instance']
+build_tag = util.koji_config['target_tag']
 
 def new_repo_entry():
     db_session = Session()
@@ -50,7 +52,7 @@ repo_done_future = repo_done_excutor.submit(new_repo_entry) if eager else None
 def get_topic(name):
     return '{}.{}'.format(topic_name, name)
 
-def consume(db_session, topic, content):
+def consume(db_session, koji_session, topic, content):
     global repo_done_future
     if repo_done_future and repo_done_future.done():
         # This will raise an exception if the thread crashed
@@ -64,6 +66,8 @@ def consume(db_session, topic, content):
         if content.get('tag') == tag:
             if not repo_done_future or repo_done_future.done():
                 repo_done_future = repo_done_excutor.submit(new_repo_entry)
+    elif topic == get_topic('build.state.change'):
+        register_real_build(db_session, koji_session, content)
 
 def update_build_state(db_session, msg):
     assert msg['attribute'] == 'state'
@@ -74,8 +78,29 @@ def update_build_state(db_session, msg):
         update_koji_state(db_session, build, state)
     db_session.close()
 
-@service_main(needs_koji=False)
-def main(db_session):
+def register_real_build(db_session, koji_session, msg):
+    assert msg['attribute'] == 'state'
+    if msg['new'] == koji.BUILD_STATES['COMPLETE']:
+        name = msg['name']
+        pkg = db_session.query(Package).filter_by(name=name).first()
+        if not pkg:
+            return
+        last_builds = koji_session.getLatestBuilds(build_tag, package=name)
+        if not last_builds:
+            return
+        last_build = last_builds[0]
+        if last_build['build_id'] == msg['build_id']:
+            log.info("Registering real build {nvr}".format(nvr=last_build['nvr']))
+            build = Build(package_id=pkg.id, version=last_build['version'],
+                          release=last_build['release'], epoch=last_build['epoch'],
+                          state=Build.COMPLETE, real=True,
+                          started=util.parse_koji_time(last_build['creation_time']),
+                          task_id=last_build['task_id'])
+            db_session.add(build)
+            db_session.commit()
+
+@service_main()
+def main(db_session, koji_session):
     for _, _, topic, msg in fedmsg.tail_messages():
         if topic.startswith(topic_name + '.'):
-            consume(db_session, topic, msg['msg'])
+            consume(db_session, koji_session, topic, msg['msg'])
