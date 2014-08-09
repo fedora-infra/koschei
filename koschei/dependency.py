@@ -52,6 +52,7 @@ def set_unresolved(db_session, repo, package, problems):
     db_session.flush()
 
 def resolve_dependencies(db_session, sack, repo, package, group):
+    new_deps = []
     hawk_pkg = get_srpm_pkg(sack, package.name)
     if not hawk_pkg:
         return
@@ -70,9 +71,17 @@ def resolve_dependencies(db_session, sack, repo, package, group):
                                  name=install.name, epoch=install.epoch,
                                  version=install.version, release=install.release,
                                  arch=install.arch)
-                db_session.add(dep)
+                new_deps.append(dep)
     else:
         set_unresolved(db_session, repo, package, goal.problems)
+
+    if new_deps:
+        # pylint: disable=E1101
+        table = Dependency.__table__
+        dicts = [{c.name: getattr(dep, c.name) for c in table.c if not c.primary_key}
+                 for dep in new_deps]
+        db_session.connection().execute(table.insert(), dicts)
+        db_session.expire_all()
 
 def get_dependency_differences(db_session):
     def difference_query(*repos):
