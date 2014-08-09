@@ -33,9 +33,6 @@ topic_name = util.config['fedmsg']['topic']
 tag = util.config['fedmsg']['tag']
 instance = util.config['fedmsg']['instance']
 
-repo_done_excutor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-repo_done_future = None
-
 def new_repo_entry():
     db_session = Session()
     try:
@@ -45,6 +42,10 @@ def new_repo_entry():
         raise
     finally:
         db_session.close()
+
+repo_done_excutor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+eager = util.config['services']['watcher']['eager_repo_done']
+repo_done_future = repo_done_excutor.submit(new_repo_entry) if eager else None
 
 def get_topic(name):
     return '{}.{}'.format(topic_name, name)
