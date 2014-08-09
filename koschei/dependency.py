@@ -82,7 +82,7 @@ def get_dependency_differences(db_session):
                           .filter(Dependency.repo_id == r)
                           .filter(Dependency.package_id.in_(resolved))
                     for r in repos)
-        return db_session.get_bind().execute(except_(*deps))
+        return db_session.connection().execute(except_(*deps))
     last_repos = db_session.query(Repo.id).order_by(Repo.id.desc()).limit(2).all()
     if len(last_repos) != 2:
         return [], []
