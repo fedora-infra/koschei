@@ -85,8 +85,8 @@ def resolve_dependencies(db_session, sack, repo, package, group):
 
 def get_dependency_differences(db_session):
     def difference_query(*repos):
-        resolved = intersect(*(db_session.query(Dependency.package_id)\
-                               .filter(Dependency.repo_id == r) for r in repos))
+        resolved = intersect(*(db_session.query(ResolutionResult.package_id)\
+                               .filter_by(resolved=True, repo_id=r) for r in repos))
         deps = (db_session.query(Dependency.package_id, *Dependency.nevra)
                           .filter(Dependency.repo_id == r)
                           .filter(Dependency.package_id.in_(resolved))
