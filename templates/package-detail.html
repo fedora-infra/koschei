@@ -20,7 +20,7 @@
         <th>State</th>
         <th>Koji task</th>
         <th>Started</th>
-        <th>Triggered by</th>
+        <th>Dependency changes</th>
         <th>Build details</th>
     </tr>
   </thead>
@@ -39,7 +39,7 @@
             {{ build.started | date }}
         </td>
         <td>
-            {{ macros.depchange_table(build.dependency_changes) }}
+            {{ macros.depchange_table(build) }}
         </td>
         <td>
             <a href="{{ url_for('build_detail', name=package.name, build_id=build.id) }}">details</a>
