@@ -19,7 +19,7 @@ config = {
         "max_builds": 100,
         "build_opts": {
         },
-        "load_threshold": 0.6,
+        "load_threshold": 0.5,
         "task_priority": 30
     },
     "dependency": {
@@ -33,10 +33,9 @@ config = {
     },
     "priorities": {
         "build_threshold": 256,
-        "package_update": 20,
+        "package_update": 256,
         "t0": 6,
         "t1": 7 * 24,
-        "package_state_change": 1
     },
     "services": {
         "polling": {
