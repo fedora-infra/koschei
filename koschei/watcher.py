@@ -23,8 +23,8 @@ import concurrent.futures
 
 from . import util
 from .service import service_main
-from .models import Build, Session
-from .submitter import update_koji_state
+from .models import Build, Session, Package
+from .polling import update_koji_state
 from .dependency import repo_done
 
 log = logging.getLogger('koschei-watcher')

@@ -20,8 +20,10 @@ from __future__ import print_function
 from .models import Package, Build, DependencyChange
 from .service import service_main
 from . import util
-from sqlalchemy import func, union_all, or_
+from sqlalchemy import func, union_all
+from datetime import datetime
 
+import json
 import math
 import logging
 
@@ -48,11 +50,10 @@ def get_priority_queries(db_session):
                                    .group_by(Build.package_id)
     return priorities
 
-@service_main()
+@service_main(koji_anonymous=False)
 def schedule_builds(db_session, koji_session):
     incomplete_builds = db_session.query(func.count(Build.id))\
-                                  .filter(or_(Build.state == Build.RUNNING,
-                                              Build.state == Build.SCHEDULED))\
+                                  .filter(Build.state == Build.RUNNING)\
                                   .scalar()
     limit = max_builds - incomplete_builds
     if limit <= 0:
@@ -78,8 +79,29 @@ def schedule_builds(db_session, koji_session):
         if load_threshold and util.get_koji_load(koji_session) > load_threshold:
             return
         package, priority = to_schedule
-        build = Build(package_id=package.id, state=Build.SCHEDULED)
-        db_session.add(build)
+        log.info('Scheduling build for {}, priority {}'\
+                 .format(package.name, priority))
+        submit_build(db_session, koji_session, package)
         db_session.commit()
-        log.info('Scheduling build {0} for {1}, priority {2}'\
-                 .format(build.id, package.name, priority))
+
+def submit_build(db_session, koji_session, package):
+    build = Build(package_id=package.id, state=Build.RUNNING)
+    name = package.name
+    build.state = Build.RUNNING
+    build_opts = None
+    if package.build_opts:
+        build_opts = json.loads(package.build_opts)
+    srpm, srpm_url = util.get_last_srpm(koji_session, name) or (None, None)
+    if srpm_url:
+        package.manual_priority = 0
+        build.task_id = util.koji_scratch_build(koji_session, name,
+                                                srpm_url, build_opts)
+        build.started = datetime.now()
+        build.epoch = srpm['epoch']
+        build.version = srpm['version']
+        build.release = srpm['release']
+        db_session.add(build)
+        db_session.flush()
+        DependencyChange.build_submitted(db_session, build)
+    else:
+        package.state = Package.RETIRED

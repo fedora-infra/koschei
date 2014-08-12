@@ -21,7 +21,6 @@ from __future__ import print_function
 import logging
 import koji
 
-from .submitter import update_koji_state
 from .models import Build
 from .service import service_main
 
@@ -40,3 +39,17 @@ def poll_tasks(db_session, koji_session):
                       .format(id=build.task_id, name=name, info=task_info))
             state = koji.TASK_STATES.getvalue(task_info['state'])
             update_koji_state(db_session, build, state)
+
+def update_koji_state(db_session, build, state):
+    if state in Build.KOJI_STATE_MAP:
+        state = Build.KOJI_STATE_MAP[state]
+        if state == Build.CANCELED:
+            log.info('Deleting build {0} because it was canceled'\
+                     .format(build))
+            db_session.delete(build)
+        else:
+            log.info('Setting build {build} state to {state}'\
+                      .format(build=build, state=Build.REV_STATE_MAP[state]))
+            build.state = state
+        db_session.commit()
+        #TODO finish time

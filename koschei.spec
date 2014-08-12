@@ -82,21 +82,18 @@ exit 0
 
 %post
 %systemd_post koschei-scheduler.service
-%systemd_post koschei-submitter.service
 %systemd_post koschei-watcher.service
 %systemd_post koschei-log-dowloader.service
 %systemd_post koschei-polling.service
 
 %preun
 %systemd_preun koschei-scheduler.service
-%systemd_preun koschei-submitter.service
 %systemd_preun koschei-watcher.service
 %systemd_preun koschei-log-dowloader.service
 %systemd_preun koschei-polling.service
 
 %postun
 %systemd_postun_with_restart koschei-scheduler.service
-%systemd_postun_with_restart koschei-submitter.service
 %systemd_postun_with_restart koschei-watcher.service
 %systemd_postun_with_restart koschei-log-dowloader.service
 %systemd_postun_with_restart koschei-polling.service
