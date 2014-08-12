@@ -5,7 +5,7 @@
                            {{ page.total }}</span>
     <form class="pageJump" action="">
         Page:
-        <select onchange="javascript: window.location = '?page=' + this.value;">
+        <select onchange="javascript: window.location = '?{{ page_args(page=True) }}' + this.value;">
             {% for i in range(1, page.page) %}
             <option value="{{ i }}">{{ i }}</option>
             {% endfor %}
@@ -17,17 +17,17 @@
     </form>
 </div>
 {% endmacro %}
-{% macro package_table(packages, page) %}
+{% macro package_table(packages, page, order) %}
 {% if page %}
 {{ pagination_row(page, 'Packages') }}
 {% endif %}
 <table class="data-list">
     <thead>
         <tr class="list-header">
-            <th>Name</th>
-            <th>State</th>
-            <th>Task ID</th>
-            <th>Started</th>
+            {{ ordered_column('name', 'Name', order) }}
+            {{ ordered_column('state', 'State', order) }}
+            {{ ordered_column('id', 'ID', order) }}
+            {{ ordered_column('started', 'Started', order) }}
         </tr>
     </thead>
     <tbody>
@@ -63,9 +63,11 @@
     </tbody>
 </table>
 {% endmacro %}
-{% macro depchange_table(changes) %}
+{% macro depchange_table(build, limit=0) %}
 <table class="nested-data-list" style="width:100%">
-    {% for change in changes[:10] %}
+    {% set changes=build.dependency_changes[:limit] if limit
+                            else build.dependency_changes %}
+    {% for change in changes %}
     <tr>
         <td>{{ change.dep_name }}</td>
         <td>{{ change.prev_dep_evr or '' }}</td>
@@ -78,9 +80,29 @@
         </td>
         <td>{{ change.curr_dep_evr or '' }}</td>
     </tr>
-    {% if loop.index == 10 %}
-    <tr><td colspan="4">...</td></tr>
+    {% if loop.index == limit %}
+    <tr>
+        <td colspan="4">
+            <a href="{{ url_for('build_detail', name=build.package.name,
+                build_id=build.id) }}">More</a>
+        </td>
+    </tr>
     {% endif %}
     {% endfor %}
 </table>
+{% endmacro %}
+{% macro ordered_column(name, title, current_order) %}
+<th>
+    {% if current_order ==  name %}
+    <a href="?{{ page_args(order_by='-' + name.lower()) }}">{{ title }}</a>
+    <img src="{{ url_for('static', filename='images/gray-triangle-down.gif') }}"
+         class="sort" alt="Decending sort"/>
+    {% else %}
+        <a href="?{{ page_args(order_by=name.lower()) }}">{{ title }}</a>
+        {% if current_order == '-' + name %}
+        <img src="{{ url_for('static', filename='images/gray-triangle-up.gif') }}"
+             class="sort" alt="Ascending sort"/>
+        {% endif %}
+    {% endif %}
+</th>
 {% endmacro %}

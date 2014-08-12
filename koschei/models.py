@@ -16,7 +16,6 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-import re
 import rpm
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
@@ -256,20 +255,20 @@ class DependencyChange(Base):
                              .filter_by(applied_in_id=None)\
                              .update({'applied_in_id': build.id})
 
-def max_relationship(cls, group_by, filt=None):
+def max_relationship(cls, group_by, filt=None, alias=None):
     max_expr = select([func.max(cls.id).label('m'), group_by])\
                      .group_by(group_by)
     if filt:
         max_expr = max_expr.where(filt)
     max_expr = max_expr.alias()
     joined = select([cls]).select_from(join(cls, max_expr,
-                                            cls.id == max_expr.c.m)).alias()
+                                            cls.id == max_expr.c.m)).alias(alias)
     return relationship(mapper(cls, joined, non_primary=True), uselist=False)
 
 # Relationships
 
 Package.last_build = max_relationship(Build, Build.package_id,
-                                      filt=Build.state != Build.SCHEDULED)
+                                      filt=Build.state != Build.SCHEDULED, alias='last_build')
 Package.last_successful_build = max_relationship(Build, Build.package_id,
                                                  filt=Build.state == Build.COMPLETE)
 Package.all_builds = relationship(Build, order_by=Build.id.desc())

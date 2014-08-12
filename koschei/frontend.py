@@ -1,8 +1,11 @@
+import urllib
+
 from datetime import datetime
 from flask import Flask, abort, render_template, request
 from flask_sqlalchemy import BaseQuery
 from sqlalchemy.orm import scoped_session, sessionmaker, joinedload, \
-                           subqueryload, undefer
+                           subqueryload, undefer, contains_eager
+from sqlalchemy.sql import literal_column
 
 from .models import engine, Package, Build, PackageGroup, PackageGroupRelation
 from . import util
@@ -22,8 +25,43 @@ db_session = scoped_session(sessionmaker(autocommit=False, bind=engine,
 if False:
     db_session.query = lambda *args: None
 
+def page_args(page=None, order_by=None):
+    args = {
+        'page': page or request.args.get('page'),
+        'order_by': order_by or request.args.get('order_by'),
+        }
+    return urllib.urlencode({k: '' if v is True else v for k, v in args.items() if v})
+
 app.jinja_env.globals.update(koji_weburl=util.config['koji_config']['weburl'],
-                             min=min, max=max)
+                             min=min, max=max, page_args=page_args)
+
+def get_order(order_map, order_name):
+    if order_name.startswith('-'):
+        order = [col.desc() for col in order_map.get(order_name[1:], ())]
+    else:
+        order = order_map.get(order_name)
+    return order or abort(400)
+
+def package_view(template, alter_query=None, **template_args):
+    order_name = request.args.get('order_by', 'name')
+    #pylint: disable=E1101
+    order_map = {'name': [Package.name],
+                 'state': [Package.state, literal_column('last_build.state'),
+                           Package.name],
+                 'task_id': [literal_column('last_build.task_id')],
+                 'started': [literal_column('last_build.started')],
+                 }
+    order = get_order(order_map, order_name)
+    page_no = int(request.args.get('page', 1))
+    pkgs = db_session.query(Package)\
+                     .outerjoin(Package.last_build)\
+                     .options(contains_eager(Package.last_build))\
+                     .order_by(*order)
+    if alter_query:
+        pkgs = alter_query(pkgs)
+    page = pkgs.paginate(page=page_no, per_page=items_per_page)
+    return render_template(template, packages=page.items, page=page,
+                           order=order_name, **template_args)
 
 @app.teardown_appcontext
 def shutdown_session(exception=None):
@@ -39,12 +77,7 @@ def inject_times():
 
 @app.route('/')
 def frontpage():
-    page_no = int(request.args.get('page', 1))
-    page = db_session.query(Package)\
-                     .options(joinedload(Package.last_build))\
-                     .order_by(Package.name)\
-                     .paginate(page=page_no, per_page=items_per_page)
-    return render_template("frontpage.html", packages=page.items, page=page)
+    return package_view("frontpage.html")
 
 @app.route('/package/<name>')
 def package_detail(name):
@@ -75,18 +108,13 @@ def groups_overview():
 
 @app.route('/group/<int:group_id>')
 def group_detail(group_id):
-    page_no = int(request.args.get('page', 1))
     group = db_session.query(PackageGroup)\
                       .filter_by(id=group_id).first_or_404()
-    page = db_session.query(Package)\
-                     .outerjoin(PackageGroupRelation)\
-                     .filter(PackageGroupRelation.group_id == group.id)\
-                     .options(joinedload(Package.last_build))\
-                     .order_by(Package.name)\
-                     .paginate(page=page_no, per_page=items_per_page)
-
-    return render_template("group-detail.html", group=group, packages=page.items,
-                           page=page)
+    def alter_query(q):
+        return q.outerjoin(PackageGroupRelation)\
+                .filter(PackageGroupRelation.group_id == group.id)
+    return package_view("group-detail.html", alter_query=alter_query,
+                        group=group)
 
 if __name__ == '__main__':
     app.run()

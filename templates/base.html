@@ -7,9 +7,6 @@
 <title>{% block title %}Koschei{% endblock %}</title>
 <link rel="stylesheet" type="text/css" media="screen" title="Koji Style"
 href="{{ url_for('static', filename='koji.css') }}"/>
-<script type="text/javascript" src="{{ url_for('static', filename='jquery-2.1.1.min.js') }}"></script>
-<script type="text/javascript" src="{{ url_for('static', filename='jquery.tablesorter.js') }}"></script>
-<script type="text/javascript">$(document).ready(function() { $(".data-list").tablesorter(); } );</script>
 </head>
 <body id="{% block tab_id %}summary{% endblock %}">
 <div id="wrap">
