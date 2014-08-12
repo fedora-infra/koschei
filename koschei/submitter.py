@@ -39,7 +39,7 @@ def submit_builds(db_session, koji_session):
         build_opts = None
         if package.build_opts:
             build_opts = json.loads(package.build_opts)
-        srpm, srpm_url = util.get_last_srpm(koji_session, name)
+        srpm, srpm_url = util.get_last_srpm(koji_session, name) or (None, None)
         if srpm_url:
             build.task_id = util.koji_scratch_build(koji_session, name,
                                                     srpm_url, build_opts)
