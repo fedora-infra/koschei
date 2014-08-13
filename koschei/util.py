@@ -230,10 +230,16 @@ def get_koji_packages(package_names):
 def get_koji_load(koji_session):
     channel = koji_session.getChannel('default')
     hosts = koji_session.listHosts(channelID=channel['id'], enabled=True)
-    capacity = sum(host['capacity'] for host in hosts)
-    load = sum(host['task_load'] if host['ready']
-               else host['capacity'] for host in hosts)
-    return load / capacity
+    max_load = 0
+    build_arches = koji_config.get('build_arches')
+    assert build_arches
+    for arch in build_arches:
+        arch_hosts = [host for host in hosts if arch in host['arches']]
+        capacity = sum(host['capacity'] for host in arch_hosts)
+        load = sum(host['task_load'] if host['ready']
+               else host['capacity'] for host in arch_hosts)
+        max_load = max(max_load, load / capacity if capacity else 1.0)
+    return max_load
 
 def download_task_output(koji_session, task_id, file_name, out_path):
     offset = 0
