@@ -20,7 +20,7 @@ import rpm
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
                        ForeignKey, DateTime
-from sqlalchemy.sql.expression import extract, func, select, join
+from sqlalchemy.sql.expression import extract, func, select, join, or_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, mapper, column_property
 from sqlalchemy.engine.url import URL
@@ -258,7 +258,7 @@ class DependencyChange(Base):
 def max_relationship(cls, group_by, filt=None, alias=None):
     max_expr = select([func.max(cls.id).label('m'), group_by])\
                      .group_by(group_by)
-    if filt:
+    if filt is not None:
         max_expr = max_expr.where(filt)
     max_expr = max_expr.alias()
     joined = select([cls]).select_from(join(cls, max_expr,
@@ -268,9 +268,9 @@ def max_relationship(cls, group_by, filt=None, alias=None):
 # Relationships
 
 Package.last_build = max_relationship(Build, Build.package_id,
-                                      filt=Build.state != Build.SCHEDULED, alias='last_build')
-Package.last_successful_build = max_relationship(Build, Build.package_id,
-                                                 filt=Build.state == Build.COMPLETE)
+                                      filt=or_(Build.state == Build.COMPLETE,
+                                               Build.state == Build.FAILED),
+                                      alias='last_build')
 Package.all_builds = relationship(Build, order_by=Build.id.desc())
 Package.resolution_result = max_relationship(ResolutionResult, ResolutionResult.package_id)
 Build.buildroot_diff = relationship(BuildrootDiff,
