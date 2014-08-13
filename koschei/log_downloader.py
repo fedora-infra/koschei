@@ -41,10 +41,10 @@ def download_logs(db_session, koji_session):
                 util.mkdir_if_absent(arch_dir)
                 for file_name in koji_session.listTaskOutput(task['id']):
                     if file_name.endswith('.log'):
-                        with open(os.path.join(arch_dir, file_name), 'w') as log_file:
-                            print('Downloading {} for {}'.format(file_name, build.task_id))
-                            log_file.write(koji_session.downloadTaskOutput(task['id'],
-                                                                           file_name))
+                        print('Downloading {} for {}'.format(file_name, build.task_id))
+                        out_path = os.path.join(arch_dir, file_name)
+                        util.download_task_output(koji_session, task['id'],
+                                                  file_name, out_path)
         make_log_diff(db_session, build)
         build.logs_downloaded = True
         db_session.commit()

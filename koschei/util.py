@@ -102,22 +102,6 @@ def koji_scratch_build(session, name, source, build_opts):
               .format(name=name, task_id=task_id))
     return task_id
 
-def download_task_output(session, task_id, output_dir, filename_predicate=None,
-                         prefix_task_id=False):
-    main_task = session.getTaskInfo(task_id)
-    subtasks = session.getTaskChildren(task_id)
-    for task in subtasks + [main_task]:
-        files = session.listTaskOutput(task['id'])
-        downloads = filter(filename_predicate, files)
-        for download in downloads:
-            file_name = download
-            if prefix_task_id:
-                file_name = '{}-{}'.format(task['id'], download)
-            log.info('Downloading {} (task_id={}) to {}'\
-                      .format(file_name, task['id'], output_dir))
-            with open(os.path.join(output_dir, file_name), 'w') as new_file:
-                new_file.write(session.downloadTaskOutput(task['id'], download))
-
 def mkdir_if_absent(path):
     try:
         os.makedirs(path)
@@ -250,3 +234,15 @@ def get_koji_load(koji_session):
     load = sum(host['task_load'] if host['ready']
                else host['capacity'] for host in hosts)
     return load / capacity
+
+def download_task_output(koji_session, task_id, file_name, out_path):
+    offset = 0
+    chunk_size = koji_config.get('chunk_size', 1024 * 1024)
+    with open(out_path, 'w') as out_file:
+        while True:
+            out = koji_session.downloadTaskOutput(task_id, file_name, size=chunk_size,
+                                                  offset=offset)
+            if not out:
+                return
+            offset += len(out)
+            out_file.write(out)
