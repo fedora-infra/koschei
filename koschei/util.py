@@ -30,6 +30,8 @@ import errno
 import libcomps
 import urllib2
 
+from datetime import datetime
+
 root_logger = logging.getLogger()
 root_logger.setLevel(logging.DEBUG)
 root_logger.addHandler(logging.StreamHandler(sys.stderr))
@@ -64,6 +66,9 @@ repodata_dir = config['directories']['repodata']
 
 dep_config = config['dependency']
 koji_repos = dep_config['repos']
+
+def parse_koji_time(string):
+    return datetime.strptime(string, "%Y-%m-%d %H:%M:%S.%f")
 
 def create_koji_session(anonymous=False):
     koji_session = koji.ClientSession(server, {'timeout': 3600})
