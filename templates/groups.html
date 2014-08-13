@@ -13,7 +13,7 @@
     {% for group in groups %}
     <tr class="row-odd">
         <td>
-            <a href="{{ url_for('group_detail', group_id=group.id) }}">{{ group.name }}</a>
+            <a href="{{ url_for('group_detail', name=group.name) }}">{{ group.name }}</a>
         </td>
         <td>
             {{ group.package_count }}

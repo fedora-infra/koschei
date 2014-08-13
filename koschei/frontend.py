@@ -106,10 +106,10 @@ def groups_overview():
                        .order_by(PackageGroup.name).all()
     return render_template("groups.html", groups=groups)
 
-@app.route('/group/<int:group_id>')
-def group_detail(group_id):
+@app.route('/groups/<name>')
+def group_detail(name):
     group = db_session.query(PackageGroup)\
-                      .filter_by(id=group_id).first_or_404()
+                      .filter_by(name=name).first_or_404()
     def alter_query(q):
         return q.outerjoin(PackageGroupRelation)\
                 .filter(PackageGroupRelation.group_id == group.id)
