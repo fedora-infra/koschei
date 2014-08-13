@@ -26,7 +26,7 @@
         <tr class="list-header">
             {{ ordered_column('name', 'Name', order) }}
             {{ ordered_column('state', 'State', order) }}
-            {{ ordered_column('id', 'ID', order) }}
+            {{ ordered_column('task_id', 'Task ID', order) }}
             {{ ordered_column('started', 'Started', order) }}
         </tr>
     </thead>
@@ -93,13 +93,13 @@
 {% endmacro %}
 {% macro ordered_column(name, title, current_order) %}
 <th>
-    {% if current_order ==  name %}
-    <a href="?{{ page_args(order_by='-' + name.lower()) }}">{{ title }}</a>
+    {% if name in current_order[:1] %}
+    <a href="?{{ page_args(order_by=['-' + name.lower()] + current_order) }}">{{ title }}</a>
     <img src="{{ url_for('static', filename='images/gray-triangle-down.gif') }}"
          class="sort" alt="Decending sort"/>
     {% else %}
-        <a href="?{{ page_args(order_by=name.lower()) }}">{{ title }}</a>
-        {% if current_order == '-' + name %}
+        <a href="?{{ page_args(order_by=[name.lower()] + current_order) }}">{{ title }}</a>
+        {% if '-' + name in current_order[:1] %}
         <img src="{{ url_for('static', filename='images/gray-triangle-up.gif') }}"
              class="sort" alt="Ascending sort"/>
         {% endif %}

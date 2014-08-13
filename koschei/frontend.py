@@ -26,32 +26,44 @@ if False:
     db_session.query = lambda *args: None
 
 def page_args(page=None, order_by=None):
+    def proc_order(order):
+        new_order = []
+        for item in order:
+            if item not in new_order and '-' + item not in new_order:
+                new_order.append(item)
+        return ','.join(new_order)
     args = {
         'page': page or request.args.get('page'),
-        'order_by': order_by or request.args.get('order_by'),
+        'order_by': proc_order(order_by) if order_by else request.args.get('order_by'),
         }
     return urllib.urlencode({k: '' if v is True else v for k, v in args.items() if v})
 
 app.jinja_env.globals.update(koji_weburl=util.config['koji_config']['weburl'],
                              min=min, max=max, page_args=page_args)
 
-def get_order(order_map, order_name):
-    if order_name.startswith('-'):
-        order = [col.desc() for col in order_map.get(order_name[1:], ())]
-    else:
-        order = order_map.get(order_name)
-    return order or abort(400)
+def get_order(order_map, order_spec):
+    orders = []
+    components = order_spec.split(',')
+    for component in components:
+        if component:
+            if component.startswith('-'):
+                order = [col.desc() for col in order_map.get(component[1:])]
+            else:
+                order = order_map.get(component)
+            orders.extend(order)
+    if any(order is None for order in orders):
+        abort(400)
+    return components, orders
 
 def package_view(template, alter_query=None, **template_args):
     order_name = request.args.get('order_by', 'name')
     #pylint: disable=E1101
     order_map = {'name': [Package.name],
-                 'state': [Package.state, literal_column('last_build.state'),
-                           Package.name],
+                 'state': [Package.state, literal_column('last_build.state')],
                  'task_id': [literal_column('last_build.task_id')],
                  'started': [literal_column('last_build.started')],
                  }
-    order = get_order(order_map, order_name)
+    order_names, order = get_order(order_map, order_name)
     page_no = int(request.args.get('page', 1))
     pkgs = db_session.query(Package)\
                      .outerjoin(Package.last_build)\
@@ -61,7 +73,7 @@ def package_view(template, alter_query=None, **template_args):
         pkgs = alter_query(pkgs)
     page = pkgs.paginate(page=page_no, per_page=items_per_page)
     return render_template(template, packages=page.items, page=page,
-                           order=order_name, **template_args)
+                           order=order_names, **template_args)
 
 @app.teardown_appcontext
 def shutdown_session(exception=None):
