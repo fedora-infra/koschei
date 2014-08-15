@@ -10,4 +10,5 @@ setup(
     install_requires=["fedmsg"],
     packages=find_packages(),
     include_package_data=True,
+    test_suite='nose.collector',
 )
