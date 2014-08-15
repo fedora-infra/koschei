@@ -75,7 +75,6 @@ def update_build_state(db_session, msg):
     if build:
         state = msg['new']
         backend.update_build_state(db_session, build, state)
-    db_session.close()
 
 def register_real_build(db_session, koji_session, msg):
     assert msg['attribute'] == 'state'
