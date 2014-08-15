@@ -37,10 +37,12 @@ root_logger.setLevel(logging.DEBUG)
 root_logger.addHandler(logging.StreamHandler(sys.stderr))
 
 config = None
-if os.path.exists('config.cfg'):
-    config_path = 'config.cfg'
-else:
-    config_path = '/etc/koschei/config.cfg'
+config_path = os.environ.get('KOSCHEI_CONFIG')
+if not config_path:
+    if os.path.exists('config.cfg'):
+        config_path = 'config.cfg'
+    else:
+        config_path = '/etc/koschei/config.cfg'
 with open(config_path) as config_file:
     code = compile(config_file.read(), config_path, 'exec')
     exec(code)
