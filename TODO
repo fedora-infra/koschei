@@ -11,6 +11,9 @@ Things to do related to Koschei:  -*- outline -*-
 
    Advantages: reduces storage usage for Koji
 
+   See: https://bugzilla.redhat.com/show_bug.cgi?id=1130233
+   See: https://fedorahosted.org/koji/ticket/284
+
 ** SRPM repo generation
 
    Make new repo Koji tasks generate YUM repositories for source RPMs
@@ -20,6 +23,8 @@ Things to do related to Koschei:  -*- outline -*-
     * a lot of code removed
     * reduced network usage
     * other (not Koschei related)
+
+   See: https://fedorahosted.org/rel-eng/ticket/5967
 
 ** Policy for scratch builds from repo ID
 
