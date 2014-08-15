@@ -96,6 +96,8 @@ def register_real_build(db_session, koji_session, msg):
                           started=util.parse_koji_time(last_build['creation_time']),
                           task_id=last_build['task_id'])
             db_session.add(build)
+            db_session.flush()
+            backend.build_registered(db_session, build)
             db_session.commit()
 
 @service_main()
