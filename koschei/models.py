@@ -60,21 +60,10 @@ class Package(Base):
     RETIRED = 3
     state = Column(Integer, nullable=False, server_default=str(OK))
 
-    @staticmethod
-    def time_since_added():
-        return extract('EPOCH', datetime.now() - Package.added) / 3600
-
-    def get_builds_in_interval(self, since=None, until=None):
-        filters = [Build.state.in_(Build.FINISHED_STATES + [Build.RUNNING])]
-        if since:
-            filters.append(Build.started >= since)
-        if until:
-            filters.append(Build.started < until)
-        return self.builds.filter(*filters).order_by(Build.started)
-
     @property
     def state_string(self):
         if self.state == self.OK:
+            # pylint: disable=E1101
             return self.last_build.state_string
         elif self.state == self.UNRESOLVED:
             return 'unresolved'
@@ -97,6 +86,7 @@ class PackageGroup(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
 
+    # pylint: disable=E1101
     packages = relationship(Package, secondary=PackageGroupRelation.__table__,
                             order_by=Package.name)
 
@@ -117,10 +107,6 @@ class Build(Base):
                                       order_by='DependencyChange.distance')
     # was the build done by koschei or was it real build done by packager
     real = Column(Boolean, nullable=False, server_default='false')
-
-    @staticmethod
-    def time_since_last_build_expr():
-        return extract('EPOCH', datetime.now() - func.max(Build.started)) / 3600
 
     STATE_MAP = {'scheduled': 0,
                  'running': 2,
@@ -205,8 +191,6 @@ class Dependency(Base):
 
     nevra = (name, epoch, version, release, arch)
 
-update_weight = config['priorities']['package_update']
-
 def format_evr(epoch, version, release):
     if not version or not release:
         return ''
@@ -241,19 +225,6 @@ class DependencyChange(Base):
         prev = (str(self.prev_epoch), self.prev_version, self.prev_release)
         curr = (str(self.curr_epoch), self.curr_version, self.curr_release)
         return rpm.labelCompare(prev, curr) < 0
-
-    @classmethod
-    def get_priority_query(cls, db_session):
-        return db_session.query(cls.package_id.label('pkg_id'),
-                             (update_weight / cls.distance).label('priority'))\
-                         .filter_by(applied_in_id=None)\
-                         .filter(cls.distance > 0)
-
-    @classmethod
-    def build_submitted(cls, db_session, build):
-        db_session.query(cls).filter_by(package_id=build.package_id)\
-                             .filter_by(applied_in_id=None)\
-                             .update({'applied_in_id': build.id})
 
 def max_relationship(cls, group_by, filt=None, alias=None):
     max_expr = select([func.max(cls.id).label('m'), group_by])\

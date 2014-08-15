@@ -22,10 +22,9 @@ import logging
 import concurrent.futures
 import koji
 
-from . import util
+from . import util, backend
 from .service import service_main
 from .models import Build, Session, Package
-from .polling import update_koji_state
 from .dependency import repo_done
 
 log = logging.getLogger('koschei-watcher')
@@ -75,7 +74,7 @@ def update_build_state(db_session, msg):
     build = db_session.query(Build).filter_by(task_id=task_id).first()
     if build:
         state = msg['new']
-        update_koji_state(db_session, build, state)
+        backend.update_build_state(db_session, build, state)
     db_session.close()
 
 def register_real_build(db_session, koji_session, msg):

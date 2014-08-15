@@ -17,37 +17,55 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 from __future__ import print_function
-from .models import Package, Build, DependencyChange
-from .service import service_main
-from . import util
-from sqlalchemy import func, union_all
-from datetime import datetime
 
-import json
 import math
 import logging
 
-priority_threshold = util.config['priorities']['build_threshold']
+from datetime import datetime
+from sqlalchemy import func, union_all, extract
+
+from . import util
+from .models import Package, Build, DependencyChange
+from .service import service_main
+from .backend import submit_build
+
+
+priority_conf = util.config['priorities']
+priority_threshold = priority_conf['build_threshold']
 max_builds = util.config['koji_config']['max_builds']
 load_threshold = util.config['koji_config'].get('load_threshold')
 
 log = logging.getLogger('scheduler')
+
+
+def hours_since(what):
+    return extract('EPOCH', datetime.now() - what) / 3600
+
+def get_dependency_priority_query(db_session):
+    update_weight = priority_conf['package_update']
+    return db_session.query(DependencyChange.package_id.label('pkg_id'),
+                            (update_weight / DependencyChange.distance).label('priority'))\
+                     .filter_by(applied_in_id=None)\
+                     .filter(DependencyChange.distance > 0)
+
+def get_time_priority_query(db_session):
+    t0 = priority_conf['t0']
+    t1 = priority_conf['t1']
+    a = priority_threshold / (math.log10(t1) - math.log10(t0))
+    b = -a * math.log10(t0)
+    time_expr = func.greatest(a * func.log(hours_since(func.max(Build.started))
+                                           + 0.00001) + b, -30)
+    return db_session.query(Build.package_id.label('pkg_id'),
+                            time_expr.label('priority'))\
+                     .group_by(Build.package_id)
 
 def get_priority_queries(db_session):
     prio = ('manual', Package.manual_priority), ('static', Package.static_priority)
     priorities = {name: db_session.query(Package.id.label('pkg_id'),
                                          col.label('priority'))
                     for name, col in prio}
-    priorities['dependency'] = DependencyChange.get_priority_query(db_session)
-    t0 = util.config['priorities']['t0']
-    t1 = util.config['priorities']['t1']
-    a = priority_threshold / (math.log10(t1) - math.log10(t0))
-    b = -a * math.log10(t0)
-    time_expr = func.greatest(a * func.log(Build.time_since_last_build_expr()
-                                           + 0.00001) + b, -30)
-    priorities['time'] = db_session.query(Build.package_id.label('pkg_id'),
-                                          time_expr.label('priority'))\
-                                   .group_by(Build.package_id)
+    priorities['dependency'] = get_dependency_priority_query(db_session)
+    priorities['time'] = get_time_priority_query(db_session)
     return priorities
 
 @service_main(koji_anonymous=False)
@@ -83,25 +101,3 @@ def schedule_builds(db_session, koji_session):
                  .format(package.name, priority))
         submit_build(db_session, koji_session, package)
         db_session.commit()
-
-def submit_build(db_session, koji_session, package):
-    build = Build(package_id=package.id, state=Build.RUNNING)
-    name = package.name
-    build.state = Build.RUNNING
-    build_opts = None
-    if package.build_opts:
-        build_opts = json.loads(package.build_opts)
-    srpm, srpm_url = util.get_last_srpm(koji_session, name) or (None, None)
-    if srpm_url:
-        package.manual_priority = 0
-        build.task_id = util.koji_scratch_build(koji_session, name,
-                                                srpm_url, build_opts)
-        build.started = datetime.now()
-        build.epoch = srpm['epoch']
-        build.version = srpm['version']
-        build.release = srpm['release']
-        db_session.add(build)
-        db_session.flush()
-        DependencyChange.build_submitted(db_session, build)
-    else:
-        package.state = Package.RETIRED
