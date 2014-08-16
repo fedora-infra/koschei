@@ -57,3 +57,14 @@ class AbstractTest(unittest.TestCase):
     def tearDown(self):
         self.s.close()
         self.fedmsg.mock_verify_empty()
+        m.engine.dispose()
+
+    def prepare_basic_data(self):
+        pkg = m.Package(name='rnv')
+        self.s.add(pkg)
+        self.s.flush()
+        build = m.Build(package_id=pkg.id, state=m.Build.RUNNING,
+                        task_id=666)
+        self.s.add(build)
+        self.s.commit()
+        return pkg, build

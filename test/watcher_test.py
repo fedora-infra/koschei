@@ -7,9 +7,8 @@ from common import AbstractTest
 from koschei import models as m, watcher
 
 test_topic = 'org.fedoraproject.test.buildsys'
-test_task_id = 666
 
-def generate_state_change(instance='primary', task_id=test_task_id, old='OPEN', new='CLOSED'):
+def generate_state_change(instance='primary', task_id=666, old='OPEN', new='CLOSED'):
     return {'msg':
         {'instance': instance,
          'attribute': 'state',
@@ -19,16 +18,6 @@ def generate_state_change(instance='primary', task_id=test_task_id, old='OPEN', 
          }}
 
 class WatcherTest(AbstractTest):
-    def prepare_data(self):
-        pkg = m.Package(name='rnv')
-        self.s.add(pkg)
-        self.s.flush()
-        build = m.Build(package_id=pkg.id, state=m.Build.RUNNING,
-                        task_id=test_task_id)
-        self.s.add(build)
-        self.s.commit()
-        return pkg, build
-
     def test_ignored_topic(self):
         self.fedmsg.mock_add_message(topic='org.fedoraproject.prod.buildsys.task.state.change',
                                      msg=generate_state_change())
@@ -40,7 +29,7 @@ class WatcherTest(AbstractTest):
         watcher.main(None, None)
 
     def test_task_completed(self):
-        _, build = self.prepare_data()
+        _, build = self.prepare_basic_data()
         self.fedmsg.mock_add_message(topic=test_topic + '.task.state.change',
                                      msg=generate_state_change())
         with patch('koschei.backend.update_build_state') as mock:
@@ -48,7 +37,7 @@ class WatcherTest(AbstractTest):
             mock.assert_called_once_with(self.s, build, 'CLOSED')
 
     def test_real_build(self):
-        pkg, build = self.prepare_data()
+        pkg, build = self.prepare_basic_data()
         msg = {'msg':
             {'instance': 'primary',
              'attribute': 'state',
