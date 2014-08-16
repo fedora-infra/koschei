@@ -116,18 +116,20 @@ class SetPrio(Command):
     """ Sets package's priority to given value """
 
     def setup_parser(self, parser):
-        parser.add_argument('name')
+        parser.add_argument('names', nargs='+')
         parser.add_argument('value')
         parser.add_argument('--static', action='store_true')
 
-    def execute(self, db_session, name, value, static):
-        pkg = db_session.query(Package).filter_by(name=name).first()
-        if not pkg:
-            fail("Package {} not found".format(name))
-        if static:
-            pkg.static_priority = value
-        else:
-            pkg.manual_priority = value
+    def execute(self, db_session, names, value, static):
+        pkgs = db_session.query(Package).filter(Package.name.in_(names)).all()
+        if len(names) != len(pkgs):
+            not_found = set(names).difference(pkg.name for pkg in pkgs)
+            fail('Packages not found: {}'.format(','.join(not_found)))
+        for pkg in pkgs:
+            if static:
+                pkg.static_priority = value
+            else:
+                pkg.manual_priority = value
 
 def validate_opts(build_opts):
     try:
