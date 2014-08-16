@@ -77,8 +77,10 @@ class Package(Base):
 
 class PackageGroupRelation(Base):
     __tablename__ = 'package_group_relation'
-    group_id = Column(Integer, ForeignKey('package_group.id'), primary_key=True)
-    package_id = Column(Integer, ForeignKey('package.id'), primary_key=True)
+    group_id = Column(Integer, ForeignKey('package_group.id', ondelete='CASCADE'),
+                      primary_key=True)
+    package_id = Column(Integer, ForeignKey('package.id', ondelete='CASCADE'),
+                        primary_key=True)
 
 class PackageGroup(Base):
     __tablename__ = 'package_group'
@@ -94,7 +96,7 @@ class Build(Base):
     __tablename__ = 'build'
 
     id = Column(Integer, primary_key=True)
-    package_id = Column(Integer, ForeignKey('package.id'))
+    package_id = Column(Integer, ForeignKey('package.id', ondelete='CASCADE'))
     state = Column(Integer, nullable=False, default=0)
     task_id = Column(Integer)
     logs_downloaded = Column(Boolean, default=False, nullable=False)
@@ -147,8 +149,8 @@ class Build(Base):
 class BuildrootDiff(Base):
     __tablename__ = 'buildroot_diff'
     id = Column(Integer, primary_key=True)
-    prev_build_id = Column(ForeignKey(Build.id))
-    curr_build_id = Column(ForeignKey(Build.id))
+    prev_build_id = Column(ForeignKey(Build.id, ondelete='CASCADE'))
+    curr_build_id = Column(ForeignKey(Build.id, ondelete='CASCADE'))
     arch = Column(String)
     added = Column(String)
     removed = Column(String)
@@ -167,22 +169,22 @@ class Repo(Base):
 class ResolutionResult(Base):
     __tablename__ = 'resolution_result'
     id = Column(Integer, primary_key=True)
-    package_id = Column(ForeignKey('package.id'))
-    repo_id = Column(ForeignKey('repo.id'))
+    package_id = Column(ForeignKey('package.id', ondelete='CASCADE'))
+    repo_id = Column(ForeignKey('repo.id', ondelete='CASCADE'))
     resolved = Column(Boolean, nullable=False)
     problems = relationship('ResolutionProblem')
 
 class ResolutionProblem(Base):
     __tablename__ = 'resolution_result_element'
     id = Column(Integer, primary_key=True)
-    resolution_id = Column(Integer, ForeignKey(ResolutionResult.id))
+    resolution_id = Column(Integer, ForeignKey(ResolutionResult.id, ondelete='CASCADE'))
     problem = Column(String, nullable=False)
 
 class Dependency(Base):
     __tablename__ = 'dependency'
     id = Column(Integer, primary_key=True)
-    repo_id = Column(Integer, ForeignKey('repo.id'))
-    package_id = Column(ForeignKey('package.id'))
+    repo_id = Column(Integer, ForeignKey('repo.id', ondelete='CASCADE'))
+    package_id = Column(ForeignKey('package.id', ondelete='CASCADE'))
     name = Column(String, nullable=False)
     epoch = Column(Integer)
     version = Column(String, nullable=False)
@@ -201,8 +203,9 @@ def format_evr(epoch, version, release):
 class DependencyChange(Base):
     __tablename__ = 'dependency_change'
     id = Column(Integer, primary_key=True)
-    package_id = Column(ForeignKey('package.id'), nullable=False)
-    applied_in_id = Column(ForeignKey('build.id'), nullable=True, default=None)
+    package_id = Column(ForeignKey('package.id', ondelete='CASCADE'), nullable=False)
+    applied_in_id = Column(ForeignKey('build.id', ondelete='CASCADE'),
+                           nullable=True, default=None)
     dep_name = Column(String, nullable=False)
     prev_epoch = Column(Integer)
     prev_version = Column(String)
