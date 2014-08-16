@@ -3,6 +3,8 @@ import sys
 import unittest
 import sqlalchemy
 
+from datetime import datetime
+
 testdir = os.path.dirname(os.path.realpath(__file__))
 sys.path[:0] = [os.path.join(testdir, '..'),
                 os.path.join(testdir, 'mocks')]
@@ -26,6 +28,11 @@ def identity_decorator(*args, **kwargs):
 service.service_main = identity_decorator
 
 from koschei import models as m
+
+class MockDatetime(object):
+    @staticmethod
+    def now():
+        return datetime(2000, 10, 10)
 
 class AbstractTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):

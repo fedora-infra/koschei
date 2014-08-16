@@ -1,9 +1,12 @@
 import koji
 
+from datetime import datetime, timedelta
 from mock import Mock, patch
-from common import AbstractTest
+from common import AbstractTest, MockDatetime
 
 from koschei import models as m, scheduler
+
+scheduler.datetime = MockDatetime
 
 class SchedulerTest(AbstractTest):
     def prepare_depchanges(self):
@@ -56,3 +59,21 @@ class SchedulerTest(AbstractTest):
         self.assertIn((pkg.id, 20), res)
         self.assertIn((pkg.id, 10), res)
         self.assertIn((pkg.id, 5), res)
+
+    def test_time_priority(self):
+        for days in [0, 2, 5, 7, 12]:
+            pkg = m.Package(name='p{}'.format(days))
+            self.s.add(pkg)
+            self.s.flush()
+            build = m.Build(package_id=pkg.id,
+                          started=MockDatetime.now() - timedelta(days, hours=1))
+            self.s.add(build)
+        self.s.commit()
+        query = scheduler.get_time_priority_query(self.s)
+        self.assert_priority_query(query)
+        res = sorted(query.all(), key=lambda x: x.priority)
+        self.assertEqual(5, len(res))
+        expected_prios = [-30.0, 161.339324401, 230.787748579,
+                          256.455946637, 297.675251883]
+        for item, exp in zip(res, expected_prios):
+            self.assertAlmostEqual(exp, item.priority)
