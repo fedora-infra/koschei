@@ -40,6 +40,9 @@ Session = sessionmaker(bind=engine, autocommit=False)
 def hours_since(since):
     return extract('EPOCH', datetime.now() - since) / 3600
 
+def external_id():
+    raise AssertionError("ID needs to be supplied")
+
 class Package(Base):
     __tablename__ = 'package'
 
@@ -74,6 +77,16 @@ class Package(Base):
 
     def __repr__(self):
         return '{0.id} (name={0.name})'.format(self)
+
+class KojiTask(Base):
+    __tablename__ = 'koji_task'
+
+    build_id = Column(ForeignKey('build.id', ondelete='CASCADE'), nullable=False)
+    task_id = Column(Integer, primary_key=True, default=external_id)
+    arch = Column(String(16))
+    state = Column(Integer)
+    started = Column(DateTime)
+    finished = Column(DateTime)
 
 class PackageGroupRelation(Base):
     __tablename__ = 'package_group_relation'
@@ -125,6 +138,7 @@ class Build(Base):
     release = Column(String)
     dependency_changes = relationship('DependencyChange', backref='applied_in',
                                       order_by='DependencyChange.distance')
+    build_arch_tasks = relationship(KojiTask, backref='build', order_by=KojiTask.arch)
     # was the build done by koschei or was it real build done by packager
     real = Column(Boolean, nullable=False, server_default='false')
 
