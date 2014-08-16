@@ -70,10 +70,9 @@ def get_priority_queries(db_session):
 
 @service_main(koji_anonymous=False)
 def schedule_builds(db_session, koji_session):
-    incomplete_builds = db_session.query(func.count(Build.id))\
-                                  .filter(Build.state == Build.RUNNING)\
-                                  .scalar()
-    limit = max_builds - incomplete_builds
+    incomplete_builds = db_session.query(Build.package_id)\
+                                  .filter(Build.state == Build.RUNNING)
+    limit = max_builds - incomplete_builds.count()
     if limit <= 0:
         return
     queries = get_priority_queries(db_session).values()
@@ -83,13 +82,10 @@ def schedule_builds(db_session, koji_session):
     candidates = db_session.query(pkg_id, current_priority)\
                            .having(current_priority >= priority_threshold)\
                            .group_by(pkg_id).subquery()
-    unfinished = db_session.query(Build.package_id)\
-                           .filter(Build.state.in_(Build.UNFINISHED_STATES))\
-                           .subquery()
     to_schedule = db_session.query(Package, candidates.c.curr_priority)\
                             .join(candidates, Package.id == candidates.c.pkg_id)\
                             .filter(Package.state == Package.OK)\
-                            .filter(Package.id.notin_(unfinished))\
+                            .filter(Package.id.notin_(incomplete_builds.subquery()))\
                             .order_by(candidates.c.curr_priority.desc())\
                             .first()
 

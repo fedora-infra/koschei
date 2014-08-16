@@ -95,9 +95,27 @@ class PackageGroup(Base):
 class Build(Base):
     __tablename__ = 'build'
 
+    STATE_MAP = {'running': 2,
+                 'complete': 3,
+                 'canceled': 4,
+                 'failed': 5,
+                }
+    RUNNING = STATE_MAP['running']
+    COMPLETE = STATE_MAP['complete']
+    CANCELED = STATE_MAP['canceled']
+    FAILED = STATE_MAP['failed']
+    REV_STATE_MAP = {v: k for k, v in STATE_MAP.items()}
+
+    FINISHED_STATES = [COMPLETE, FAILED, CANCELED]
+    STATES = [RUNNING] + FINISHED_STATES
+
+    KOJI_STATE_MAP = {'CLOSED': COMPLETE,
+                      'CANCELED': CANCELED,
+                      'FAILED': FAILED}
+
     id = Column(Integer, primary_key=True)
     package_id = Column(Integer, ForeignKey('package.id', ondelete='CASCADE'))
-    state = Column(Integer, nullable=False, default=0)
+    state = Column(Integer, nullable=False, default=RUNNING)
     task_id = Column(Integer)
     logs_downloaded = Column(Boolean, default=False, nullable=False)
     started = Column(DateTime)
@@ -109,27 +127,6 @@ class Build(Base):
                                       order_by='DependencyChange.distance')
     # was the build done by koschei or was it real build done by packager
     real = Column(Boolean, nullable=False, server_default='false')
-
-    STATE_MAP = {'scheduled': 0,
-                 'running': 2,
-                 'complete': 3,
-                 'canceled': 4,
-                 'failed': 5,
-                }
-    SCHEDULED = STATE_MAP['scheduled']
-    RUNNING = STATE_MAP['running']
-    COMPLETE = STATE_MAP['complete']
-    CANCELED = STATE_MAP['canceled']
-    FAILED = STATE_MAP['failed']
-    REV_STATE_MAP = {v: k for k, v in STATE_MAP.items()}
-
-    UNFINISHED_STATES = [SCHEDULED, RUNNING]
-    FINISHED_STATES = [COMPLETE, FAILED, CANCELED]
-    STATES = UNFINISHED_STATES + FINISHED_STATES
-
-    KOJI_STATE_MAP = {'CLOSED': COMPLETE,
-                      'CANCELED': CANCELED,
-                      'FAILED': FAILED}
 
     @property
     def state_string(self):
