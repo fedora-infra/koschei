@@ -12,11 +12,19 @@ sys.path[:0] = [os.path.join(testdir, '..'),
 # our mock
 import fedmsg
 
-os.environ['KOSCHEI_CONFIG'] = os.path.join(testdir, 'test_config.cfg')
+use_postgres = os.environ.get('TEST_WITH_POSTGRES')
+
+test_cfg = os.path.join(testdir, 'test_config.cfg')
+os.environ['KOSCHEI_CONFIG'] = test_cfg
 from koschei import util
 assert util.config.get('is_test') is True
-testdb = 'koschei_testdb'
-util.config['database_config']['database'] = testdb
+if use_postgres:
+    testdb = 'koschei_testdb'
+    util.config['database_config']['drivername'] = 'postgres'
+    util.config['database_config']['username'] = 'postgres'
+    util.config['database_config']['database'] = testdb
+else:
+    util.config['database_config']['drivername'] = 'sqlite'
 
 from koschei import service
 
@@ -38,18 +46,19 @@ class AbstractTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(AbstractTest, self).__init__(*args, **kwargs)
         self.fedmsg = fedmsg
-
-        cfg = util.config['database_config'].copy()
-        del cfg['database']
-        url = sqlalchemy.engine.url.URL(**cfg)
-        engine = sqlalchemy.create_engine(url, poolclass=sqlalchemy.pool.NullPool)
-        conn = engine.connect()
-        conn.execute("COMMIT")
-        conn.execute("DROP DATABASE IF EXISTS {0}".format(testdb))
-        conn.execute("COMMIT")
-        conn.execute("CREATE DATABASE {0}".format(testdb))
-        conn.close()
         self.s = None
+
+        if use_postgres:
+            cfg = util.config['database_config'].copy()
+            del cfg['database']
+            url = sqlalchemy.engine.url.URL(**cfg)
+            engine = sqlalchemy.create_engine(url, poolclass=sqlalchemy.pool.NullPool)
+            conn = engine.connect()
+            conn.execute("COMMIT")
+            conn.execute("DROP DATABASE IF EXISTS {0}".format(testdb))
+            conn.execute("COMMIT")
+            conn.execute("CREATE DATABASE {0}".format(testdb))
+            conn.close()
 
     def setUp(self):
         m.Base.metadata.create_all(m.engine)
