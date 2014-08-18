@@ -24,7 +24,7 @@ from datetime import datetime
 from . import util
 from .models import Package, Build, DependencyChange
 
-log = logging.getLogger('backend')
+log = logging.getLogger('koschei.backend')
 
 def submit_build(db_session, koji_session, package):
     build = Build(package_id=package.id, state=Build.RUNNING)

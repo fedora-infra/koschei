@@ -25,7 +25,7 @@ from koschei.models import Package, Dependency, DependencyChange, Repo, \
                            ResolutionResult, ResolutionProblem
 from koschei import util
 
-log = logging.getLogger('dependency')
+log = logging.getLogger('koschei.dependency')
 
 def get_srpm_pkg(sack, name):
     hawk_pkg = hawkey.Query(sack).filter(name=name, arch='src',

@@ -24,7 +24,7 @@ import subprocess
 
 from koschei import util
 
-log = logging.getLogger('srpm_cache')
+log = logging.getLogger('koschei.srpm_cache')
 
 pathinfo = koji.PathInfo(topdir=util.koji_config['topurl'])
 source_tag = util.koji_config['source_tag']

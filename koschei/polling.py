@@ -25,7 +25,7 @@ from .models import Build
 from .service import service_main
 from .backend import update_build_state
 
-log = logging.getLogger('polling')
+log = logging.getLogger('koschei.polling')
 
 @service_main()
 def poll_tasks(db_session, koji_session):

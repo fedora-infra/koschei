@@ -35,7 +35,7 @@ priority_threshold = priority_conf['build_threshold']
 max_builds = util.config['koji_config']['max_builds']
 load_threshold = util.config['koji_config'].get('load_threshold')
 
-log = logging.getLogger('scheduler')
+log = logging.getLogger('koschei.scheduler')
 
 
 def hours_since(what):

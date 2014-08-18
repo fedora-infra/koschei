@@ -47,7 +47,7 @@ with open(config_path) as config_file:
     code = compile(config_file.read(), config_path, 'exec')
     exec(code)
 
-log = logging.getLogger('koschei')
+log = logging.getLogger('koschei.util')
 
 koji_config = config['koji_config']
 server = koji_config['server']
