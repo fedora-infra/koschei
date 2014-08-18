@@ -20,7 +20,7 @@ import rpm
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
                        ForeignKey, DateTime
-from sqlalchemy.sql.expression import extract, func, select, join, or_
+from sqlalchemy.sql.expression import extract, func, select, join, or_, false
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, mapper, column_property
 from sqlalchemy.engine.url import URL
@@ -130,7 +130,7 @@ class Build(Base):
     package_id = Column(Integer, ForeignKey('package.id', ondelete='CASCADE'))
     state = Column(Integer, nullable=False, default=RUNNING)
     task_id = Column(Integer)
-    logs_downloaded = Column(Boolean, default=False, nullable=False)
+    logs_downloaded = Column(Boolean, server_default=false(), nullable=False)
     started = Column(DateTime)
     finished = Column(DateTime)
     epoch = Column(Integer)
@@ -140,7 +140,7 @@ class Build(Base):
                                       order_by='DependencyChange.distance')
     build_arch_tasks = relationship(KojiTask, backref='build', order_by=KojiTask.arch)
     # was the build done by koschei or was it real build done by packager
-    real = Column(Boolean, nullable=False, server_default='false')
+    real = Column(Boolean, nullable=False, server_default=false())
 
     @property
     def state_string(self):
@@ -182,7 +182,7 @@ class ResolutionResult(Base):
     id = Column(Integer, primary_key=True)
     package_id = Column(ForeignKey('package.id', ondelete='CASCADE'))
     repo_id = Column(ForeignKey('repo.id', ondelete='CASCADE'))
-    resolved = Column(Boolean, nullable=False)
+    resolved = Column(Boolean, nullable=False, server_default=false())
     problems = relationship('ResolutionProblem')
 
 class ResolutionProblem(Base):
