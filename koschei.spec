@@ -1,3 +1,5 @@
+%bcond_without tests
+
 Name:           koschei
 Version:        0.0.1
 Release:        1%{?dist}
@@ -9,6 +11,16 @@ BuildArch:      noarch
 
 BuildRequires:  python-devel
 BuildRequires:  systemd
+
+%if %{with tests}
+BuildRequires:       python-sqlalchemy
+BuildRequires:       koji
+BuildRequires:       python-hawkey
+BuildRequires:       python-librepo
+BuildRequires:       python-libcomps
+BuildRequires:       rpm-python
+%endif
+
 Requires:       python-sqlalchemy
 Requires:       koji
 Requires:       fedmsg
@@ -72,6 +84,11 @@ ln -s theme/fedora/static %{buildroot}%{_datadir}/%{name}/static
 cp -p %{name}.wsgi %{buildroot}%{_datadir}/%{name}/
 mkdir -p %{buildroot}%{_sysconfdir}/httpd/conf.d
 cp -p httpd.conf %{buildroot}%{_sysconfdir}/httpd/conf.d/%{name}.conf
+
+%if %{with tests}
+%check
+%{__python} setup.py test
+%endif
 
 %pre
 getent group %{name} >/dev/null || groupadd -r %{name}
