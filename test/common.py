@@ -31,6 +31,14 @@ if use_postgres:
 else:
     util.config['database_config']['drivername'] = 'sqlite'
 
+util.root_logger.removeHandler(util.log_handler)
+util.root_logger.addHandler(logging.FileHandler('out.log'))
+sql_log = logging.getLogger('sqlalchemy.engine')
+sql_log.propagate = False
+sql_log.setLevel(logging.INFO)
+sql_log_file = 'sql.log'
+sql_log.addHandler(logging.FileHandler(sql_log_file))
+
 from koschei import service
 
 def identity_decorator(*args, **kwargs):
@@ -41,12 +49,6 @@ def identity_decorator(*args, **kwargs):
 service.service_main = identity_decorator
 
 from koschei import models as m
-
-sql_log = logging.getLogger('sqlalchemy.engine')
-sql_log.propagate = False
-sql_log.setLevel(logging.INFO)
-sql_log_file = 'sql.log'
-sql_log.addHandler(logging.FileHandler(sql_log_file))
 
 class MockDatetime(object):
     @staticmethod

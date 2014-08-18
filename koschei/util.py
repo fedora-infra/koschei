@@ -34,7 +34,8 @@ from datetime import datetime
 
 root_logger = logging.getLogger()
 root_logger.setLevel(logging.DEBUG)
-root_logger.addHandler(logging.StreamHandler(sys.stderr))
+log_handler = logging.StreamHandler(sys.stderr)
+root_logger.addHandler(log_handler)
 
 config = None
 config_path = os.environ.get('KOSCHEI_CONFIG')
