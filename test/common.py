@@ -2,6 +2,7 @@ import os
 import sys
 import unittest
 import sqlalchemy
+import logging
 
 from datetime import datetime
 
@@ -36,6 +37,12 @@ def identity_decorator(*args, **kwargs):
 service.service_main = identity_decorator
 
 from koschei import models as m
+
+sql_log = logging.getLogger('sqlalchemy.engine')
+sql_log.propagate = False
+sql_log.setLevel(logging.INFO)
+sql_log_file = 'sql.log'
+sql_log.addHandler(logging.FileHandler(sql_log_file))
 
 class MockDatetime(object):
     @staticmethod
