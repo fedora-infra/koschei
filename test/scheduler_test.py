@@ -1,8 +1,5 @@
-import koji
-
-from datetime import datetime, timedelta
-from mock import Mock, patch
-from common import AbstractTest, MockDatetime
+from datetime import timedelta
+from common import AbstractTest, MockDatetime, postgres_only
 
 from koschei import models as m, scheduler
 
@@ -60,6 +57,7 @@ class SchedulerTest(AbstractTest):
         self.assertIn((pkg.id, 10), res)
         self.assertIn((pkg.id, 5), res)
 
+    @postgres_only
     def test_time_priority(self):
         for days in [0, 2, 5, 7, 12]:
             pkg = m.Package(name='p{}'.format(days))

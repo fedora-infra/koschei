@@ -57,6 +57,9 @@ class MockDatetime(object):
 
 workdir = '.workdir'
 
+def postgres_only(fn):
+    return unittest.skipIf(not use_postgres, "Requires postgres")(fn)
+
 class AbstractTest(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
