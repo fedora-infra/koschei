@@ -115,17 +115,16 @@ def reset_sigpipe():
     import signal
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
-def get_srpm(url, srpm_name):
-    url += '/' + srpm_name
-    mkdir_if_absent(srpm_dir)
-    srpm_path = os.path.join(srpm_dir, os.path.basename(srpm_name))
-    if not os.path.isfile(srpm_path):
-        tmp_filename = os.path.join(srpm_dir, '.srpm.tmp')
-        log.info('downloading {}'.format(srpm_name))
+def download_rpm_header(url, target_dir):
+    mkdir_if_absent(target_dir)
+    rpm_path = os.path.join(target_dir, os.path.basename(url))
+    if not os.path.isfile(rpm_path):
+        tmp_filename = os.path.join(target_dir, '.rpm.tmp')
+        log.info('downloading {}'.format(rpm_path))
         cmd = 'curl -s {} | tee {} | rpm -qp /dev/fd/0'.format(url, tmp_filename)
         subprocess.call(['bash', '-e', '-c', cmd], preexec_fn=reset_sigpipe)
-        os.rename(tmp_filename, srpm_path)
-    return srpm_path
+        os.rename(tmp_filename, rpm_path)
+    return rpm_path
 
 def create_srpm_repo(package_names):
     koji_session = create_koji_session()
@@ -143,7 +142,7 @@ def create_srpm_repo(package_names):
         srpms = koji_session.multiCall()
         for [srpm], url in zip(srpms, urls):
             srpm_name = pathinfo.rpm(srpm[0])
-            get_srpm(url, srpm_name)
+            download_rpm_header(url + '/' + srpm_name, srpm_dir)
         package_names = package_names[50:]
     log.debug('createrepo_c')
     createrepo = subprocess.Popen(['createrepo_c', srpm_dir], stdout=subprocess.PIPE,
