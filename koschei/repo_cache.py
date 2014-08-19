@@ -96,7 +96,12 @@ class RepoCache(object):
         self._cache[repo_id] = repos
         self._lru[repo_id] = self._index
 
-    def get_repo(self, repo_id):
+    def get_repo(self, repo_id, arch):
+        repos = self.get_repos(repo_id)
+        if repos:
+            return repos.get(arch)
+
+    def get_repos(self, repo_id):
         self._index += 1
         repo = self._cache.get(repo_id)
         if not repo:
