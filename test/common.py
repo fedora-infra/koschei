@@ -65,6 +65,31 @@ class AbstractTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(AbstractTest, self).__init__(*args, **kwargs)
         self.fedmsg = fedmsg
+
+    def _rm_workdir(self):
+        try:
+            shutil.rmtree(workdir)
+        except OSError:
+            pass
+
+    def setUp(self):
+        self._rm_workdir()
+        os.mkdir(workdir)
+        os.chdir(workdir)
+        self.fedmsg.mock_init()
+
+    def tearDown(self):
+        self.fedmsg.mock_verify_empty()
+        self._rm_workdir()
+
+    @staticmethod
+    def get_json_data(name):
+        with open(os.path.join(datadir, name)) as fo:
+            return json.load(fo)
+
+class DBTest(AbstractTest):
+    def __init__(self, *args, **kwargs):
+        super(DBTest, self).__init__(*args, **kwargs)
         self.s = None
 
         if use_postgres:
@@ -79,16 +104,8 @@ class AbstractTest(unittest.TestCase):
             conn.execute("CREATE DATABASE {0}".format(testdb))
             conn.close()
 
-    def _rm_workdir(self):
-        try:
-            shutil.rmtree(workdir)
-        except OSError:
-            pass
-
     def setUp(self):
-        self._rm_workdir()
-        os.mkdir(workdir)
-        os.chdir(workdir)
+        super(DBTest, self).setUp()
         m.Base.metadata.create_all(m.engine)
         tables = m.Base.metadata.tables
         conn = m.engine.connect()
@@ -96,13 +113,11 @@ class AbstractTest(unittest.TestCase):
             conn.execute(table.delete())
         conn.close()
         self.s = m.Session()
-        self.fedmsg.mock_init()
 
     def tearDown(self):
+        super(DBTest, self).tearDown()
         self.s.close()
-        self.fedmsg.mock_verify_empty()
         m.engine.dispose()
-        self._rm_workdir()
 
     def prepare_basic_data(self):
         pkg = m.Package(name='rnv')
@@ -113,7 +128,3 @@ class AbstractTest(unittest.TestCase):
         self.s.add(build)
         self.s.commit()
         return pkg, build
-
-    def get_json_data(self, name):
-        with open(os.path.join(datadir, name)) as fo:
-            return json.load(fo)

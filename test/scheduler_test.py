@@ -1,11 +1,11 @@
 from datetime import timedelta
-from common import AbstractTest, MockDatetime, postgres_only
+from common import DBTest, MockDatetime, postgres_only
 
 from koschei import models as m, scheduler
 
 scheduler.datetime = MockDatetime
 
-class SchedulerTest(AbstractTest):
+class SchedulerTest(DBTest):
     def prepare_depchanges(self):
         pkg, build = self.prepare_basic_data()
         chngs = []

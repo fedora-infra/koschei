@@ -2,7 +2,7 @@ import koji
 
 from datetime import datetime
 from mock import Mock, patch
-from common import AbstractTest
+from common import DBTest
 
 from koschei import models as m, watcher
 
@@ -17,7 +17,7 @@ def generate_state_change(instance='primary', task_id=666, old='OPEN', new='CLOS
          'new': new,
          }}
 
-class WatcherTest(AbstractTest):
+class WatcherTest(DBTest):
     def test_ignored_topic(self):
         self.fedmsg.mock_add_message(topic='org.fedoraproject.prod.buildsys.task.state.change',
                                      msg=generate_state_change())
