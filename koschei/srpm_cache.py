@@ -38,14 +38,16 @@ class SRPMCache(object):
         self._cache = {}
         for srpm in srpms:
             path = os.path.join(srpm_dir, srpm)
-            try:
-                out = subprocess.check_output(['rpm', '-qp', path,
-                                               '--qf=%{name}#%{epoch}#%{version}#%{release}'])
-                nevr = out.split('#')
+            proc = subprocess.Popen(['rpm', '-qp', path,
+                                     '--qf=%{name}#%{epoch}#%{version}#%{release}'],
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, err = proc.communicate()
+            if err:
+                log.warn('RPM stderr: ' + err)
+            else:
+                nevr = out.strip().split('#')
                 nevr[1] = int(nevr[1]) if nevr[1] != '(none)' else None
                 self._cache[tuple(nevr)] = path
-            except subprocess.CalledProcessError:
-                pass
 
     def get_srpm(self, name, epoch, version, release):
         nevr = name, epoch, version, release
