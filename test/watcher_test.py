@@ -4,7 +4,8 @@ from datetime import datetime
 from mock import Mock, patch
 from common import DBTest
 
-from koschei import models as m, watcher
+from koschei import models as m
+from koschei.watcher import Watcher
 
 test_topic = 'org.fedoraproject.test.buildsys'
 
@@ -21,19 +22,19 @@ class WatcherTest(DBTest):
     def test_ignored_topic(self):
         self.fedmsg.mock_add_message(topic='org.fedoraproject.prod.buildsys.task.state.change',
                                      msg=generate_state_change())
-        watcher.main(None, None)
+        Watcher(db_session=Mock(), koji_session=Mock()).main()
 
     def test_ignored_instance(self):
         self.fedmsg.mock_add_message(topic=test_topic,
                                      msg=generate_state_change(instance='ppc'))
-        watcher.main(None, None)
+        Watcher(db_session=Mock(), koji_session=Mock()).main()
 
     def test_task_completed(self):
         _, build = self.prepare_basic_data()
         self.fedmsg.mock_add_message(topic=test_topic + '.task.state.change',
                                      msg=generate_state_change())
         with patch('koschei.backend.update_build_state') as mock:
-            watcher.main(self.s, None)
+            Watcher(db_session=self.s, koji_session=Mock()).main()
             mock.assert_called_once_with(self.s, build, 'CLOSED')
 
     def test_real_build(self):
@@ -57,7 +58,7 @@ class WatcherTest(DBTest):
             'completion_time': '2014-06-08 07:17:41.129985', 'nvr': 'rnv-1-2',
             'state': koji.BUILD_STATES['COMPLETE']}])
         with patch('koschei.backend.build_registered') as mock:
-            watcher.main(self.s, koji_mock)
+            Watcher(db_session=self.s, koji_session=koji_mock).main()
             koji_mock.getLatestBuilds.assert_called_once_with('f22', package='rnv')
             new_build = self.s.query(m.Build).filter(m.Build.id != build.id).one()
             mock.assert_called_once_with(self.s, new_build)
