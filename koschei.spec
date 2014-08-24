@@ -33,7 +33,6 @@ Requires:       python-hawkey
 Requires:       python-alembic
 Requires:       python-flask
 Requires:       python-flask-sqlalchemy
-Requires:       python-futures
 Requires:       mod_wsgi
 Requires:       httpd
 Requires:       python-librepo

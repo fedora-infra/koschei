@@ -19,13 +19,11 @@
 
 import fedmsg
 import logging
-import concurrent.futures
 import koji
 
 from . import util, backend
 from .service import service_main
-from .models import Build, Session, Package
-from .dependency import repo_done
+from .models import Build, Package, RepoGenerationRequest
 
 log = logging.getLogger('koschei-watcher')
 
@@ -34,28 +32,10 @@ tag = util.config['fedmsg']['tag']
 instance = util.config['fedmsg']['instance']
 build_tag = util.koji_config['target_tag']
 
-def new_repo_entry():
-    db_session = Session()
-    try:
-        repo_done(db_session)
-    except:
-        db_session.rollback()
-        raise
-    finally:
-        db_session.close()
-
-repo_done_excutor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-eager = util.config['services']['watcher']['eager_repo_done']
-repo_done_future = repo_done_excutor.submit(new_repo_entry) if eager else None
-
 def get_topic(name):
     return '{}.{}'.format(topic_name, name)
 
 def consume(db_session, koji_session, topic, content):
-    global repo_done_future
-    if repo_done_future and repo_done_future.done():
-        # This will raise an exception if the thread crashed
-        repo_done_future.result()
     if not content.get('instance') == instance:
         return
     log.info('consuming ' + topic)
@@ -63,10 +43,14 @@ def consume(db_session, koji_session, topic, content):
         update_build_state(db_session, content)
     elif topic == get_topic('repo.done'):
         if content.get('tag') == tag:
-            if not repo_done_future or repo_done_future.done():
-                repo_done_future = repo_done_excutor.submit(new_repo_entry)
+            repo_done(db_session, content['repo_id'])
     elif topic == get_topic('build.state.change'):
         register_real_build(db_session, koji_session, content)
+
+def repo_done(db_session, repo_id):
+    request = RepoGenerationRequest(repo_id=repo_id)
+    db_session.add(request)
+    db_session.commit()
 
 def update_build_state(db_session, msg):
     assert msg['attribute'] == 'state'

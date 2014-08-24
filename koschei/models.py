@@ -191,6 +191,12 @@ class ResolutionProblem(Base):
     resolution_id = Column(Integer, ForeignKey(ResolutionResult.id, ondelete='CASCADE'))
     problem = Column(String, nullable=False)
 
+class RepoGenerationRequest(Base):
+    __tablename__ = 'repo_generation_request'
+
+    repo_id = Column(Integer, primary_key=True, default=external_id)
+    requested = Column(DateTime, nullable=False, default=datetime.now)
+
 class Dependency(Base):
     __tablename__ = 'dependency'
     id = Column(Integer, primary_key=True)
