@@ -1,11 +1,16 @@
 from datetime import timedelta
 from common import DBTest, MockDatetime, postgres_only
 
+from mock import Mock
 from koschei import models as m, scheduler
+from koschei.scheduler import Scheduler
 
 scheduler.datetime = MockDatetime
 
 class SchedulerTest(DBTest):
+    def get_scheduler(self):
+        return Scheduler(db_session=self.s, koji_session=Mock())
+
     def prepare_depchanges(self):
         pkg, build = self.prepare_basic_data()
         chngs = []
@@ -49,7 +54,7 @@ class SchedulerTest(DBTest):
 
     def test_dependency_priority(self):
         pkg, _ = self.prepare_depchanges()
-        query = scheduler.get_dependency_priority_query(self.s)
+        query = self.get_scheduler().get_dependency_priority_query()
         self.assert_priority_query(query)
         res = query.all()
         self.assertEqual(3, len(res))
@@ -67,7 +72,7 @@ class SchedulerTest(DBTest):
                           started=MockDatetime.now() - timedelta(days, hours=1))
             self.s.add(build)
         self.s.commit()
-        query = scheduler.get_time_priority_query(self.s)
+        query = self.get_scheduler().get_time_priority_query()
         self.assert_priority_query(query)
         res = sorted(query.all(), key=lambda x: x.priority)
         self.assertEqual(5, len(res))
