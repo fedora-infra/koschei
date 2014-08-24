@@ -70,6 +70,13 @@ repodata_dir = config['directories']['repodata']
 dep_config = config['dependency']
 koji_repos = dep_config['repos']
 
+class Proxy(object):
+    def __init__(self, proxied):
+        self.proxied = proxied
+
+    def __getattr__(self, name):
+        return getattr(self.proxied, name)
+
 def parse_koji_time(string):
     return datetime.strptime(string, "%Y-%m-%d %H:%M:%S.%f")
 
