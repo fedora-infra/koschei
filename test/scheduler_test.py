@@ -1,7 +1,9 @@
 from datetime import timedelta
+from contextlib import contextmanager
 from common import DBTest, MockDatetime, postgres_only
+from sqlalchemy import Table, Column, Integer, MetaData
+from mock import Mock, patch
 
-from mock import Mock
 from koschei import models as m, scheduler
 from koschei.scheduler import Scheduler
 
@@ -80,3 +82,107 @@ class SchedulerTest(DBTest):
                           256.455946637, 297.675251883]
         for item, exp in zip(res, expected_prios):
             self.assertAlmostEqual(exp, item.priority)
+
+    @contextmanager
+    def prio_table(self, tablename='tmp', **kwargs):
+        try:
+            table = Table(tablename, MetaData(),
+                          Column('pkg_id', Integer), Column('priority', Integer))
+            conn = self.s.connection()
+            table.create(bind=conn)
+            priorities = {name: prio for name, prio in kwargs.items() if '_' not in name}
+            builds = {name[:-len("_build")]: state for name, state in kwargs.items()
+                      if name.endswith('_build')}
+            states = {name[:-len('_state')]: state for name, state in kwargs.items()
+                      if name.endswith('_state')}
+            pkgs = []
+            for name in priorities.keys():
+                pkg = self.s.query(m.Package).filter_by(name=name).first()
+                if not pkg:
+                    pkg = m.Package(name=name, state=states.get(name, m.Package.OK))
+                    self.s.add(pkg)
+                    self.s.flush()
+                pkgs.append((name, pkg))
+                if name in builds:
+                    self.s.add(m.Build(package_id=pkg.id, state=builds[name]))
+            conn.execute(table.insert(), [{'pkg_id': pkg.id, 'priority': priorities[name]}
+                                          for name, pkg in pkgs])
+            self.s.commit()
+            yield table
+        finally:
+            conn = self.s.connection()
+            table.drop(bind=conn)
+
+    def assert_submission(self, tables, submitted, koji_load=0.3):
+        with patch('koschei.scheduler.submit_build') as submit:
+            with patch('koschei.util.get_koji_load',
+                       Mock(return_value=koji_load)) as load_getter:
+                sched = self.get_scheduler()
+                def get_prio_q():
+                    return {i :self.s.query(t.select()) for i, t in enumerate(tables)}
+                with patch.object(sched, 'get_priority_queries', get_prio_q):
+                    sched.main()
+                    if submitted:
+                        pkg = self.s.query(m.Package).filter_by(name=submitted).one()
+                        submit.assert_called_once_with(self.s, sched.koji_session, pkg)
+                        load_getter.assert_called()
+                    else:
+                        self.assertFalse(submit.called)
+
+    def test_low(self):
+        with self.prio_table(rnv=10) as table:
+            self.assert_submission([table], submitted=None)
+
+    def test_submit1(self):
+        with self.prio_table(rnv=256) as table:
+            self.assert_submission([table], submitted='rnv')
+
+    def test_load(self):
+        with self.prio_table(rnv=30000) as table:
+            self.assert_submission([table], koji_load=0.7, submitted=None)
+
+    def test_max_builds(self):
+        with self.prio_table(rnv=30, rnv_build=m.Build.RUNNING,
+                             eclipse=300, eclipse_build=m.Build.RUNNING,
+                             expat=400) as table:
+            self.assert_submission([table], submitted=None)
+
+    def test_running1(self):
+        with self.prio_table(rnv=30000, rnv_build=m.Build.RUNNING) as table:
+            self.assert_submission([table], submitted=None)
+
+    def test_running2(self):
+        with self.prio_table(eclipse=100, rnv=300, rnv_build=m.Build.RUNNING) as table:
+            self.assert_submission([table], submitted=None)
+
+    def test_running3(self):
+        with self.prio_table(eclipse=280, rnv=300, rnv_build=m.Build.RUNNING) as table:
+            self.assert_submission([table], submitted='eclipse')
+
+    def test_multiple(self):
+        with self.prio_table(eclipse=280, rnv=300) as table:
+            self.assert_submission([table], submitted='rnv')
+
+    def test_builds(self):
+        with self.prio_table(eclipse=100, rnv=300, rnv_build=m.Build.COMPLETE,
+                             eclipse_build=m.Build.RUNNING) as table:
+            self.assert_submission([table], submitted='rnv')
+
+    def test_state1(self):
+        with self.prio_table(rnv=300, rnv_state=m.Package.UNRESOLVED) as table:
+            self.assert_submission([table], submitted=None)
+
+    def test_state2(self):
+        with self.prio_table(rnv=300, rnv_state=m.Package.RETIRED) as table:
+            self.assert_submission([table], submitted=None)
+
+    def test_union1(self):
+        with self.prio_table(tablename='tmp1', rnv=100) as table1:
+            with self.prio_table(tablename='tmp2', eclipse=280, rnv=200) as table2:
+                self.assert_submission([table1, table2], submitted='rnv')
+
+    def test_union2(self):
+        with self.prio_table(tablename='tmp1', rnv=100) as table1:
+            with self.prio_table(tablename='tmp2', eclipse=300, rnv=200) as table2:
+                with self.prio_table(tablename='tmp3', eclipse=201, rnv=200) as table3:
+                    self.assert_submission([table1, table2, table3], submitted='eclipse')
