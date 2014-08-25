@@ -33,9 +33,10 @@ class WatcherTest(DBTest):
         _, build = self.prepare_basic_data()
         self.fedmsg.mock_add_message(topic=test_topic + '.task.state.change',
                                      msg=generate_state_change())
-        with patch('koschei.backend.update_build_state') as mock:
-            Watcher(db_session=self.s, koji_session=Mock()).main()
-            mock.assert_called_once_with(self.s, build, 'CLOSED')
+        backend_mock = Mock()
+        watcher = Watcher(db_session=self.s, koji_session=Mock(), backend=backend_mock)
+        watcher.main()
+        backend_mock.update_build_state.assert_called_once_with(build, 'CLOSED')
 
     def test_real_build(self):
         pkg, build = self.prepare_basic_data()
@@ -57,17 +58,18 @@ class WatcherTest(DBTest):
             'task_id': 100, 'creation_time': '2014-06-08 07:09:11.339276',
             'completion_time': '2014-06-08 07:17:41.129985', 'nvr': 'rnv-1-2',
             'state': koji.BUILD_STATES['COMPLETE']}])
-        with patch('koschei.backend.build_registered') as mock:
-            Watcher(db_session=self.s, koji_session=koji_mock).main()
-            koji_mock.getLatestBuilds.assert_called_once_with('f22', package='rnv')
-            new_build = self.s.query(m.Build).filter(m.Build.id != build.id).one()
-            mock.assert_called_once_with(self.s, new_build)
-            self.assertTrue(new_build.real)
-            self.assertEqual(pkg.id, new_build.package_id)
-            self.assertTrue(new_build.epoch is None)
-            self.assertEqual('1', new_build.version)
-            self.assertEqual('2', new_build.release)
-            self.assertEqual(100, new_build.task_id)
-            self.assertEqual(datetime(2014, 6, 8, 7, 9, 11, 339276), new_build.started)
-            #self.assertEqual(datetime(2014, 6, 8, 7, 17, 41, 129985), new_build.finished)
-            self.assertEqual(m.Build.COMPLETE, new_build.state)
+        backend_mock = Mock()
+        watcher = Watcher(db_session=self.s, koji_session=koji_mock, backend=backend_mock)
+        watcher.main()
+        koji_mock.getLatestBuilds.assert_called_once_with('f22', package='rnv')
+        new_build = self.s.query(m.Build).filter(m.Build.id != build.id).one()
+        backend_mock.build_registered.assert_called_once_with(new_build)
+        self.assertTrue(new_build.real)
+        self.assertEqual(pkg.id, new_build.package_id)
+        self.assertTrue(new_build.epoch is None)
+        self.assertEqual('1', new_build.version)
+        self.assertEqual('2', new_build.release)
+        self.assertEqual(100, new_build.task_id)
+        self.assertEqual(datetime(2014, 6, 8, 7, 9, 11, 339276), new_build.started)
+        #self.assertEqual(datetime(2014, 6, 8, 7, 17, 41, 129985), new_build.finished)
+        self.assertEqual(m.Build.COMPLETE, new_build.state)

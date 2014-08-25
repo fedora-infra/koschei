@@ -22,9 +22,14 @@ import koji
 
 from .models import Build
 from .service import KojiService
-from .backend import update_build_state
+from .backend import Backend
 
 class Polling(KojiService):
+    def __init__(self, backend=None, *args, **kwargs):
+        super(Polling, self).__init__(*args, **kwargs)
+        self.backend = backend or Backend(log=self.log, db_session=self.db_session,
+                                          koji_session=self.koji_session)
+
     def main(self):
         running_builds = self.db_session.query(Build).filter_by(state=Build.RUNNING)
         for build in running_builds:
@@ -36,4 +41,4 @@ class Polling(KojiService):
                 self.log.debug('Polling task {id} ({name}): task_info={info}'\
                                .format(id=build.task_id, name=name, info=task_info))
                 state = koji.TASK_STATES.getvalue(task_info['state'])
-                update_build_state(self.db_session, build, state)
+                self.backend.update_build_state(build, state)

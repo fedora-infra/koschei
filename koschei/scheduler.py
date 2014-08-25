@@ -26,7 +26,7 @@ from sqlalchemy import func, union_all, extract
 from . import util
 from .models import Package, Build, DependencyChange
 from .service import KojiService
-from .backend import submit_build
+from .backend import Backend
 
 def hours_since(what):
     return extract('EPOCH', datetime.now() - what) / 3600
@@ -37,6 +37,10 @@ class Scheduler(KojiService):
     max_builds = util.config['koji_config']['max_builds']
     load_threshold = util.config['koji_config']['load_threshold']
 
+    def __init__(self, backend=None, *args, **kwargs):
+        super(Scheduler, self).__init__(*args, **kwargs)
+        self.backend = backend or Backend(log=self.log, db_session=self.db_session,
+                                          koji_session=self.koji_session)
 
     def get_dependency_priority_query(self):
         update_weight = self.priority_conf['package_update']
@@ -92,5 +96,5 @@ class Scheduler(KojiService):
             package, priority = to_schedule
             self.log.info('Scheduling build for {}, priority {}'\
                           .format(package.name, priority))
-            submit_build(self.db_session, self.koji_session, package)
+            self.backend.submit_build(package)
             self.db_session.commit()

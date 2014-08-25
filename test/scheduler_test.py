@@ -11,7 +11,7 @@ scheduler.datetime = MockDatetime
 
 class SchedulerTest(DBTest):
     def get_scheduler(self):
-        return Scheduler(db_session=self.s, koji_session=Mock())
+        return Scheduler(db_session=self.s, koji_session=Mock(), backend=Mock())
 
     def prepare_depchanges(self):
         pkg, build = self.prepare_basic_data()
@@ -114,20 +114,19 @@ class SchedulerTest(DBTest):
             table.drop(bind=conn)
 
     def assert_submission(self, tables, submitted, koji_load=0.3):
-        with patch('koschei.scheduler.submit_build') as submit:
-            with patch('koschei.util.get_koji_load',
-                       Mock(return_value=koji_load)) as load_getter:
-                sched = self.get_scheduler()
-                def get_prio_q():
-                    return {i :self.s.query(t.select()) for i, t in enumerate(tables)}
-                with patch.object(sched, 'get_priority_queries', get_prio_q):
-                    sched.main()
-                    if submitted:
-                        pkg = self.s.query(m.Package).filter_by(name=submitted).one()
-                        submit.assert_called_once_with(self.s, sched.koji_session, pkg)
-                        load_getter.assert_called()
-                    else:
-                        self.assertFalse(submit.called)
+        with patch('koschei.util.get_koji_load',
+                   Mock(return_value=koji_load)) as load_getter:
+            sched = self.get_scheduler()
+            def get_prio_q():
+                return {i :self.s.query(t.select()) for i, t in enumerate(tables)}
+            with patch.object(sched, 'get_priority_queries', get_prio_q):
+                sched.main()
+                if submitted:
+                    pkg = self.s.query(m.Package).filter_by(name=submitted).one()
+                    sched.backend.submit_build.assert_called_once_with(pkg)
+                    load_getter.assert_called()
+                else:
+                    self.assertFalse(sched.backend.called)
 
     def test_low(self):
         with self.prio_table(rnv=10) as table:
