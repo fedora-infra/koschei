@@ -67,6 +67,8 @@ class Backend(object):
             self.db_session.commit()
 
     def build_completed(self, build):
+        task_info = self.koji_session.getTaskInfo(build.task_id)
+        build.finished = util.parse_koji_time(task_info['completion_time'])
         subtasks = self.koji_session.getTaskChildren(build.task_id, request=True)
         build_arch_tasks = [task for task in subtasks if task['method'] == 'buildArch']
         if build_arch_tasks:
