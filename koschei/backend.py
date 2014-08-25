@@ -62,8 +62,19 @@ class Backend(object):
                 self.log.info('Setting build {build} state to {state}'\
                               .format(build=build, state=Build.REV_STATE_MAP[state]))
                 build.state = state
+            if state in (Build.COMPLETE, Build.FAILED):
+                self.build_completed(build)
             self.db_session.commit()
-            #TODO finish time
+
+    def build_completed(self, build):
+        subtasks = self.koji_session.getTaskChildren(build.task_id, request=True)
+        build_arch_tasks = [task for task in subtasks if task['method'] == 'buildArch']
+        if build_arch_tasks:
+            try:
+                # They all have the same repo_id, right?
+                build.repo_id = build_arch_tasks[0]['request'][4]['repo_id']
+            except KeyError:
+                pass
 
     def build_registered(self, build):
         self.db_session.query(DependencyChange).filter_by(package_id=build.package_id)\
