@@ -137,6 +137,7 @@ class Build(Base):
     version = Column(String)
     release = Column(String)
     repo_id = Column(Integer)
+    deps_processed = Column(Boolean, nullable=False, server_default=false())
     dependency_changes = relationship('DependencyChange', backref='applied_in',
                                       order_by='DependencyChange.distance')
     build_arch_tasks = relationship(KojiTask, backref='build', order_by=KojiTask.arch)
