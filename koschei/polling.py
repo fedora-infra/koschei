@@ -18,25 +18,22 @@
 
 from __future__ import print_function
 
-import logging
 import koji
 
 from .models import Build
-from .service import service_main
+from .service import KojiService
 from .backend import update_build_state
 
-log = logging.getLogger('koschei.polling')
-
-@service_main()
-def poll_tasks(db_session, koji_session):
-    running_builds = db_session.query(Build).filter_by(state=Build.RUNNING)
-    for build in running_builds:
-        name = build.package.name
-        if not build.task_id:
-            log.warn('No task id assigned to build {0})'.format(build))
-        else:
-            task_info = koji_session.getTaskInfo(build.task_id)
-            log.debug('Polling task {id} ({name}): task_info={info}'\
-                      .format(id=build.task_id, name=name, info=task_info))
-            state = koji.TASK_STATES.getvalue(task_info['state'])
-            update_build_state(db_session, build, state)
+class Polling(KojiService):
+    def main(self):
+        running_builds = self.db_session.query(Build).filter_by(state=Build.RUNNING)
+        for build in running_builds:
+            name = build.package.name
+            if not build.task_id:
+                self.log.warn('No task id assigned to build {0})'.format(build))
+            else:
+                task_info = self.koji_session.getTaskInfo(build.task_id)
+                self.log.debug('Polling task {id} ({name}): task_info={info}'\
+                               .format(id=build.task_id, name=name, info=task_info))
+                state = koji.TASK_STATES.getvalue(task_info['state'])
+                update_build_state(self.db_session, build, state)
