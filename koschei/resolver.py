@@ -57,102 +57,92 @@ class Resolver(KojiService):
         self.db_session.add(package)
         self.db_session.flush()
 
-    def resolve_dependencies(self, sack, repo, package, group):
-        new_deps = []
-        hawk_pkg = get_srpm_pkg(sack, package.name)
-        if not hawk_pkg:
-            return
+    def prepare_goal(self, sack, srpm, group):
         goal = hawkey.Goal(sack)
         for name in group:
             sltr = hawkey.Selector(sack).set(name=name)
             goal.install(select=sltr)
-        goal.install(hawk_pkg)
-        if goal.run():
-            self.set_resolved(repo, package)
-            # pylint: disable=E1101
-            installs = goal.list_installs()
-            for install in installs:
-                if install.arch != 'src':
-                    dep = Dependency(repo_id=repo.id, package_id=package.id,
-                                     name=install.name, epoch=install.epoch,
-                                     version=install.version, release=install.release,
-                                     arch=install.arch)
-                    new_deps.append(dep)
-        else:
-            self.set_unresolved(repo, package, goal.problems)
+        goal.install(srpm)
+        return goal
 
-        if new_deps:
+    def create_dependencies(self, repo, package, installs):
+        new_deps = []
+        for install in installs:
+            if install.arch != 'src':
+                dep = Dependency(repo_id=repo.id, package_id=package.id,
+                                 name=install.name, epoch=install.epoch,
+                                 version=install.version, release=install.release,
+                                 arch=install.arch)
+                new_deps.append(dep)
+        return new_deps
+
+    def store_dependencies(self, deps):
+        if deps:
             # pylint: disable=E1101
             table = Dependency.__table__
             dicts = [{c.name: getattr(dep, c.name) for c in table.c if not c.primary_key}
-                     for dep in new_deps]
+                     for dep in deps]
             self.db_session.connection().execute(table.insert(), dicts)
             self.db_session.expire_all()
 
-    def get_dependency_differences(self):
-        def difference_query(*repos):
-            resolved = intersect(*(self.db_session.query(ResolutionResult.package_id)\
-                                       .filter_by(resolved=True, repo_id=r) for r in repos))
-            deps = (self.db_session.query(Dependency.package_id, *Dependency.nevra)
-                                   .filter(Dependency.repo_id == r)
-                                   .filter(Dependency.package_id.in_(resolved))
-                        for r in repos)
-            return self.db_session.connection().execute(except_(*deps))
-        last_repos = self.db_session.query(Repo.id).order_by(Repo.id.desc()).limit(2).all()
-        if len(last_repos) != 2:
-            return [], []
-        [curr_repo], [prev_repo] = last_repos
-        add_diff = difference_query(curr_repo, prev_repo)
-        rm_diff = difference_query(prev_repo, curr_repo)
-        return add_diff, rm_diff
-
-    def process_dependency_differences(self):
-        add_diff, rm_diff = self.get_dependency_differences()
-        changes = {}
-        for pkg_id, dep_name, epoch, version, release, arch in add_diff:
-            change = DependencyChange(package_id=pkg_id, dep_name=dep_name,
-                                      curr_epoch=epoch, curr_version=version,
-                                      curr_release=release)
-            changes[(pkg_id, dep_name, arch)] = change
-        for pkg_id, dep_name, epoch, version, release, arch in rm_diff:
-            update = changes.get((pkg_id, dep_name, arch))
-            if update:
-                update.prev_epoch = epoch
-                update.prev_version = version
-                update.prev_release = release
-            else:
-                change = DependencyChange(package_id=pkg_id, dep_name=dep_name,
-                                          curr_epoch=epoch, curr_version=version,
-                                          curr_release=release)
-                changes[(pkg_id, dep_name, arch)] = change
-        for change in changes.values():
-            self.db_session.add(change)
-        self.db_session.flush()
-
-    def compute_dependency_distance(self, sack, package):
-        hawk_pkg = get_srpm_pkg(sack, package.name)
-        if not hawk_pkg:
-            return
-        changes = self.db_session.query(DependencyChange)\
-                                 .filter(DependencyChange.package_id == package.id,
-                                         DependencyChange.applied_in_id == None,
-                                         DependencyChange.curr_version != None).all()
-        if not changes:
-            return
-        changes_map = {change.dep_name: change for change in changes}
+    def set_dependency_distances(self, sack, srpm, deps):
+        dep_map = {dep.name for dep in deps}
         visited = set()
         level = 1
-        reldeps = hawk_pkg.requires
+        reldeps = srpm.requires
         while level < 8 and reldeps:
             pkgs_on_level = set(hawkey.Query(sack).filter(provides=reldeps))
             reldeps = {req for pkg in pkgs_on_level if pkg not in visited
                                for req in pkg.requires}
             visited.update(pkgs_on_level)
             for pkg in pkgs_on_level:
-                if pkg.name in changes_map and not changes_map[pkg.name].distance:
-                    changes_map[pkg.name].distance = level
+                dep = dep_map.get(pkg.name)
+                if dep and dep.distance is None:
+                    dep.distance = level
             level += 1
-        self.db_session.flush()
+
+    def resolve_dependencies(self, sack, repo, package, group):
+        srpm = get_srpm_pkg(sack, package.name)
+        if srpm:
+            goal = self.prepare_goal(sack, srpm, group)
+            if goal.run():
+                self.set_resolved(repo, package)
+                # pylint: disable=E1101
+                installs = goal.list_installs()
+                deps = self.create_deps(repo, package, installs)
+                self.set_dependency_distances(sack, srpm, deps)
+                self.store_dependencies(deps)
+            else:
+                self.set_unresolved(repo, package, goal.problems)
+
+    def compute_dependency_differences(self, package_id, repo_id1, repo_id2, apply_id):
+        s = self.db_session
+        if (s.query(ResolutionResult).filter_by(package_id=package_id, resolved=True)
+             .filter(ResolutionResult.repo_id.in_([repo_id1, repo_id2]))
+             .count() == 2):
+            s.query(DependencyChange)\
+             .filter_by(package_id=package_id, applied_in_id=apply_id)\
+             .delete()
+            s.flush()
+            s.connection().execute(text("""
+                INSERT INTO dependency_change (dep_name, package_id, applied_in_id,
+                                               prev_epoch, prev_version, prev_release,
+                                               curr_epoch, curr_version, curr_release,
+                                               distance)
+                SELECT deps1.name, deps1.package_id, :apply_id,
+                       deps1.epoch, deps1.version, deps1.release,
+                       deps2.epoch, deps2.version, deps2.release, deps2.distance
+                FROM dependency AS deps1 INNER JOIN dependency AS deps2
+                     ON deps1.name = deps2.name AND
+                        (deps1.epoch != deps2.epoch OR
+                         deps1.version != deps2.version OR
+                         deps1.release != deps2.release)
+                WHERE deps1.package_id = :package_id AND
+                      deps2.package_id = :package_id AND
+                      deps1.repo_id = :repo_id1 AND
+                      deps2.repo_id = :repo_id2
+            """), package_id=package_id, apply_id=apply_id,
+                 repo_id1=repo_id1, repo_id2=repo_id2)
 
     def cleanup_deps(self, current_repo):
         assert current_repo.id is not None
