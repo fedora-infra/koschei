@@ -74,8 +74,16 @@ class Proxy(object):
     def __init__(self, proxied):
         self.proxied = proxied
 
-    def __getattr__(self, name):
-        return getattr(self.proxied, name)
+    def __getattribute__(self, name):
+        proxied = object.__getattribute__(self, 'proxied')
+        if name == 'proxied':
+            return proxied
+        return getattr(proxied, name)
+
+    def __setattr__(self, name, value):
+        if name == 'proxied':
+            object.__setattr__(self, name, value)
+        setattr(self.proxied, name, value)
 
 def parse_koji_time(string):
     return datetime.strptime(string, "%Y-%m-%d %H:%M:%S.%f")
