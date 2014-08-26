@@ -209,7 +209,9 @@ class Dependency(Base):
     version = Column(String, nullable=False)
     release = Column(String, nullable=False)
     arch = Column(String, nullable=False)
+    distance = Column(Integer)
 
+    nevr = (name, epoch, version, release)
     nevra = (name, epoch, version, release, arch)
 
 def format_evr(epoch, version, release):
