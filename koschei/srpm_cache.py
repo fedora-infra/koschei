@@ -20,6 +20,7 @@ import koji
 import librepo
 import logging
 import os
+import shutil
 import subprocess
 
 from koschei import util
@@ -34,6 +35,9 @@ class SRPMCache(object):
     def __init__(self, koji_session, srpm_dir=util.config['directories']['srpms']):
         self._srpm_dir = srpm_dir
         self._koji_session = koji_session
+        repodata_dir = os.path.join(srpm_dir, 'repodata')
+        if os.path.exists(repodata_dir):
+            shutil.rmtree(repodata_dir)
         srpms = os.listdir(srpm_dir)
         self._cache = {}
         for srpm in srpms:
