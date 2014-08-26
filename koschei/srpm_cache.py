@@ -40,6 +40,7 @@ class SRPMCache(object):
             shutil.rmtree(repodata_dir)
         srpms = os.listdir(srpm_dir)
         self._cache = {}
+        self._dirty = True
         for srpm in srpms:
             path = os.path.join(srpm_dir, srpm)
             proc = subprocess.Popen(['rpm', '-qp', path,
@@ -58,6 +59,7 @@ class SRPMCache(object):
         cached = self._cache.get(nevr)
         if cached:
             return cached
+        self._dirty = True
         builds = self._koji_session.listTagged(source_tag, package=name)
         for build in builds:
             if (build['epoch'] == epoch and build['version'] == version and
@@ -86,9 +88,10 @@ class SRPMCache(object):
             for [srpm], url in zip(srpms, urls):
                 srpm_name = pathinfo.rpm(srpm[0])
                 util.download_rpm_header(url + '/' + srpm_name, self._srpm_dir)
+                self._dirty = True
             package_names = package_names[50:]
 
-    def createrepo(self):
+    def _createrepo(self):
         log.debug('createrepo_c')
         createrepo = subprocess.Popen(['createrepo_c', self._srpm_dir], stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE)
@@ -98,8 +101,11 @@ class SRPMCache(object):
             raise Exception("Createrepo failed: return code {ret}\n{err}"
                             .format(ret=ret, err=err))
         log.debug(out)
+        self._dirty = False
 
     def get_repodata(self):
+        if self._dirty:
+            self._createrepo()
         h = librepo.Handle()
         h.local = True
         h.repotype = librepo.LR_YUMREPO
