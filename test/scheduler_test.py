@@ -110,15 +110,18 @@ class SchedulerTest(DBTest):
             self.s.commit()
             yield table
         finally:
+            self.s.rollback()
             conn = self.s.connection()
             table.drop(bind=conn)
+            self.s.commit()
 
     def assert_submission(self, tables, submitted, koji_load=0.3):
         with patch('koschei.util.get_koji_load',
                    Mock(return_value=koji_load)) as load_getter:
             sched = self.get_scheduler()
             def get_prio_q():
-                return {i :self.s.query(t.select()) for i, t in enumerate(tables)}
+                return {i :self.s.query(t.c.pkg_id.label('pkg_id'), t.c.priority.label('priority'))
+                        for i, t in enumerate(tables)}
             with patch.object(sched, 'get_priority_queries', get_prio_q):
                 sched.main()
                 if submitted:
