@@ -145,10 +145,11 @@ def download_rpm_header(url, target_dir):
     return rpm_path
 
 def create_srpm_repo(package_names):
+    multicall_step = 100
     koji_session = create_koji_session()
     while package_names:
         koji_session.multicall = True
-        for package_name in package_names[:50]:
+        for package_name in package_names[:multicall_step]:
             koji_session.listTagged(source_tag, latest=True, package=package_name)
         urls = []
         infos = koji_session.multiCall()
@@ -161,7 +162,7 @@ def create_srpm_repo(package_names):
         for [srpm], url in zip(srpms, urls):
             srpm_name = pathinfo.rpm(srpm[0])
             download_rpm_header(url + '/' + srpm_name, srpm_dir)
-        package_names = package_names[50:]
+        package_names = package_names[multicall_step:]
     log.debug('createrepo_c')
     createrepo = subprocess.Popen(['createrepo_c', srpm_dir], stdout=subprocess.PIPE,
                                   stderr=subprocess.PIPE)
