@@ -33,7 +33,7 @@
     <tbody>
 
     {% for package in packages %}
-    {% set last_build = package.last_build %}
+    {% set last_complete_build = package.last_complete_build %}
 
     <tr class="row-odd pkg-{{ package.state_string }}">
         <td>
@@ -48,12 +48,12 @@
         </td>
         {% if package.state_string != 'unresolved' %}
         <td>
-            <a href="{{ koji_weburl }}/taskinfo?taskID={{ last_build.task_id }}">
-                {{ last_build.task_id }}
+            <a href="{{ koji_weburl }}/taskinfo?taskID={{ last_complete_build.task_id }}">
+                {{ last_complete_build.task_id }}
             </a>
         </td>
         <td>
-            {{ last_build.started | date }}
+            {{ last_complete_build.started | date }}
         </td>
         {% else %}
         <td colspan="2"/>

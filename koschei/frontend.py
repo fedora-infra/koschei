@@ -59,15 +59,15 @@ def package_view(template, alter_query=None, **template_args):
     order_name = request.args.get('order_by', 'name')
     #pylint: disable=E1101
     order_map = {'name': [Package.name],
-                 'state': [Package.state, literal_column('last_build.state')],
-                 'task_id': [literal_column('last_build.task_id')],
-                 'started': [literal_column('last_build.started')],
+                 'state': [Package.state, literal_column('last_complete_build.state')],
+                 'task_id': [literal_column('last_complete_build.task_id')],
+                 'started': [literal_column('last_complete_build.started')],
                  }
     order_names, order = get_order(order_map, order_name)
     page_no = int(request.args.get('page', 1))
     pkgs = db_session.query(Package)\
-                     .outerjoin(Package.last_build)\
-                     .options(contains_eager(Package.last_build))\
+                     .outerjoin(Package.last_complete_build)\
+                     .options(contains_eager(Package.last_complete_build))\
                      .order_by(*order)
     if alter_query:
         pkgs = alter_query(pkgs)

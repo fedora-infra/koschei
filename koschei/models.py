@@ -55,7 +55,7 @@ class Package(Base):
 
     build_opts = Column(String)
 
-    # last_build defined later
+    # last_complete_build defined later
 
     OK = 0
     UNRESOLVED = 1
@@ -67,7 +67,7 @@ class Package(Base):
     def state_string(self):
         if self.state == self.OK:
             # pylint: disable=E1101
-            return self.last_build.state_string
+            return self.last_complete_build.state_string
         elif self.state == self.UNRESOLVED:
             return 'unresolved'
         elif self.state == self.IGNORED:
@@ -262,10 +262,11 @@ def max_relationship(cls, group_by, filt=None, alias=None):
 
 # Relationships
 
-Package.last_build = max_relationship(Build, Build.package_id,
+Package.last_complete_build = max_relationship(Build, Build.package_id,
                                       filt=or_(Build.state == Build.COMPLETE,
                                                Build.state == Build.FAILED),
-                                      alias='last_build')
+                                      alias='last_complete_build')
+Package.last_build = max_relationship(Build, Build.package_id, alias='last_build')
 Package.all_builds = relationship(Build, order_by=Build.id.desc())
 Package.resolution_result = max_relationship(ResolutionResult, ResolutionResult.package_id)
 Build.buildroot_diff = relationship(BuildrootDiff,
