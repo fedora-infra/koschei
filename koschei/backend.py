@@ -21,7 +21,7 @@ import json
 from datetime import datetime
 
 from . import util
-from .models import Package, Build, DependencyChange
+from .models import Package, Build, DependencyChange, KojiTask
 
 class Backend(object):
     def __init__(self, log, db_session, koji_session):
@@ -71,12 +71,16 @@ class Backend(object):
         build.finished = util.parse_koji_time(task_info['completion_time'])
         subtasks = self.koji_session.getTaskChildren(build.task_id, request=True)
         build_arch_tasks = [task for task in subtasks if task['method'] == 'buildArch']
-        if build_arch_tasks:
+        for task in build_arch_tasks:
             try:
                 # They all have the same repo_id, right?
-                build.repo_id = build_arch_tasks[0]['request'][4]['repo_id']
+                build.repo_id = task['request'][4]['repo_id']
             except KeyError:
                 pass
+            db_task = KojiTask(build_id=build.id, task_id=task['id'],
+                               state=task['state'], started=task['create_time'],
+                               finished=task['completion_time'], arch=task['arch'])
+            self.db_session.add(db_task)
 
     def build_registered(self, build):
         self.db_session.query(DependencyChange).filter_by(package_id=build.package_id)\
