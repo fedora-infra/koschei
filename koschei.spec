@@ -100,16 +100,19 @@ exit 0
 %systemd_post koschei-scheduler.service
 %systemd_post koschei-watcher.service
 %systemd_post koschei-polling.service
+%systemd_post koschei-resolver.service
 
 %preun
 %systemd_preun koschei-scheduler.service
 %systemd_preun koschei-watcher.service
 %systemd_preun koschei-polling.service
+%systemd_preun koschei-resolver.service
 
 %postun
 %systemd_postun_with_restart koschei-scheduler.service
 %systemd_postun_with_restart koschei-watcher.service
 %systemd_postun_with_restart koschei-polling.service
+%systemd_postun_with_restart koschei-resolver.service
 
 %files
 %doc LICENSE.txt
