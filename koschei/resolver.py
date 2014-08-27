@@ -18,18 +18,26 @@
 
 import hawkey
 
-from sqlalchemy import except_, or_, intersect
+from sqlalchemy import or_, text, exists
+from sqlalchemy.orm import joinedload
 
 from koschei.models import Package, Dependency, DependencyChange, Repo, \
-                           ResolutionResult, ResolutionProblem, RepoGenerationRequest
+                           ResolutionResult, ResolutionProblem, RepoGenerationRequest, \
+                           Build
 from koschei import util
 from koschei.service import KojiService
 from koschei.srpm_cache import SRPMCache
 from koschei.repo_cache import RepoCache
 
-def get_srpm_pkg(sack, name):
-    hawk_pkg = hawkey.Query(sack).filter(name=name, arch='src',
-                                         latest_per_arch=True)
+def get_srpm_pkg(sack, name, evr=None):
+    if evr:
+        # pylint: disable=W0633
+        epoch, version, release = evr
+        hawk_pkg = hawkey.Query(sack).filter(name=name, epoch=epoch, arch='src',
+                                             version=version, release=release)
+    else:
+        hawk_pkg = hawkey.Query(sack).filter(name=name, arch='src',
+                                             latest_per_arch=True)
     if hawk_pkg:
         return hawk_pkg[0]
 
@@ -86,7 +94,7 @@ class Resolver(KojiService):
             self.db_session.expire_all()
 
     def set_dependency_distances(self, sack, srpm, deps):
-        dep_map = {dep.name for dep in deps}
+        dep_map = {dep.name: dep for dep in deps}
         visited = set()
         level = 1
         reldeps = srpm.requires
@@ -109,17 +117,17 @@ class Resolver(KojiService):
                 self.set_resolved(repo, package)
                 # pylint: disable=E1101
                 installs = goal.list_installs()
-                deps = self.create_deps(repo, package, installs)
+                deps = self.create_dependencies(repo, package, installs)
                 self.set_dependency_distances(sack, srpm, deps)
                 self.store_dependencies(deps)
             else:
                 self.set_unresolved(repo, package, goal.problems)
 
-    def compute_dependency_differences(self, package_id, repo_id1, repo_id2, apply_id):
+    def compute_dependency_differences(self, package_id, repo_id1, repo_id2, apply_id=None):
         s = self.db_session
-        if (s.query(ResolutionResult).filter_by(package_id=package_id, resolved=True)
-             .filter(ResolutionResult.repo_id.in_([repo_id1, repo_id2]))
-             .count() == 2):
+        if len(s.query(ResolutionResult.id)\
+                .filter_by(package_id=package_id, resolved=True)\
+                .filter(ResolutionResult.repo_id.in_([repo_id1, repo_id2])).all()) == 2:
             s.query(DependencyChange)\
              .filter_by(package_id=package_id, applied_in_id=apply_id)\
              .delete()
@@ -145,46 +153,61 @@ class Resolver(KojiService):
                  repo_id1=repo_id1, repo_id2=repo_id2)
 
     def cleanup_deps(self, current_repo):
-        assert current_repo.id is not None
-        self.db_session.query(Dependency).filter(Dependency.repo_id != current_repo.id)\
-                       .delete()
-        self.db_session.commit()
+        pass
+        # TODO delete only those with no build
+
+    def repo_for_id(self, repo_id):
+        repo = self.db_session.query(Repo).get(repo_id)
+        if not repo:
+            repo = Repo(id=repo_id)
+            self.db_session.add(repo)
+            self.db_session.flush()
+        return repo
+
+    def prepare_sack(self, repo_id):
+        for_arch = util.config['dependency']['for_arch']
+        sack = hawkey.Sack(arch=for_arch)
+        repos = self.repo_cache.get_repos(repo_id)
+        if repos:
+            util.add_repos_to_sack(repo_id, repos, sack)
+            return sack
 
     def generate_repo(self, repo_id):
         packages = self.db_session.query(Package)\
-                             .filter(or_(Package.state == Package.OK,
-                                         Package.state == Package.UNRESOLVED))
+                                  .filter(or_(Package.state == Package.OK,
+                                              Package.state == Package.UNRESOLVED))\
+                                  .options(joinedload(Package.last_build)).all()
         package_names = [pkg.name for pkg in packages]
         self.log.info("Generating new repo")
-        for_arch = util.config['dependency']['for_arch']
         self.srpm_cache.get_latest_srpms(package_names)
-        self.srpm_cache.createrepo()
-        sack = hawkey.Sack(arch=for_arch)
-        repos = self.repo_cache.get_repos(repo_id)
-        util.add_repos_to_sack(repo_id, repos, sack)
+        srpm_repo = self.srpm_cache.get_repodata()
+        sack = self.prepare_sack(repo_id)
+        util.add_repo_to_sack('src', srpm_repo, sack)
         #TODO repo_id
         group = util.get_build_group()
-        db_repo = Repo(repo_id=repo_id)
-        self.db_session.add(db_repo)
-        self.db_session.flush()
+        db_repo = self.repo_for_id(repo_id)
         self.log.info("Resolving dependencies")
         for pkg in packages:
             self.resolve_dependencies(sack, db_repo, pkg, group)
-        self.log.info("Computing dependency differences")
-        self.process_dependency_differences()
-        self.log.info("Computing dependency distances")
-        for pkg in packages:
-            self.compute_dependency_distance(sack, pkg)
+            if pkg.last_build.repo_id:
+                self.compute_dependency_differences(pkg.id, pkg.last_build.repo_id, repo_id)
         self.db_session.commit()
         self.cleanup_deps(db_repo)
         self.log.info("New repo done")
 
-    def main(self):
-        request_query = self.db_session.query(RepoGenerationRequest)\
-                                       .order_by(RepoGenerationRequest.repo_id.desc())
-        latest_request = request_query.first()
+    def process_repo_generation_requests(self):
+        latest_request = self.db_session.query(RepoGenerationRequest)\
+                                        .order_by(RepoGenerationRequest.repo_id.desc())\
+                                        .first()
         if latest_request:
             repo_id = latest_request.repo_id
-            repo = self.db_session.query(Repo).filter_by(repo_id=repo_id).first()
+            repo = self.db_session.query(Repo).filter_by(id=repo_id).first()
             if not repo:
                 self.generate_repo(repo_id)
+        self.db_session.query(RepoGenerationRequest)\
+                       .filter(RepoGenerationRequest.repo_id <= latest_request.repo_id)\
+                       .delete()
+        self.db_session.commit()
+
+    def main(self):
+        self.process_repo_generation_requests()

@@ -215,6 +215,10 @@ def add_repo_to_sack(repoid, repo_result, sack):
     repo.filelists_fn = repodata['filelists']
     sack.load_yum_repo(repo, load_filelists=True)
 
+def add_repos_to_sack(repo_id, repo_results, sack):
+    for arch, repo_result in repo_results.items():
+        add_repo_to_sack('{}-{}'.format(repo_id, arch), repo_result, sack)
+
 def sync_repos(package_names):
     create_srpm_repo(package_names)
     repos = download_koji_repos()
