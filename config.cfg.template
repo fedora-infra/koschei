@@ -25,11 +25,12 @@ config = {
     },
     "dependency": {
         "build_group": "build",
-        "comps_url": "http://koji.fedoraproject.org/repos/f22-build/latest/groups/comps.xml",
+        "comps_url": "http://koji.fedoraproject.org/repos/f22-build/{repo_id}/groups/comps.xml",
         "for_arch": "x86_64",
+        "repo_cache_items": 10,
         "repos": {
-            "x86_64": "http://koji.fedoraproject.org/repos/f22-build/latest/x86_64",
-            "i386": "http://koji.fedoraproject.org/repos/f22-build/latest/i386",
+            "x86_64": "http://koji.fedoraproject.org/repos/f22-build/{repo_id}/x86_64",
+            "i386": "http://koji.fedoraproject.org/repos/f22-build/{repo_id}/i386",
         },
     },
     "priorities": {

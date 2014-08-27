@@ -63,10 +63,11 @@ class RepoCache(object):
             os.makedirs(destdir)
             h.destdir = destdir
             h.repotype = librepo.LR_YUMREPO
+            assert '{repo_id}' in repo_url
             url = repo_url.format(repo_id=repo_id)
             h.urls = [url]
             h.yumdlist = ['primary', 'filelists', 'group']
-            log.info("Downloading {arch} repo from {url}".format(arch=arch, url=repo_url))
+            log.info("Downloading {arch} repo from {url}".format(arch=arch, url=url))
             result = h.perform(librepo.Result())
             repos[arch] = result
         self._add_repo(repo_id, repos)
