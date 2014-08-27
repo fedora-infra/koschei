@@ -74,19 +74,17 @@ class ResolverTest(DBTest):
     def test_no_srpm(self):
         with hawkey_mocks() as (goal_mock, get_srpm_mock, sltr_mock, sack_mock):
             get_srpm_mock.return_value = None
-            pkg, _ = self.prepare_basic_data()
+            pkg, repo = self.prepare_repo()
             resolver = self.get_resolver()
-            goal = resolver.prepare_goal(sack_mock, pkg, [])
-            self.assertIsNone(goal)
+            resolver.resolve_dependencies(sack_mock, repo, pkg, [])
             get_srpm_mock.assert_called_once_with(sack_mock, 'rnv')
             self.assertFalse(goal_mock.called)
             self.assertFalse(sltr_mock.called)
 
     def test_group(self):
         with hawkey_mocks() as (goal_mock, get_srpm_mock, sltr_mock, sack_mock):
-            pkg, _ = self.prepare_basic_data()
             resolver = self.get_resolver()
-            goal = resolver.prepare_goal(sack_mock, pkg, ["rpm-build", "zip"])
+            goal = resolver.prepare_goal(sack_mock, get_srpm_mock(), ["rpm-build", "zip"])
             sltr_mock.assert_has_calls(
                     [call(sack_mock)] * 2 + [call.set(name='rpm-build'), call.set(name='zip')],
                     any_order=True)
@@ -96,17 +94,37 @@ class ResolverTest(DBTest):
                                        any_order=True)
             self.assertIs(goal_mock(), goal)
 
-    def test_store_deps(self):
+    def test_create_deps(self):
         deps = [dict(name='expat', epoch=1, version='2.4', release='1.fc22', arch='x86_64'),
                 dict(name='expat-devel', epoch=None, version='2.4', release='1.rc1.fc22', arch='x86_64'),
                 dict(name='rnv', epoch=0, version='11', release='1.fc22', arch='src')]
         pkgs = [PkgMock(**dep) for dep in deps]
         pkg, repo = self.prepare_repo()
         resolver = self.get_resolver()
-        resolver.store_dependencies(repo, pkg, pkgs)
-        self.assertEquals(2, self.s.query(m.Dependency).count())
+        created = resolver.create_dependencies(repo, pkg, pkgs)
+        for dep in created:
+            # easier to compare in DB
+            self.s.add(dep)
+        self.assertEquals(2, len(created))
         for dep in deps[0], deps[1]:
             self.assertEquals(1, self.s.query(m.Dependency).filter_by(**dep).count())
+
+    def test_store_deps(self):
+        dicts = [dict(name='expat', epoch=1, version='2.4', release='1.fc22', arch='x86_64'),
+                 dict(name='expat-devel', epoch=None, version='2.4', release='1.rc1.fc22', arch='x86_64'),
+                 dict(name='rnv', epoch=0, version='11', release='1.fc22', arch='src')]
+        deps = [m.Dependency(**d) for d in dicts]
+        pkg, _ = self.prepare_repo()
+        for dep in deps:
+            dep.package_id = pkg.id
+        resolver = self.get_resolver()
+        resolver.store_dependencies(deps)
+        stored = self.s.query(m.Dependency).all()
+        self.assertEqual(3, len(stored))
+        for dep in dicts:
+            self.assertEqual(1, self.s.query(m.Dependency).filter_by(**dep).count())
+
+    # TODO test distance computation
 
     def test_resolve_fail(self):
         pkg, repo = self.prepare_repo()
@@ -117,11 +135,12 @@ class ResolverTest(DBTest):
             goal_mock.reset()
             with patch.object(resolver, 'set_unresolved') as unresolved:
                 with patch.object(resolver, 'set_resolved') as resolved:
-                    resolver.resolve_dependencies(sack_mock, repo, pkg, ['bbb'])
-                    goal_mock.assert_has_calls([call(sack_mock, pkg, ['bbb']),
-                                                call().run()])
-                    self.assertFalse(resolved.called)
-                    unresolved.assert_called_once_with(repo, pkg, goal_mock().problems)
+                    with patch('koschei.resolver.get_srpm_pkg') as get_srpm_mock:
+                        resolver.resolve_dependencies(sack_mock, repo, pkg, ['bbb'])
+                        goal_mock.assert_has_calls([call(sack_mock, get_srpm_mock(), ['bbb']),
+                                                    call().run()])
+                        self.assertFalse(resolved.called)
+                        unresolved.assert_called_once_with(repo, pkg, goal_mock().problems)
 
     def test_resolve_success(self):
         pkg, repo = self.prepare_repo()
@@ -133,17 +152,81 @@ class ResolverTest(DBTest):
             with patch.object(resolver, 'set_unresolved') as unresolved:
                 with patch.object(resolver, 'set_resolved') as resolved:
                     with patch.object(resolver, 'store_dependencies') as store:
-                        resolver.resolve_dependencies(sack_mock, repo, pkg, ['bbb'])
-                        goal_mock.assert_has_calls([call(sack_mock, pkg, ['bbb']),
-                                                    call().run(),
-                                                    call().list_installs()])
-                        self.assertFalse(unresolved.called)
-                        resolved.assert_called_once_with(repo, pkg)
-                        store.assert_called_once_with(repo, pkg, goal_mock().list_installs())
+                        with patch.object(resolver, 'create_dependencies') as create:
+                            with patch.object(resolver, 'set_dependency_distances') as distance:
+                                with patch('koschei.resolver.get_srpm_pkg') as get_srpm_mock:
+                                    resolver.resolve_dependencies(sack_mock, repo, pkg, ['bbb'])
+                                    goal_mock.assert_has_calls([call(sack_mock, get_srpm_mock(), ['bbb']),
+                                                                call().run(),
+                                                                call().list_installs()])
+                                    self.assertFalse(unresolved.called)
+                                    resolved.assert_called_once_with(repo, pkg)
+                                    create.assert_called_once_with(repo, pkg,
+                                                                   goal_mock().list_installs())
+                                    store.assert_called_once_with(create())
+                                    distance.assert_called_once_with(sack_mock, get_srpm_mock(), create())
 
-    def test_resolve_empty(self):
-        pkg, repo = self.prepare_repo()
+    def populate_repo(self, repo_id, deps):
+        pkg_names = [src for src in deps.keys()]
+        pkgs = self.prepare_packages(pkg_names)
+        repo = m.Repo(id=repo_id)
+        self.s.add(repo)
+        self.s.commit()
+        for name, targets in deps.items():
+            for target in targets:
+                dep = m.Dependency(package_id=pkgs[name].id, repo_id=repo_id,
+                                   **self.parse_pkg(target))
+                self.s.add(dep)
+            result = m.ResolutionResult(repo_id=repo_id, package_id=pkgs[name].id,
+                                        resolved=targets is not None)
+            self.s.add(result)
+        self.s.commit()
+        return pkgs
+
+    def assert_change_equals(self, prev, curr, change):
+        prev = self.parse_pkg(prev)
+        curr = self.parse_pkg(curr)
+        self.assertEqual(prev['epoch'], change.prev_epoch)
+        self.assertEqual(prev['version'], change.prev_version)
+        self.assertEqual(prev['release'], change.prev_release)
+        self.assertEqual(curr['epoch'], change.curr_epoch)
+        self.assertEqual(curr['version'], change.curr_version)
+        self.assertEqual(curr['release'], change.curr_release)
+        self.assertEqual(curr['name'], change.dep_name)
+
+    def test_dep_diff(self):
+        self.populate_repo(1, {'eclipse': ['webkit-2-6',
+                                           'eclipse-pde-4.4-21',
+                                           'objectweb-asm-5.1-4']})
+        self.populate_repo(2, {'eclipse': ['webkit-2-6',
+                                           'eclipse-pde-4.4-22',
+                                           'objectweb-asm-4.1-4']})
+        build = self.prepare_builds(2, eclipse=False)[0]
         resolver = self.get_resolver()
-        sack_mock = Mock()
-        with patch.object(resolver, 'prepare_goal', Mock(return_value=None)):
-            resolver.resolve_dependencies(sack_mock, repo, pkg, ['bbb'])
+        resolver.compute_dependency_differences(build.package_id, 1, 2, build.id)
+        changes = self.s.query(m.DependencyChange).order_by(m.DependencyChange.dep_name).all()
+        self.assertEqual(2, len(changes))
+        self.assert_change_equals('eclipse-pde-4.4-21', 'eclipse-pde-4.4-22', changes[0])
+        self.assertEqual(build.id, changes[0].applied_in_id)
+        self.assert_change_equals('objectweb-asm-5.1-4', 'objectweb-asm-4.1-4', changes[1])
+        self.assertEqual(build.id, changes[1].applied_in_id)
+
+    def test_clear_changes(self):
+        self.populate_repo(1, {'rnv': ['expat-2-4']})
+        self.populate_repo(2, {'rnv': ['expat-2-4'],
+                               'eclipse': ['webkit-3-9']})
+        build = self.prepare_builds(2, rnv=False)[0]
+        change1 = m.DependencyChange(dep_name='bbbb', package_id=build.package_id,
+                                     applied_in_id=build.id)
+        change2 = m.DependencyChange(dep_name='bbbb',
+                                     package_id=self.s.query(m.Package.id).filter_by(name='eclipse').scalar())
+        change_old = m.DependencyChange(dep_name='gggg', package_id=build.package_id)
+        self.s.add(change1)
+        self.s.add(change2)
+        self.s.add(change_old)
+        self.s.commit()
+        resolver = self.get_resolver()
+        resolver.compute_dependency_differences(build.package_id, 1, 2, None)
+        self.assertFalse(self.s.query(m.DependencyChange).get(change_old.id))
+        self.assertTrue(self.s.query(m.DependencyChange).get(change1.id))
+        self.assertTrue(self.s.query(m.DependencyChange).get(change2.id))

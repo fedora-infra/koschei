@@ -128,3 +128,39 @@ class DBTest(AbstractTest):
         self.s.add(build)
         self.s.commit()
         return pkg, build
+
+    def prepare_packages(self, pkg_names):
+        pkgs = {}
+        for name in pkg_names:
+            pkg = self.s.query(m.Package).filter_by(name=name).first()
+            if not pkg:
+                pkg = m.Package(name=name)
+                self.s.add(pkg)
+            pkgs[name] = pkg
+        self.s.commit()
+        return pkgs
+
+    def prepare_builds(self, repo_id, **builds):
+        new_builds = []
+        for pkg_name, state in builds.items():
+            states = {
+                    True: m.Build.COMPLETE,
+                    False: m.Build.FAILED,
+                    None: m.Build.RUNNING,
+                    }
+            if isinstance(state, bool):
+                state = states[state]
+            package_id = self.s.query(m.Package.id).filter_by(name=pkg_name).scalar()
+            build = m.Build(package_id=package_id, state=state, repo_id=repo_id)
+            self.s.add(build)
+            new_builds.append(build)
+        self.s.commit()
+        return new_builds
+
+    @staticmethod
+    def parse_pkg(string):
+        epoch = None
+        if ':' in string:
+            epoch, _, string = string.partition(':')
+        name, version, release = string.rsplit('-', 2)
+        return dict(epoch=epoch, name=name, version=version, release=release, arch='x86_64')
