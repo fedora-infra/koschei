@@ -203,7 +203,7 @@ class Dependency(Base):
     __tablename__ = 'dependency'
     id = Column(Integer, primary_key=True)
     repo_id = Column(Integer, ForeignKey('repo.id', ondelete='CASCADE'))
-    package_id = Column(ForeignKey('package.id', ondelete='CASCADE'))
+    package_id = Column(ForeignKey('package.id', ondelete='CASCADE'), index=True)
     name = Column(String, nullable=False)
     epoch = Column(Integer)
     version = Column(String, nullable=False)
