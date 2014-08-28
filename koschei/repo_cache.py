@@ -20,6 +20,7 @@ import os
 import librepo
 import shutil
 import logging
+import pickle
 
 from koschei import util
 
@@ -40,15 +41,22 @@ class RepoCache(object):
         self._index = 0
         self._cache = {}
         self._skipped = set()
+        self._skipped_path = os.path.join(repo_dir, 'skipped')
+        if os.path.isfile(self._skipped_path):
+            with open(self._skipped_path, 'r') as skipped_file:
+                self._skipped = pickle.load(skipped_file)
+
         existing_repos = []
         for repo in os.listdir(self._repo_dir):
             if repo.isdigit():
                 existing_repos.append(int(repo))
-            else:
-                log.warn("Garbage in repodata_dir: " + repo)
         existing_repos.sort()
         for repo in existing_repos:
             self._load_from_disk(repo)
+
+    def _sync_skipped(self):
+        with open(self._skipped_path, 'w') as skipped:
+            pickle.dump(self._skipped, skipped)
 
     def _get_repo_dir(self, repo_id, arch=None):
         if arch:
@@ -79,6 +87,7 @@ class RepoCache(object):
             if e.args[0] == REPO_404:
                 log.info("Repo id={} not available, skipping".format(repo_id))
                 self._skipped.add(repo_id)
+                self._sync_skipped()
                 return None
             raise
 
