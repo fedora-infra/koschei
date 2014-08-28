@@ -105,7 +105,7 @@ def build_detail(name, build_id):
     #pylint: disable=E1101
     build = db_session.query(Build)\
             .options(joinedload(Build.package),
-                     subqueryload(Build.buildroot_diff))\
+                     subqueryload(Build.dependency_changes))\
             .filter_by(id=build_id).first()
     if not build or build.package.name != name:
         abort(404)

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "macros.html" as macros %}
 {% block content %}
 <div class="pageHeader">{{ build.package.name }} - {{ build.task_id }}</div>
   <table class="data-list">
@@ -22,29 +23,12 @@
     </tr>
     </thead>
     <tbody>
-    {% for arch, diff in build.buildroot_diff_per_arch %}
     <tr>
-        <th>Buildroot differences for {{ arch }}</th>
+        <th>Dependency changes compared to previous build</th>
         <td style="width: 80%">
-            <table class="nested">
-                {% for added, removed in diff.zipped_diff %}
-                <tr>
-                    <td>
-                        {% if added %}
-                        +{{ added }}
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if removed %}
-                        -{{ removed }}
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </table>
+            {{ macros.depchange_table(build) }}
         </td>
     </tr>
-    {% endfor %}
     </tbody>
   </table>
 {% endblock %}
