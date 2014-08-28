@@ -25,7 +25,8 @@ def upgrade():
     proc = 0
     while True:
         k.multicall = True
-        builds = s.query(Build).order_by(Build.id)[off:off + step]
+        builds = s.query(Build).filter(Build.state.in_([Build.COMPLETE, Build.FAILED]))\
+                  .order_by(Build.id)[off:off + step]
         if not builds:
             break
         for build in builds:
