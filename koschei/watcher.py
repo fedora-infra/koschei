@@ -84,8 +84,6 @@ class Watcher(KojiService):
                               started=util.parse_koji_time(last_build['creation_time']),
                               task_id=last_build['task_id'])
                 self.db_session.add(build)
-                self.db_session.flush()
-                self.backend.build_registered(build)
                 self.db_session.commit()
 
     def main(self):

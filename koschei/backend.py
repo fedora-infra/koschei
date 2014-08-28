@@ -47,7 +47,9 @@ class Backend(object):
             build.release = srpm['release']
             self.db_session.add(build)
             self.db_session.flush()
-            self.build_registered(build)
+            self.db_session.query(DependencyChange).filter_by(package_id=build.package_id)\
+                                                   .filter_by(applied_in_id=None)\
+                                                   .update({'applied_in_id': build.id})
         else:
             package.state = Package.RETIRED
 
@@ -81,8 +83,3 @@ class Backend(object):
                                state=task['state'], started=task['create_time'],
                                finished=task['completion_time'], arch=task['arch'])
             self.db_session.add(db_task)
-
-    def build_registered(self, build):
-        self.db_session.query(DependencyChange).filter_by(package_id=build.package_id)\
-                                               .filter_by(applied_in_id=None)\
-                                               .update({'applied_in_id': build.id})

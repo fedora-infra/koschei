@@ -63,7 +63,6 @@ class WatcherTest(DBTest):
         watcher.main()
         koji_mock.getLatestBuilds.assert_called_once_with('f22', package='rnv')
         new_build = self.s.query(m.Build).filter(m.Build.id != build.id).one()
-        backend_mock.build_registered.assert_called_once_with(new_build)
         self.assertTrue(new_build.real)
         self.assertEqual(pkg.id, new_build.package_id)
         self.assertTrue(new_build.epoch is None)
