@@ -93,9 +93,14 @@ class SRPMCache(object):
                     self._koji_session.listRPMs(buildID=info[0]['build_id'], arches='src')
                     urls.append(pathinfo.build(info[0]))
             srpms = self._koji_session.multiCall()
-            for [srpm], url in zip(srpms, urls):
-                srpm_name = pathinfo.rpm(srpm[0])
-                util.download_rpm_header(url + '/' + srpm_name, self._srpm_dir)
+            assert len(srpms) == len(urls)
+            for [srpm], build_url in zip(srpms, urls):
+                srpm = srpm[0]
+                srpm_url = pathinfo.rpm(srpm)
+                srpm_name = os.path.basename(srpm_url)
+                util.download_rpm_header(build_url + '/' + srpm_url, self._srpm_dir)
+                nevr = (srpm['name'], srpm['epoch'], srpm['version'], srpm['release'])
+                self._cache[nevr] = os.path.join(self._srpm_dir, srpm_name)
                 self._dirty = True
             package_names = package_names[50:]
 
