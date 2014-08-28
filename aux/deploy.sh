@@ -5,7 +5,7 @@ cd "$(git rev-parse --show-toplevel)"
 
 MACHINE=koschei.cloud.fedoraproject.org
 pushd systemd
-SERVICES=$(echo *.service)
+SERVICES="httpd $(echo *.service)"
 popd
 VERSION="$(python setup.py -V)"
 RELEASE="$(rpmspec -q koschei.spec --qf='%{release}')"
