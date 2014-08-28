@@ -32,6 +32,8 @@ def hours_since(what):
     return extract('EPOCH', datetime.now() - what) / 3600
 
 class Scheduler(KojiService):
+    koji_anonymous = False
+
     priority_conf = util.config['priorities']
     priority_threshold = priority_conf['build_threshold']
     max_builds = util.config['koji_config']['max_builds']
