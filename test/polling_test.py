@@ -47,7 +47,7 @@ class PollingTest(DBTest):
         koji_mock = self.get_koji_mock()
         backend_mock = Mock()
         polling = Polling(db_session=self.s, koji_session=koji_mock, backend=backend_mock)
-        polling.main()
+        polling.poll_builds()
         self.assertFalse(koji_mock.getTaskInfo.called)
         self.assertFalse(backend_mock.update_build_state.called)
 
@@ -56,7 +56,7 @@ class PollingTest(DBTest):
         backend_mock = Mock()
         koji_mock = self.get_koji_mock()
         polling = Polling(db_session=self.s, koji_session=koji_mock, backend=backend_mock)
-        polling.main()
+        polling.poll_builds()
         backend_mock.update_build_state.assert_called_once_with(builds['rnv'], 'CLOSED')
 
     def test_poll_multiple(self):
@@ -65,7 +65,7 @@ class PollingTest(DBTest):
         backend_mock = Mock()
         koji_mock = self.get_koji_mock(state='FAILED')
         polling = Polling(db_session=self.s, koji_session=koji_mock, backend=backend_mock)
-        polling.main()
+        polling.poll_builds()
         backend_mock.update_build_state.assert_has_calls(
                 [call(builds['rnv'], 'FAILED'),
                  call(builds['eclipse'], 'FAILED')],
