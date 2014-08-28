@@ -25,6 +25,7 @@ from koschei import util
 
 log = logging.getLogger('koschei.repo_cache')
 
+REPO_404 = 19
 
 class RepoCache(object):
 
@@ -38,6 +39,7 @@ class RepoCache(object):
         self._lru = {}
         self._index = 0
         self._cache = {}
+        self._skipped = set()
         existing_repos = []
         for repo in os.listdir(self._repo_dir):
             if repo.isdigit():
@@ -55,23 +57,30 @@ class RepoCache(object):
 
     def _download_repo(self, repo_id):
         repos = {}
-        for arch, repo_url in self._koji_repos.items():
-            h = librepo.Handle()
-            destdir = self._get_repo_dir(repo_id, arch)
-            if os.path.exists(destdir):
-                shutil.rmtree(destdir)
-            os.makedirs(destdir)
-            h.destdir = destdir
-            h.repotype = librepo.LR_YUMREPO
-            assert '{repo_id}' in repo_url
-            url = repo_url.format(repo_id=repo_id)
-            h.urls = [url]
-            h.yumdlist = ['primary', 'filelists', 'group']
-            log.info("Downloading {arch} repo from {url}".format(arch=arch, url=url))
-            result = h.perform(librepo.Result())
-            repos[arch] = result
-        self._add_repo(repo_id, repos)
-        return repos
+        try:
+            for arch, repo_url in self._koji_repos.items():
+                h = librepo.Handle()
+                destdir = self._get_repo_dir(repo_id, arch)
+                if os.path.exists(destdir):
+                    shutil.rmtree(destdir)
+                os.makedirs(destdir)
+                h.destdir = destdir
+                h.repotype = librepo.LR_YUMREPO
+                assert '{repo_id}' in repo_url
+                url = repo_url.format(repo_id=repo_id)
+                h.urls = [url]
+                h.yumdlist = ['primary', 'filelists', 'group']
+                log.info("Downloading {arch} repo from {url}".format(arch=arch, url=url))
+                result = h.perform(librepo.Result())
+                repos[arch] = result
+            self._add_repo(repo_id, repos)
+            return repos
+        except librepo.LibrepoException as e:
+            if e.args[0] == REPO_404:
+                log.info("Repo id={} not available, skipping".format(repo_id))
+                self._skipped.add(repo_id)
+                return None
+            raise
 
     def _load_from_disk(self, repo_id):
         try:
@@ -103,6 +112,8 @@ class RepoCache(object):
             return repos.get(arch)
 
     def get_repos(self, repo_id):
+        if repo_id in self._skipped:
+            return None
         self._index += 1
         repo = self._cache.get(repo_id)
         if not repo:
