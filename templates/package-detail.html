@@ -39,7 +39,7 @@
             {{ build.started | date }}
         </td>
         <td>
-            {{ macros.depchange_table(build) }}
+            {{ macros.depchange_table(build, limit=10) }}
         </td>
         <td>
             <a href="{{ url_for('build_detail', name=package.name, build_id=build.id) }}">details</a>
