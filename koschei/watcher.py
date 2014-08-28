@@ -28,7 +28,7 @@ from .models import Build, Package, RepoGenerationRequest
 class Watcher(KojiService):
 
     topic_name = util.config['fedmsg']['topic']
-    tag = util.config['fedmsg']['tag']
+    tag = util.koji_config['build_tag']
     instance = util.config['fedmsg']['instance']
     build_tag = util.koji_config['target_tag']
 

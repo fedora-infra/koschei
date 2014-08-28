@@ -16,6 +16,7 @@ config = {
         "server_ca": "~/.fedora-server-ca.cert",
         "source_tag": "f22",
         "target_tag": "f22",
+        "build_tag": "f22-build",
         "max_builds": 100,
         "build_arches": ['i386', 'x86_64', 'armhfp'],
         "build_opts": {
@@ -50,7 +51,6 @@ config = {
     },
     "fedmsg": {
         "topic": "org.fedoraproject.prod.buildsys",
-        "tag": "f22-build",
         "instance": "primary"
     },
     "directories": {

@@ -20,9 +20,14 @@ from __future__ import print_function
 
 import koji
 
-from .models import Build
+from sqlalchemy.sql import exists
+
+from . import util
+from .models import Build, RepoGenerationRequest
 from .service import KojiService
 from .backend import Backend
+
+build_tag = util.koji_config['build_tag']
 
 class Polling(KojiService):
     def __init__(self, backend=None, *args, **kwargs):
@@ -30,7 +35,7 @@ class Polling(KojiService):
         self.backend = backend or Backend(log=self.log, db_session=self.db_session,
                                           koji_session=self.koji_session)
 
-    def main(self):
+    def poll_builds(self):
         running_builds = self.db_session.query(Build).filter_by(state=Build.RUNNING)
         for build in running_builds:
             name = build.package.name
@@ -42,3 +47,16 @@ class Polling(KojiService):
                                .format(id=build.task_id, name=name, info=task_info))
                 state = koji.TASK_STATES.getvalue(task_info['state'])
                 self.backend.update_build_state(build, state)
+
+    def poll_repo(self):
+        curr_repo = self.koji_session.getRepo(build_tag, state=koji.REPO_READY)
+        if curr_repo:
+            if not self.db_session.query(exists().where(RepoGenerationRequest.repo_id
+                                                        == curr_repo['id'])).scalar():
+                request = RepoGenerationRequest(repo_id=curr_repo['id'])
+                self.db_session.add(request)
+                self.db_session.commit()
+
+    def main(self):
+        self.poll_builds()
+        self.poll_repo()
