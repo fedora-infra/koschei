@@ -14,6 +14,14 @@
     {% endfor %}
 </table>
 {% endif %}
+{% if package.unapplied_changes %}
+<table class="nested">
+    <tr>
+        <th colspan="4">Dependency changes since last build</th>
+    </tr>
+    {{ macros.depchange_table(package.unapplied_changes) }}
+</table>
+{% endif %}
 <table class="nested data-list">
   <thead>
     <tr class="list-header">
@@ -39,7 +47,8 @@
             {{ build.started | date }}
         </td>
         <td>
-            {{ macros.depchange_table(build, limit=10) }}
+            {{ macros.depchange_table(build.dependency_changes, limit=10,
+                more_link=url_for('build_detail', name=package.name, build_id=build.id)) }}
         </td>
         <td>
             <a href="{{ url_for('build_detail', name=package.name, build_id=build.id) }}">details</a>

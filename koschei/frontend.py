@@ -94,7 +94,8 @@ def frontpage():
 @app.route('/package/<name>')
 def package_detail(name):
     package = db_session.query(Package).filter_by(name=name)\
-                        .options(subqueryload(Package.all_builds),
+                        .options(subqueryload(Package.unapplied_changes),
+                                 subqueryload(Package.all_builds),
                                  subqueryload(Package.all_builds,
                                               Build.dependency_changes))\
                         .first_or_404()

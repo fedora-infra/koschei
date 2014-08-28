@@ -268,6 +268,11 @@ Package.last_complete_build = max_relationship(Build, Build.package_id,
 Package.last_build = max_relationship(Build, Build.package_id, alias='last_build')
 Package.all_builds = relationship(Build, order_by=Build.id.desc())
 Package.resolution_result = max_relationship(ResolutionResult, ResolutionResult.package_id)
+Package.unapplied_changes = relationship(DependencyChange,
+                                         primaryjoin=(
+                                             (DependencyChange.package_id == Package.id)
+                                             & (DependencyChange.applied_in_id == None)),
+                                         order_by=DependencyChange.distance.desc())
 Build.buildroot_diff = relationship(BuildrootDiff,
             primaryjoin=(BuildrootDiff.curr_build_id == Build.id))
 

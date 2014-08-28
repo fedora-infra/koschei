@@ -63,10 +63,10 @@
     </tbody>
 </table>
 {% endmacro %}
-{% macro depchange_table(build, limit=0) %}
+{% macro depchange_table(dependency_changes, limit=0, more_link=None) %}
 <table class="nested-data-list" style="width:100%">
-    {% set changes=build.dependency_changes[:limit] if limit
-                            else build.dependency_changes %}
+    {% set changes=dependency_changes[:limit] if limit
+                            else dependency_changes %}
     {% for change in changes %}
     <tr>
         <td>{{ change.dep_name }}</td>
@@ -83,8 +83,7 @@
     {% if loop.index == limit %}
     <tr>
         <td colspan="4">
-            <a href="{{ url_for('build_detail', name=build.package.name,
-                build_id=build.id) }}">More</a>
+            <a href="{{ more_link }}">More</a>
         </td>
     </tr>
     {% endif %}
