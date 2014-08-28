@@ -33,7 +33,7 @@ def get_srpm_pkg(sack, name, evr=None):
     if evr:
         # pylint: disable=W0633
         epoch, version, release = evr
-        hawk_pkg = hawkey.Query(sack).filter(name=name, epoch=epoch, arch='src',
+        hawk_pkg = hawkey.Query(sack).filter(name=name, epoch=epoch or 0, arch='src',
                                              version=version, release=release)
     else:
         hawk_pkg = hawkey.Query(sack).filter(name=name, arch='src',
