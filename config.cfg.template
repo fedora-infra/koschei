@@ -17,7 +17,7 @@ config = {
         "source_tag": "f22",
         "target_tag": "f22",
         "build_tag": "f22-build",
-        "max_builds": 100,
+        "max_builds": 30,
         "build_arches": ['i386', 'x86_64', 'armhfp'],
         "build_opts": {
         },
@@ -26,7 +26,7 @@ config = {
     },
     "dependency": {
         "build_group": "build",
-        "comps_url": "http://koji.fedoraproject.org/repos/f22-build/{repo_id}/groups/comps.xml",
+        "comps_url": "http://koji.fedoraproject.org/repos/f22-build/latest/groups/comps.xml",
         "for_arch": "x86_64",
         "repo_cache_items": 10,
         "repos": {
@@ -44,17 +44,12 @@ config = {
         "polling": {
             "interval": 20 * 60,
         },
-	"watcher": {
-            # Whether new repo should be processed as soon as the service is started.
-            "eager_repo_done": False,
-	}
     },
     "fedmsg": {
         "topic": "org.fedoraproject.prod.buildsys",
         "instance": "primary"
     },
     "directories": {
-        "build_logs": "@CACHEDIR@/build_logs",
         "srpms": "@CACHEDIR@/srpms",
         "repodata": "@CACHEDIR@/repodata",
         "templates": "@DATADIR@/templates",
