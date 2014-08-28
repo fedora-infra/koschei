@@ -22,6 +22,7 @@ import logging
 import os
 import shutil
 import subprocess
+import rpm
 
 from koschei import util
 
@@ -38,21 +39,28 @@ class SRPMCache(object):
         repodata_dir = os.path.join(srpm_dir, 'repodata')
         if os.path.exists(repodata_dir):
             shutil.rmtree(repodata_dir)
-        srpms = os.listdir(srpm_dir)
         self._cache = {}
         self._dirty = True
+        self._read_existing_srpms()
+
+    def _read_existing_srpms(self):
+        srpms = os.listdir(self._srpm_dir)
+        ts = rpm.TransactionSet()
         for srpm in srpms:
-            path = os.path.join(srpm_dir, srpm)
-            proc = subprocess.Popen(['rpm', '-qp', path,
-                                     '--qf=%{name}#%{epoch}#%{version}#%{release}'],
-                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            out, err = proc.communicate()
-            if err:
-                log.warn('RPM stderr: ' + err)
-            else:
-                nevr = out.strip().split('#')
-                nevr[1] = int(nevr[1]) if nevr[1] != '(none)' else None
-                self._cache[tuple(nevr)] = path
+            if not srpm.endswith('.rpm'):
+                continue
+            path = os.path.join(self._srpm_dir, srpm)
+            try:
+                fd = os.open(path, os.O_RDONLY)
+                hdr = ts.hdrFromFdno(fd)
+                nevr = hdr['name'], hdr['epoch'], hdr['version'], hdr['release']
+                self._cache[nevr] = path
+            except rpm.error as e:
+                log.warn("Unreadable rpm in srpm_dir: {}\nRPM error: {}"
+                         .format(path, e.message))
+            finally:
+                if fd:
+                    os.close(fd)
 
     def get_srpm(self, name, epoch, version, release):
         nevr = name, epoch, version, release
