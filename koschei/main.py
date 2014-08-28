@@ -23,17 +23,18 @@ if __name__ != '__main__':
     print("This module shall not be imported", file=sys.stderr)
     sys.exit(2)
 
-from .service import services
+from .service import Service
 
 # Importing all modules that define services
 # pylint: disable=W0611
-from . import scheduler, submitter, log_downloader, polling, watcher
+from . import scheduler, resolver, polling, watcher
 
 if len(sys.argv) < 2:
     print("Requires service name", file=sys.stderr)
     sys.exit(2)
 name = sys.argv[1]
-if name not in services:
+service = Service.find_service(name)
+if not service:
     print("No such service", file=sys.stderr)
     sys.exit(2)
-services[name]()
+service().run_service()
