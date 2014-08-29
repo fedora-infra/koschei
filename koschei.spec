@@ -6,7 +6,7 @@ Release:        1%{?dist}
 Summary:        Continuous integration for Fedora packages
 License:        GPLv2+
 URL:            https://github.com/msimacek/koschei
-Source0:        https://github.com/msimacek/koschei/archive/%{name}-%{version}.tar.xz
+Source0:        https://github.com/msimacek/koschei/archive/%{name}-%{version}.tar.gz
 BuildArch:      noarch
 
 BuildRequires:  python-devel
@@ -52,7 +52,7 @@ dependencies change too much. It uses Koji scratch builds to do the rebuilds and
 provides a web interface to the results.
 
 %prep
-%setup -q -c -n %{name}
+%setup -q -n %{name}-%{name}-%{version}
 
 sed 's|@CACHEDIR@|%{_localstatedir}/cache/%{name}|g
      s|@DATADIR@|%{_datadir}/%{name}|g' config.cfg.template > config.cfg
