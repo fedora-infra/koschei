@@ -272,7 +272,7 @@ Package.unapplied_changes = relationship(DependencyChange,
                                          primaryjoin=(
                                              (DependencyChange.package_id == Package.id)
                                              & (DependencyChange.applied_in_id == None)),
-                                         order_by=DependencyChange.distance.desc())
+                                         order_by=DependencyChange.distance)
 Build.buildroot_diff = relationship(BuildrootDiff,
             primaryjoin=(BuildrootDiff.curr_build_id == Build.id))
 
