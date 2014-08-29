@@ -1,18 +1,21 @@
 %bcond_without tests
 
 Name:           koschei
-Version:        0.0.1
+Version:        0.1
 Release:        1%{?dist}
 Summary:        Continuous integration for Fedora packages
 License:        GPLv2+
 URL:            https://github.com/msimacek/koschei
-Source0:        %{name}-%{version}.tar.xz
+Source0:        https://github.com/msimacek/koschei/archive/%{name}-%{version}.tar.xz
 BuildArch:      noarch
 
 BuildRequires:  python-devel
+BuildRequires:  python-setuptools
 BuildRequires:  systemd
 
 %if %{with tests}
+BuildRequires:       python-nose
+BuildRequires:       python-mock
 BuildRequires:       python-sqlalchemy
 BuildRequires:       koji
 BuildRequires:       python-hawkey
@@ -55,10 +58,10 @@ sed 's|@CACHEDIR@|%{_localstatedir}/cache/%{name}|g
      s|@DATADIR@|%{_datadir}/%{name}|g' config.cfg.template > config.cfg
 
 %build
-%{__python} setup.py build
+%{__python2} setup.py build
 
 %install
-%{__python} setup.py install --skip-build --root %{buildroot}
+%{__python2} setup.py install --skip-build --root %{buildroot}
 
 mkdir -p %{buildroot}%{_sysconfdir}/%{name}
 cp -p config.cfg %{buildroot}%{_sysconfdir}/%{name}/
@@ -86,7 +89,7 @@ cp -p httpd.conf %{buildroot}%{_sysconfdir}/httpd/conf.d/%{name}.conf
 
 %if %{with tests}
 %check
-%{__python} setup.py test
+%{__python2} setup.py test
 %endif
 
 %pre
@@ -119,7 +122,7 @@ exit 0
 %{_bindir}/koschei-admin
 %{_datadir}/%{name}
 %attr(755, %{name}, %{name}) %{_localstatedir}/cache/%{name}
-%{python_sitelib}/*
+%{python2_sitelib}/*
 %dir %{_sysconfdir}/%{name}
 %config(noreplace) %{_sysconfdir}/%{name}/config.cfg
 %config %{_sysconfdir}/httpd/conf.d/%{name}.conf
