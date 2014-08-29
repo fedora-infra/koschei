@@ -10,7 +10,7 @@ popd
 VERSION="$(python setup.py -V)"
 RELEASE="$(rpmspec -q koschei.spec --qf='%{release}')"
 
-git archive HEAD | xz >koschei-${VERSION}.tar.xz
+git archive HEAD --prefix="koschei-koschei-$VERSION/"| gzip >koschei-${VERSION}.tar.gz
 rpmbuild -bb koschei.spec -D"_sourcedir $PWD" -D"_rpmdir $PWD"
 cat noarch/koschei-$VERSION-${RELEASE}.noarch.rpm | ssh root@$MACHINE "
 
