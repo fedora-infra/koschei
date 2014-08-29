@@ -70,7 +70,11 @@ class Backend(object):
 
     def build_completed(self, build):
         task_info = self.koji_session.getTaskInfo(build.task_id)
-        build.finished = util.parse_koji_time(task_info['completion_time'])
+        if task_info['completion_time']:
+            build.finished = util.parse_koji_time(task_info['completion_time'])
+        else:
+            # When fedmsg delivery is fast, the time is not set yet
+            build.finished = datetime.now()
         subtasks = self.koji_session.getTaskChildren(build.task_id, request=True)
         build_arch_tasks = [task for task in subtasks if task['method'] == 'buildArch']
         for task in build_arch_tasks:
