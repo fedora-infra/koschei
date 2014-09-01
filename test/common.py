@@ -39,15 +39,6 @@ sql_log.setLevel(logging.INFO)
 sql_log_file = 'sql.log'
 sql_log.addHandler(logging.FileHandler(sql_log_file))
 
-from koschei import service
-
-def identity_decorator(*args, **kwargs):
-    def decorator(function):
-        return function
-    return decorator
-
-service.service_main = identity_decorator
-
 from koschei import models as m
 
 class MockDatetime(object):
