@@ -2,14 +2,14 @@
 
 Name:           koschei
 Version:        0.1
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Continuous integration for Fedora packages
 License:        GPLv2+
-URL:            https://github.com/msimacek/koschei
-Source0:        https://github.com/msimacek/koschei/archive/%{name}-%{version}.tar.gz
+URL:            https://github.com/msimacek/%{name}
+Source0:        https://github.com/msimacek/%{name}/archive/%{name}-%{version}.tar.gz
 BuildArch:      noarch
 
-BuildRequires:  python-devel
+BuildRequires:  python2-devel
 BuildRequires:  python-setuptools
 BuildRequires:  systemd
 
@@ -72,7 +72,7 @@ for unit in systemd/*; do
 done
 
 mkdir -p %{buildroot}%{_bindir}
-install -pm 755 admin.py %{buildroot}%{_bindir}/koschei-admin
+install -pm 755 admin.py %{buildroot}%{_bindir}/%{name}-admin
 
 install -dm 755 %{buildroot}%{_localstatedir}/cache/%{name}/repodata
 install -dm 755 %{buildroot}%{_localstatedir}/cache/%{name}/srpms
@@ -94,40 +94,47 @@ cp -p httpd.conf %{buildroot}%{_sysconfdir}/httpd/conf.d/%{name}.conf
 
 %pre
 getent group %{name} >/dev/null || groupadd -r %{name}
+# services and koschei-admin script is supposed to be run as this user
 getent passwd %{name} >/dev/null || \
     useradd -r -g %{name} -d %{_datadir}/%{name} -s /bin/sh \
-    -c "Runs koschei services" %{name}
+    -c "Runs %{name} services" %{name}
 exit 0
 
 %post
-%systemd_post koschei-scheduler.service
-%systemd_post koschei-watcher.service
-%systemd_post koschei-polling.service
-%systemd_post koschei-resolver.service
+%systemd_post %{name}-scheduler.service
+%systemd_post %{name}-watcher.service
+%systemd_post %{name}-polling.service
+%systemd_post %{name}-resolver.service
 
 %preun
-%systemd_preun koschei-scheduler.service
-%systemd_preun koschei-watcher.service
-%systemd_preun koschei-polling.service
-%systemd_preun koschei-resolver.service
+%systemd_preun %{name}-scheduler.service
+%systemd_preun %{name}-watcher.service
+%systemd_preun %{name}-polling.service
+%systemd_preun %{name}-resolver.service
 
 %postun
-%systemd_postun_with_restart koschei-scheduler.service
-%systemd_postun_with_restart koschei-watcher.service
-%systemd_postun_with_restart koschei-polling.service
-%systemd_postun_with_restart koschei-resolver.service
+%systemd_postun_with_restart %{name}-scheduler.service
+%systemd_postun_with_restart %{name}-watcher.service
+%systemd_postun_with_restart %{name}-polling.service
+%systemd_postun_with_restart %{name}-resolver.service
 
 %files
 %doc LICENSE.txt
-%{_bindir}/koschei-admin
+%{_bindir}/%{name}-admin
 %{_datadir}/%{name}
 %attr(755, %{name}, %{name}) %{_localstatedir}/cache/%{name}
 %{python2_sitelib}/*
 %dir %{_sysconfdir}/%{name}
 %config(noreplace) %{_sysconfdir}/%{name}/config.cfg
-%config %{_sysconfdir}/httpd/conf.d/%{name}.conf
+%config(noreplace) %{_sysconfdir}/httpd/conf.d/%{name}.conf
 %{_unitdir}/*
 
 %changelog
-* Fri Jun 13 2014 Michael Simacek <msimacek@redhat.com> - 0.0.1-1
+* Mon Sep 01 2014 Michael Simacek <msimacek@redhat.com> - 0.1-2
+- Fixed BR python-devel -> python2-devel
+- Fixed changelog format
+- Added noreplace to httpd config
+- Replaced name occurences with macro
+
+* Fri Jun 13 2014 Michael Simacek <msimacek@redhat.com> - 0.1-1
 - Initial version
