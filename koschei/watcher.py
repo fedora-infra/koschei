@@ -77,6 +77,11 @@ class Watcher(KojiService):
                 return
             last_build = last_builds[0]
             if last_build['build_id'] == msg['build_id']:
+                build = self.db_session.query(Build)\
+                                       .filter_by(task_id=last_build['task_id'])\
+                                       .first()
+                if build:
+                    return
                 self.log.info("Registering real build {nvr}".format(nvr=last_build['nvr']))
                 build = Build(package_id=pkg.id, version=last_build['version'],
                               release=last_build['release'], epoch=last_build['epoch'],
