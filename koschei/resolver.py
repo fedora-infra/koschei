@@ -154,8 +154,12 @@ class Resolver(KojiService):
                  repo_id1=repo_id1, repo_id2=repo_id2)
 
     def cleanup_deps(self, current_repo):
-        pass
-        # TODO delete only those with no build
+        subq = self.db_session.query(Build.package_id)\
+                              .filter_by(repo_id=current_repo.id).subquery()
+        self.db_session.query(Dependency)\
+                       .filter(Dependency.repo_id == current_repo.id)\
+                       .filter(Dependency.package_id.notin_(subq))\
+               .delete(synchronize_session=False)
 
     def repo_for_id(self, repo_id):
         repo = self.db_session.query(Repo).get(repo_id)
@@ -265,6 +269,10 @@ class Resolver(KojiService):
                                                                build.release))
                 self.resolve_deps_for_build(build, srpm, sack, build_group)
                 self.compute_dependency_diff_for_build(build)
+                self.db_session.query(Dependency)\
+                               .filter_by(package_id=build.package_id)\
+                               .filter(Dependency.repo_id < build.repo_id)\
+                               .delete(synchronize_session=False)
         build.deps_processed = True
         self.db_session.commit()
 
