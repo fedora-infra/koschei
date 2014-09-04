@@ -18,7 +18,6 @@
 
 import hawkey
 
-from sqlalchemy import text, exists
 from sqlalchemy.orm import joinedload
 
 from koschei.models import Package, Dependency, DependencyChange, \
@@ -49,22 +48,6 @@ class Resolver(KojiService):
         self.repo_cache = repo_cache or RepoCache()
         self.cached_sack = (None, None)
 
-    def set_resolved(self, repo_id, package):
-        with watch_package_state(package):
-            result = ResolutionResult(package_id=package.id, resolved=True, repo_id=repo_id)
-            self.db_session.add(result)
-            self.db_session.flush()
-
-    def set_unresolved(self, repo_id, package, problems):
-        with watch_package_state(package):
-            result = ResolutionResult(package_id=package.id, resolved=False, repo_id=repo_id)
-            self.db_session.add(result)
-            self.db_session.flush()
-        for problem in problems:
-            entry = ResolutionProblem(resolution_id=result.id, problem=problem)
-            self.db_session.add(entry)
-        self.db_session.flush()
-
     def prepare_goal(self, sack, srpm, group):
         goal = hawkey.Goal(sack)
         for name in group:
@@ -73,28 +56,27 @@ class Resolver(KojiService):
         goal.install(srpm)
         return goal
 
-    def create_dependencies(self, repo_id, package, installs):
+    def store_deps(self, repo_id, package_id, installs):
         new_deps = []
-        for install in installs:
+        for install in installs or []:
             if install.arch != 'src':
-                dep = Dependency(repo_id=repo_id, package_id=package.id,
+                dep = Dependency(repo_id=repo_id, package_id=package_id,
                                  name=install.name, epoch=install.epoch,
                                  version=install.version, release=install.release,
                                  arch=install.arch)
                 new_deps.append(dep)
-        return new_deps
 
-    def store_dependencies(self, deps):
-        if deps:
+        if new_deps:
             # pylint: disable=E1101
             table = Dependency.__table__
             dicts = [{c.name: getattr(dep, c.name) for c in table.c if not c.primary_key}
-                     for dep in deps]
+                     for dep in new_deps]
             self.db_session.connection().execute(table.insert(), dicts)
             self.db_session.expire_all()
 
-    def set_dependency_distances(self, sack, srpm, deps):
+    def compute_dependency_distances(self, sack, srpm, deps):
         dep_map = {dep.name: dep for dep in deps}
+        distances = {}
         visited = set()
         level = 1
         reldeps = srpm.requires
@@ -107,59 +89,68 @@ class Resolver(KojiService):
                 dep = dep_map.get(pkg.name)
                 if dep and dep.distance is None:
                     dep.distance = level
+                if pkg.name in dep_map and pkg.name not in distances:
+                    distances[pkg.name] = level
             level += 1
+        return distances
 
-    def resolve_dependencies(self, sack, repo_id, package, group):
-        srpm = get_srpm_pkg(sack, package.name)
-        if srpm:
-            goal = self.prepare_goal(sack, srpm, group)
-            if goal.run():
-                self.set_resolved(repo_id, package)
-                # pylint: disable=E1101
-                installs = goal.list_installs()
-                deps = self.create_dependencies(repo_id, package, installs)
-                self.set_dependency_distances(sack, srpm, deps)
-                self.store_dependencies(deps)
-            else:
-                self.set_unresolved(repo_id, package, goal.problems)
+    def resolve_dependencies(self, sack, package, srpm, group, repo_id):
+        goal = self.prepare_goal(sack, srpm, group)
+        with watch_package_state(package):
+            if goal is not None:
+                resolved = goal.run()
+                result = ResolutionResult(repo_id=repo_id, package_id=package.id,
+                                          resolved=resolved)
+                self.db_session.add(result)
+                self.db_session.flush()
+                if resolved:
+                    # pylint: disable=E1101
+                    deps = [Dependency(name=pkg.name, epoch=pkg.epoch,
+                                       version=pkg.version, release=pkg.release,
+                                       arch=pkg.arch)
+                            for pkg in goal.list_installs() if pkg.arch != 'src']
+                    self.compute_dependency_distances(sack, srpm, deps)
+                    return deps
+                else:
+                    for problem in goal.problems:
+                        entry = ResolutionProblem(resolution_id=result.id, problem=problem)
+                        self.db_session.add(entry)
 
-    def compute_dependency_differences(self, package_id, repo_id1, repo_id2, apply_id=None):
-        s = self.db_session
-        if all(s.query(exists().where((ResolutionResult.package_id == package_id) &
-                                      (ResolutionResult.repo_id == repo_id) &
-                                      (ResolutionResult.resolved == True))).scalar()
-               for repo_id in (repo_id1, repo_id2)):
-            s.query(DependencyChange)\
-             .filter_by(package_id=package_id, applied_in_id=apply_id)\
-             .delete()
-            s.flush()
-            s.connection().execute(text("""
-                INSERT INTO dependency_change (dep_name, package_id, applied_in_id,
-                                               prev_epoch, prev_version, prev_release,
-                                               curr_epoch, curr_version, curr_release,
-                                               distance)
-                SELECT deps1.name, deps1.package_id, :apply_id,
-                       deps1.epoch, deps1.version, deps1.release,
-                       deps2.epoch, deps2.version, deps2.release, deps2.distance
-                FROM dependency AS deps1 INNER JOIN dependency AS deps2
-                     ON deps1.name = deps2.name AND
-                        (deps1.epoch != deps2.epoch OR
-                         deps1.version != deps2.version OR
-                         deps1.release != deps2.release)
-                WHERE deps1.package_id = :package_id AND
-                      deps2.package_id = :package_id AND
-                      deps1.repo_id = :repo_id1 AND
-                      deps2.repo_id = :repo_id2
-            """), package_id=package_id, apply_id=apply_id,
-                 repo_id1=repo_id1, repo_id2=repo_id2)
+    def get_deps_from_db(self, package_id, repo_id):
+        deps = self.db_session.query(Dependency)\
+                              .filter_by(repo_id=repo_id, package_id=package_id)
+        return deps.all()
 
-    def cleanup_deps(self, current_repo):
-        subq = self.db_session.query(Build.package_id)\
-                              .filter_by(repo_id=current_repo).subquery()
-        self.db_session.query(Dependency)\
-                       .filter(Dependency.repo_id == current_repo)\
-                       .filter(Dependency.package_id.notin_(subq))\
-               .delete(synchronize_session=False)
+    def generate_dependency_differences(self, deps1, deps2, package_id,
+                                        apply_id=None):
+        if not deps1 or not deps2:
+            # TODO packages with no deps
+            return
+        def key(dep):
+            return (dep.name, dep.epoch, dep.version, dep.release)
+        def installset(deps):
+            return {key(dep) for dep in deps}
+        installset1, installset2 = map(installset, (deps1, deps2))
+        old = {dep for dep in deps1 if key(dep) not in installset2}
+        new = {dep for dep in deps2 if key(dep) not in installset1}
+        def create_change(name):
+            return dict(package_id=package_id, applied_in_id=apply_id, dep_name=name,
+                        prev_epoch=None, prev_version=None, prev_release=None,
+                        curr_epoch=None, curr_version=None, curr_release=None)
+        changes = {}
+        for dep in old:
+            change = create_change(dep.name)
+            change.update(prev_version=dep.version, prev_epoch=dep.epoch,
+                          prev_release=dep.release, distance=dep.distance)
+            changes[dep.name] = change
+        for dep in new:
+            change = changes.get(dep.name) or create_change(dep.name)
+            change.update(curr_version=dep.version, curr_epoch=dep.epoch,
+                          curr_release=dep.release, distance=dep.distance)
+            changes[dep.name] = change
+        # pylint: disable=E1101
+        self.db_session.execute(DependencyChange.__table__.insert(), changes.values())
+        self.db_session.expire_all()
 
     def prepare_sack(self, repo_id):
         for_arch = util.config['dependency']['for_arch']
@@ -182,12 +173,18 @@ class Resolver(KojiService):
         #TODO repo_id
         group = util.get_build_group()
         self.log.info("Resolving dependencies")
-        for pkg in packages:
-            self.resolve_dependencies(sack, repo_id, pkg, group)
-            if pkg.last_build.repo_id:
-                self.compute_dependency_differences(pkg.id, pkg.last_build.repo_id, repo_id)
+        for package in packages:
+            srpm = get_srpm_pkg(sack, package.name)
+            curr_deps = self.resolve_dependencies(sack, package, srpm, group, repo_id)
+            if curr_deps is not None:
+                last_build = package.last_build
+                if last_build and last_build.repo_id:
+                    prev_deps = self.get_deps_from_db(last_build.package_id,
+                                                      last_build.repo_id)
+                    if prev_deps is not None:
+                        self.generate_dependency_differences(prev_deps, curr_deps,
+                                                             package.id)
         self.db_session.commit()
-        self.cleanup_deps(repo_id)
         self.log.info("New repo done")
 
     def process_repo_generation_requests(self):
@@ -204,42 +201,10 @@ class Resolver(KojiService):
                            .delete()
             self.db_session.commit()
 
-    def resolve_deps_for_build(self, build, srpm, sack, group):
-        if self.db_session.query(exists()\
-                                 .where((Dependency.repo_id == build.repo_id) &
-                                        (Dependency.package_id == build.package_id)))\
-                          .scalar():
-            # Already resolved
-            return
-        goal = self.prepare_goal(sack, srpm, group)
-        if goal is not None:
-            resolved = goal.run()
-            result = ResolutionResult(repo_id=build.repo_id, package_id=build.package_id,
-                                      resolved=resolved)
-            self.db_session.add(result)
-            self.db_session.flush()
-            if resolved:
-                # pylint: disable=E1101
-                deps = self.create_dependencies(build.repo_id, build.package,
-                                                goal.list_installs())
-                self.store_dependencies(deps)
-            else:
-                for problem in goal.problems:
-                    entry = ResolutionProblem(resolution_id=result.id, problem=problem)
-                    self.db_session.add(entry)
-
-
-    def compute_dependency_diff_for_build(self, build):
-        prev = self.db_session.query(Build).filter_by(package_id=build.package_id)\
+    def get_prev_build(self, build):
+        return self.db_session.query(Build).filter_by(package_id=build.package_id)\
                               .filter(Build.id < build.id)\
                               .order_by(Build.id.desc()).first()
-        if prev:
-            if prev.repo_id:
-                self.compute_dependency_differences(build.package_id, prev.repo_id,
-                                                    build.repo_id, build.id)
-            else:
-                self.log.warn("Old build without repo_id - {}".format(prev.id))
-                return
 
     def process_build(self, build, build_group):
         if build.repo_id:
@@ -248,20 +213,26 @@ class Resolver(KojiService):
             else:
                 sack = self.prepare_sack(build.repo_id)
                 self.cached_sack = (build.repo_id, sack)
-            if sack:
-                self.log.info("Processing build {}".format(build.id))
-                self.srpm_cache.get_srpm(build.package.name, build.epoch, build.version,
-                                         build.release)
                 repo = self.srpm_cache.get_repodata()
                 util.add_repos_to_sack('srpm', {'src': repo}, sack)
+            if sack:
+                self.log.info("Processing build {}".format(build.id))
                 srpm = get_srpm_pkg(sack, build.package.name, (build.epoch, build.version,
                                                                build.release))
-                self.resolve_deps_for_build(build, srpm, sack, build_group)
-                self.compute_dependency_diff_for_build(build)
-                self.db_session.query(Dependency)\
-                               .filter_by(package_id=build.package_id)\
-                               .filter(Dependency.repo_id < build.repo_id)\
-                               .delete(synchronize_session=False)
+                curr_deps = self.resolve_dependencies(sack, package=build.package,
+                                                      srpm=srpm, group=build_group,
+                                                      repo_id=build.repo_id)
+                self.store_deps(build.repo_id, build.package_id, curr_deps)
+                prev = self.get_prev_build(build)
+                if prev and prev.repo_id:
+                    prev_deps = self.get_deps_from_db(prev.package_id, prev.repo_id)
+                    self.generate_dependency_differences(prev_deps, curr_deps,
+                                                         package_id=build.package_id,
+                                                         apply_id=build.id)
+                    self.db_session.query(Dependency)\
+                                   .filter_by(package_id=build.package_id)\
+                                   .filter(Dependency.repo_id < build.repo_id)\
+                                   .delete(synchronize_session=False)
         build.deps_processed = True
         self.db_session.commit()
 
@@ -271,6 +242,11 @@ class Resolver(KojiService):
                                      .order_by(Build.id).all()
         # TODO repo_id
         group = util.get_build_group()
+
+        # do this before processing to avoid multiple runs of createrepo
+        for build in unprocessed:
+            self.srpm_cache.get_srpm(build.package.name, build.epoch, build.version,
+                                     build.release)
         for build in unprocessed:
             self.process_build(build, group)
 
