@@ -20,7 +20,11 @@ trap 'rm -f koschei.rpm' 0
 cat >koschei.rpm
 # stop for possible migration
 for service in $SERVICES; do systemctl stop \$service; done
+if [ \`rpm -q --qf='%{version}-%{release}' koschei\` == $VERSION-$RELEASE ]; then
 yum reinstall -y koschei.rpm
+else
+yum upgrade -y koschei.rpm
+fi
 
 cd /usr/share/koschei
 su koschei -c 'alembic upgrade head'
