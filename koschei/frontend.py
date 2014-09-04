@@ -1,3 +1,4 @@
+import koji
 import urllib
 
 from datetime import datetime
@@ -38,7 +39,9 @@ def page_args(page=None, order_by=None):
         }
     return urllib.urlencode({k: '' if v is True else v for k, v in args.items() if v})
 
+pathinfo = koji.PathInfo(topdir=util.koji_config['topurl'])
 app.jinja_env.globals.update(koji_weburl=util.config['koji_config']['weburl'],
+                             koji_pathinfo=pathinfo,
                              min=min, max=max, page_args=page_args)
 
 def get_order(order_map, order_spec):
@@ -106,7 +109,8 @@ def build_detail(name, build_id):
     #pylint: disable=E1101
     build = db_session.query(Build)\
             .options(joinedload(Build.package),
-                     subqueryload(Build.dependency_changes))\
+                     subqueryload(Build.dependency_changes),
+                     subqueryload(Build.build_arch_tasks))\
             .filter_by(id=build_id).first()
     if not build or build.package.name != name:
         abort(404)

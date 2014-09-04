@@ -17,6 +17,7 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 import rpm
+import koji
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
                        ForeignKey, DateTime
@@ -87,6 +88,11 @@ class KojiTask(Base):
     state = Column(Integer)
     started = Column(DateTime)
     finished = Column(DateTime)
+
+    @property
+    def state_string(self):
+        return [state for state, num in koji.TASK_STATES.items()
+                if num == self.state][0].lower()
 
 class PackageGroupRelation(Base):
     __tablename__ = 'package_group_relation'

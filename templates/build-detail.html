@@ -24,6 +24,31 @@
     </thead>
     <tbody>
     <tr>
+        <th>Subtasks</th>
+        <td>
+            <table>
+                {% for subtask in build.build_arch_tasks %}
+                <tr>
+                    <td class="task{{ subtask.state_string }}">
+                        <a href="{{ koji_weburl }}/taskinfo?taskID={{ subtask.task_id }}">
+                            {{ subtask.task_id }}
+                        </a>
+                        {{ subtask.arch }}: {{ subtask.state_string }}
+                    </td>
+                    <td>(
+                        <a href="{{ koji_pathinfo.task(subtask.task_id) }}/build.log">
+                            build.log
+                        </a>
+                        <a href="{{ koji_pathinfo.task(subtask.task_id) }}/root.log">
+                            root.log
+                        </a>
+                    )</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </td>
+    </tr>
+    <tr>
         <th>Dependency changes compared to previous build</th>
         <td style="width: 80%">
             {{ macros.depchange_table(build.dependency_changes) }}
