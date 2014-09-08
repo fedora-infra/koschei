@@ -31,6 +31,8 @@ import libcomps
 import urllib2
 
 from datetime import datetime
+from contextlib import contextmanager
+from sqlalchemy.exc import IntegrityError
 
 root_logger = logging.getLogger()
 root_logger.setLevel(logging.DEBUG)
@@ -69,6 +71,15 @@ repodata_dir = config['directories']['repodata']
 
 dep_config = config['dependency']
 koji_repos = dep_config['repos']
+
+@contextmanager
+def skip_on_integrity_violation(db_session):
+    db_session.begin_nested()
+    try:
+        yield
+        db_session.commit()
+    except IntegrityError:
+        db_session.rollback()
 
 class Proxy(object):
     def __init__(self, proxied):

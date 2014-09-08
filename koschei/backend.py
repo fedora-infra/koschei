@@ -77,13 +77,14 @@ class Backend(object):
             build.finished = datetime.now()
         subtasks = self.koji_session.getTaskChildren(build.task_id, request=True)
         build_arch_tasks = [task for task in subtasks if task['method'] == 'buildArch']
-        for task in build_arch_tasks:
-            try:
-                # They all have the same repo_id, right?
-                build.repo_id = task['request'][4]['repo_id']
-            except KeyError:
-                pass
-            db_task = KojiTask(build_id=build.id, task_id=task['id'],
-                               state=task['state'], started=task['create_time'],
-                               finished=task['completion_time'], arch=task['arch'])
-            self.db_session.add(db_task)
+        with util.skip_on_integrity_violation(self.db_session):
+            for task in build_arch_tasks:
+                try:
+                    # They all have the same repo_id, right?
+                    build.repo_id = task['request'][4]['repo_id']
+                except KeyError:
+                    pass
+                db_task = KojiTask(build_id=build.id, task_id=task['id'],
+                                   state=task['state'], started=task['create_time'],
+                                   finished=task['completion_time'], arch=task['arch'])
+                self.db_session.add(db_task)
