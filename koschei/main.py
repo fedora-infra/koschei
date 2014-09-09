@@ -27,12 +27,13 @@ from .service import Service
 
 # Importing all modules that define services
 # pylint: disable=W0611
-from . import scheduler, resolver, polling, watcher
+from . import scheduler, resolver, polling, watcher, plugin
 
 if len(sys.argv) < 2:
     print("Requires service name", file=sys.stderr)
     sys.exit(2)
 name = sys.argv[1]
+plugin.load_plugins()
 service = Service.find_service(name)
 if not service:
     print("No such service", file=sys.stderr)
