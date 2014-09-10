@@ -7,6 +7,7 @@ from flask_sqlalchemy import BaseQuery
 from sqlalchemy.orm import scoped_session, sessionmaker, joinedload, \
                            subqueryload, undefer, contains_eager
 from sqlalchemy.sql import literal_column
+from jinja2 import Markup, escape
 
 from .models import engine, Package, Build, PackageGroup, PackageGroupRelation
 from . import util
@@ -39,10 +40,19 @@ def page_args(page=None, order_by=None):
         }
     return urllib.urlencode({k: '' if v is True else v for k, v in args.items() if v})
 
+def split_change(change):
+    if change:
+        return change.prev_dep_evr, '<>'[change.is_update], change.curr_dep_evr
+    return [''] * 3
+
+def columnize(what):
+    return Markup('\n'.join('<td>{}</td>'.format(escape(item)) for item in what))
+
 pathinfo = koji.PathInfo(topdir=util.koji_config['topurl'])
 app.jinja_env.globals.update(koji_weburl=util.config['koji_config']['weburl'],
-                             koji_pathinfo=pathinfo,
+                             koji_pathinfo=pathinfo, next=next, iter=iter,
                              min=min, max=max, page_args=page_args)
+app.jinja_env.filters.update(columnize=columnize, split_change=split_change)
 
 def get_order(order_map, order_spec):
     orders = []
