@@ -51,8 +51,6 @@ class Resolver(KojiService):
     def set_resolved(self, repo_id, package):
         result = ResolutionResult(package_id=package.id, resolved=True, repo_id=repo_id)
         self.db_session.add(result)
-        package.state = Package.OK
-        self.db_session.add(package)
         self.db_session.flush()
 
     def set_unresolved(self, repo_id, package, problems):
@@ -62,8 +60,6 @@ class Resolver(KojiService):
         for problem in problems:
             entry = ResolutionProblem(resolution_id=result.id, problem=problem)
             self.db_session.add(entry)
-        package.state = Package.UNRESOLVED
-        self.db_session.add(package)
         self.db_session.flush()
 
     def prepare_goal(self, sack, srpm, group):
@@ -171,8 +167,7 @@ class Resolver(KojiService):
 
     def generate_repo(self, repo_id):
         packages = self.db_session.query(Package)\
-                                  .filter(or_(Package.state == Package.OK,
-                                              Package.state == Package.UNRESOLVED))\
+                                  .filter(Package.ignored == False)\
                                   .options(joinedload(Package.last_build)).all()
         package_names = [pkg.name for pkg in packages]
         self.log.info("Generating new repo")

@@ -51,7 +51,7 @@ class Backend(object):
                                                    .filter_by(applied_in_id=None)\
                                                    .update({'applied_in_id': build.id})
         else:
-            package.state = Package.RETIRED
+            package.ignored = True
 
     def update_build_state(self, build, state):
         if state in Build.KOJI_STATE_MAP:

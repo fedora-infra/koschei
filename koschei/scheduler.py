@@ -24,7 +24,7 @@ from datetime import datetime
 from sqlalchemy import func, union_all, extract
 
 from . import util
-from .models import Package, Build, DependencyChange
+from .models import Package, Build, DependencyChange, ResolutionResult
 from .service import KojiService
 from .backend import Backend
 
@@ -86,7 +86,8 @@ class Scheduler(KojiService):
                                     .group_by(pkg_id).subquery()
         to_schedule = self.db_session.query(Package, candidates.c.curr_priority)\
                                      .join(candidates, Package.id == candidates.c.pkg_id)\
-                                     .filter(Package.state == Package.OK)\
+                                     .join(Package.resolution_result)\
+                                     .filter(ResolutionResult.resolved == True)\
                                      .filter(Package.id.notin_(
                                                 incomplete_builds.subquery()))\
                                      .order_by(candidates.c.curr_priority.desc())\

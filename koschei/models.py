@@ -58,23 +58,21 @@ class Package(Base):
 
     # last_complete_build defined later
 
-    OK = 0
-    UNRESOLVED = 1
-    IGNORED = 2
-    RETIRED = 3
-    state = Column(Integer, nullable=False, server_default=str(OK))
+    ignored = Column(Boolean, nullable=False, server_default=false())
 
     @property
     def state_string(self):
-        if self.state == self.OK:
-            # pylint: disable=E1101
-            return self.last_complete_build.state_string
-        elif self.state == self.UNRESOLVED:
-            return 'unresolved'
-        elif self.state == self.IGNORED:
+        if self.ignored:
             return 'ignored'
-        elif self.state == self.RETIRED:
-            return 'retired'
+        # pylint: disable=E1101
+        resolved = self.resolution_result and self.resolution_result.resolved
+        if not self.resolution_result:
+            return None
+        if not resolved:
+            return 'unresolved'
+        build = self.last_complete_build
+        # pylint: disable=E1101
+        return build.state_string
 
     def __repr__(self):
         return '{0.id} (name={0.name})'.format(self)

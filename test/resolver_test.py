@@ -45,29 +45,6 @@ class ResolverTest(DBTest):
         pkg, _ = self.prepare_basic_data()
         return pkg, 666
 
-    def test_set_resolved(self):
-        pkg, repo = self.prepare_repo()
-        pkg.state = m.Package.UNRESOLVED
-        resolver = self.get_resolver()
-        resolver.set_resolved(repo, pkg)
-        self.assertEqual(m.Package.OK, pkg.state)
-        self.assertTrue(self.s.query(m.ResolutionResult.resolved)
-                              .filter_by(repo_id=repo, package_id=pkg.id).scalar())
-
-    def test_set_unresolved(self):
-        pkg, repo = self.prepare_repo()
-        pkg.state = m.Package.OK
-        resolver = self.get_resolver()
-        problems = {'foo is not installed', "I don't like this package"}
-        resolver.set_unresolved(repo, pkg, list(problems))
-        self.assertEqual(m.Package.UNRESOLVED, pkg.state)
-        result = self.s.query(m.ResolutionResult)\
-                       .filter_by(repo_id=repo, package_id=pkg.id).one()
-        self.assertFalse(result.resolved)
-        self.assertItemsEqual([(p,) for p in problems],
-                              self.s.query(m.ResolutionProblem.problem)
-                              .filter_by(resolution_id=result.id).all())
-
     def test_no_srpm(self):
         with hawkey_mocks() as (goal_mock, get_srpm_mock, sltr_mock, sack_mock):
             get_srpm_mock.return_value = None

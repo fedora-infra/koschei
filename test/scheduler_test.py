@@ -99,9 +99,12 @@ class SchedulerTest(DBTest):
             for name in priorities.keys():
                 pkg = self.s.query(m.Package).filter_by(name=name).first()
                 if not pkg:
-                    pkg = m.Package(name=name, state=states.get(name, m.Package.OK))
+                    pkg = m.Package(name=name, ignored=states.get(name) == 'ignored')
                     self.s.add(pkg)
                     self.s.flush()
+                    res = m.ResolutionResult(resolved=(states.get(name) != 'unresolved'),
+                                             package_id=pkg.id, repo_id=666)
+                    self.s.add(res)
                 pkgs.append((name, pkg))
                 if name in builds:
                     self.s.add(m.Build(package_id=pkg.id, state=builds[name]))
@@ -171,11 +174,11 @@ class SchedulerTest(DBTest):
             self.assert_submission([table], submitted='rnv')
 
     def test_state1(self):
-        with self.prio_table(rnv=300, rnv_state=m.Package.UNRESOLVED) as table:
+        with self.prio_table(rnv=300, rnv_state='unresolved') as table:
             self.assert_submission([table], submitted=None)
 
     def test_state2(self):
-        with self.prio_table(rnv=300, rnv_state=m.Package.RETIRED) as table:
+        with self.prio_table(rnv=300, rnv_state='ignored') as table:
             self.assert_submission([table], submitted=None)
 
     def test_union1(self):
