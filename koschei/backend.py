@@ -19,9 +19,26 @@
 import json
 
 from datetime import datetime
+from contextlib import contextmanager
 
 from . import util
-from .models import Package, Build, DependencyChange, KojiTask
+from .models import Build, DependencyChange, KojiTask, Session
+from .plugin import Event
+
+class PackageStateUpdateEvent(Event):
+    def __init__(self, package, prev_state, new_state):
+        self.package = package
+        self.prev_state = prev_state
+        self.new_state = new_state
+
+@contextmanager
+def watch_package_state(package):
+    prev_pkg_state = package.state_string
+    yield
+    Session.object_session(package).flush()
+    new_pkg_state = package.state_string
+    if prev_pkg_state != new_pkg_state:
+        PackageStateUpdateEvent(package, prev_pkg_state, new_pkg_state).dispatch()
 
 class Backend(object):
     def __init__(self, log, db_session, koji_session):
@@ -63,7 +80,8 @@ class Backend(object):
             else:
                 self.log.info('Setting build {build} state to {state}'\
                               .format(build=build, state=Build.REV_STATE_MAP[state]))
-                build.state = state
+                with watch_package_state(build.package):
+                    build.state = state
             if state in (Build.COMPLETE, Build.FAILED):
                 self.build_completed(build)
             self.db_session.commit()

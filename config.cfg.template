@@ -49,6 +49,10 @@ config = {
         "topic": "org.fedoraproject.prod.buildsys",
         "instance": "primary"
     },
+    "fedmsg-publisher": {
+        "enabled": False,
+        "modname": "koschei",
+    },
     "directories": {
         "srpms": "@CACHEDIR@/srpms",
         "repodata": "@CACHEDIR@/repodata",

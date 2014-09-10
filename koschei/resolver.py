@@ -18,12 +18,13 @@
 
 import hawkey
 
-from sqlalchemy import or_, text, exists
+from sqlalchemy import text, exists
 from sqlalchemy.orm import joinedload
 
 from koschei.models import Package, Dependency, DependencyChange, \
                            ResolutionResult, ResolutionProblem, RepoGenerationRequest, \
                            Build
+from koschei.backend import watch_package_state
 from koschei import util
 from koschei.service import KojiService
 from koschei.srpm_cache import SRPMCache
@@ -49,14 +50,16 @@ class Resolver(KojiService):
         self.cached_sack = (None, None)
 
     def set_resolved(self, repo_id, package):
-        result = ResolutionResult(package_id=package.id, resolved=True, repo_id=repo_id)
-        self.db_session.add(result)
-        self.db_session.flush()
+        with watch_package_state(package):
+            result = ResolutionResult(package_id=package.id, resolved=True, repo_id=repo_id)
+            self.db_session.add(result)
+            self.db_session.flush()
 
     def set_unresolved(self, repo_id, package, problems):
-        result = ResolutionResult(package_id=package.id, resolved=False, repo_id=repo_id)
-        self.db_session.add(result)
-        self.db_session.flush()
+        with watch_package_state(package):
+            result = ResolutionResult(package_id=package.id, resolved=False, repo_id=repo_id)
+            self.db_session.add(result)
+            self.db_session.flush()
         for problem in problems:
             entry = ResolutionProblem(resolution_id=result.id, problem=problem)
             self.db_session.add(entry)
