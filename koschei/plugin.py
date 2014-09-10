@@ -26,7 +26,7 @@ def load_plugins(only=None):
         for path in os.listdir(plugin_dir):
             if path.endswith('.py'):
                 name = path[:-3]
-                if only is None or name in only:
+                if only is None or name in only and not name.startswith('_'):
                     descriptor = imp.find_module(name, [plugin_dir])
                     log.info('Loading {} plugin'.format(name))
                     imp.load_module(name, *descriptor)
