@@ -132,7 +132,7 @@ class SchedulerTest(DBTest):
                     sched.backend.submit_build.assert_called_once_with(pkg)
                     load_getter.assert_called()
                 else:
-                    self.assertFalse(sched.backend.called)
+                    self.assertFalse(sched.backend.submit_build.called)
 
     def test_low(self):
         with self.prio_table(rnv=10) as table:

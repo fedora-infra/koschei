@@ -90,6 +90,7 @@ class Scheduler(KojiService):
                                      .filter(ResolutionResult.resolved == True)\
                                      .filter(Package.id.notin_(
                                                 incomplete_builds.subquery()))\
+                                     .filter(Package.ignored == False)\
                                      .order_by(candidates.c.curr_priority.desc())\
                                      .first()
 
