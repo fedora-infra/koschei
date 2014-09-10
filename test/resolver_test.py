@@ -43,19 +43,16 @@ class ResolverTest(DBTest):
 
     def prepare_repo(self):
         pkg, _ = self.prepare_basic_data()
-        repo = m.Repo(id=666)
-        self.s.add(repo)
-        self.s.commit()
-        return pkg, repo
+        return pkg, 666
 
-    def test_set_reolved(self):
+    def test_set_resolved(self):
         pkg, repo = self.prepare_repo()
         pkg.state = m.Package.UNRESOLVED
         resolver = self.get_resolver()
         resolver.set_resolved(repo, pkg)
         self.assertEqual(m.Package.OK, pkg.state)
         self.assertTrue(self.s.query(m.ResolutionResult.resolved)
-                              .filter_by(repo_id=repo.id, package_id=pkg.id).scalar())
+                              .filter_by(repo_id=repo, package_id=pkg.id).scalar())
 
     def test_set_unresolved(self):
         pkg, repo = self.prepare_repo()
@@ -65,7 +62,7 @@ class ResolverTest(DBTest):
         resolver.set_unresolved(repo, pkg, list(problems))
         self.assertEqual(m.Package.UNRESOLVED, pkg.state)
         result = self.s.query(m.ResolutionResult)\
-                       .filter_by(repo_id=repo.id, package_id=pkg.id).one()
+                       .filter_by(repo_id=repo, package_id=pkg.id).one()
         self.assertFalse(result.resolved)
         self.assertItemsEqual([(p,) for p in problems],
                               self.s.query(m.ResolutionProblem.problem)
@@ -117,6 +114,7 @@ class ResolverTest(DBTest):
         pkg, _ = self.prepare_repo()
         for dep in deps:
             dep.package_id = pkg.id
+            dep.repo_id = 666
         resolver = self.get_resolver()
         resolver.store_dependencies(deps)
         stored = self.s.query(m.Dependency).all()
@@ -169,9 +167,6 @@ class ResolverTest(DBTest):
     def populate_repo(self, repo_id, deps):
         pkg_names = [src for src in deps.keys()]
         pkgs = self.prepare_packages(pkg_names)
-        repo = m.Repo(id=repo_id)
-        self.s.add(repo)
-        self.s.commit()
         for name, targets in deps.items():
             for target in targets:
                 dep = m.Dependency(package_id=pkgs[name].id, repo_id=repo_id,

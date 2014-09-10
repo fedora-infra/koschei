@@ -21,7 +21,7 @@ import hawkey
 from sqlalchemy import or_, text, exists
 from sqlalchemy.orm import joinedload
 
-from koschei.models import Package, Dependency, DependencyChange, Repo, \
+from koschei.models import Package, Dependency, DependencyChange, \
                            ResolutionResult, ResolutionProblem, RepoGenerationRequest, \
                            Build
 from koschei import util
@@ -48,15 +48,15 @@ class Resolver(KojiService):
         self.repo_cache = repo_cache or RepoCache()
         self.cached_sack = (None, None)
 
-    def set_resolved(self, repo, package):
-        result = ResolutionResult(package_id=package.id, resolved=True, repo_id=repo.id)
+    def set_resolved(self, repo_id, package):
+        result = ResolutionResult(package_id=package.id, resolved=True, repo_id=repo_id)
         self.db_session.add(result)
         package.state = Package.OK
         self.db_session.add(package)
         self.db_session.flush()
 
-    def set_unresolved(self, repo, package, problems):
-        result = ResolutionResult(package_id=package.id, resolved=False, repo_id=repo.id)
+    def set_unresolved(self, repo_id, package, problems):
+        result = ResolutionResult(package_id=package.id, resolved=False, repo_id=repo_id)
         self.db_session.add(result)
         self.db_session.flush()
         for problem in problems:
@@ -74,11 +74,11 @@ class Resolver(KojiService):
         goal.install(srpm)
         return goal
 
-    def create_dependencies(self, repo, package, installs):
+    def create_dependencies(self, repo_id, package, installs):
         new_deps = []
         for install in installs:
             if install.arch != 'src':
-                dep = Dependency(repo_id=repo.id, package_id=package.id,
+                dep = Dependency(repo_id=repo_id, package_id=package.id,
                                  name=install.name, epoch=install.epoch,
                                  version=install.version, release=install.release,
                                  arch=install.arch)
@@ -110,19 +110,19 @@ class Resolver(KojiService):
                     dep.distance = level
             level += 1
 
-    def resolve_dependencies(self, sack, repo, package, group):
+    def resolve_dependencies(self, sack, repo_id, package, group):
         srpm = get_srpm_pkg(sack, package.name)
         if srpm:
             goal = self.prepare_goal(sack, srpm, group)
             if goal.run():
-                self.set_resolved(repo, package)
+                self.set_resolved(repo_id, package)
                 # pylint: disable=E1101
                 installs = goal.list_installs()
-                deps = self.create_dependencies(repo, package, installs)
+                deps = self.create_dependencies(repo_id, package, installs)
                 self.set_dependency_distances(sack, srpm, deps)
                 self.store_dependencies(deps)
             else:
-                self.set_unresolved(repo, package, goal.problems)
+                self.set_unresolved(repo_id, package, goal.problems)
 
     def compute_dependency_differences(self, package_id, repo_id1, repo_id2, apply_id=None):
         s = self.db_session
@@ -155,19 +155,11 @@ class Resolver(KojiService):
 
     def cleanup_deps(self, current_repo):
         subq = self.db_session.query(Build.package_id)\
-                              .filter_by(repo_id=current_repo.id).subquery()
+                              .filter_by(repo_id=current_repo).subquery()
         self.db_session.query(Dependency)\
                        .filter(Dependency.repo_id == current_repo.id)\
                        .filter(Dependency.package_id.notin_(subq))\
                .delete(synchronize_session=False)
-
-    def repo_for_id(self, repo_id):
-        repo = self.db_session.query(Repo).get(repo_id)
-        if not repo:
-            repo = Repo(id=repo_id)
-            self.db_session.add(repo)
-            self.db_session.flush()
-        return repo
 
     def prepare_sack(self, repo_id):
         for_arch = util.config['dependency']['for_arch']
@@ -190,14 +182,13 @@ class Resolver(KojiService):
         util.add_repo_to_sack('src', srpm_repo, sack)
         #TODO repo_id
         group = util.get_build_group()
-        db_repo = self.repo_for_id(repo_id)
         self.log.info("Resolving dependencies")
         for pkg in packages:
-            self.resolve_dependencies(sack, db_repo, pkg, group)
+            self.resolve_dependencies(sack, repo_id, pkg, group)
             if pkg.last_build.repo_id:
                 self.compute_dependency_differences(pkg.id, pkg.last_build.repo_id, repo_id)
         self.db_session.commit()
-        self.cleanup_deps(db_repo)
+        self.cleanup_deps(repo_id)
         self.log.info("New repo done")
 
     def process_repo_generation_requests(self):
@@ -206,8 +197,8 @@ class Resolver(KojiService):
                                         .first()
         if latest_request:
             repo_id = latest_request.repo_id
-            repo = self.db_session.query(Repo).filter_by(id=repo_id).first()
-            if not repo:
+            if not self.db_session.query(ResolutionResult)\
+                                  .filter_by(repo_id=repo_id).first():
                 self.generate_repo(repo_id)
             self.db_session.query(RepoGenerationRequest)\
                            .filter(RepoGenerationRequest.repo_id <= repo_id)\
@@ -229,9 +220,9 @@ class Resolver(KojiService):
             self.db_session.add(result)
             self.db_session.flush()
             if resolved:
-                repo = self.repo_for_id(build.repo_id)
                 # pylint: disable=E1101
-                deps = self.create_dependencies(repo, build.package, goal.list_installs())
+                deps = self.create_dependencies(build.repo_id, build.package,
+                                                goal.list_installs())
                 self.store_dependencies(deps)
             else:
                 for problem in goal.problems:
@@ -260,7 +251,6 @@ class Resolver(KojiService):
                 self.cached_sack = (build.repo_id, sack)
             if sack:
                 self.log.info("Processing build {}".format(build.id))
-                self.repo_for_id(build.repo_id)
                 self.srpm_cache.get_srpm(build.package.name, build.epoch, build.version,
                                          build.release)
                 repo = self.srpm_cache.get_repodata()

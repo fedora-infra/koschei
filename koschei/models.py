@@ -179,17 +179,13 @@ class BuildrootDiff(Base):
         removed = self.removed.split(',')
         return izip_longest(added, removed)
 
-class Repo(Base):
-    __tablename__ = 'repo'
-    id = Column(Integer, primary_key=True)
-    generated = Column(DateTime, nullable=False, default=datetime.now)
-
 class ResolutionResult(Base):
     __tablename__ = 'resolution_result'
     id = Column(Integer, primary_key=True)
     package_id = Column(ForeignKey('package.id', ondelete='CASCADE'))
-    repo_id = Column(ForeignKey('repo.id', ondelete='CASCADE'))
+    repo_id = Column(Integer, nullable=False)
     resolved = Column(Boolean, nullable=False, server_default=false())
+    generated = Column(DateTime, nullable=False, default=datetime.now)
     problems = relationship('ResolutionProblem')
 
 class ResolutionProblem(Base):
@@ -207,7 +203,7 @@ class RepoGenerationRequest(Base):
 class Dependency(Base):
     __tablename__ = 'dependency'
     id = Column(Integer, primary_key=True)
-    repo_id = Column(Integer, ForeignKey('repo.id', ondelete='CASCADE'))
+    repo_id = Column(Integer, nullable=False)
     package_id = Column(ForeignKey('package.id', ondelete='CASCADE'), index=True)
     name = Column(String, nullable=False)
     epoch = Column(Integer)
