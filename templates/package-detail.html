@@ -28,14 +28,15 @@
         <th>State</th>
         <th>Koji task</th>
         <th>Started</th>
-        <th colspan="3">Dependency changes</th>
+        <th colspan="4">Dependency changes</th>
         <th>Build details</th>
     </tr>
   </thead>
   <tbody>
     {% for build in package.all_builds %}
+    {% set seq = ["odd", "even"][loop.index % 2] %}
     {% set changes = iter(build.dependency_changes) %}
-    <tr>
+    <tr class="{{ seq }}">
         <td><div class="hidden">{{ build.state_string }}</div>
             <img src="{{ url_for('static', filename='images/' ~ build.state_string ~ '.png') }}"
                  title="{{ build.state_string }}" alt="{{ build.state_string }}"/></td>
@@ -53,9 +54,9 @@
         </td>
     </tr>
     {% for subtask in build.build_arch_tasks %}
-    <tr>
-        <td class="task{{ subtask.state_string }}">
-            {{ subtask.arch }}
+    <tr class="{{ seq }}">
+        <td>
+            <div class="task{{ subtask.state_string }}">{{ subtask.arch }}</div>
         </td>
         <td>
             <a href="{{ koji_weburl }}/taskinfo?taskID={{ subtask.task_id }}">
@@ -74,7 +75,7 @@
     </tr>
     {% endfor %}
     {% for change in changes %}
-    <tr>
+    <tr class="{{ seq }}">
         <td colspan="3"/>
         {{ next(changes, '') | split_change | columnize }}
     </tr>

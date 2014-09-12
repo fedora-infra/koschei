@@ -450,27 +450,21 @@ tr.row-even td.tree span.treeLabel {
 
 .taskfree, .taskfree:visited, .taskfree:hover {
     color: #3300CC;
-    background-color:#fff;
 }
 .taskopen, .taskopen:visited, .taskopen:hover {
     color: #FF6600;
-    background-color:#fff;
 }
 .taskclosed, .taskclosed:visited, .taskclosed:hover {
     color: #00CC00;
-    background-color:#fff;
 }
 .taskcanceled, .taskcanceled:visited, .taskcanceled:hover {
     color: #CC9900;
-    background-color:#fff;
 }
 .taskassigned, .taskassigned:visited, .taskassigned:hover {
     color: #CC00FF;
-    background-color:#fff;
 }
 .taskfailed, .taskfailed:visited, .taskfailed:hover {
     color: #CC0000;
-    background-color:#fff;
 }
 
 a.help {
@@ -535,4 +529,10 @@ span#loginInfo {
 
 .pkg-retired {
     display: none;
+}
+.odd {
+    background-color: #f1f6ff;
+}
+.even {
+    background-color: #fefefe;
 }
