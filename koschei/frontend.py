@@ -43,6 +43,8 @@ def page_args(page=None, order_by=None):
 def format_evr(epoch, version, release):
     if not version or not release:
         return ''
+    if len(release) > 16:
+        release = release[:13] + '...'
     if epoch:
         return '{}:{}-{}'.format(epoch, version, release)
     return '{}-{}'.format(version, release)
