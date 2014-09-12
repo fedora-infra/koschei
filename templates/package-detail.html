@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
+{% macro next_change(changes) %}
+{{ next(changes, '') | format_depchange | columnize(css_class="depchange") }}
+{% endmacro %}
 {% block content %}
 <div class="pageHeader">{{ package.name }}</div>
 {% if package.state_string == 'unresolved' %}
@@ -48,7 +51,7 @@
         <td>
             {{ build.started | date }}
         </td>
-        {{ next(changes, '') | format_depchange | columnize }}
+        {{ next_change(changes) }}
         <td>
             <a href="{{ url_for('build_detail', name=package.name, build_id=build.id) }}">details</a>
         </td>
@@ -71,14 +74,14 @@
                 root.log
             </a>
         )</td>
-        {{ next(changes, '') | format_depchange | columnize }}
+        {{ next_change(changes) }}
         <td/>
     </tr>
     {% endfor %}
     {% for change in changes %}
     <tr class="{{ seq }}">
         <td colspan="3"/>
-        {{ next(changes, '') | format_depchange | columnize }}
+        {{ next_change(changes) }}
         <td/>
     </tr>
     {% endfor %}

@@ -536,3 +536,7 @@ span#loginInfo {
 .even {
     background-color: #fefefe;
 }
+.depchange {
+    font-family: monospace;
+    font-size: 12px;
+}

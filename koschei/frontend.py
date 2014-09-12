@@ -57,8 +57,9 @@ def format_depchange(change):
 
     return [''] * 4
 
-def columnize(what):
-    return Markup('\n'.join('<td>{}</td>'.format(escape(item)) for item in what))
+def columnize(what, css_class=None):
+    attrs = ' class="{}"'.format(css_class) if css_class else ''
+    return Markup('\n'.join('<td{}>{}</td>'.format(attrs, escape(item)) for item in what))
 
 pathinfo = koji.PathInfo(topdir=util.koji_config['topurl'])
 app.jinja_env.globals.update(koji_weburl=util.config['koji_config']['weburl'],
