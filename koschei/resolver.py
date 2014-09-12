@@ -156,7 +156,7 @@ class Resolver(KojiService):
         subq = self.db_session.query(Build.package_id)\
                               .filter_by(repo_id=current_repo).subquery()
         self.db_session.query(Dependency)\
-                       .filter(Dependency.repo_id == current_repo.id)\
+                       .filter(Dependency.repo_id == current_repo)\
                        .filter(Dependency.package_id.notin_(subq))\
                .delete(synchronize_session=False)
 
