@@ -60,13 +60,13 @@
         </td>
         <td>
             <a href="{{ koji_weburl }}/taskinfo?taskID={{ subtask.task_id }}">
-                {{ subtask.task_id }}
+                {{ "├└"[loop.last] }}{{ subtask.task_id }}
             </a>
         </td>
         <td>(
             <a href="{{ koji_pathinfo.task(subtask.task_id) }}/build.log">
                 build.log
-            </a>
+            </a>|
             <a href="{{ koji_pathinfo.task(subtask.task_id) }}/root.log">
                 root.log
             </a>
