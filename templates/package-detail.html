@@ -48,7 +48,7 @@
         <td>
             {{ build.started | date }}
         </td>
-        {{ next(changes, '') | split_change | columnize }}
+        {{ next(changes, '') | format_depchange | columnize }}
         <td>
             <a href="{{ url_for('build_detail', name=package.name, build_id=build.id) }}">details</a>
         </td>
@@ -71,13 +71,15 @@
                 root.log
             </a>
         )</td>
-        {{ next(changes, '') | split_change | columnize }}
+        {{ next(changes, '') | format_depchange | columnize }}
+        <td/>
     </tr>
     {% endfor %}
     {% for change in changes %}
     <tr class="{{ seq }}">
         <td colspan="3"/>
-        {{ next(changes, '') | split_change | columnize }}
+        {{ next(changes, '') | format_depchange | columnize }}
+        <td/>
     </tr>
     {% endfor %}
     {% endfor %}

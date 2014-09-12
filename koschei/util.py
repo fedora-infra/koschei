@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import os
 import sys
+import rpm
 import koji
 import logging
 import subprocess
@@ -287,3 +288,10 @@ def download_task_output(koji_session, task_id, file_name, out_path):
                 return
             offset += len(out)
             out_file.write(out)
+
+def epoch_to_str(epoch):
+    return str(epoch) if epoch is not None else None
+
+def compare_evr(evr1, evr2):
+    evr1, evr2 = ((epoch_to_str(e), v, r) for (e, v, r) in (evr1, evr2))
+    return rpm.labelCompare(evr1, evr2)

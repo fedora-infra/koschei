@@ -40,10 +40,20 @@ def page_args(page=None, order_by=None):
         }
     return urllib.urlencode({k: '' if v is True else v for k, v in args.items() if v})
 
-def split_change(change):
+def format_evr(epoch, version, release):
+    if not version or not release:
+        return ''
+    if epoch:
+        return '{}:{}-{}'.format(epoch, version, release)
+    return '{}-{}'.format(version, release)
+
+def format_depchange(change):
     if change:
-        return change.prev_dep_evr, '<>'[change.is_update], change.curr_dep_evr
-    return [''] * 3
+        is_update = util.compare_evr(change.prev_evr, change.curr_evr) < 0
+        return (change.dep_name, format_evr(*change.prev_evr),
+                '<>'[is_update], format_evr(*change.curr_evr))
+
+    return [''] * 4
 
 def columnize(what):
     return Markup('\n'.join('<td>{}</td>'.format(escape(item)) for item in what))
@@ -52,7 +62,7 @@ pathinfo = koji.PathInfo(topdir=util.koji_config['topurl'])
 app.jinja_env.globals.update(koji_weburl=util.config['koji_config']['weburl'],
                              koji_pathinfo=pathinfo, next=next, iter=iter,
                              min=min, max=max, page_args=page_args)
-app.jinja_env.filters.update(columnize=columnize, split_change=split_change)
+app.jinja_env.filters.update(columnize=columnize, format_depchange=format_depchange)
 
 def get_order(order_map, order_spec):
     orders = []

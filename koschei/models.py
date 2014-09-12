@@ -213,6 +213,7 @@ class Dependency(Base):
     nevr = (name, epoch, version, release)
     nevra = (name, epoch, version, release, arch)
 
+#@Deprecated
 def format_evr(epoch, version, release):
     if not version or not release:
         return ''
@@ -236,13 +237,24 @@ class DependencyChange(Base):
     distance = Column(Integer)
 
     @property
+    def prev_evr(self):
+        return self.prev_epoch, self.prev_version, self.prev_release
+
+    @property
+    def curr_evr(self):
+        return self.curr_epoch, self.curr_version, self.curr_release
+
+    #@Deprecated
+    @property
     def prev_dep_evr(self):
         return format_evr(self.prev_epoch, self.prev_version, self.prev_release)
 
+    #@Deprecated
     @property
     def curr_dep_evr(self):
         return format_evr(self.curr_epoch, self.curr_version, self.curr_release)
 
+    #@Deprecated
     @property
     def is_update(self):
         prev = (str(self.prev_epoch), self.prev_version, self.prev_release)
