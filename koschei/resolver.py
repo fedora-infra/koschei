@@ -125,9 +125,10 @@ class Resolver(KojiService):
 
     def compute_dependency_differences(self, package_id, repo_id1, repo_id2, apply_id=None):
         s = self.db_session
-        if len(s.query(ResolutionResult.id)\
-                .filter_by(package_id=package_id, resolved=True)\
-                .filter(ResolutionResult.repo_id.in_([repo_id1, repo_id2])).all()) == 2:
+        if all(s.query(exists().where((ResolutionResult.package_id == package_id) &
+                                      (ResolutionResult.repo_id == repo_id) &
+                                      (ResolutionResult.resolved == True))).scalar()
+               for repo_id in (repo_id1, repo_id2)):
             s.query(DependencyChange)\
              .filter_by(package_id=package_id, applied_in_id=apply_id)\
              .delete()
