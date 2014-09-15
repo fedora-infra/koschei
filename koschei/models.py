@@ -279,7 +279,8 @@ Package.last_complete_build = max_relationship(Build, Build.package_id,
                                       alias='last_complete_build')
 Package.last_build = max_relationship(Build, Build.package_id, alias='last_build')
 Package.all_builds = relationship(Build, order_by=Build.id.desc())
-Package.resolution_result = max_relationship(ResolutionResult, ResolutionResult.package_id)
+Package.resolution_result = max_relationship(ResolutionResult, ResolutionResult.package_id,
+                                             alias='last_resolution')
 Package.unapplied_changes = relationship(DependencyChange,
                                          primaryjoin=(
                                              (DependencyChange.package_id == Package.id)

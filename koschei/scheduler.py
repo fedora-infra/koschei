@@ -22,9 +22,10 @@ import math
 
 from datetime import datetime
 from sqlalchemy import func, union_all, extract
+from sqlalchemy.sql import literal_column, true
 
 from . import util
-from .models import Package, Build, DependencyChange, ResolutionResult
+from .models import Package, Build, DependencyChange
 from .service import KojiService
 from .backend import Backend
 
@@ -87,7 +88,8 @@ class Scheduler(KojiService):
         to_schedule = self.db_session.query(Package, candidates.c.curr_priority)\
                                      .join(candidates, Package.id == candidates.c.pkg_id)\
                                      .join(Package.resolution_result)\
-                                     .filter(ResolutionResult.resolved == True)\
+                                     .filter(literal_column('last_resolution.resolved')
+                                             == true())\
                                      .filter(Package.id.notin_(
                                                 incomplete_builds.subquery()))\
                                      .filter(Package.ignored == False)\
