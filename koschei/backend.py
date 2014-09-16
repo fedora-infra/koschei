@@ -23,7 +23,7 @@ from contextlib import contextmanager
 
 from . import util
 from .models import Build, DependencyChange, KojiTask, Session
-from .plugin import Event
+from .event import Event
 
 class PackageStateUpdateEvent(Event):
     def __init__(self, package, prev_state, new_state):

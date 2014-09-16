@@ -6,20 +6,6 @@ loaded = False
 plugin_dir = os.path.join(os.path.dirname(__file__), 'plugins')
 log = logging.getLogger('koschei.plugin')
 
-class Event(object):
-    """ Base for events """
-
-    listeners = []
-
-    @classmethod
-    def listen(cls, fn):
-        cls.listeners.append(fn)
-        return fn
-
-    def dispatch(self):
-        for listener in self.listeners:
-            listener(self)
-
 def load_plugins(only=None):
     global loaded
     if not loaded:
