@@ -17,6 +17,7 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 import hawkey
+import itertools
 
 from sqlalchemy.orm import joinedload
 
@@ -46,7 +47,6 @@ class Resolver(KojiService):
         super(Resolver, self).__init__(log=log, db_session=db_session, koji_session=koji_session)
         self.srpm_cache = srpm_cache or SRPMCache(koji_session=self.koji_session)
         self.repo_cache = repo_cache or RepoCache()
-        self.cached_sack = (None, None)
 
     def prepare_goal(self, sack, srpm, group):
         goal = hawkey.Goal(sack)
@@ -203,40 +203,31 @@ class Resolver(KojiService):
                               .filter(Build.id < build.id)\
                               .order_by(Build.id.desc()).first()
 
-    def process_build(self, build, build_group):
+    def process_build(self, build, sack, build_group):
         if build.repo_id:
-            if self.cached_sack[0] == build.repo_id:
-                sack = self.cached_sack[1]
-            else:
-                sack = self.prepare_sack(build.repo_id)
-                self.cached_sack = (build.repo_id, sack)
-                repo = self.srpm_cache.get_repodata()
-                util.add_repos_to_sack('srpm', {'src': repo}, sack)
-            if sack:
-                self.log.info("Processing build {}".format(build.id))
-                srpm = get_srpm_pkg(sack, build.package.name, (build.epoch, build.version,
-                                                               build.release))
-                curr_deps = self.resolve_dependencies(sack, package=build.package,
-                                                      srpm=srpm, group=build_group,
-                                                      repo_id=build.repo_id)
-                self.store_deps(build.repo_id, build.package_id, curr_deps)
-                prev = self.get_prev_build(build)
-                if prev and prev.repo_id:
-                    prev_deps = self.get_deps_from_db(prev.package_id, prev.repo_id)
-                    self.generate_dependency_differences(prev_deps, curr_deps,
-                                                         package_id=build.package_id,
-                                                         apply_id=build.id)
-                    self.db_session.query(Dependency)\
-                                   .filter_by(package_id=build.package_id)\
-                                   .filter(Dependency.repo_id < build.repo_id)\
-                                   .delete(synchronize_session=False)
+            self.log.info("Processing build {}".format(build.id))
+            srpm = get_srpm_pkg(sack, build.package.name, (build.epoch, build.version,
+                                                           build.release))
+            curr_deps = self.resolve_dependencies(sack, package=build.package,
+                                                  srpm=srpm, group=build_group,
+                                                  repo_id=build.repo_id)
+            self.store_deps(build.repo_id, build.package_id, curr_deps)
+            prev = self.get_prev_build(build)
+            if prev and prev.repo_id:
+                prev_deps = self.get_deps_from_db(prev.package_id, prev.repo_id)
+                self.generate_dependency_differences(prev_deps, curr_deps,
+                                                     package_id=build.package_id,
+                                                     apply_id=build.id)
+                self.db_session.query(Dependency)\
+                               .filter_by(package_id=build.package_id)\
+                               .filter(Dependency.repo_id < build.repo_id)\
+                               .delete(synchronize_session=False)
         build.deps_processed = True
-        self.db_session.commit()
 
     def process_builds(self):
         unprocessed = self.db_session.query(Build).filter_by(deps_processed=False)\
                                      .filter(Build.repo_id != None)\
-                                     .order_by(Build.id).all()
+                                     .order_by(Build.repo_id).all()
         # TODO repo_id
         group = util.get_build_group()
 
@@ -244,8 +235,16 @@ class Resolver(KojiService):
         for build in unprocessed:
             self.srpm_cache.get_srpm(build.package.name, build.epoch, build.version,
                                      build.release)
-        for build in unprocessed:
-            self.process_build(build, group)
+        srpm_repo = self.srpm_cache.get_repodata()
+
+        for repo_id, builds in itertools.groupby(unprocessed,
+                                                 lambda build: build.repo_id):
+            if repo_id is not None:
+                sack = self.prepare_sack(repo_id)
+                util.add_repos_to_sack('srpm', {'src': srpm_repo}, sack)
+                for build in builds:
+                    self.process_build(build, sack, group)
+            self.db_session.commit()
 
     def main(self):
         self.process_builds()
