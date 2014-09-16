@@ -25,11 +25,13 @@ from sqlalchemy.sql.expression import extract, func, select, join, or_, false
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, mapper, column_property
 from sqlalchemy.engine.url import URL
+from sqlalchemy.event import listens_for
 from datetime import datetime
 # Python 2 only
 from itertools import izip_longest
 
 from .util import config
+from .event import EventQueue
 
 Base = declarative_base()
 
@@ -260,6 +262,18 @@ class DependencyChange(Base):
         prev = (str(self.prev_epoch), self.prev_version, self.prev_release)
         curr = (str(self.curr_epoch), self.curr_version, self.curr_release)
         return rpm.labelCompare(prev, curr) < 0
+
+@listens_for(Session, "after_begin")
+def session_begin(db_session, transaction, connection):
+    db_session._event_queue = EventQueue()
+
+@listens_for(Session, "after_commit")
+def session_commit(db_session):
+    db_session._event_queue.flush()
+
+@listens_for(Session, "after_rollback")
+def session_rollback(db_session):
+    db_session._event_queue.rollback()
 
 def max_relationship(cls, group_by, filt=None, alias=None):
     max_expr = select([func.max(cls.id).label('m'), group_by])\

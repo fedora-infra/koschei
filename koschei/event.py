@@ -29,3 +29,18 @@ class Event(object):
     def dispatch(self):
         for listener in self.listeners:
             listener(self)
+
+class EventQueue(object):
+    def __init__(self):
+        self._queue = []
+
+    def add(self, event):
+        self._queue.append(event)
+
+    def flush(self):
+        for event in self._queue:
+            event.dispatch()
+        self._queue = []
+
+    def rollback(self):
+        self._queue = []

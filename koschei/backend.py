@@ -33,12 +33,15 @@ class PackageStateUpdateEvent(Event):
 
 @contextmanager
 def watch_package_state(package):
+    db_session = Session.object_session(package)
+    db_session.flush()
     prev_pkg_state = package.state_string
     yield
-    Session.object_session(package).flush()
+    db_session.flush()
     new_pkg_state = package.state_string
     if prev_pkg_state != new_pkg_state:
-        PackageStateUpdateEvent(package, prev_pkg_state, new_pkg_state).dispatch()
+        event = PackageStateUpdateEvent(package, prev_pkg_state, new_pkg_state)
+        db_session._event_queue.add(event)
 
 class Backend(object):
     def __init__(self, log, db_session, koji_session):
