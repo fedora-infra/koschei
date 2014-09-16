@@ -295,3 +295,7 @@ def epoch_to_str(epoch):
 def compare_evr(evr1, evr2):
     evr1, evr2 = ((epoch_to_str(e), v, r) for (e, v, r) in (evr1, evr2))
     return rpm.labelCompare(evr1, evr2)
+
+def set_difference(s1, s2, key):
+    compset = {key(x) for x in s2}
+    return {x for x in s1 if key(x) not in compset}

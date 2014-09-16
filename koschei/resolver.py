@@ -128,11 +128,8 @@ class Resolver(KojiService):
             return
         def key(dep):
             return (dep.name, dep.epoch, dep.version, dep.release)
-        def installset(deps):
-            return {key(dep) for dep in deps}
-        installset1, installset2 = map(installset, (deps1, deps2))
-        old = {dep for dep in deps1 if key(dep) not in installset2}
-        new = {dep for dep in deps2 if key(dep) not in installset1}
+        old = util.set_difference(deps1, deps2, key)
+        new = util.set_difference(deps2, deps1, key)
         def create_change(name):
             return dict(package_id=package_id, applied_in_id=apply_id, dep_name=name,
                         prev_epoch=None, prev_version=None, prev_release=None,
