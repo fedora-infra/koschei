@@ -160,7 +160,9 @@ class Resolver(KojiService):
     def generate_repo(self, repo_id):
         packages = self.db_session.query(Package)\
                                   .filter(Package.ignored == False)\
-                                  .options(joinedload(Package.last_build)).all()
+                                  .options(joinedload(Package.last_build),
+                                           joinedload(Package.resolution_result))\
+                                  .all()
         package_names = [pkg.name for pkg in packages]
         self.log.info("Generating new repo")
         self.srpm_cache.get_latest_srpms(package_names)
@@ -204,15 +206,16 @@ class Resolver(KojiService):
                               .order_by(Build.id.desc()).first()
 
     def process_build(self, build, sack, build_group):
+        build.deps_processed = True
         if build.repo_id:
             self.log.info("Processing build {}".format(build.id))
+            prev = self.get_prev_build(build)
             srpm = get_srpm_pkg(sack, build.package.name, (build.epoch, build.version,
                                                            build.release))
             curr_deps = self.resolve_dependencies(sack, package=build.package,
                                                   srpm=srpm, group=build_group,
                                                   repo_id=build.repo_id)
             self.store_deps(build.repo_id, build.package_id, curr_deps)
-            prev = self.get_prev_build(build)
             if prev and prev.repo_id:
                 prev_deps = self.get_deps_from_db(prev.package_id, prev.repo_id)
                 self.generate_dependency_differences(prev_deps, curr_deps,
@@ -222,11 +225,12 @@ class Resolver(KojiService):
                                .filter_by(package_id=build.package_id)\
                                .filter(Dependency.repo_id < build.repo_id)\
                                .delete(synchronize_session=False)
-        build.deps_processed = True
 
     def process_builds(self):
+        # pylint: disable=E1101
         unprocessed = self.db_session.query(Build).filter_by(deps_processed=False)\
                                      .filter(Build.repo_id != None)\
+                                     .options(joinedload('package', 'last_build'))\
                                      .order_by(Build.repo_id).all()
         # TODO repo_id
         group = util.get_build_group()
