@@ -140,9 +140,10 @@ class Resolver(KojiService):
             change.update(curr_version=dep.version, curr_epoch=dep.epoch,
                           curr_release=dep.release, distance=dep.distance)
             changes[dep.name] = change
-        # pylint: disable=E1101
-        self.db_session.execute(DependencyChange.__table__.insert(), changes.values())
-        self.db_session.expire_all()
+        if changes:
+            # pylint: disable=E1101
+            self.db_session.execute(DependencyChange.__table__.insert(), changes.values())
+            self.db_session.expire_all()
 
     def prepare_sack(self, repo_id):
         for_arch = util.config['dependency']['for_arch']
