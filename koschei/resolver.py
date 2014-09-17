@@ -76,11 +76,10 @@ class Resolver(KojiService):
 
     def compute_dependency_distances(self, sack, srpm, deps):
         dep_map = {dep.name: dep for dep in deps}
-        distances = {}
         visited = set()
         level = 1
         reldeps = srpm.requires
-        while level < 8 and reldeps:
+        while level < 5 and reldeps:
             pkgs_on_level = set(hawkey.Query(sack).filter(provides=reldeps))
             reldeps = {req for pkg in pkgs_on_level if pkg not in visited
                                for req in pkg.requires}
@@ -89,10 +88,7 @@ class Resolver(KojiService):
                 dep = dep_map.get(pkg.name)
                 if dep and dep.distance is None:
                     dep.distance = level
-                if pkg.name in dep_map and pkg.name not in distances:
-                    distances[pkg.name] = level
             level += 1
-        return distances
 
     def resolve_dependencies(self, sack, package, srpm, group, repo_id):
         goal = self.prepare_goal(sack, srpm, group)
