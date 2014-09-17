@@ -16,6 +16,7 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+import time
 import hawkey
 import itertools
 
@@ -156,6 +157,7 @@ class Resolver(KojiService):
             return sack
 
     def generate_repo(self, repo_id):
+        start = time.time()
         packages = self.db_session.query(Package)\
                                   .filter(Package.ignored == False)\
                                   .options(joinedload(Package.last_build),
@@ -170,6 +172,7 @@ class Resolver(KojiService):
         #TODO repo_id
         group = util.get_build_group()
         self.log.info("Resolving dependencies")
+        resolution_start = time.time()
         for package in packages:
             srpm = get_srpm_pkg(sack, package.name)
             curr_deps = self.resolve_dependencies(sack, package, srpm, group, repo_id)
@@ -182,7 +185,10 @@ class Resolver(KojiService):
                         self.generate_dependency_differences(prev_deps, curr_deps,
                                                              package.id)
         self.db_session.commit()
-        self.log.info("New repo done")
+        end = time.time()
+        self.log.info(("New repo done. Resolution time: {} minutes\n"
+                       "Overall time: {} minutes.")
+                      .format((end - resolution_start) / 60, (end - start) / 60))
 
     def process_repo_generation_requests(self):
         latest_request = self.db_session.query(RepoGenerationRequest)\
