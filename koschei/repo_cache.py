@@ -103,7 +103,7 @@ class RepoCache(object):
                 repos[arch] = h.perform(librepo.Result())
             self._add_repo(repo_id, repos)
             return repos
-        except librepo.LibrepoException:
+        except (librepo.LibrepoException, IOError):
             pass
 
     def _add_repo(self, repo_id, repos):
