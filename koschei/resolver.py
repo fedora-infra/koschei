@@ -24,7 +24,6 @@ from sqlalchemy.orm import joinedload
 from koschei.models import Package, Dependency, DependencyChange, \
                            ResolutionResult, ResolutionProblem, RepoGenerationRequest, \
                            Build
-from koschei.backend import watch_package_state
 from koschei import util
 from koschei.service import KojiService
 from koschei.srpm_cache import SRPMCache
@@ -96,25 +95,24 @@ class Resolver(KojiService):
 
     def resolve_dependencies(self, sack, package, srpm, group, repo_id):
         goal = self.prepare_goal(sack, srpm, group)
-        with watch_package_state(package):
-            if goal is not None:
-                resolved = goal.run()
-                result = ResolutionResult(repo_id=repo_id, package_id=package.id,
-                                          resolved=resolved)
-                self.db_session.add(result)
-                self.db_session.flush()
-                if resolved:
-                    # pylint: disable=E1101
-                    deps = [Dependency(name=pkg.name, epoch=pkg.epoch,
-                                       version=pkg.version, release=pkg.release,
-                                       arch=pkg.arch)
-                            for pkg in goal.list_installs() if pkg.arch != 'src']
-                    self.compute_dependency_distances(sack, srpm, deps)
-                    return deps
-                else:
-                    for problem in goal.problems:
-                        entry = ResolutionProblem(resolution_id=result.id, problem=problem)
-                        self.db_session.add(entry)
+        if goal is not None:
+            resolved = goal.run()
+            result = ResolutionResult(repo_id=repo_id, package_id=package.id,
+                                      resolved=resolved)
+            self.db_session.add(result)
+            self.db_session.flush()
+            if resolved:
+                # pylint: disable=E1101
+                deps = [Dependency(name=pkg.name, epoch=pkg.epoch,
+                                   version=pkg.version, release=pkg.release,
+                                   arch=pkg.arch)
+                        for pkg in goal.list_installs() if pkg.arch != 'src']
+                self.compute_dependency_distances(sack, srpm, deps)
+                return deps
+            else:
+                for problem in goal.problems:
+                    entry = ResolutionProblem(resolution_id=result.id, problem=problem)
+                    self.db_session.add(entry)
 
     def get_deps_from_db(self, package_id, repo_id):
         deps = self.db_session.query(Dependency)\
