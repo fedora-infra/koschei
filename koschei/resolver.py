@@ -222,9 +222,10 @@ class Resolver(KojiService):
             self.store_deps(build.repo_id, build.package_id, curr_deps)
             if prev and prev.repo_id:
                 prev_deps = self.get_deps_from_db(prev.package_id, prev.repo_id)
-                self.db_session.query(DependencyChange)\
-                               .filter_by(applied_in_id=build.id)\
-                               .delete(synchronize_session=False)
+                if prev_deps and curr_deps:
+                    self.db_session.query(DependencyChange)\
+                                   .filter_by(applied_in_id=build.id)\
+                                   .delete(synchronize_session=False)
                 self.generate_dependency_differences(prev_deps, curr_deps,
                                                      package_id=build.package_id,
                                                      apply_id=build.id)
