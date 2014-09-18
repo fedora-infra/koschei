@@ -81,7 +81,7 @@
     {% for change in changes %}
     <tr class="{{ seq }}">
         <td colspan="3"/>
-        {{ next_change(changes) }}
+        {{ change | format_depchange | columnize(css_class="depchange") }}
         <td/>
     </tr>
     {% endfor %}
