@@ -253,9 +253,10 @@ class Resolver(KojiService):
                                                  lambda build: build.repo_id):
             if repo_id is not None:
                 sack = self.prepare_sack(repo_id)
-                util.add_repos_to_sack('srpm', {'src': srpm_repo}, sack)
-                for build in builds:
-                    self.process_build(build, sack, group)
+                if sack:
+                    util.add_repos_to_sack('srpm', {'src': srpm_repo}, sack)
+                    for build in builds:
+                        self.process_build(build, sack, group)
             self.db_session.commit()
 
     def main(self):
