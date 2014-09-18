@@ -143,8 +143,6 @@ class Build(Base):
     release = Column(String)
     repo_id = Column(Integer)
     deps_processed = Column(Boolean, nullable=False, server_default=false())
-    dependency_changes = relationship('DependencyChange', backref='applied_in',
-                                      order_by='DependencyChange.distance')
     build_arch_tasks = relationship(KojiTask, backref='build', order_by=KojiTask.arch)
     # was the build done by koschei or was it real build done by packager
     real = Column(Boolean, nullable=False, server_default=false())
@@ -302,6 +300,8 @@ Package.unapplied_changes = relationship(DependencyChange,
                                          order_by=DependencyChange.distance)
 Build.buildroot_diff = relationship(BuildrootDiff,
             primaryjoin=(BuildrootDiff.curr_build_id == Build.id))
+Build.dependency_changes = relationship(DependencyChange, backref='applied_in',
+                                        order_by=DependencyChange.distance.nullslast())
 
 PackageGroup.package_count = column_property(
         select([func.count(PackageGroupRelation.group_id)],
