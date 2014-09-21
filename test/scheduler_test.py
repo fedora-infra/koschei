@@ -37,7 +37,7 @@ class SchedulerTest(DBTest):
                                         prev_release=None, curr_release='11',
                                         distance=4))
 
-        # 0 distance
+        # null distance, value 2
         chngs.append(m.DependencyChange(package_id=pkg.id, dep_name='python-lxml',
                                         prev_version=None, curr_version='3.3',
                                         prev_release=None, curr_release='11',
@@ -59,10 +59,11 @@ class SchedulerTest(DBTest):
         query = self.get_scheduler().get_dependency_priority_query()
         self.assert_priority_query(query)
         res = query.all()
-        self.assertEqual(3, len(res))
         self.assertIn((pkg.id, 20), res)
         self.assertIn((pkg.id, 10), res)
         self.assertIn((pkg.id, 5), res)
+        self.assertIn((pkg.id, 2), res)
+        self.assertEqual(4, len(res))
 
     @postgres_only
     def test_time_priority(self):

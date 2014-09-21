@@ -23,6 +23,7 @@ import math
 from datetime import datetime
 from sqlalchemy import func, union_all, extract
 from sqlalchemy.sql import literal_column, true
+from sqlalchemy.sql.functions import coalesce
 
 from . import util
 from .models import Package, Build, DependencyChange
@@ -47,11 +48,11 @@ class Scheduler(KojiService):
 
     def get_dependency_priority_query(self):
         update_weight = self.priority_conf['package_update']
+        distance = coalesce(DependencyChange.distance, 8)
         return self.db_session.query(DependencyChange.package_id.label('pkg_id'),
-                                    (update_weight / DependencyChange.distance)\
+                                     (update_weight / distance)\
                                             .label('priority'))\
-                              .filter_by(applied_in_id=None)\
-                              .filter(DependencyChange.distance > 0)
+                              .filter_by(applied_in_id=None)
 
     def get_time_priority_query(self):
         t0 = self.priority_conf['t0']
