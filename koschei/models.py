@@ -20,7 +20,7 @@ import rpm
 import koji
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
-                       ForeignKey, DateTime
+                       ForeignKey, DateTime, Index
 from sqlalchemy.sql.expression import extract, func, select, join, or_, false
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, mapper, column_property
@@ -202,7 +202,7 @@ class Dependency(Base):
     __tablename__ = 'dependency'
     id = Column(Integer, primary_key=True)
     repo_id = Column(Integer, nullable=False)
-    package_id = Column(ForeignKey('package.id', ondelete='CASCADE'), index=True)
+    package_id = Column(ForeignKey('package.id', ondelete='CASCADE'))
     name = Column(String, nullable=False)
     epoch = Column(Integer)
     version = Column(String, nullable=False)
@@ -212,6 +212,8 @@ class Dependency(Base):
 
     nevr = (name, epoch, version, release)
     nevra = (name, epoch, version, release, arch)
+
+Index('ix_dependency_composite', Dependency.package_id, Dependency.repo_id)
 
 #@Deprecated
 def format_evr(epoch, version, release):
