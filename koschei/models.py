@@ -44,6 +44,15 @@ def hours_since(since):
 def external_id():
     raise AssertionError("ID needs to be supplied")
 
+class User(Base):
+    __tablename__ = 'user'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False, unique=True)
+    email = Column(String, nullable=False)
+    timezone = Column(String)
+    admin = Column(Boolean, nullable=False, server_default=false())
+
 class Package(Base):
     __tablename__ = 'package'
 
