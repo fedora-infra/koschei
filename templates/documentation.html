@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block tab_id %}builds{% endblock %}
+{% block content %}
+<h1>Documentation</h1>
+<h2>What is Koschei?</h2>
+<p>
+Koschei is a continuous integration system for RPM packages. It tracks
+dependency changes done in Koji repositories and rebuilds packages whose
+dependencies change.
+</p>
+
+<h2>What are it's benefits?</h2>
+<p>
+Currently, with each release of Fedora there are lot of packages that fail to
+build from source because their dependencies were updated to an incompatible
+version. The breakage is usually detected during the mass rebuild and fixing of
+the FTBFS bugs is a tedious process, because it's hard to determine the exact
+cause of the failure. Koschei could narrow down the set of packages that may be
+the cause to just one or two which could reduce the time spent on fixing such
+bugs.
+</p>
+
+<h2>How it works?</h2>
+<p>
+Dependency resolution is done via hawkey library, which is also used by dnf
+which will be the standard package manager in the next Fedora release.
+That allows us to mimic the resolution happening in Koji as closely as possible.
+Resolution for build scheduling is done using the latest repo and submitted
+builds are resolved again as they complete. The reason for that is that we have
+no control over exact repo used to build the package and therefore we cannot
+safely assume it would be the same as the one we have as the latest. Packages
+are prioritized according to the number of dependencies that have changed,
+their distance in the dependency graph and the time since the last rebuild.
+</p>
+
+<h2>Doesn't it overload Koji?</h2>
+<p>
+No, there are multiple mechanisms to ensure that performance of Koji is not
+affected too much.  It stops submitting builds when Koji load is higher than
+predefined threshold, which is set to a reasonably low value. It also limits the
+number of simultaneously running builds.
+</p>
+
+<h2>How can I add my packages</h2>
+<p>
+TBD.
+</p>
+
+<h2>What repos does it use</h2>
+It uses Fedora Rawhide repos directly from Koji.
+
+<h2>Can it watch more Koji instances</h2>
+Not at the same time, you would need a separate instance of Koschei.
+
+
+{% endblock %}

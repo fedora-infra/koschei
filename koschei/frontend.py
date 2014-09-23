@@ -119,6 +119,10 @@ def inject_times():
 def frontpage():
     return package_view("frontpage.html")
 
+@app.route('/documentation')
+def documentation():
+    return render_template("documentation.html")
+
 @app.route('/package/<name>')
 def package_detail(name):
     package = db_session.query(Package).filter_by(name=name)\
