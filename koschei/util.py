@@ -40,16 +40,34 @@ root_logger.setLevel(logging.DEBUG)
 log_handler = logging.StreamHandler(sys.stderr)
 root_logger.addHandler(log_handler)
 
-config = None
-config_path = os.environ.get('KOSCHEI_CONFIG')
-if not config_path:
-    if os.path.exists('config.cfg'):
-        config_path = 'config.cfg'
-    else:
-        config_path = '/etc/koschei/config.cfg'
-with open(config_path) as config_file:
-    code = compile(config_file.read(), config_path, 'exec')
-    exec(code)
+def merge_dict(d1, d2):
+    ret = d1.copy()
+    for k, v in d2.items():
+        if k in ret and isinstance(v, dict) and isinstance(ret[k], dict):
+            ret[k] = merge_dict(ret[k], v)
+        else:
+            ret[k] = v
+    return ret
+
+DEFAULT_CONFIGS = '/usr/share/koschei/config.cfg:/etc/koschei/config.cfg'
+config = {}
+
+def load_config():
+    def parse_config(config_path):
+        global config
+        if os.path.exists(config_path):
+            with open(config_path) as config_file:
+                code = compile(config_file.read(), config_path, 'exec')
+                conf_locals = {}
+                exec code in conf_locals
+                if 'config' in conf_locals:
+                    config = merge_dict(config, conf_locals['config'])
+    config_paths = os.environ.get('KOSCHEI_CONFIG', DEFAULT_CONFIGS)
+    for config_path in config_paths.split(':'):
+        parse_config(config_path)
+
+load_config()
+assert config != {}
 
 log = logging.getLogger('koschei.util')
 

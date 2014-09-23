@@ -63,28 +63,30 @@ sed 's|@CACHEDIR@|%{_localstatedir}/cache/%{name}|g
 %install
 %{__python2} setup.py install --skip-build --root %{buildroot}
 
+mkdir -p %{buildroot}%{_bindir}
+mkdir -p %{buildroot}%{_datadir}/%{name}
 mkdir -p %{buildroot}%{_sysconfdir}/%{name}
-cp -p config.cfg %{buildroot}%{_sysconfdir}/%{name}/
+mkdir -p %{buildroot}%{_sysconfdir}/httpd/conf.d
+
+cp -p empty_config.cfg %{buildroot}%{_sysconfdir}/%{name}/config.cfg
+cp -p config.cfg %{buildroot}%{_datadir}/koschei/
 
 install -dm 755 %{buildroot}%{_unitdir}
 for unit in systemd/*; do
     install -pm 644 $unit %{buildroot}%{_unitdir}/
 done
 
-mkdir -p %{buildroot}%{_bindir}
 install -pm 755 admin.py %{buildroot}%{_bindir}/%{name}-admin
 
 install -dm 755 %{buildroot}%{_localstatedir}/cache/%{name}/repodata
 install -dm 755 %{buildroot}%{_localstatedir}/cache/%{name}/srpms
 
-mkdir -p %{buildroot}%{_datadir}/%{name}
 cp -pr templates %{buildroot}%{_datadir}/%{name}/
 
 cp -pr alembic/ alembic.ini %{buildroot}%{_datadir}/%{name}/
 cp -pr theme %{buildroot}%{_datadir}/%{name}/
 ln -s theme/fedora/static %{buildroot}%{_datadir}/%{name}/static
 cp -p %{name}.wsgi %{buildroot}%{_datadir}/%{name}/
-mkdir -p %{buildroot}%{_sysconfdir}/httpd/conf.d
 cp -p httpd.conf %{buildroot}%{_sysconfdir}/httpd/conf.d/%{name}.conf
 
 %if %{with tests}
