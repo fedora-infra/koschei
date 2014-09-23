@@ -4,6 +4,7 @@ import urllib
 from datetime import datetime
 from flask import Flask, abort, render_template, request, url_for
 from flask_sqlalchemy import BaseQuery
+from flask.ext.openid import OpenID
 from sqlalchemy.orm import scoped_session, sessionmaker, joinedload, \
                            subqueryload, undefer, contains_eager
 from sqlalchemy.sql import literal_column
@@ -18,6 +19,7 @@ app = Flask('koschei', template_folder=dirs['templates'],
 app.config.from_object(util.config['flask'])
 
 frontend_config = util.config['frontend']
+openid = OpenID(app, util.config['openid']['openid_store'], safe_roots=[])
 items_per_page = frontend_config['items_per_page']
 
 db_session = scoped_session(sessionmaker(autocommit=False, bind=engine,

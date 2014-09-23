@@ -68,5 +68,8 @@ config = {
     "alembic": {
         "alembic_ini": "@DATADIR@/alembic.ini"
     },
+    "openid": {
+        "openid_store": "@STATEDIR@/openid",
+    },
 }
 
