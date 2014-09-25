@@ -27,8 +27,6 @@ from sqlalchemy.orm import sessionmaker, relationship, mapper, column_property
 from sqlalchemy.engine.url import URL
 from sqlalchemy.event import listens_for
 from datetime import datetime
-# Python 2 only
-from itertools import izip_longest
 
 from .util import config
 from .event import EventQueue
@@ -155,27 +153,8 @@ class Build(Base):
     def triggers(self):
         return [change.get_trigger() for change in self.dependency_changes]
 
-    @property
-    def buildroot_diff_per_arch(self):
-        return [(diff.arch, diff) for diff in self.buildroot_diff]
-
     def __repr__(self):
         return '{0.id} (name={0.package.name}, state={0.state_string})'.format(self)
-
-class BuildrootDiff(Base):
-    __tablename__ = 'buildroot_diff'
-    id = Column(Integer, primary_key=True)
-    prev_build_id = Column(ForeignKey(Build.id, ondelete='CASCADE'))
-    curr_build_id = Column(ForeignKey(Build.id, ondelete='CASCADE'))
-    arch = Column(String)
-    added = Column(String)
-    removed = Column(String)
-
-    @property
-    def zipped_diff(self):
-        added = self.added.split(',')
-        removed = self.removed.split(',')
-        return izip_longest(added, removed)
 
 class ResolutionResult(Base):
     __tablename__ = 'resolution_result'
@@ -300,8 +279,6 @@ Package.unapplied_changes = relationship(DependencyChange,
                                              (DependencyChange.package_id == Package.id)
                                              & (DependencyChange.applied_in_id == None)),
                                          order_by=DependencyChange.distance)
-Build.buildroot_diff = relationship(BuildrootDiff,
-            primaryjoin=(BuildrootDiff.curr_build_id == Build.id))
 Build.dependency_changes = relationship(DependencyChange, backref='applied_in',
                                         order_by=DependencyChange.distance.nullslast())
 
