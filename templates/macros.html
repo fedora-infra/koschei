@@ -42,7 +42,7 @@
         <td>
             <div class="hidden">{{ package.state_string }}</div>
             {% if package.state_string %}
-            <img src="{{ url_for('static', filename='images/' ~ package.state_string ~ '.png') }}"
+            <img src="{{ package.state_icon }}"
                  title="{{ package.state_string }}" alt="{{ package.state_string }}"/>
             {% endif %}
         </td>

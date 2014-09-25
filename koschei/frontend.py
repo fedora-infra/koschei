@@ -2,7 +2,7 @@ import koji
 import urllib
 
 from datetime import datetime
-from flask import Flask, abort, render_template, request
+from flask import Flask, abort, render_template, request, url_for
 from flask_sqlalchemy import BaseQuery
 from sqlalchemy.orm import scoped_session, sessionmaker, joinedload, \
                            subqueryload, undefer, contains_eager
@@ -102,6 +102,15 @@ def package_view(template, alter_query=None, **template_args):
     page = pkgs.paginate(page=page_no, per_page=items_per_page)
     return render_template(template, packages=page.items, page=page,
                            order=order_names, **template_args)
+
+@property
+def state_icon(package):
+    icon = {'ok': 'complete',
+            'failing': 'failed',
+            'unresolved': 'cross'
+            }.get(package.state_string, 'unknown')
+    return url_for('static', filename='images/{name}.png'.format(name=icon))
+Package.state_icon = state_icon
 
 @app.teardown_appcontext
 def shutdown_session(exception=None):
