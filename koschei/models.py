@@ -71,8 +71,10 @@ class Package(Base):
         if not resolved:
             return 'unresolved'
         build = self.last_complete_build
-        # pylint: disable=E1101
-        return build.state_string
+        if build:
+            return {Build.COMPLETE: 'ok',
+                    Build.FAILED: 'failing',
+                    }.get(build.state)
 
     def __repr__(self):
         return '{0.id} (name={0.name})'.format(self)
