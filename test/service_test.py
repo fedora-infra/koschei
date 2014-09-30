@@ -137,7 +137,3 @@ class KojiServiceTest(AbstractTest):
                 koji_anonymous = False
             MyKojiSvc(log=Mock(), db_session=Mock())
             create.assert_called_with(anonymous=False)
-
-    def test_koji_exc(self):
-        self.assertItemsEqual([koji.GenericError, socket.error],
-                         KojiService.retry_on)

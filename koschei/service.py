@@ -22,6 +22,7 @@ import signal
 import sys
 import socket
 import time
+import urllib2
 
 from . import util
 from .models import Session
@@ -78,7 +79,7 @@ class Service(object):
 class KojiService(Service):
     koji_anonymous = True
 
-    retry_on = koji.GenericError, socket.error
+    retry_on = koji.GenericError, socket.error, urllib2.URLError
 
     def __init__(self, log=None, db_session=None, koji_session=None):
         super(KojiService, self).__init__(log=log, db_session=db_session)
