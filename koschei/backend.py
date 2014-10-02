@@ -19,7 +19,6 @@
 import json
 
 from datetime import datetime
-from contextlib import contextmanager
 
 from . import util
 from .models import Build, DependencyChange, KojiTask, Session
@@ -31,13 +30,8 @@ class PackageStateUpdateEvent(Event):
         self.prev_state = prev_state
         self.new_state = new_state
 
-@contextmanager
-def watch_package_state(package):
+def check_package_state(package, prev_pkg_state):
     db_session = Session.object_session(package)
-    db_session.flush()
-    prev_pkg_state = package.state_string
-    yield
-    db_session.flush()
     new_pkg_state = package.state_string
     if prev_pkg_state != new_pkg_state:
         event = PackageStateUpdateEvent(package, prev_pkg_state, new_pkg_state)
@@ -83,10 +77,11 @@ class Backend(object):
             else:
                 self.log.info('Setting build {build} state to {state}'\
                               .format(build=build, state=Build.REV_STATE_MAP[state]))
-                with watch_package_state(build.package):
-                    build.state = state
-            if state in (Build.COMPLETE, Build.FAILED):
-                self.build_completed(build)
+                prev_pkg_state = build.package.state_string
+                build.state = state
+                if state in (Build.COMPLETE, Build.FAILED):
+                    self.build_completed(build)
+                    check_package_state(build.package, prev_pkg_state)
             self.db_session.commit()
 
     def build_completed(self, build):

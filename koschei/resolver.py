@@ -29,6 +29,7 @@ from koschei import util
 from koschei.service import KojiService
 from koschei.srpm_cache import SRPMCache
 from koschei.repo_cache import RepoCache
+from koschei.backend import check_package_state
 
 def get_srpm_pkg(sack, name, evr=None):
     if evr:
@@ -153,17 +154,22 @@ class Resolver(KojiService):
             util.add_repos_to_sack(repo_id, repos, sack)
             return sack
 
+    def get_packages(self):
+        return self.db_session.query(Package)\
+                              .filter(Package.ignored == False)\
+                              .options(joinedload(Package.last_build),
+                                       joinedload(Package.resolution_result),
+                                       joinedload(Package.last_complete_build))\
+                              .all()
+
     def generate_repo(self, repo_id):
         start = time.time()
         self.db_session.query(DependencyChange)\
                        .filter_by(applied_in_id=None)\
                        .delete(synchronize_session=False)
-        packages = self.db_session.query(Package)\
-                                  .filter(Package.ignored == False)\
-                                  .options(joinedload(Package.last_build),
-                                           joinedload(Package.resolution_result))\
-                                  .all()
+        packages = self.get_packages()
         package_names = [pkg.name for pkg in packages]
+        prev_states = {pkg.id: pkg.state_string for pkg in packages}
         self.log.info("Generating new repo")
         self.srpm_cache.get_latest_srpms(package_names)
         srpm_repo = self.srpm_cache.get_repodata()
@@ -184,8 +190,14 @@ class Resolver(KojiService):
                     if prev_deps is not None:
                         self.generate_dependency_differences(prev_deps, curr_deps,
                                                              package.id)
+        packages = self.get_packages()
+        for pkg in packages:
+            prev_state = prev_states[pkg.id]
+            check_package_state(pkg, prev_state)
+
         self.db_session.commit()
         end = time.time()
+
         self.log.info(("New repo done. Resolution time: {} minutes\n"
                        "Overall time: {} minutes.")
                       .format((end - resolution_start) / 60, (end - start) / 60))
