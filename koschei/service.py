@@ -55,12 +55,17 @@ class Service(object):
                 retry_attempts = 0
                 time.sleep(interval)
             except self.retry_on as exc:
-                retry_attempts += 1
-                self.log.error("Service error: {}".format(exc))
-                self.on_exception(exc)
-                sleep = retry_in * retry_attempts
-                self.log.info("Retrying in {} seconds".format(sleep))
-                time.sleep(sleep)
+                while True:
+                    try:
+                        retry_attempts += 1
+                        self.log.error("Service error: {}".format(exc))
+                        sleep = retry_in * retry_attempts
+                        self.log.info("Retrying in {} seconds".format(sleep))
+                        time.sleep(sleep)
+                        self.on_exception(exc)
+                        break
+                    except self.retry_on as exc:
+                        pass
             except KeyboardInterrupt:
                 sys.exit(0)
             finally:
