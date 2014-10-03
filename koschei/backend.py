@@ -25,20 +25,16 @@ from .models import Build, DependencyChange, KojiTask, Session
 from .event import Event
 
 class PackageStateUpdateEvent(Event):
-    def __init__(self, package, prev_state, new_state, build=None,
-                 repo_id=None):
+    def __init__(self, package, prev_state, new_state):
         self.package = package
         self.prev_state = prev_state
         self.new_state = new_state
-        self.build = build
-        self.repo_id = repo_id
 
-def check_package_state(package, prev_pkg_state, **kwargs):
+def check_package_state(package, prev_pkg_state):
     db_session = Session.object_session(package)
     new_pkg_state = package.state_string
     if prev_pkg_state != new_pkg_state:
-        event = PackageStateUpdateEvent(package, prev_pkg_state, new_pkg_state,
-                                        **kwargs)
+        event = PackageStateUpdateEvent(package, prev_pkg_state, new_pkg_state)
         db_session._event_queue.add(event)
 
 class Backend(object):
@@ -85,8 +81,7 @@ class Backend(object):
                 build.state = state
                 if state in (Build.COMPLETE, Build.FAILED):
                     self.build_completed(build)
-                    check_package_state(build.package, prev_pkg_state,
-                                        build=build)
+                    check_package_state(build.package, prev_pkg_state)
             self.db_session.commit()
 
     def build_completed(self, build):

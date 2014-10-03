@@ -28,18 +28,11 @@ if fedmsg_config['enabled']:
     def emit_package_state_update(event):
         if event.prev_state == event.new_state:
             return
-        task_id = None
-        repo_id = None
-        if event.build:
-            task_id = event.build.task_id
-            repo_id = event.repo_id or event.build.repo_id
         fedmsg.publish(topic='package.state.change',
                        modname=fedmsg_config['modname'],
                        msg={'name': event.package.name,
                             'old': event.prev_state,
                             'new': event.new_state,
-                            'build_task_id': task_id,
-                            'repo_id': repo_id,
                             'koji_instance': config['fedmsg']['instance'],
-                            'watched-tag': config['koji_config']['build_tag'],
+                            'repo': config['koji_config']['target_tag'],
                             })
