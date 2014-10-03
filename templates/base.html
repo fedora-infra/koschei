@@ -27,6 +27,12 @@ href="{{ url_for('static', filename='koji.css') }}"/>
         <span id="loginInfo">
             {% block statusline %}
             {% endblock %}
+            {% if g.user %}
+            <span>Logged in as {{ g.user.name }}</span>
+            <a href="{{ url_for('logout') }}">logout</a>
+            {% else %}
+            <a href="{{ url_for('login') }}">login</a>
+            {% endif %}
         </span>
 
         <div id="content">
