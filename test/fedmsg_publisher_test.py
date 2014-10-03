@@ -15,9 +15,11 @@ class FedmsgSenderTest(AbstractTest):
             PackageStateUpdateEvent(package, 'failed', 'ok').dispatch()
             publish.assert_called_once_with(topic='package.state.change',
                                             modname='koschei',
-                                            msg={'package': 'rnv',
-                                                 'prev_state': 'failed',
-                                                 'new_state': 'ok'})
+                                            msg={'name': 'rnv',
+                                                 'old': 'failed',
+                                                 'new': 'ok',
+                                                 'repo': 'f22',
+                                                 'koji_instance': 'primary'})
 
     def test_same_state(self):
         package = Mock(spec_set=['name', 'id'])
