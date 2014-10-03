@@ -61,6 +61,7 @@ config = {
         "static_url": "/static",
     },
     "flask": {
+        "SECRET_KEY": "isecretlylovebabymetal",
     },
     "frontend": {
         "items_per_page": 100,
