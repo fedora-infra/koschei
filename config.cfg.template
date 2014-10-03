@@ -61,12 +61,16 @@ config = {
         "static_url": "/static",
     },
     "flask": {
+        "SECRET_KEY": "isecretlylovebabymetal",
     },
     "frontend": {
         "items_per_page": 100,
     },
     "alembic": {
         "alembic_ini": "@DATADIR@/alembic.ini"
+    },
+    "openid": {
+        "openid_store": "@STATEDIR@/openid",
     },
 }
 
