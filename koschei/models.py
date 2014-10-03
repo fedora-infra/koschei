@@ -176,7 +176,8 @@ class ResolutionProblem(Base):
 class RepoGenerationRequest(Base):
     __tablename__ = 'repo_generation_request'
 
-    repo_id = Column(Integer, primary_key=True, default=external_id)
+    id = Column(Integer, primary_key=True)
+    repo_id = Column(Integer, nullable=False)
     requested = Column(DateTime, nullable=False, default=datetime.now)
 
 class Dependency(Base):
