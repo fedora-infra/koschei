@@ -8,7 +8,7 @@
 <link rel="stylesheet" type="text/css" media="screen" title="Koji Style"
 href="{{ url_for('static', filename='koji.css') }}"/>
 </head>
-<body id="{% block tab_id %}summary{% endblock %}">
+<body>
 <div id="wrap">
     <div id="innerwrap">
         <div id="header">
@@ -18,10 +18,11 @@ href="{{ url_for('static', filename='koji.css') }}"/>
         <div id="mainNav">
             <h4 class="hide">Main Site Links:</h4>
             <ul>
-                <li id="summaryTab"><a href="{{ url_for('frontpage') }}">Summary</a></li>
-                <li id="packagesTab"><a href="{{ url_for('groups_overview') }}">Groups</a></li>
-                <li id="buildsTab"><a href="{{ url_for('documentation') }}">Documentation</a></li>
-                <li id="addPackagesTab"><a href="{{ url_for('add_packages') }}">Add packages</a></li>
+                {% for tab_name, tab_caption in g.tabs %}
+                <li {% if g.current_tab == tab_name %}id="activeTab"{% endif %}>
+                    <a href="{{ url_for(tab_name) }}">{{ tab_caption }}</a>
+                </li>
+                {% endfor %}
             </ul>
         </div>
 

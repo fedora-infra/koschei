@@ -170,16 +170,7 @@ border-top-right-radius: 5px;
 background-color:rgba(255,255,255,0.1);
 }
 
-body#summary #mainNav li#summaryTab a,
-body#tasks #mainNav li#tasksTab a,
-body#tags #mainNav li#tagsTab a,
-body#builds #mainNav li#buildsTab a,
-body#packages #mainNav li#packagesTab a,
-body#users #mainNav li#usersTab a,
-body#hosts #mainNav li#hostsTab a,
-body#buildtargets #mainNav li#buildtargetsTab a,
-body#reports #mainNav li#reportsTab a,
-body#search #mainNav li#searchTab a {
+#mainNav li#activeTab a {
     background-color: #fff;
     color: #444;
     -webkit-border-top-left-radius: 5px;

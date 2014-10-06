@@ -3,6 +3,7 @@ import urllib
 import logging
 
 from datetime import datetime
+from functools import wraps
 from flask import abort, render_template, request, url_for, redirect, g, flash
 from sqlalchemy.orm import joinedload, subqueryload, undefer, contains_eager
 from sqlalchemy.sql import literal_column
@@ -105,6 +106,20 @@ def state_icon(package):
     return url_for('static', filename='images/{name}.png'.format(name=icon))
 Package.state_icon = state_icon
 
+tabs = []
+
+def tab(caption, slave=False):
+    def decorator(fn):
+        if not slave:
+            tabs.append((fn.__name__, caption))
+        @wraps(fn)
+        def decorated(*args, **kwargs):
+            g.tabs = tabs
+            g.current_tab = fn.__name__
+            return fn(*args, **kwargs)
+        return decorated
+    return decorator
+
 @app.teardown_appcontext
 def shutdown_session(exception=None):
     db_session.remove()
@@ -118,14 +133,12 @@ def inject_times():
     return {'since': datetime.min, 'until': datetime.now()}
 
 @app.route('/')
+@tab('Packages')
 def frontpage():
     return package_view("frontpage.html")
 
-@app.route('/documentation')
-def documentation():
-    return render_template("documentation.html")
-
 @app.route('/package/<name>')
+@tab('Packages', slave=True)
 def package_detail(name):
     package = db_session.query(Package).filter_by(name=name)\
                         .options(subqueryload(Package.unapplied_changes),
@@ -136,6 +149,7 @@ def package_detail(name):
     return render_template("package-detail.html", package=package)
 
 @app.route('/package/<name>/<int:build_id>')
+@tab('Packages', slave=True)
 def build_detail(name, build_id):
     #pylint: disable=E1101
     build = db_session.query(Build)\
@@ -148,6 +162,7 @@ def build_detail(name, build_id):
     return render_template("build-detail.html", build=build)
 
 @app.route('/groups')
+@tab('Group')
 def groups_overview():
     groups = db_session.query(PackageGroup)\
                        .options(undefer(PackageGroup.package_count))\
@@ -156,6 +171,7 @@ def groups_overview():
 
 @app.route('/groups/<int:id>')
 @app.route('/groups/<name>')
+@tab('Group', slave=True)
 def group_detail(name=None, id=None):
     filt = {'name': name} if name else {'id': id}
     group = db_session.query(PackageGroup)\
@@ -167,6 +183,7 @@ def group_detail(name=None, id=None):
                         group=group)
 
 @app.route('/add_packages', methods=['GET', 'POST'])
+@tab('Add packages')
 @auth.login_required()
 def add_packages():
     if request.method == 'POST':
@@ -182,3 +199,8 @@ def add_packages():
         return redirect(url_for('frontpage'))
     else:
         return render_template("add-packages.html")
+
+@app.route('/documentation')
+@tab('Documentation')
+def documentation():
+    return render_template("documentation.html")
