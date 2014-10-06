@@ -1,18 +1,24 @@
 import koji
 import urllib
+import logging
 
 from datetime import datetime
-from flask import abort, render_template, request, url_for
+from flask import abort, render_template, request, url_for, redirect, g, flash
 from sqlalchemy.orm import joinedload, subqueryload, undefer, contains_eager
 from sqlalchemy.sql import literal_column
 from jinja2 import Markup, escape
 
 from .models import Package, Build, PackageGroup, PackageGroupRelation
-from . import util
+from . import util, auth, backend
 from .frontend import app, db_session
 
 frontend_config = util.config['frontend']
 items_per_page = frontend_config['items_per_page']
+log = logging.getLogger('koschei.views')
+
+def create_backend():
+    return backend.Backend(db_session=db_session, log=log,
+                           koji_session=util.Proxy(util.create_koji_session))
 
 def page_args(page=None, order_by=None):
     def proc_order(order):
@@ -159,3 +165,20 @@ def group_detail(name=None, id=None):
                 .filter(PackageGroupRelation.group_id == group.id)
     return package_view("group-detail.html", alter_query=alter_query,
                         group=group)
+
+@app.route('/add_packages', methods=['GET', 'POST'])
+@auth.login_required()
+def add_packages():
+    if request.method == 'POST':
+        be = create_backend()
+        names = request.form['names'].split()
+        try:
+            added = be.add_packages(names)
+            log.info("{user} added\n{what}".format(user=g.user.name,
+                                                   what=' '.join(x.name for x in added)))
+        except backend.PackagesDontExist as e:
+            flash("Packages don't exist: " + ','.join(e.names))
+            return redirect(url_for('add_packages'))
+        return redirect(url_for('frontpage'))
+    else:
+        return render_template("add-packages.html")
