@@ -21,8 +21,14 @@ import json
 from datetime import datetime
 
 from . import util
-from .models import Build, DependencyChange, KojiTask, Session
+from .models import Build, DependencyChange, KojiTask, Session, Package,\
+                    PackageGroup, PackageGroupRelation
 from .event import Event
+
+class PackagesDontExist(Exception):
+    def __init__(self, names, *args, **kwargs):
+        super(PackagesDontExist, self).__init__(*args, **kwargs)
+        self.names = names
 
 class PackageStateUpdateEvent(Event):
     def __init__(self, package, prev_state, new_state):
@@ -104,3 +110,34 @@ class Backend(object):
                                    state=task['state'], started=task['create_time'],
                                    finished=task['completion_time'], arch=task['arch'])
                 self.db_session.add(db_task)
+
+    def add_group(self, group, pkgs):
+        group_obj = self.db_session.query(PackageGroup).filter_by(name=group).first()
+        if not group_obj:
+            group_obj = PackageGroup(name=group)
+            self.db_session.add(group_obj)
+            self.db_session.flush()
+        for pkg in pkgs:
+            rel = PackageGroupRelation(group_id=group_obj.id, package_id=pkg.id)
+            self.db_session.add(rel)
+
+    def add_packages(self, names, group=None, static_priority=None,
+                     manual_priority=None):
+        existing = [x for [x] in self.db_session.query(Package.name)
+                                                .filter(Package.name.in_(names))]
+        koji_pkgs = util.get_koji_packages(names)
+        nonexistent = [name for name, pkg in zip(names, koji_pkgs) if not pkg]
+        if nonexistent:
+            raise PackagesDontExist(nonexistent)
+        pkgs = []
+        for name in names:
+            if name not in existing:
+                pkg = Package(name=name)
+                pkg.static_priority = static_priority or 0
+                pkg.manual_priority = manual_priority or 30
+                self.db_session.add(pkg)
+                pkgs.append(pkg)
+        self.db_session.flush()
+        if group:
+            self.add_group(group, pkgs)
+        return pkgs

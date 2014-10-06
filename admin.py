@@ -4,9 +4,10 @@ from __future__ import print_function
 import sys
 import argparse
 import json
+import logging
 
-from koschei.models import engine, Session, Base, Package, PackageGroup, \
-                           PackageGroupRelation
+from koschei.models import engine, Base, Package, PackageGroup, Session
+from koschei.backend import Backend, PackagesDontExist
 from koschei import util
 
 def fail(msg):
@@ -14,8 +15,7 @@ def fail(msg):
     sys.exit(1)
 
 class Command(object):
-    needs_db = True
-    needs_koji = False
+    needs_backend = True
 
     def setup_parser(self, parser):
         pass
@@ -36,21 +36,19 @@ def main():
     cmd = args.cmd
     kwargs = vars(args)
     del kwargs['cmd']
-    db_session = None
-    if cmd.needs_db:
-        db_session = Session()
-        kwargs['db_session'] = db_session
-    if cmd.needs_koji:
-        kwargs['koji_session'] = util.create_koji_session(anonymous=True)
+    if cmd.needs_backend:
+        backend = Backend(db_session=Session(), log=logging.getLogger(),
+                          koji_session=util.create_koji_session(anonymous=True))
+        kwargs['backend'] = backend
     cmd.execute(**kwargs)
-    if db_session:
-        db_session.commit()
-        db_session.close()
+    if cmd.needs_backend:
+        backend.db_session.commit()
+        backend.db_session.close()
 
 class CreateDb(Command):
     """ Creates database tables """
 
-    needs_db = False
+    needs_backend = False
 
     def execute(self):
         from alembic.config import Config
@@ -58,16 +56,6 @@ class CreateDb(Command):
         Base.metadata.create_all(engine)
         alembic_cfg = Config(util.config['alembic']['alembic_ini'])
         command.stamp(alembic_cfg, "head")
-
-def add_group(db_session, group, pkgs):
-    group_obj = db_session.query(PackageGroup).filter_by(name=group).first()
-    if not group_obj:
-        group_obj = PackageGroup(name=group)
-        db_session.add(group_obj)
-        db_session.flush()
-    for pkg in pkgs:
-        rel = PackageGroupRelation(group_id=group_obj.id, package_id=pkg.id)
-        db_session.add(rel)
 
 class AddPkg(Command):
     """ Adds given packages to database """
@@ -78,25 +66,12 @@ class AddPkg(Command):
         parser.add_argument('-m', '--manual-priority', type=int)
         parser.add_argument('-g', '--group')
 
-    def execute(self, db_session, names, group, static_priority, manual_priority):
-        existing = [x for [x] in db_session.query(Package.name)\
-                                 .filter(Package.name.in_(names))]
-        if existing:
-            fail("Packages already exist: " + ','.join(existing))
-        koji_pkgs = util.get_koji_packages(names)
-        nonexistent = [name for name, pkg in zip(names, koji_pkgs) if not pkg]
-        if nonexistent:
-            fail("Packages don't exist: " + ','.join(nonexistent))
-        pkgs = []
-        for name in names:
-            pkg = Package(name=name)
-            pkg.static_priority = static_priority or 0
-            pkg.manual_priority = manual_priority or 30
-            db_session.add(pkg)
-            pkgs.append(pkg)
-        db_session.flush()
-        if group:
-            add_group(db_session, group, pkgs)
+    def execute(self, backend, names, group, static_priority, manual_priority):
+        try:
+            backend.add_packages(names, group=group, static_priority=static_priority,
+                                 manual_priority=manual_priority)
+        except PackagesDontExist as e:
+            fail("Packages don't exist: " + ','.join(e.names))
 
 class AddGrp(Command):
 
@@ -104,13 +79,13 @@ class AddGrp(Command):
         parser.add_argument('group')
         parser.add_argument('pkgs', nargs='*')
 
-    def execute(self, db_session, group, pkgs):
-        pkg_objs = db_session.query(Package)\
-                             .filter(Package.name.in_(pkgs)).all()
+    def execute(self, backend, group, pkgs):
+        pkg_objs = backend.db_session.query(Package)\
+                                     .filter(Package.name.in_(pkgs)).all()
         names = {pkg.name for pkg in pkg_objs}
         if names != set(pkgs):
             fail("Packages not found: " + ','.join(set(pkgs).difference(names)))
-        add_group(db_session, group, pkg_objs)
+        backend.add_group(group, pkg_objs)
 
 class SetPrio(Command):
     """ Sets package's priority to given value """
@@ -120,8 +95,9 @@ class SetPrio(Command):
         parser.add_argument('value')
         parser.add_argument('--static', action='store_true')
 
-    def execute(self, db_session, names, value, static):
-        pkgs = db_session.query(Package).filter(Package.name.in_(names)).all()
+    def execute(self, backend, names, value, static):
+        pkgs = backend.db_session.query(Package)\
+                                 .filter(Package.name.in_(names)).all()
         if len(names) != len(pkgs):
             not_found = set(names).difference(pkg.name for pkg in pkgs)
             fail('Packages not found: {}'.format(','.join(not_found)))
@@ -150,16 +126,17 @@ class SetOpts(Command):
         parser.add_argument('--group', action='store_true',
                 help="Apply on entire group instead of single package")
 
-    def execute(self, db_session, name, build_opts, group):
+    def execute(self, backend, name, build_opts, group):
         validate_opts(build_opts)
         if group:
-            group_obj = db_session.query(PackageGroup).filter_by(name=name).first()
+            group_obj = backend.db_session.query(PackageGroup)\
+                                          .filter_by(name=name).first()
             if not group_obj:
                 fail("Group {} not found".format(name))
             for pkg in group_obj.packages:
                 pkg.build_opts = build_opts
         else:
-            pkg = db_session.query(Package).filter_by(name=name).first()
+            pkg = backend.db_session.query(Package).filter_by(name=name).first()
             if not pkg:
                 fail("Package {} not found".format(name))
             pkg.build_opts = build_opts
