@@ -56,7 +56,8 @@ provides a web interface to the results.
 %setup -q -n %{name}-%{name}-%{version}
 
 sed 's|@CACHEDIR@|%{_localstatedir}/cache/%{name}|g
-     s|@DATADIR@|%{_datadir}/%{name}|g' config.cfg.template > config.cfg
+     s|@DATADIR@|%{_datadir}/%{name}|g
+     s|@STATEDIR@|%{_sharedstatedir}/%{name}|g' config.cfg.template > config.cfg
 
 %build
 %{__python2} setup.py build
@@ -81,6 +82,7 @@ install -pm 755 admin.py %{buildroot}%{_bindir}/%{name}-admin
 
 install -dm 755 %{buildroot}%{_localstatedir}/cache/%{name}/repodata
 install -dm 755 %{buildroot}%{_localstatedir}/cache/%{name}/srpms
+install -dm 755 %{buildroot}%{_sharedstatedir}/%{name}
 
 cp -pr templates %{buildroot}%{_datadir}/%{name}/
 
@@ -126,6 +128,7 @@ exit 0
 %{_bindir}/%{name}-admin
 %{_datadir}/%{name}
 %attr(755, %{name}, %{name}) %{_localstatedir}/cache/%{name}
+%attr(755, %{name}, %{name}) %{_sharedstatedir}/%{name}
 %{python2_sitelib}/*
 %dir %{_sysconfdir}/%{name}
 %config(noreplace) %{_sysconfdir}/%{name}/config.cfg
