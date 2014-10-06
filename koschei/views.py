@@ -162,7 +162,7 @@ def build_detail(name, build_id):
     return render_template("build-detail.html", build=build)
 
 @app.route('/groups')
-@tab('Group')
+@tab('Groups')
 def groups_overview():
     groups = db_session.query(PackageGroup)\
                        .options(undefer(PackageGroup.package_count))\
