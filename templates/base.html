@@ -13,6 +13,14 @@ href="{{ url_for('static', filename='koji.css') }}"/>
     <div id="innerwrap">
         <div id="header">
             <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Koschei Logo" id="kojiLogo"/>
+            <form action="search" id="headerSearch">
+                <!--<select name="type">
+                    <option value="package">Packages</option>
+                    <option value="group">Groups</option>
+                </select>-->
+                <input type="text" name="q"/>
+                <input type="submit" value="Search"/>
+            </form>
         </div>
 
         <div id="mainNav">
