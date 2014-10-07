@@ -123,6 +123,7 @@ class Backend(object):
 
     def add_packages(self, names, group=None, static_priority=None,
                      manual_priority=None):
+        newly_added_prio = util.config['priorities']['newly_added']
         existing = [x for [x] in self.db_session.query(Package.name)
                                                 .filter(Package.name.in_(names))]
         koji_pkgs = util.get_koji_packages(names)
@@ -134,7 +135,7 @@ class Backend(object):
             if name not in existing:
                 pkg = Package(name=name)
                 pkg.static_priority = static_priority or 0
-                pkg.manual_priority = manual_priority or 30
+                pkg.manual_priority = manual_priority or newly_added_prio
                 self.db_session.add(pkg)
                 pkgs.append(pkg)
         self.db_session.flush()
