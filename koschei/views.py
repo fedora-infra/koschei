@@ -189,16 +189,22 @@ def add_packages():
     if request.method == 'POST':
         be = create_backend()
         names = request.form['names'].split()
-        try:
-            added = be.add_packages(names)
-            log.info("{user} added\n{what}".format(user=g.user.name,
-                                                   what=' '.join(x.name for x in added)))
-        except backend.PackagesDontExist as e:
-            flash("Packages don't exist: " + ','.join(e.names))
-            return redirect(url_for('add_packages'))
-        return redirect(url_for('frontpage'))
-    else:
-        return render_template("add-packages.html")
+        if names:
+            try:
+                added = be.add_packages(names)
+                if added:
+                    added = ' '.join(x.name for x in added)
+                    log.info("{user} added\n{added}".format(user=g.user.name,
+                                                            added=added))
+                    flash("Packages added: {added}".format(added=added))
+                else:
+                    flash("Given packages already present")
+                db_session.commit()
+            except backend.PackagesDontExist as e:
+                flash("Packages don't exist: " + ','.join(e.names))
+                return redirect(url_for('add_packages'))
+            return redirect(url_for('frontpage'))
+    return render_template("add-packages.html")
 
 @app.route('/documentation')
 @tab('Documentation')
