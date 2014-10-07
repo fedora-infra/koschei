@@ -1,3 +1,4 @@
+import re
 import koji
 import urllib
 import logging
@@ -188,7 +189,7 @@ def group_detail(name=None, id=None):
 def add_packages():
     if request.method == 'POST':
         be = create_backend()
-        names = request.form['names'].split()
+        names = re.split(r'[ \t\n\r,]+', request.form['names'])
         if names:
             try:
                 added = be.add_packages(names)
