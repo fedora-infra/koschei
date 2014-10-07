@@ -218,6 +218,7 @@ def search():
     term = request.args.get('q')
     if term:
         def alter_query(query):
-            return query.filter(Package.name.like('%{}%'.format(term.strip())))
+            matcher = '%{}%'.format(term.strip().replace('*', '%'))
+            return query.filter(Package.name.like(matcher))
         return package_view("search-results.html", alter_query=alter_query)
     return redirect(url_for('frontpage'))
