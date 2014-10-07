@@ -103,9 +103,10 @@ class SchedulerTest(DBTest):
                     pkg = m.Package(name=name, ignored=states.get(name) == 'ignored')
                     self.s.add(pkg)
                     self.s.flush()
-                    res = m.ResolutionResult(resolved=(states.get(name) != 'unresolved'),
-                                             package_id=pkg.id, repo_id=666)
-                    self.s.add(res)
+                    if states.get(name, True) is not None:
+                        res = m.ResolutionResult(resolved=(states.get(name) != 'unresolved'),
+                                                 package_id=pkg.id, repo_id=666)
+                        self.s.add(res)
                 pkgs.append((name, pkg))
                 if name in builds:
                     self.s.add(m.Build(package_id=pkg.id, state=builds[name]))
@@ -141,6 +142,10 @@ class SchedulerTest(DBTest):
 
     def test_submit1(self):
         with self.prio_table(rnv=256) as table:
+            self.assert_submission([table], submitted='rnv')
+
+    def test_submit_no_resolution(self):
+        with self.prio_table(rnv=256, rnv_state=None) as table:
             self.assert_submission([table], submitted='rnv')
 
     def test_load(self):
