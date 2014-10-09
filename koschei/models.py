@@ -260,11 +260,13 @@ def session_begin(db_session, transaction, connection):
 
 @listens_for(Session, "after_commit")
 def session_commit(db_session):
-    db_session._event_queue.flush()
+    if hasattr(db_session, '_event_queue'):
+        db_session._event_queue.flush()
 
 @listens_for(Session, "after_rollback")
 def session_rollback(db_session):
-    db_session._event_queue.rollback()
+    if hasattr(db_session, '_event_queue'):
+        db_session._event_queue.rollback()
 
 def max_relationship(cls, group_by, filt=None, alias=None):
     max_expr = select([func.max(cls.id).label('m'), group_by])\
