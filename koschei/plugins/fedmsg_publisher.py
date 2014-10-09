@@ -28,6 +28,7 @@ if fedmsg_config['enabled']:
     def emit_package_state_update(event):
         if event.prev_state == event.new_state:
             return
+        group_names = [group.name for group in event.package.groups]
         fedmsg.publish(topic='package.state.change',
                        modname=fedmsg_config['modname'],
                        msg={'name': event.package.name,
@@ -35,4 +36,5 @@ if fedmsg_config['enabled']:
                             'new': event.new_state,
                             'koji_instance': config['fedmsg']['instance'],
                             'repo': config['koji_config']['target_tag'],
+                            'groups': group_names,
                             })

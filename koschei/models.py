@@ -299,3 +299,6 @@ PackageGroup.package_count = column_property(
                PackageGroupRelation.group_id == PackageGroup.id)\
                .correlate(PackageGroup).as_scalar(),
         deferred=True)
+# pylint: disable=E1101
+Package.groups = relationship(PackageGroup, secondary=PackageGroupRelation.__table__,
+                              order_by=PackageGroup.name)
