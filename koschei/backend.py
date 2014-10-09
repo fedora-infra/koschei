@@ -87,6 +87,7 @@ class Backend(object):
                 build.state = state
                 if state in (Build.COMPLETE, Build.FAILED):
                     self.build_completed(build)
+                    self.db_session.flush()
                     check_package_state(build.package, prev_pkg_state)
             self.db_session.commit()
 
