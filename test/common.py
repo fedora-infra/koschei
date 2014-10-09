@@ -19,8 +19,9 @@ import fedmsg
 
 use_postgres = os.environ.get('TEST_WITH_POSTGRES')
 
+default_cfg = os.path.join(testdir, '../config.cfg.template')
 test_cfg = os.path.join(testdir, 'test_config.cfg')
-os.environ['KOSCHEI_CONFIG'] = test_cfg
+os.environ['KOSCHEI_CONFIG'] = default_cfg + ':' + test_cfg
 from koschei import util
 assert util.config.get('is_test') is True
 if use_postgres:
@@ -31,8 +32,6 @@ if use_postgres:
 else:
     util.config['database_config']['drivername'] = 'sqlite'
 
-util.root_logger.removeHandler(util.log_handler)
-util.root_logger.addHandler(logging.FileHandler('out.log'))
 sql_log = logging.getLogger('sqlalchemy.engine')
 sql_log.propagate = False
 sql_log.setLevel(logging.INFO)

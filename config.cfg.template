@@ -2,9 +2,6 @@
 config = {
     "database_config": {
         "drivername": "postgres",
-        "username": "koschei",
-        "password": "password",
-        "database": "koschei"
     },
     "koji_config": {
         "server": "http://koji.fedoraproject.org/kojihub",
