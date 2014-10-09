@@ -258,9 +258,11 @@ class DependencyChange(Base):
 def session_begin(db_session, transaction, connection):
     db_session._event_queue = EventQueue()
 
-@listens_for(Session, "after_commit")
+@listens_for(Session, "before_commit")
 def session_commit(db_session):
     if hasattr(db_session, '_event_queue'):
+        if not db_session._event_queue.empty():
+            db_session.flush()
         db_session._event_queue.flush()
 
 @listens_for(Session, "after_rollback")

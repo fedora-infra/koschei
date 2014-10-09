@@ -44,3 +44,6 @@ class EventQueue(object):
 
     def rollback(self):
         self._queue = []
+
+    def empty(self):
+        return not self._queue
