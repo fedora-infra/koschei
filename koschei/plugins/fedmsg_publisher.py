@@ -17,9 +17,12 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 import fedmsg
+import logging
 
 from koschei.util import config
 from koschei.backend import PackageStateUpdateEvent
+
+log = logging.getLogger('koschei.fedmsg_publisher')
 
 fedmsg_config = config['fedmsg-publisher']
 
@@ -29,7 +32,7 @@ if fedmsg_config['enabled']:
         if event.prev_state == event.new_state:
             return
         group_names = [group.name for group in event.package.groups]
-        fedmsg.publish(topic='package.state.change',
+        message = dict(topic='package.state.change',
                        modname=fedmsg_config['modname'],
                        msg={'name': event.package.name,
                             'old': event.prev_state,
@@ -38,3 +41,5 @@ if fedmsg_config['enabled']:
                             'repo': config['koji_config']['target_tag'],
                             'groups': group_names,
                             })
+        log.info('Publishing fedmsg:\n' + str(message))
+        fedmsg.publish(**message)
