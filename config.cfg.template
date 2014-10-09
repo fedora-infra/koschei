@@ -73,5 +73,20 @@ config = {
     "openid": {
         "openid_store": "@STATEDIR@/openid",
     },
+    "logging": {
+        "version": 1,
+        "loggers": {
+            "": {
+                "level": "DEBUG",
+                "handlers": ["stderr"],
+            },
+        },
+        "handlers": {
+            "stderr": {
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stderr"
+            },
+        },
+    },
 }
 

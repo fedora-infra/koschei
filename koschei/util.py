@@ -19,10 +19,10 @@
 from __future__ import print_function
 
 import os
-import sys
 import rpm
 import koji
 import logging
+import logging.config
 import subprocess
 import hawkey
 import librepo
@@ -34,11 +34,6 @@ import urllib2
 from datetime import datetime
 from contextlib import contextmanager
 from sqlalchemy.exc import IntegrityError
-
-root_logger = logging.getLogger()
-root_logger.setLevel(logging.DEBUG)
-log_handler = logging.StreamHandler(sys.stderr)
-root_logger.addHandler(log_handler)
 
 def merge_dict(d1, d2):
     ret = d1.copy()
@@ -69,6 +64,7 @@ def load_config():
 load_config()
 assert config != {}
 
+logging.config.dictConfig(config['logging'])
 log = logging.getLogger('koschei.util')
 
 koji_config = config['koji_config']
