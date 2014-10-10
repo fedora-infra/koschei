@@ -183,6 +183,33 @@ def group_detail(name=None, id=None):
     return package_view("group-detail.html", alter_query=alter_query,
                         group=group)
 
+@app.route('/groups/<int:id>/edit', methods=['GET', 'POST'])
+@app.route('/groups/<name>/edit', methods=['GET', 'POST'])
+@tab('Group', slave=True)
+@auth.login_required()
+def edit_group(name=None, id=None):
+    filt = {'name': name} if name else {'id': id}
+    group = db_session.query(PackageGroup)\
+                      .options(joinedload(PackageGroup.packages))\
+                      .filter_by(**filt).first_or_404()
+    if request.method == 'POST':
+        # TODO validation
+        group.name = request.form['name']
+        db_session.query(PackageGroupRelation).filter_by(group_id=group.id).delete()
+        pkg_names = [name.strip() for name in request.form['packages'].split()]
+        packages = db_session.query(Package).filter(Package.name.in_(pkg_names)).all()
+        if len(pkg_names) != len(packages):
+            flash("Package doesn't exist")
+            return redirect(url_for('edit_group', name=group.name))
+        # TODO bulk insert
+        for pkg in packages:
+            rel = PackageGroupRelation(group_id=group.id, package_id=pkg.id)
+            db_session.add(rel)
+        db_session.commit()
+        flash("Group updated")
+        return redirect(url_for('group_detail', name=group.name))
+    return render_template("edit-group.html", group=group)
+
 @app.route('/add_packages', methods=['GET', 'POST'])
 @tab('Add packages')
 @auth.login_required()

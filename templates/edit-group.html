@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="pageHeader">Editing group: {{ group.name }}</div>
+<form action="" method="POST" name="edit_group">
+    <label for="name">Name: </label>
+    <input type="text" name="name" value="{{ group.name }}"/>
+    <div>Packages in group:</div>
+    <div>
+        {# Has to be on one line to not add whitespace #}
+        <textarea name="packages" rows="20" cols="80">{% for pkg in group.packages %}{{ pkg.name }}{{ '\n' }}{% endfor %}</textarea>
+    </div>
+    <div><button type="submit"/>Update</button></div>
+</form>
+
+{% endblock %}
