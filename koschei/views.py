@@ -245,7 +245,7 @@ def add_packages():
         names = re.split(r'[ \t\n\r,]+', request.form['names'])
         if names:
             try:
-                added = be.add_packages(names)
+                added = be.add_packages(names, group=request.form['group'] or None)
                 if added:
                     added = ' '.join(x.name for x in added)
                     log.info("{user} added\n{added}".format(user=g.user.name,
@@ -258,7 +258,8 @@ def add_packages():
                 flash("Packages don't exist: " + ','.join(e.names))
                 return redirect(url_for('add_packages'))
             return redirect(url_for('frontpage'))
-    return render_template("add-packages.html")
+    all_groups = db_session.query(PackageGroup).order_by(PackageGroup.name).all()
+    return render_template("add-packages.html", all_groups=all_groups)
 
 @app.route('/documentation')
 @tab('Documentation')
