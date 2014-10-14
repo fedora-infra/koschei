@@ -36,3 +36,4 @@ if False:
     db_session.query = lambda *args: None
     db_session.add = lambda x: None
     db_session.commit = lambda: None
+    db_session.flush = lambda: None

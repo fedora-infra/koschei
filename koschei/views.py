@@ -183,6 +183,46 @@ def group_detail(name=None, id=None):
     return package_view("group-detail.html", alter_query=alter_query,
                         group=group)
 
+def process_group_form(group=None, success_msg="Group updated"):
+    def redir(msg):
+        flash(msg)
+        if group:
+            return redirect(url_for('edit_group', name=group.name))
+        return redirect(url_for('add_group'))
+    pkg_names = [name.strip() for name in request.form['packages'].split()]
+    packages = db_session.query(Package).filter(Package.name.in_(pkg_names)).all()
+    name = request.form['name'].strip()
+    if not name:
+        return redir("Empty name not allowed")
+    if not pkg_names:
+        return redir("Empty group not allowed")
+    if len(pkg_names) != len(packages):
+        return redir("Package doesn't exist")
+    # TODO validation
+    if not group:
+        group = PackageGroup(name=name)
+        db_session.add(group)
+        db_session.flush()
+    else:
+        group.name = name
+        db_session.query(PackageGroupRelation).filter_by(group_id=group.id).delete()
+    pkg_names = [name.strip() for name in request.form['packages'].split()]
+    # TODO bulk insert
+    for pkg in packages:
+        rel = PackageGroupRelation(group_id=group.id, package_id=pkg.id)
+        db_session.add(rel)
+    db_session.commit()
+    flash(success_msg)
+    return redirect(url_for('group_detail', name=group.name))
+
+@app.route('/add_group', methods=['GET', 'POST'])
+@tab('Group', slave=True)
+@auth.login_required()
+def add_group(name=None, id=None):
+    if request.method == 'POST':
+        return process_group_form(success_msg="Group created")
+    return render_template("edit-group.html")
+
 @app.route('/groups/<int:id>/edit', methods=['GET', 'POST'])
 @app.route('/groups/<name>/edit', methods=['GET', 'POST'])
 @tab('Group', slave=True)
@@ -193,21 +233,7 @@ def edit_group(name=None, id=None):
                       .options(joinedload(PackageGroup.packages))\
                       .filter_by(**filt).first_or_404()
     if request.method == 'POST':
-        # TODO validation
-        group.name = request.form['name']
-        db_session.query(PackageGroupRelation).filter_by(group_id=group.id).delete()
-        pkg_names = [name.strip() for name in request.form['packages'].split()]
-        packages = db_session.query(Package).filter(Package.name.in_(pkg_names)).all()
-        if len(pkg_names) != len(packages):
-            flash("Package doesn't exist")
-            return redirect(url_for('edit_group', name=group.name))
-        # TODO bulk insert
-        for pkg in packages:
-            rel = PackageGroupRelation(group_id=group.id, package_id=pkg.id)
-            db_session.add(rel)
-        db_session.commit()
-        flash("Group updated")
-        return redirect(url_for('group_detail', name=group.name))
+        return process_group_form(group)
     return render_template("edit-group.html", group=group)
 
 @app.route('/add_packages', methods=['GET', 'POST'])
