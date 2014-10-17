@@ -81,6 +81,7 @@ class DBTest(AbstractTest):
     def __init__(self, *args, **kwargs):
         super(DBTest, self).__init__(*args, **kwargs)
         self.s = None
+        self.inited = False
 
         if use_postgres:
             cfg = util.config['database_config'].copy()
@@ -96,7 +97,9 @@ class DBTest(AbstractTest):
 
     def setUp(self):
         super(DBTest, self).setUp()
-        m.Base.metadata.create_all(m.engine)
+        if not self.inited:
+            m.Base.metadata.create_all(m.engine)
+            self.inited = True
         tables = m.Base.metadata.tables
         conn = m.engine.connect()
         for table in tables.values():
@@ -120,19 +123,19 @@ class DBTest(AbstractTest):
         return pkg, build
 
     def prepare_packages(self, pkg_names):
-        pkgs = {}
+        pkgs = []
         for name in pkg_names:
             pkg = self.s.query(m.Package).filter_by(name=name).first()
             if not pkg:
                 pkg = m.Package(name=name)
                 self.s.add(pkg)
-            pkgs[name] = pkg
+            pkgs.append(pkg)
         self.s.commit()
         return pkgs
 
     def prepare_builds(self, repo_id, **builds):
         new_builds = []
-        for pkg_name, state in builds.items():
+        for pkg_name, state in sorted(builds.items()):
             states = {
                     True: m.Build.COMPLETE,
                     False: m.Build.FAILED,
