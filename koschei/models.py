@@ -21,7 +21,7 @@ import koji
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
                        ForeignKey, DateTime, Index, DDL
-from sqlalchemy.sql.expression import extract, func, select, join, or_, false
+from sqlalchemy.sql.expression import extract, func, select, join, false
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, mapper, column_property
 from sqlalchemy.engine.url import URL
@@ -58,7 +58,6 @@ class Package(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
-    builds = relationship('Build', backref='package', lazy='dynamic')
     static_priority = Column(Integer, nullable=False, default=0)
     manual_priority = Column(Integer, nullable=False, default=0)
     added = Column(DateTime, nullable=False, default=datetime.now)
@@ -66,7 +65,7 @@ class Package(Base):
     build_opts = Column(String)
 
     # denormalized fields (no foreign key because sqla doesn't like cycles)
-    last_complete_build_id = Column(Integer, nullable=True)
+    last_complete_build_id = Column(ForeignKey('build.id'), nullable=True)
     resolved = Column(Boolean)
 
     ignored = Column(Boolean, nullable=False, server_default=false())
@@ -75,11 +74,7 @@ class Package(Base):
     def state_string(self):
         if self.ignored:
             return 'ignored'
-        # pylint: disable=E1101
-        resolved = self.resolution_result and self.resolution_result.resolved
-        if not self.resolution_result:
-            return None
-        if not resolved:
+        if not self.resolved:
             return 'unresolved'
         build = self.last_complete_build
         if build:
@@ -272,16 +267,6 @@ def session_rollback(db_session):
     if hasattr(db_session, '_event_queue'):
         db_session._event_queue.rollback()
 
-def max_relationship(cls, group_by, filt=None, alias=None):
-    max_expr = select([func.max(cls.id).label('m'), group_by])\
-                     .group_by(group_by)
-    if filt is not None:
-        max_expr = max_expr.where(filt)
-    max_expr = max_expr.alias()
-    joined = select([cls]).select_from(join(cls, max_expr,
-                                            cls.id == max_expr.c.m)).alias(alias)
-    return relationship(mapper(cls, joined, non_primary=True), uselist=False)
-
 # Triggers
 
 trigger = DDL("""
@@ -329,14 +314,11 @@ listen(Base.metadata, 'after_create', trigger.execute_if(dialect='postgresql'))
 
 # Relationships
 
-Package.last_complete_build = max_relationship(Build, Build.package_id,
-                                      filt=or_(Build.state == Build.COMPLETE,
-                                               Build.state == Build.FAILED),
-                                      alias='last_complete_build')
-Package.last_build = max_relationship(Build, Build.package_id, alias='last_build')
-Package.all_builds = relationship(Build, order_by=Build.id.desc())
-Package.resolution_result = max_relationship(ResolutionResult, ResolutionResult.package_id,
-                                             alias='last_resolution')
+Package.last_complete_build = relationship(Build, primaryjoin=(Build.id == Package.last_complete_build_id),
+                                           uselist=False)
+Package.all_builds = relationship(Build, order_by=Build.id.desc(),
+                                  primaryjoin=(Build.package_id == Package.id),
+                                  backref='package')
 Package.unapplied_changes = relationship(DependencyChange,
                                          primaryjoin=(
                                              (DependencyChange.package_id == Package.id)

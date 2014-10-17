@@ -89,8 +89,7 @@ class Scheduler(KojiService):
         to_schedule = self.db_session.query(Package, candidates.c.curr_priority)\
                                      .join(candidates, Package.id == candidates.c.pkg_id)\
                                      .outerjoin(Package.resolution_result)\
-                                     .filter(coalesce(literal_column('last_resolution.resolved')
-                                                       == true(), true()))\
+                                     .filter(Package.resolved == True)\
                                      .filter(Package.id.notin_(
                                                 incomplete_builds.subquery()))\
                                      .filter(Package.ignored == False)\

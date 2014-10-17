@@ -157,9 +157,7 @@ class Resolver(KojiService):
     def get_packages(self):
         return self.db_session.query(Package)\
                               .filter(Package.ignored == False)\
-                              .options(joinedload(Package.last_build),
-                                       joinedload(Package.resolution_result),
-                                       joinedload(Package.last_complete_build))\
+                              .options(joinedload(Package.all_builds))\
                               .all()
 
     def generate_repo(self, repo_id):
@@ -183,7 +181,7 @@ class Resolver(KojiService):
             srpm = get_srpm_pkg(sack, package.name)
             curr_deps = self.resolve_dependencies(sack, package, srpm, group, repo_id)
             if curr_deps is not None:
-                last_build = package.last_build
+                last_build = package.all_builds[0]
                 if last_build and last_build.repo_id:
                     prev_deps = self.get_deps_from_db(last_build.package_id,
                                                       last_build.repo_id)
@@ -250,7 +248,7 @@ class Resolver(KojiService):
         # pylint: disable=E1101
         unprocessed = self.db_session.query(Build).filter_by(deps_processed=False)\
                                      .filter(Build.repo_id != None)\
-                                     .options(joinedload('package', 'last_build'))\
+                                     .options(joinedload(Package.all_builds))\
                                      .order_by(Build.repo_id).all()
         # TODO repo_id
         group = util.get_build_group()

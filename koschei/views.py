@@ -7,7 +7,6 @@ from datetime import datetime
 from functools import wraps
 from flask import abort, render_template, request, url_for, redirect, g, flash
 from sqlalchemy.orm import joinedload, subqueryload, undefer, contains_eager
-from sqlalchemy.sql import literal_column
 from jinja2 import Markup, escape
 
 from .models import Package, Build, PackageGroup, PackageGroupRelation
@@ -80,17 +79,15 @@ def package_view(template, alter_query=None, **template_args):
     order_name = request.args.get('order_by', 'name')
     #pylint: disable=E1101
     order_map = {'name': [Package.name],
-                 'state': [literal_column('last_complete_build.state')],
-                 'task_id': [literal_column('last_complete_build.task_id')],
-                 'started': [literal_column('last_complete_build.started')],
+                 'state': [Build.state],
+                 'task_id': [Build.task_id],
+                 'started': [Build.started],
                  }
     order_names, order = get_order(order_map, order_name)
     page_no = int(request.args.get('page', 1))
     pkgs = db_session.query(Package)\
                      .outerjoin(Package.last_complete_build)\
-                     .outerjoin(Package.resolution_result)\
                      .options(contains_eager(Package.last_complete_build))\
-                     .options(contains_eager(Package.resolution_result))\
                      .order_by(*order)
     if alter_query:
         pkgs = alter_query(pkgs)

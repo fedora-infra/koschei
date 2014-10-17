@@ -46,7 +46,7 @@
                  title="{{ package.state_string }}" alt="{{ package.state_string }}"/>
             {% endif %}
         </td>
-        {% if package.state_string != 'unresolved' %}
+        {% if package.last_complete_build and package.resolved %}
         <td>
             <a href="{{ koji_weburl }}/taskinfo?taskID={{ last_complete_build.task_id }}">
                 {{ last_complete_build.task_id }}
