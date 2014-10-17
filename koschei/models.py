@@ -20,12 +20,12 @@ import rpm
 import koji
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
-                       ForeignKey, DateTime, Index
+                       ForeignKey, DateTime, Index, DDL
 from sqlalchemy.sql.expression import extract, func, select, join, or_, false
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, mapper, column_property
 from sqlalchemy.engine.url import URL
-from sqlalchemy.event import listens_for
+from sqlalchemy.event import listens_for, listen
 from datetime import datetime
 
 from .util import config
@@ -281,6 +281,51 @@ def max_relationship(cls, group_by, filt=None, alias=None):
     joined = select([cls]).select_from(join(cls, max_expr,
                                             cls.id == max_expr.c.m)).alias(alias)
     return relationship(mapper(cls, joined, non_primary=True), uselist=False)
+
+# Triggers
+
+trigger = DDL("""
+              CREATE OR REPLACE FUNCTION update_last_complete_build()
+                  RETURNS TRIGGER AS $$
+              BEGIN
+                  UPDATE package
+                  SET last_complete_build_id = lcb.id
+                  FROM (SELECT id, task_id, state, started
+                        FROM build
+                        WHERE package_id = NEW.package_id
+                              AND (state = 3 OR state = 5)
+                        ORDER BY task_id DESC
+                        LIMIT 1) AS lcb
+                  WHERE package.id = NEW.package_id;
+                  RETURN NEW;
+              END $$ LANGUAGE plpgsql;
+
+              DROP TRIGGER IF EXISTS update_last_complete_build_trigger ON build;
+              CREATE TRIGGER update_last_complete_build_trigger
+                  AFTER INSERT OR UPDATE ON build FOR EACH ROW
+                  EXECUTE PROCEDURE update_last_complete_build();
+
+              CREATE OR REPLACE FUNCTION update_resolved()
+                  RETURNS TRIGGER AS $$
+              BEGIN
+                  UPDATE package
+                  SET resolved = lr.resolved
+                  FROM (SELECT resolved
+                        FROM resolution_result
+                        WHERE package_id = NEW.package_id
+                        ORDER BY repo_id DESC
+                        LIMIT 1) AS lr
+                  WHERE package.id = NEW.package_id;
+                  RETURN NEW;
+              END $$ LANGUAGE plpgsql;
+
+              DROP TRIGGER IF EXISTS update_resolved_trigger ON resolution_result;
+              CREATE TRIGGER update_resolved_trigger
+                  AFTER INSERT OR UPDATE ON resolution_result FOR EACH ROW
+                  EXECUTE PROCEDURE update_resolved();
+              """)
+
+listen(Base.metadata, 'after_create', trigger.execute_if(dialect='postgresql'))
 
 # Relationships
 
