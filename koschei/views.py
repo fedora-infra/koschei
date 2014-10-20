@@ -13,8 +13,6 @@ from .models import Package, Build, PackageGroup, PackageGroupRelation
 from . import util, auth, backend
 from .frontend import app, db_session
 
-frontend_config = util.config['frontend']
-items_per_page = frontend_config['items_per_page']
 log = logging.getLogger('koschei.views')
 
 def create_backend():
@@ -84,14 +82,13 @@ def package_view(template, alter_query=None, **template_args):
                  'started': [Build.started],
                  }
     order_names, order = get_order(order_map, order_name)
-    page_no = int(request.args.get('page', 1))
     pkgs = db_session.query(Package)\
                      .outerjoin(Package.last_complete_build)\
                      .options(contains_eager(Package.last_complete_build))\
                      .order_by(*order)
     if alter_query:
         pkgs = alter_query(pkgs)
-    page = pkgs.paginate(page=page_no, per_page=items_per_page)
+    page = pkgs.paginate()
     return render_template(template, packages=page.items, page=page,
                            order=order_names, **template_args)
 
