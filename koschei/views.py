@@ -142,7 +142,9 @@ def package_detail(name):
                         .options(subqueryload(Package.unapplied_changes),
                                  subqueryload(Package.all_builds),
                                  subqueryload(Package.all_builds,
-                                              Build.dependency_changes))\
+                                              Build.dependency_changes),
+                                 subqueryload(Package.all_builds,
+                                              Build.build_arch_tasks))\
                         .first_or_404()
     return render_template("package-detail.html", package=package)
 
