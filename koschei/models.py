@@ -84,6 +84,7 @@ class Package(Base):
             return {Build.COMPLETE: 'ok',
                     Build.FAILED: 'failing',
                     }.get(build.state)
+        return 'ignored'
 
     def __repr__(self):
         return '{0.id} (name={0.name})'.format(self)
