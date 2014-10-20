@@ -179,6 +179,7 @@ class SchedulerTest(DBTest):
                              eclipse_build=m.Build.RUNNING) as table:
             self.assert_submission([table], submitted='rnv')
 
+    @postgres_only
     def test_state1(self):
         with self.prio_table(rnv=300, rnv_state='unresolved') as table:
             self.assert_submission([table], submitted=None)
