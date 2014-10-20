@@ -65,7 +65,10 @@ class Package(Base):
     build_opts = Column(String)
 
     # denormalized fields (no foreign key because sqla doesn't like cycles)
-    last_complete_build_id = Column(ForeignKey('build.id'), nullable=True)
+    last_complete_build_id = Column(Integer,
+                                    ForeignKey('build.id', use_alter=True,
+                                               name='fkey_package_last_build_id'),
+                                    nullable=True)
     resolved = Column(Boolean)
 
     ignored = Column(Boolean, nullable=False, server_default=false())
