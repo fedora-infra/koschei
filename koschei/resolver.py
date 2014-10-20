@@ -248,7 +248,6 @@ class Resolver(KojiService):
         # pylint: disable=E1101
         unprocessed = self.db_session.query(Build).filter_by(deps_processed=False)\
                                      .filter(Build.repo_id != None)\
-                                     .options(joinedload(Package.all_builds))\
                                      .order_by(Build.repo_id).all()
         # TODO repo_id
         group = util.get_build_group()
