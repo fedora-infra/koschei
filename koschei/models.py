@@ -21,9 +21,9 @@ import koji
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
                        ForeignKey, DateTime, Index, DDL
-from sqlalchemy.sql.expression import extract, func, select, join, false
+from sqlalchemy.sql.expression import extract, func, select, false
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship, mapper, column_property
+from sqlalchemy.orm import sessionmaker, relationship, column_property
 from sqlalchemy.engine.url import URL
 from sqlalchemy.event import listens_for, listen
 from datetime import datetime
@@ -81,6 +81,7 @@ class Package(Base):
             return 'unresolved'
         build = self.last_complete_build
         if build:
+            #pylint: disable=E1101
             return {Build.COMPLETE: 'ok',
                     Build.FAILED: 'failing',
                     }.get(build.state)

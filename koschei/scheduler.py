@@ -22,7 +22,6 @@ import math
 
 from datetime import datetime
 from sqlalchemy import func, union_all, extract
-from sqlalchemy.sql import literal_column, true
 from sqlalchemy.sql.functions import coalesce
 
 from . import util

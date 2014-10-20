@@ -170,35 +170,6 @@ def download_rpm_header(url, target_dir):
         os.rename(tmp_filename, rpm_path)
     return rpm_path
 
-def create_srpm_repo(package_names):
-    multicall_step = 100
-    koji_session = create_koji_session()
-    while package_names:
-        koji_session.multicall = True
-        for package_name in package_names[:multicall_step]:
-            koji_session.listTagged(source_tag, latest=True, package=package_name)
-        urls = []
-        infos = koji_session.multiCall()
-        koji_session.multicall = True
-        for [info] in infos:
-            if info:
-                koji_session.listRPMs(buildID=info[0]['build_id'], arches='src')
-                urls.append(pathinfo.build(info[0]))
-        srpms = koji_session.multiCall()
-        for [srpm], url in zip(srpms, urls):
-            srpm_name = pathinfo.rpm(srpm[0])
-            download_rpm_header(url + '/' + srpm_name, srpm_dir)
-        package_names = package_names[multicall_step:]
-    log.debug('createrepo_c')
-    createrepo = subprocess.Popen(['createrepo_c', srpm_dir], stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE)
-    out, err = createrepo.communicate()
-    ret = createrepo.wait()
-    if ret:
-        raise Exception("Createrepo failed: return code {ret}\n{err}"
-                        .format(ret=ret, err=err))
-    log.debug(out)
-
 def get_srpm_repodata():
     h = librepo.Handle()
     h.local = True
@@ -244,22 +215,6 @@ def add_repo_to_sack(repoid, repo_result, sack):
 def add_repos_to_sack(repo_id, repo_results, sack):
     for arch, repo_result in repo_results.items():
         add_repo_to_sack('{}-{}'.format(repo_id, arch), repo_result, sack)
-
-def sync_repos(package_names):
-    create_srpm_repo(package_names)
-    repos = download_koji_repos()
-    arches = repos.keys()
-    repos['srpm'] = get_srpm_repodata()
-    return arches, repos
-
-def create_sacks(arches, repos):
-    sacks = {}
-    for arch in arches:
-        sack = hawkey.Sack(arch=arch)
-        for repo_arch, repo in repos.items():
-            add_repo_to_sack(repo_arch, repo, sack)
-        sacks[arch] = sack
-    return sacks
 
 def get_build_group():
     comps_url = dep_config['comps_url']
