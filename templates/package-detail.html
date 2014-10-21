@@ -25,6 +25,7 @@
     {{ macros.depchange_table(package.unapplied_changes) }}
 </table>
 {% endif %}
+{{ macros.pagination_row(page, "Builds") }}
 <table class="nested data-list">
   <thead>
     <tr class="list-header">
@@ -36,7 +37,7 @@
     </tr>
   </thead>
   <tbody>
-    {% for build in package.all_builds %}
+    {% for build in builds %}
     {% set seq = ["odd", "even"][loop.index % 2] %}
     {% set changes = iter(build.dependency_changes) %}
     <tr class="{{ seq }}">

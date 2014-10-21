@@ -157,14 +157,17 @@ def frontpage():
 def package_detail(name):
     package = db.query(Package)\
                 .filter_by(name=name)\
-                .options(subqueryload(Package.unapplied_changes),
-                         subqueryload(Package.all_builds),
-                         subqueryload(Package.all_builds,
-                                      Build.dependency_changes),
-                         subqueryload(Package.all_builds,
-                                      Build.build_arch_tasks))\
+                .options(subqueryload(Package.unapplied_changes))\
                 .first_or_404()
-    return render_template("package-detail.html", package=package)
+    page = db.query(Build)\
+             .filter_by(package_id=package.id)\
+             .options(subqueryload(Build.dependency_changes),
+                      subqueryload(Build.build_arch_tasks))\
+             .order_by(Build.task_id.desc())\
+             .paginate()
+
+    return render_template("package-detail.html", package=package, page=page,
+                           builds=page.items)
 
 
 @app.route('/package/<name>/<int:build_id>')
