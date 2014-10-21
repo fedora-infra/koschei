@@ -317,7 +317,14 @@ trigger = DDL("""
               DROP TRIGGER IF EXISTS update_last_complete_build_trigger
                     ON build;
               CREATE TRIGGER update_last_complete_build_trigger
-                  AFTER INSERT OR UPDATE ON build FOR EACH ROW
+                  AFTER INSERT ON build FOR EACH ROW
+                  WHEN (NEW.state = 3 OR NEW.state = 5)
+                  EXECUTE PROCEDURE update_last_complete_build();
+              DROP TRIGGER IF EXISTS update_last_complete_build_trigger_up
+                    ON build;
+              CREATE TRIGGER update_last_complete_build_trigger_up
+                  AFTER UPDATE ON build FOR EACH ROW
+                  WHEN (OLD.state != NEW.state)
                   EXECUTE PROCEDURE update_last_complete_build();
 
               CREATE OR REPLACE FUNCTION update_resolved()
