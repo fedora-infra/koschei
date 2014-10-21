@@ -132,7 +132,7 @@ class Resolver(KojiService):
                                   apply_id=None):
         if not deps1 or not deps2:
             # TODO packages with no deps
-            return
+            return []
 
         def key(dep):
             return (dep.name, dep.epoch, dep.version, dep.release)
@@ -157,8 +157,7 @@ class Resolver(KojiService):
             change.update(curr_version=dep.version, curr_epoch=dep.epoch,
                           curr_release=dep.release, distance=dep.distance)
             changes[dep.name] = change
-        if changes:
-            return changes.values()
+        return changes.values() if changes else []
 
     def prepare_sack(self, repo_id):
         for_arch = util.config['dependency']['for_arch']
@@ -179,9 +178,10 @@ class Resolver(KojiService):
         self.db.query(DependencyChange)\
                .filter_by(applied_in_id=None)\
                .delete(synchronize_session=False)
-        self.db.execute(DependencyChange.__table__.insert(),
-                        changes)
-        self.db.expire_all()
+        if changes:
+            self.db.execute(DependencyChange.__table__.insert(),
+                            changes)
+            self.db.expire_all()
 
     def generate_repo(self, repo_id):
         start = time.time()
