@@ -128,8 +128,8 @@ class Resolver(KojiService):
                                  package_id=package_id)
         return deps.all()
 
-    def generate_dependency_differences(self, deps1, deps2, package_id,
-                                        apply_id=None):
+    def create_dependency_changes(self, deps1, deps2, package_id,
+                                  apply_id=None):
         if not deps1 or not deps2:
             # TODO packages with no deps
             return
@@ -158,10 +158,7 @@ class Resolver(KojiService):
                           curr_release=dep.release, distance=dep.distance)
             changes[dep.name] = change
         if changes:
-            # pylint: disable=E1101
-            self.db.execute(DependencyChange.__table__.insert(),
-                            changes.values())
-            self.db.expire_all()
+            return changes.values()
 
     def prepare_sack(self, repo_id):
         for_arch = util.config['dependency']['for_arch']
@@ -177,11 +174,17 @@ class Resolver(KojiService):
                       .options(joinedload(Package.all_builds))\
                       .all()
 
-    def generate_repo(self, repo_id):
-        start = time.time()
+    def update_dependency_changes(self, changes):
+        # pylint: disable=E1101
         self.db.query(DependencyChange)\
                .filter_by(applied_in_id=None)\
                .delete(synchronize_session=False)
+        self.db.execute(DependencyChange.__table__.insert(),
+                        changes)
+        self.db.expire_all()
+
+    def generate_repo(self, repo_id):
+        start = time.time()
         packages = self.get_packages()
         package_names = [pkg.name for pkg in packages]
         prev_states = {pkg.id: pkg.state_string for pkg in packages}
@@ -194,6 +197,7 @@ class Resolver(KojiService):
         group = util.get_build_group()
         self.log.info("Resolving dependencies")
         resolution_start = time.time()
+        changes = []
         for package in packages:
             srpm = get_srpm_pkg(sack, package.name)
             curr_deps = self.resolve_dependencies(sack, package, srpm, group,
@@ -204,14 +208,15 @@ class Resolver(KojiService):
                     prev_deps = self.get_deps_from_db(last_build.package_id,
                                                       last_build.repo_id)
                     if prev_deps is not None:
-                        self.generate_dependency_differences(prev_deps,
-                                                             curr_deps,
-                                                             package.id)
+                        changes += self.create_dependency_changes(prev_deps,
+                                                                  curr_deps,
+                                                                  package.id)
         packages = self.get_packages()
         for pkg in packages:
             prev_state = prev_states[pkg.id]
             check_package_state(pkg, prev_state)
 
+        self.update_dependency_changes(changes)
         self.db.commit()
         end = time.time()
 
@@ -260,13 +265,14 @@ class Resolver(KojiService):
                     self.db.query(DependencyChange)\
                            .filter_by(applied_in_id=build.id)\
                            .delete(synchronize_session=False)
-                self.generate_dependency_differences(
+                changes = self.create_dependency_changes(
                     prev_deps, curr_deps, package_id=build.package_id,
                     apply_id=build.id)
                 self.db.query(Dependency)\
                        .filter_by(package_id=build.package_id)\
                        .filter(Dependency.repo_id < build.repo_id)\
                        .delete(synchronize_session=False)
+                self.update_dependency_changes(changes)
 
     def process_builds(self):
         # pylint: disable=E1101
