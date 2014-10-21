@@ -19,8 +19,8 @@
 import rpm
 import koji
 
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, \
-                       ForeignKey, DateTime, Index, DDL
+from sqlalchemy import (create_engine, Column, Integer, String, Boolean,
+                        ForeignKey, DateTime, Index, DDL)
 from sqlalchemy.sql.expression import extract, func, select, false
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, column_property
@@ -38,11 +38,14 @@ engine = create_engine(db_url, echo=False, pool_size=10)
 
 Session = sessionmaker(bind=engine, autocommit=False)
 
+
 def hours_since(since):
     return extract('EPOCH', datetime.now() - since) / 3600
 
+
 def external_id():
     raise AssertionError("ID needs to be supplied")
+
 
 class User(Base):
     __tablename__ = 'user'
@@ -52,6 +55,7 @@ class User(Base):
     email = Column(String, nullable=False)
     timezone = Column(String)
     admin = Column(Boolean, nullable=False, server_default=false())
+
 
 class Package(Base):
     __tablename__ = 'package'
@@ -64,11 +68,10 @@ class Package(Base):
 
     build_opts = Column(String)
 
-    # denormalized fields (no foreign key because sqla doesn't like cycles)
-    last_complete_build_id = Column(Integer,
-                                    ForeignKey('build.id', use_alter=True,
-                                               name='fkey_package_last_build_id'),
-                                    nullable=True)
+    last_complete_build_id = \
+        Column(Integer, ForeignKey('build.id', use_alter=True,
+                                   name='fkey_package_last_build_id'),
+               nullable=True)
     resolved = Column(Boolean)
 
     ignored = Column(Boolean, nullable=False, server_default=false())
@@ -81,7 +84,7 @@ class Package(Base):
             return 'unresolved'
         build = self.last_complete_build
         if build:
-            #pylint: disable=E1101
+            # pylint: disable=E1101
             return {Build.COMPLETE: 'ok',
                     Build.FAILED: 'failing',
                     }.get(build.state)
@@ -90,10 +93,12 @@ class Package(Base):
     def __repr__(self):
         return '{0.id} (name={0.name})'.format(self)
 
+
 class KojiTask(Base):
     __tablename__ = 'koji_task'
 
-    build_id = Column(ForeignKey('build.id', ondelete='CASCADE'), nullable=False)
+    build_id = Column(ForeignKey('build.id', ondelete='CASCADE'),
+                      nullable=False)
     task_id = Column(Integer, primary_key=True, default=external_id)
     arch = Column(String(16))
     state = Column(Integer)
@@ -105,12 +110,15 @@ class KojiTask(Base):
         return [state for state, num in koji.TASK_STATES.items()
                 if num == self.state][0].lower()
 
+
 class PackageGroupRelation(Base):
     __tablename__ = 'package_group_relation'
-    group_id = Column(Integer, ForeignKey('package_group.id', ondelete='CASCADE'),
+    group_id = Column(Integer, ForeignKey('package_group.id',
+                                          ondelete='CASCADE'),
                       primary_key=True)
     package_id = Column(Integer, ForeignKey('package.id', ondelete='CASCADE'),
                         primary_key=True)
+
 
 class PackageGroup(Base):
     __tablename__ = 'package_group'
@@ -122,14 +130,14 @@ class PackageGroup(Base):
     packages = relationship(Package, secondary=PackageGroupRelation.__table__,
                             order_by=Package.name)
 
+
 class Build(Base):
     __tablename__ = 'build'
 
     STATE_MAP = {'running': 2,
                  'complete': 3,
                  'canceled': 4,
-                 'failed': 5,
-                }
+                 'failed': 5}
     RUNNING = STATE_MAP['running']
     COMPLETE = STATE_MAP['complete']
     CANCELED = STATE_MAP['canceled']
@@ -154,7 +162,8 @@ class Build(Base):
     release = Column(String)
     repo_id = Column(Integer)
     deps_processed = Column(Boolean, nullable=False, server_default=false())
-    build_arch_tasks = relationship(KojiTask, backref='build', order_by=KojiTask.arch)
+    build_arch_tasks = relationship(KojiTask, backref='build',
+                                    order_by=KojiTask.arch)
     # was the build done by koschei or was it real build done by packager
     real = Column(Boolean, nullable=False, server_default=false())
 
@@ -167,7 +176,9 @@ class Build(Base):
         return [change.get_trigger() for change in self.dependency_changes]
 
     def __repr__(self):
-        return '{0.id} (name={0.package.name}, state={0.state_string})'.format(self)
+        return '{0.id} (name={0.package.name}, state={0.state_string})'\
+               .format(self)
+
 
 class ResolutionResult(Base):
     __tablename__ = 'resolution_result'
@@ -178,11 +189,14 @@ class ResolutionResult(Base):
     generated = Column(DateTime, nullable=False, default=datetime.now)
     problems = relationship('ResolutionProblem')
 
+
 class ResolutionProblem(Base):
     __tablename__ = 'resolution_result_element'
     id = Column(Integer, primary_key=True)
-    resolution_id = Column(Integer, ForeignKey(ResolutionResult.id, ondelete='CASCADE'))
+    resolution_id = Column(Integer, ForeignKey(ResolutionResult.id,
+                                               ondelete='CASCADE'))
     problem = Column(String, nullable=False)
+
 
 class RepoGenerationRequest(Base):
     __tablename__ = 'repo_generation_request'
@@ -190,6 +204,7 @@ class RepoGenerationRequest(Base):
     id = Column(Integer, primary_key=True)
     repo_id = Column(Integer, nullable=False)
     requested = Column(DateTime, nullable=False, default=datetime.now)
+
 
 class Dependency(Base):
     __tablename__ = 'dependency'
@@ -209,7 +224,8 @@ class Dependency(Base):
 Index('ix_dependency_composite', Dependency.package_id, Dependency.repo_id)
 Index('build_package_id_ordered', Build.package_id.asc())
 
-#@Deprecated
+
+# @Deprecated
 def format_evr(epoch, version, release):
     if not version or not release:
         return ''
@@ -217,10 +233,12 @@ def format_evr(epoch, version, release):
         return '{}:{}-{}'.format(epoch, version, release)
     return '{}-{}'.format(version, release)
 
+
 class DependencyChange(Base):
     __tablename__ = 'dependency_change'
     id = Column(Integer, primary_key=True)
-    package_id = Column(ForeignKey('package.id', ondelete='CASCADE'), nullable=False)
+    package_id = Column(ForeignKey('package.id', ondelete='CASCADE'),
+                        nullable=False)
     applied_in_id = Column(ForeignKey('build.id', ondelete='CASCADE'),
                            nullable=True, default=None)
     dep_name = Column(String, nullable=False)
@@ -240,38 +258,43 @@ class DependencyChange(Base):
     def curr_evr(self):
         return self.curr_epoch, self.curr_version, self.curr_release
 
-    #@Deprecated
+    # @Deprecated
     @property
     def prev_dep_evr(self):
-        return format_evr(self.prev_epoch, self.prev_version, self.prev_release)
+        return format_evr(self.prev_epoch, self.prev_version,
+                          self.prev_release)
 
-    #@Deprecated
+    # @Deprecated
     @property
     def curr_dep_evr(self):
-        return format_evr(self.curr_epoch, self.curr_version, self.curr_release)
+        return format_evr(self.curr_epoch, self.curr_version,
+                          self.curr_release)
 
-    #@Deprecated
+    # @Deprecated
     @property
     def is_update(self):
         prev = (str(self.prev_epoch), self.prev_version, self.prev_release)
         curr = (str(self.curr_epoch), self.curr_version, self.curr_release)
         return rpm.labelCompare(prev, curr) < 0
 
+
 @listens_for(Session, "after_begin")
-def session_begin(db_session, transaction, connection):
-    db_session._event_queue = EventQueue()
+def session_begin(db, transaction, connection):
+    db._event_queue = EventQueue()
+
 
 @listens_for(Session, "before_commit")
-def session_commit(db_session):
-    if hasattr(db_session, '_event_queue'):
-        if not db_session._event_queue.empty():
-            db_session.flush()
-        db_session._event_queue.flush()
+def session_commit(db):
+    if hasattr(db, '_event_queue'):
+        if not db._event_queue.empty():
+            db.flush()
+        db._event_queue.flush()
+
 
 @listens_for(Session, "after_rollback")
-def session_rollback(db_session):
-    if hasattr(db_session, '_event_queue'):
-        db_session._event_queue.rollback()
+def session_rollback(db):
+    if hasattr(db, '_event_queue'):
+        db._event_queue.rollback()
 
 # Triggers
 
@@ -291,7 +314,8 @@ trigger = DDL("""
                   RETURN NEW;
               END $$ LANGUAGE plpgsql;
 
-              DROP TRIGGER IF EXISTS update_last_complete_build_trigger ON build;
+              DROP TRIGGER IF EXISTS update_last_complete_build_trigger
+                    ON build;
               CREATE TRIGGER update_last_complete_build_trigger
                   AFTER INSERT OR UPDATE ON build FOR EACH ROW
                   EXECUTE PROCEDURE update_last_complete_build();
@@ -310,7 +334,8 @@ trigger = DDL("""
                   RETURN NEW;
               END $$ LANGUAGE plpgsql;
 
-              DROP TRIGGER IF EXISTS update_resolved_trigger ON resolution_result;
+              DROP TRIGGER IF EXISTS update_resolved_trigger
+                    ON resolution_result;
               CREATE TRIGGER update_resolved_trigger
                   AFTER INSERT OR UPDATE ON resolution_result FOR EACH ROW
                   EXECUTE PROCEDURE update_resolved();
@@ -320,24 +345,28 @@ listen(Base.metadata, 'after_create', trigger.execute_if(dialect='postgresql'))
 
 # Relationships
 
-Package.last_complete_build = relationship(Build, primaryjoin=(Build.id == Package.last_complete_build_id),
-                                           uselist=False)
+Package.last_complete_build = \
+    relationship(Build,
+                 primaryjoin=(Build.id == Package.last_complete_build_id),
+                 uselist=False)
 Package.all_builds = relationship(Build, order_by=Build.id.desc(),
                                   primaryjoin=(Build.package_id == Package.id),
                                   backref='package')
-Package.unapplied_changes = relationship(DependencyChange,
-                                         primaryjoin=(
-                                             (DependencyChange.package_id == Package.id)
-                                             & (DependencyChange.applied_in_id == None)),
-                                         order_by=DependencyChange.distance)
+Package.unapplied_changes = \
+    relationship(DependencyChange,
+                 primaryjoin=((DependencyChange.package_id == Package.id)
+                              & (DependencyChange.applied_in_id == None)),
+                 order_by=DependencyChange.distance)
 Build.dependency_changes = relationship(DependencyChange, backref='applied_in',
-                                        order_by=DependencyChange.distance.nullslast())
+                                        order_by=DependencyChange.distance
+                                        .nullslast())
 
 PackageGroup.package_count = column_property(
-        select([func.count(PackageGroupRelation.group_id)],
-               PackageGroupRelation.group_id == PackageGroup.id)\
-               .correlate(PackageGroup).as_scalar(),
-        deferred=True)
+    select([func.count(PackageGroupRelation.group_id)],
+           PackageGroupRelation.group_id == PackageGroup.id)
+    .correlate(PackageGroup).as_scalar(),
+    deferred=True)
 # pylint: disable=E1101
-Package.groups = relationship(PackageGroup, secondary=PackageGroupRelation.__table__,
+Package.groups = relationship(PackageGroup,
+                              secondary=PackageGroupRelation.__table__,
                               order_by=PackageGroup.name)

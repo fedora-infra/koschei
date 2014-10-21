@@ -31,9 +31,11 @@ log = logging.getLogger('koschei.srpm_cache')
 pathinfo = koji.PathInfo(topdir=util.koji_config['topurl'])
 source_tag = util.koji_config['source_tag']
 
+
 class SRPMCache(object):
 
-    def __init__(self, koji_session, srpm_dir=util.config['directories']['srpms']):
+    def __init__(self, koji_session,
+                 srpm_dir=util.config['directories']['srpms']):
         self._srpm_dir = srpm_dir
         self._koji_session = koji_session
         repodata_dir = os.path.join(srpm_dir, 'repodata')
@@ -53,7 +55,8 @@ class SRPMCache(object):
             try:
                 fd = os.open(path, os.O_RDONLY)
                 hdr = ts.hdrFromFdno(fd)
-                nevr = hdr['name'], hdr['epoch'], hdr['version'], hdr['release']
+                nevr = (hdr['name'], hdr['epoch'], hdr['version'],
+                        hdr['release'])
                 self._cache[nevr] = path
             except rpm.error as e:
                 log.warn("Unreadable rpm in srpm_dir: {}\nRPM error: {}"
@@ -72,11 +75,13 @@ class SRPMCache(object):
         for build in builds:
             if (build['epoch'] == epoch and build['version'] == version and
                     build['release'] == release):
-                srpms = self._koji_session.listRPMs(buildID=build['build_id'], arches='src')
+                srpms = self._koji_session.listRPMs(buildID=build['build_id'],
+                                                    arches='src')
                 if srpms:
                     build_url = pathinfo.build(build)
                     srpm_name = pathinfo.rpm(srpms[0])
-                    path = util.download_rpm_header(build_url + '/' + srpm_name, self._srpm_dir)
+                    path = util.download_rpm_header(
+                        build_url + '/' + srpm_name, self._srpm_dir)
                     self._cache[nevr] = path
                     return path
 
@@ -84,13 +89,15 @@ class SRPMCache(object):
         while package_names:
             self._koji_session.multicall = True
             for package_name in package_names[:50]:
-                self._koji_session.listTagged(source_tag, latest=True, package=package_name)
+                self._koji_session.listTagged(source_tag, latest=True,
+                                              package=package_name)
             urls = []
             infos = self._koji_session.multiCall()
             self._koji_session.multicall = True
             for [info] in infos:
                 if info:
-                    self._koji_session.listRPMs(buildID=info[0]['build_id'], arches='src')
+                    self._koji_session.listRPMs(buildID=info[0]['build_id'],
+                                                arches='src')
                     urls.append(pathinfo.build(info[0]))
             srpms = self._koji_session.multiCall()
             assert len(srpms) == len(urls)
@@ -98,15 +105,18 @@ class SRPMCache(object):
                 srpm = srpm[0]
                 srpm_url = pathinfo.rpm(srpm)
                 srpm_name = os.path.basename(srpm_url)
-                util.download_rpm_header(build_url + '/' + srpm_url, self._srpm_dir)
-                nevr = (srpm['name'], srpm['epoch'], srpm['version'], srpm['release'])
+                util.download_rpm_header(
+                    build_url + '/' + srpm_url, self._srpm_dir)
+                nevr = (srpm['name'], srpm['epoch'], srpm['version'],
+                        srpm['release'])
                 self._cache[nevr] = os.path.join(self._srpm_dir, srpm_name)
                 self._dirty = True
             package_names = package_names[50:]
 
     def _createrepo(self):
         log.debug('createrepo_c')
-        createrepo = subprocess.Popen(['createrepo_c', self._srpm_dir], stdout=subprocess.PIPE,
+        createrepo = subprocess.Popen(['createrepo_c', self._srpm_dir],
+                                      stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE)
         out, err = createrepo.communicate()
         ret = createrepo.wait()

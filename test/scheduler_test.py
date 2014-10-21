@@ -11,7 +11,7 @@ scheduler.datetime = MockDatetime
 
 class SchedulerTest(DBTest):
     def get_scheduler(self):
-        return Scheduler(db_session=self.s, koji_session=Mock(), backend=Mock())
+        return Scheduler(db=self.s, koji_session=Mock(), backend=Mock())
 
     def prepare_depchanges(self):
         pkg, build = self.prepare_basic_data()

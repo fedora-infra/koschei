@@ -27,13 +27,15 @@ import urllib2
 from . import util
 from .models import Session
 
+
 class Service(object):
     retry_on = ()
 
-    def __init__(self, log=None, db_session=None):
+    def __init__(self, log=None, db=None):
         signal.signal(signal.SIGTERM, lambda x, y: sys.exit(0))
-        self.log = log or logging.getLogger('koschei.' + self.__class__.__name__.lower())
-        self.db_session = db_session or Session()
+        self.log = log or logging.getLogger(
+            'koschei.' + self.__class__.__name__.lower())
+        self.db = db or Session()
 
     def main(self):
         raise NotImplementedError()
@@ -69,7 +71,7 @@ class Service(object):
             except KeyboardInterrupt:
                 sys.exit(0)
             finally:
-                self.db_session.rollback()
+                self.db.rollback()
 
     @classmethod
     def find_service(cls, name):
@@ -81,14 +83,16 @@ class Service(object):
             if ret:
                 return ret
 
+
 class KojiService(Service):
     koji_anonymous = True
 
     retry_on = koji.GenericError, socket.error, urllib2.URLError
 
-    def __init__(self, log=None, db_session=None, koji_session=None):
-        super(KojiService, self).__init__(log=log, db_session=db_session)
-        self.koji_session = util.Proxy(koji_session or self.create_koji_session())
+    def __init__(self, log=None, db=None, koji_session=None):
+        super(KojiService, self).__init__(log=log, db=db)
+        self.koji_session = util.Proxy(koji_session
+                                       or self.create_koji_session())
 
     @classmethod
     def create_koji_session(cls):

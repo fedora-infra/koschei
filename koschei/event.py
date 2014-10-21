@@ -16,6 +16,7 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+
 class Event(object):
     """ Base for events """
 
@@ -30,7 +31,9 @@ class Event(object):
         for listener in self.listeners:
             listener(self)
 
+
 class EventQueue(object):
+
     def __init__(self):
         self._queue = []
 

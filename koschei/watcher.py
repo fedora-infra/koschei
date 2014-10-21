@@ -25,6 +25,7 @@ from .backend import Backend
 from .service import KojiService
 from .models import Build, Package, RepoGenerationRequest
 
+
 class Watcher(KojiService):
 
     topic_name = util.config['fedmsg']['topic']
@@ -34,7 +35,8 @@ class Watcher(KojiService):
 
     def __init__(self, backend=None, *args, **kwargs):
         super(Watcher, self).__init__(*args, **kwargs)
-        self.backend = backend or Backend(log=self.log, db_session=self.db_session,
+        self.backend = backend or Backend(log=self.log,
+                                          db=self.db,
                                           koji_session=self.koji_session)
 
     def get_topic(self, name):
@@ -54,13 +56,13 @@ class Watcher(KojiService):
 
     def repo_done(self, repo_id):
         request = RepoGenerationRequest(repo_id=repo_id)
-        self.db_session.add(request)
-        self.db_session.commit()
+        self.db.add(request)
+        self.db.commit()
 
     def update_build_state(self, msg):
         assert msg['attribute'] == 'state'
         task_id = msg['id']
-        build = self.db_session.query(Build).filter_by(task_id=task_id).first()
+        build = self.db.query(Build).filter_by(task_id=task_id).first()
         if build:
             state = msg['new']
             self.backend.update_build_state(build, state)
@@ -69,29 +71,33 @@ class Watcher(KojiService):
         assert msg['attribute'] == 'state'
         if msg['new'] == koji.BUILD_STATES['COMPLETE']:
             name = msg['name']
-            pkg = self.db_session.query(Package).filter_by(name=name).first()
+            pkg = self.db.query(Package).filter_by(name=name).first()
             if not pkg:
                 return
-            last_builds = self.koji_session.getLatestBuilds(self.build_tag, package=name)
+            last_builds = self.koji_session.getLatestBuilds(self.build_tag,
+                                                            package=name)
             if not last_builds:
                 return
             last_build = last_builds[0]
             if last_build['build_id'] == msg['build_id']:
-                build = self.db_session.query(Build)\
-                                       .filter_by(task_id=last_build['task_id'])\
-                                       .first()
+                build = self.db.query(Build)\
+                               .filter_by(task_id=last_build['task_id'])\
+                               .first()
                 if build:
                     return
-                self.log.info("Registering real build {nvr}".format(nvr=last_build['nvr']))
+                self.log.info("Registering real build {nvr}"
+                              .format(nvr=last_build['nvr']))
                 build = Build(package_id=pkg.id, version=last_build['version'],
-                              release=last_build['release'], epoch=last_build['epoch'],
+                              release=last_build['release'],
+                              epoch=last_build['epoch'],
                               state=Build.COMPLETE, real=True,
-                              started=util.parse_koji_time(last_build['creation_time']),
+                              started=util.parse_koji_time(
+                                  last_build['creation_time']),
                               task_id=last_build['task_id'])
-                self.db_session.add(build)
-                self.db_session.flush()
+                self.db.add(build)
+                self.db.flush()
                 self.backend.build_completed(build)
-                self.db_session.commit()
+                self.db.commit()
 
     def main(self):
         for _, _, topic, msg in fedmsg.tail_messages():

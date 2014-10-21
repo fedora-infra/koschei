@@ -22,16 +22,19 @@ from flask.ext.openid import OpenID
 
 from koschei.util import config
 from koschei.models import User
-from koschei.frontend import app, db_session
+from koschei.frontend import app, db
 
 openid = OpenID(app, config['openid']['openid_store'], safe_roots=[])
+
 
 def username_to_openid(name):
     return "http://{}.id.fedoraproject.org/".format(name)
 
+
 def openid_to_username(oid):
     return oid.replace(".id.fedoraproject.org/", "")\
               .replace("http://", "")
+
 
 @app.route("/login", methods=["GET"])
 @openid.loginhandler
@@ -42,32 +45,36 @@ def login():
         return openid.try_login("https://id.fedoraproject.org/",
                                 ask_for=["email", "timezone"])
 
+
 @openid.after_login
 def create_or_login(response):
     flask.session["openid"] = response.identity_url
     username = openid_to_username(response.identity_url)
-    user = db_session.query(User).filter_by(name=username).first()
+    user = db.query(User).filter_by(name=username).first()
     if not user:
         user = User(name=username)
-        db_session.add(user)
+        db.add(user)
     user.email = response.email
     user.timezone = response.timezone
-    db_session.commit()
+    db.commit()
     flask.g.user = user
 
     return flask.redirect(openid.get_next_url())
+
 
 @app.before_request
 def lookup_current_user():
     flask.g.user = None
     if "openid" in flask.session:
         username = openid_to_username(flask.session["openid"])
-        flask.g.user = db_session.query(User).filter_by(name=username).first()
+        flask.g.user = db.query(User).filter_by(name=username).first()
+
 
 @app.route("/logout")
 def logout():
     flask.session.pop("openid", None)
     return flask.redirect(openid.get_next_url())
+
 
 def login_required():
     def decorator(func):

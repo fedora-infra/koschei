@@ -37,13 +37,13 @@ def main():
     kwargs = vars(args)
     del kwargs['cmd']
     if cmd.needs_backend:
-        backend = Backend(db_session=Session(), log=logging.getLogger(),
+        backend = Backend(db=Session(), log=logging.getLogger(),
                           koji_session=util.create_koji_session(anonymous=True))
         kwargs['backend'] = backend
     cmd.execute(**kwargs)
     if cmd.needs_backend:
-        backend.db_session.commit()
-        backend.db_session.close()
+        backend.db.commit()
+        backend.db.close()
 
 class CreateDb(Command):
     """ Creates database tables """
@@ -80,7 +80,7 @@ class AddGrp(Command):
         parser.add_argument('pkgs', nargs='*')
 
     def execute(self, backend, group, pkgs):
-        pkg_objs = backend.db_session.query(Package)\
+        pkg_objs = backend.db.query(Package)\
                                      .filter(Package.name.in_(pkgs)).all()
         names = {pkg.name for pkg in pkg_objs}
         if names != set(pkgs):
@@ -96,7 +96,7 @@ class SetPrio(Command):
         parser.add_argument('--static', action='store_true')
 
     def execute(self, backend, names, value, static):
-        pkgs = backend.db_session.query(Package)\
+        pkgs = backend.db.query(Package)\
                                  .filter(Package.name.in_(names)).all()
         if len(names) != len(pkgs):
             not_found = set(names).difference(pkg.name for pkg in pkgs)
@@ -129,14 +129,14 @@ class SetOpts(Command):
     def execute(self, backend, name, build_opts, group):
         validate_opts(build_opts)
         if group:
-            group_obj = backend.db_session.query(PackageGroup)\
+            group_obj = backend.db.query(PackageGroup)\
                                           .filter_by(name=name).first()
             if not group_obj:
                 fail("Group {} not found".format(name))
             for pkg in group_obj.packages:
                 pkg.build_opts = build_opts
         else:
-            pkg = backend.db_session.query(Package).filter_by(name=name).first()
+            pkg = backend.db.query(Package).filter_by(name=name).first()
             if not pkg:
                 fail("Package {} not found".format(name))
             pkg.build_opts = build_opts

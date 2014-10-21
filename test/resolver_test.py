@@ -58,7 +58,7 @@ class ResolverTest(DBTest):
         self.repo_mock.get_repos.return_value = {'x86_64': get_repo('x86_64')}
         self.srpm_mock = Mock()
         self.srpm_mock.get_repodata.return_value = get_repo('src')
-        self.resolver = Resolver(db_session=self.s, koji_session=Mock(),
+        self.resolver = Resolver(db=self.s, koji_session=Mock(),
                         repo_cache=self.repo_mock, srpm_cache=self.srpm_mock)
 
     def prepare_foo_build(self, repo_id=666, version='4'):

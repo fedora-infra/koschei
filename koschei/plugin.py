@@ -6,6 +6,7 @@ loaded = False
 plugin_dir = os.path.join(os.path.dirname(__file__), 'plugins')
 log = logging.getLogger('koschei.plugin')
 
+
 def load_plugins(only=None):
     global loaded
     if not loaded:

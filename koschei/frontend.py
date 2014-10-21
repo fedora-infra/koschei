@@ -25,17 +25,20 @@ from koschei.models import engine
 
 dirs = config['directories']
 app = Flask('koschei', template_folder=dirs['templates'],
-            static_folder=dirs['static_folder'], static_url_path=dirs['static_url'])
+            static_folder=dirs['static_folder'],
+            static_url_path=dirs['static_url'])
 app.config.update(config['flask'])
 
 frontend_config = config['frontend']
 items_per_page = frontend_config['items_per_page']
 
+
 def paginate(self):
     page = int(request.args.get('page', 1))
     if page < 1:
         abort(404)
-    items = self.limit(items_per_page).offset((page - 1) * items_per_page).all()
+    items = self.limit(items_per_page)\
+                .offset((page - 1) * items_per_page).all()
     if not items and page != 1:
         abort(404)
     if page == 1 and len(items) < items_per_page:
@@ -46,12 +49,12 @@ def paginate(self):
 
 BaseQuery.paginate = paginate
 
-db_session = scoped_session(sessionmaker(autocommit=False, bind=engine,
-                            query_cls=BaseQuery))
+db = scoped_session(sessionmaker(autocommit=False, bind=engine,
+                                 query_cls=BaseQuery))
 
 # Following will make pylint shut up about missing query method
 if False:
-    db_session.query = lambda *args: None
-    db_session.add = lambda x: None
-    db_session.commit = lambda: None
-    db_session.flush = lambda: None
+    db.query = lambda *args: None
+    db.add = lambda x: None
+    db.commit = lambda: None
+    db.flush = lambda: None

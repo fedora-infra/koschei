@@ -39,18 +39,18 @@ class MyService(Service):
 
 class ServiceTest(AbstractTest):
     def test_abstract(self):
-        s = Service(log=Mock(), db_session=Mock())
+        s = Service(log=Mock(), db=Mock())
         self.assertRaises(NotImplementedError, s.main)
 
     def test_create_session(self):
         with patch('koschei.service.Session') as create:
             s = MyService(log=Mock())
             create.assert_called_once_with()
-            self.assertIs(create(), s.db_session)
+            self.assertIs(create(), s.db)
 
     def test_create_log(self):
         with patch('logging.getLogger') as create:
-            s = MyService(db_session=Mock())
+            s = MyService(db=Mock())
             create.assert_called_once_with('koschei.myservice')
             self.assertIs(create(), s.log)
 
@@ -63,7 +63,7 @@ class ServiceTest(AbstractTest):
                     raise MyException()
             mock_log = Mock()
             mock_db = Mock()
-            s = MyService(main, log=mock_log, db_session=mock_db)
+            s = MyService(main, log=mock_log, db=mock_db)
             self.assertRaises(MyException, s.run_service)
             self.assertEqual(3, called[0])
             self.assertEqual(3, mock_db.rollback.call_count)
@@ -75,7 +75,7 @@ class ServiceTest(AbstractTest):
             raise KeyboardInterrupt()
         mock_log = Mock()
         mock_db = Mock()
-        s = MyService(main, log=mock_log, db_session=mock_db)
+        s = MyService(main, log=mock_log, db=mock_db)
         self.assertRaises(SystemExit, s.run_service)
 
     def test_retry(self):
@@ -92,7 +92,7 @@ class ServiceTest(AbstractTest):
                 self.assertIsInstance(exc, MyOtherException)
             mock_log = Mock()
             mock_db = Mock()
-            s = MyService(main, on_except=on_except, log=mock_log, db_session=mock_db)
+            s = MyService(main, on_except=on_except, log=mock_log, db=mock_db)
             self.assertRaises(MyException, s.run_service)
             self.assertEqual(5, called[0])
             self.assertEqual(2, called[1])
@@ -113,7 +113,7 @@ class KojiServiceTest(AbstractTest):
     def test_proxy(self):
         session_mock = Mock()
         with patch('koschei.util.Proxy') as proxy:
-            s = KojiService(log=Mock(), db_session=Mock(),
+            s = KojiService(log=Mock(), db=Mock(),
                             koji_session=session_mock)
             proxy.assert_called_with(session_mock)
             self.assertEqual(proxy(), s.koji_session)
@@ -123,17 +123,17 @@ class KojiServiceTest(AbstractTest):
             mock_log = Mock()
             mock_db = Mock()
             mock_koji = Mock()
-            KojiService(log=mock_log, db_session=mock_db, koji_session=mock_koji)
-            init.assert_called_once_with(log=mock_log, db_session=mock_db)
+            KojiService(log=mock_log, db=mock_db, koji_session=mock_koji)
+            init.assert_called_once_with(log=mock_log, db=mock_db)
 
     def test_anon(self):
         with patch('koschei.util.create_koji_session') as create:
-            KojiService(log=Mock(), db_session=Mock())
+            KojiService(log=Mock(), db=Mock())
             create.assert_called_with(anonymous=True)
 
     def test_not_anon(self):
         with patch('koschei.util.create_koji_session') as create:
             class MyKojiSvc(KojiService):
                 koji_anonymous = False
-            MyKojiSvc(log=Mock(), db_session=Mock())
+            MyKojiSvc(log=Mock(), db=Mock())
             create.assert_called_with(anonymous=False)

@@ -28,6 +28,7 @@ log = logging.getLogger('koschei.repo_cache')
 
 REPO_404 = 19
 
+
 class RepoCache(object):
 
     def __init__(self, repo_dir=util.config['directories']['repodata'],
@@ -78,7 +79,8 @@ class RepoCache(object):
                 url = repo_url.format(repo_id=repo_id)
                 h.urls = [url]
                 h.yumdlist = ['primary', 'filelists', 'group']
-                log.info("Downloading {arch} repo from {url}".format(arch=arch, url=url))
+                log.info("Downloading {arch} repo from {url}".format(arch=arch,
+                                                                     url=url))
                 result = h.perform(librepo.Result())
                 repos[arch] = result
             self._add_repo(repo_id, repos)
