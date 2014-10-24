@@ -21,9 +21,9 @@ import koji
 
 from sqlalchemy import (create_engine, Column, Integer, String, Boolean,
                         ForeignKey, DateTime, Index, DDL)
-from sqlalchemy.sql.expression import extract, func, select, false
+from sqlalchemy.sql.expression import extract, func, select, false, join
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship, column_property
+from sqlalchemy.orm import sessionmaker, relationship, column_property, mapper
 from sqlalchemy.engine.url import URL
 from sqlalchemy.event import listens_for, listen
 from datetime import datetime
@@ -377,3 +377,12 @@ PackageGroup.package_count = column_property(
 Package.groups = relationship(PackageGroup,
                               secondary=PackageGroupRelation.__table__,
                               order_by=PackageGroup.name)
+def _last_build():
+    max_expr = select([func.max(Build.task_id).label('mx')])\
+               .group_by(Build.package_id).alias()
+    joined = select([Build]).select_from(join(Build, max_expr,
+                                              Build.task_id == max_expr.c.mx))\
+             .alias()
+    return relationship(mapper(Build, joined, non_primary=True), uselist=False,
+                        primaryjoin=(Package.id == joined.c.package_id))
+Package.last_build = _last_build()

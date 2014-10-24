@@ -170,7 +170,7 @@ class Resolver(KojiService):
     def get_packages(self):
         return self.db.query(Package)\
                       .filter(Package.ignored == False)\
-                      .options(joinedload(Package.all_builds))\
+                      .options(joinedload(Package.last_build))\
                       .all()
 
     def update_dependency_changes(self, changes):
@@ -203,7 +203,7 @@ class Resolver(KojiService):
             curr_deps = self.resolve_dependencies(sack, package, srpm, group,
                                                   repo_id)
             if curr_deps is not None:
-                last_build = package.all_builds[0]
+                last_build = package.last_build
                 if last_build and last_build.repo_id:
                     prev_deps = self.get_deps_from_db(last_build.package_id,
                                                       last_build.repo_id)
