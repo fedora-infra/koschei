@@ -82,6 +82,7 @@ class DBTest(AbstractTest):
         super(DBTest, self).__init__(*args, **kwargs)
         self.s = None
         self.inited = False
+        self.task_id_counter = 1
 
         if use_postgres:
             cfg = util.config['database_config'].copy()
@@ -144,7 +145,9 @@ class DBTest(AbstractTest):
             if isinstance(state, bool):
                 state = states[state]
             package_id = self.s.query(m.Package.id).filter_by(name=pkg_name).scalar()
-            build = m.Build(package_id=package_id, state=state, repo_id=repo_id)
+            build = m.Build(package_id=package_id, state=state, repo_id=repo_id,
+                            task_id=self.task_id_counter)
+            self.task_id_counter += 1
             self.s.add(build)
             new_builds.append(build)
         self.s.commit()
