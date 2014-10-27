@@ -19,7 +19,7 @@
 import os
 import shutil
 import librepo
-from common import DBTest, testdir
+from common import DBTest, testdir, postgres_only
 from mock import Mock, patch
 from koschei.models import (Dependency, ResolutionResult, ResolutionProblem,
                             DependencyChange, Package)
@@ -141,6 +141,7 @@ class ResolverTest(DBTest):
             self.resolver.process_builds()
         self.verify_changes()
 
+    @postgres_only
     def test_repo_generation(self):
         self.prepare_old_build()
         with patch('koschei.util.get_build_group', return_value=['R']):

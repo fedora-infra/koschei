@@ -211,6 +211,7 @@ class Resolver(KojiService):
                         changes += self.create_dependency_changes(prev_deps,
                                                                   curr_deps,
                                                                   package.id)
+        self.synchronize_resolution_state()
         packages = self.get_packages()
         for pkg in packages:
             prev_state = prev_states[pkg.id]
@@ -245,6 +246,21 @@ class Resolver(KojiService):
                       .filter_by(package_id=build.package_id)\
                       .filter(Build.id < build.id)\
                       .order_by(Build.id.desc()).first()
+
+    def synchronize_resolution_state(self):
+        self.db.flush()
+        self.db.execute("""UPDATE package
+                     SET resolved = lr.resolved
+                     FROM (
+                        SELECT DISTINCT ON (package.id)
+                            package.id AS package_id,
+                            resolution_result.resolved AS resolved
+                        FROM package JOIN resolution_result
+                            ON package.id = resolution_result.package_id
+                        ORDER BY package.id, resolution_result.repo_id DESC
+                     ) AS lr
+                     WHERE package.id = lr.package_id""")
+        self.db.expire_all()
 
     def process_build(self, build, sack, build_group):
         build.deps_processed = True

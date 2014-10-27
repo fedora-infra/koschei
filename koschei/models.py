@@ -326,26 +326,6 @@ trigger = DDL("""
                   AFTER UPDATE ON build FOR EACH ROW
                   WHEN (OLD.state != NEW.state)
                   EXECUTE PROCEDURE update_last_complete_build();
-
-              CREATE OR REPLACE FUNCTION update_resolved()
-                  RETURNS TRIGGER AS $$
-              BEGIN
-                  UPDATE package
-                  SET resolved = lr.resolved
-                  FROM (SELECT resolved
-                        FROM resolution_result
-                        WHERE package_id = NEW.package_id
-                        ORDER BY repo_id DESC
-                        LIMIT 1) AS lr
-                  WHERE package.id = NEW.package_id;
-                  RETURN NEW;
-              END $$ LANGUAGE plpgsql;
-
-              DROP TRIGGER IF EXISTS update_resolved_trigger
-                    ON resolution_result;
-              CREATE TRIGGER update_resolved_trigger
-                  AFTER INSERT OR UPDATE ON resolution_result FOR EACH ROW
-                  EXECUTE PROCEDURE update_resolved();
               """)
 
 listen(Base.metadata, 'after_create', trigger.execute_if(dialect='postgresql'))
