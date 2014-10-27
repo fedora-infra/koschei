@@ -268,10 +268,17 @@ class Resolver(KojiService):
                 changes = self.create_dependency_changes(
                     prev_deps, curr_deps, package_id=build.package_id,
                     apply_id=build.id)
-                self.db.query(Dependency)\
-                       .filter_by(package_id=build.package_id)\
-                       .filter(Dependency.repo_id < build.repo_id)\
-                       .delete(synchronize_session=False)
+                keep_builds = util.config['dependency']['keep_build_deps_for']
+                boundary_build = self.db.query(Build)\
+                                     .filter_by(package_id=build.package_id)\
+                                     .order_by(Build.task_id.desc())\
+                                     .offset(keep_builds).first()
+                if boundary_build:
+                    self.db.query(Dependency)\
+                           .filter_by(package_id=build.package_id)\
+                           .filter(Dependency.repo_id <
+                                   boundary_build.repo_id)\
+                           .delete(synchronize_session=False)
                 self.update_dependency_changes(changes)
 
     def process_builds(self):
