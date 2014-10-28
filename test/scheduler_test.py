@@ -106,6 +106,7 @@ class SchedulerTest(DBTest):
                     if states.get(name, True) is not None:
                         res = m.ResolutionResult(resolved=(states.get(name) != 'unresolved'),
                                                  package_id=pkg.id, repo_id=666)
+                        pkg.resolved = res.resolved
                         self.s.add(res)
                 pkgs.append((name, pkg))
                 if name in builds:
@@ -179,7 +180,6 @@ class SchedulerTest(DBTest):
                              eclipse_build=m.Build.RUNNING) as table:
             self.assert_submission([table], submitted='rnv')
 
-    @postgres_only
     def test_state1(self):
         with self.prio_table(rnv=300, rnv_state='unresolved') as table:
             self.assert_submission([table], submitted=None)

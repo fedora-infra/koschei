@@ -58,25 +58,3 @@ class TriggerTest(DBTest):
 
         self.assertEqual(br.id, p.last_complete_build_id)
         self.assertEqual(be.id, e.last_complete_build_id)
-
-    def prepare_resolution(self, package, repo_id, resolved):
-        res = ResolutionResult(package_id=package.id, repo_id=repo_id,
-                               resolved=resolved)
-        self.s.add(res)
-        self.s.commit()
-        return res
-
-    @postgres_only
-    def test_resolved(self):
-        [p, e] = self.prepare_packages(['rnv', 'eclipse'])
-        self.prepare_resolution(p, 123, True)
-        self.assertTrue(p.resolved)
-
-    @postgres_only
-    def test_new_resolution(self):
-        [p, e] = self.prepare_packages(['rnv', 'eclipse'])
-        self.prepare_resolution(p, 123, False)
-        self.prepare_resolution(e, 123, False)
-        self.prepare_resolution(e, 126, True)
-        self.assertFalse(p.resolved)
-        self.assertTrue(e.resolved)
