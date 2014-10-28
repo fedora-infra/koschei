@@ -173,15 +173,15 @@ class Resolver(KojiService):
                       .options(joinedload(Package.last_build))\
                       .all()
 
-    def update_dependency_changes(self, changes):
+    def update_dependency_changes(self, changes, apply_id=None):
         # pylint: disable=E1101
         self.db.query(DependencyChange)\
-               .filter_by(applied_in_id=None)\
+               .filter_by(applied_in_id=apply_id)\
                .delete(synchronize_session=False)
         if changes:
             self.db.execute(DependencyChange.__table__.insert(),
                             changes)
-            self.db.expire_all()
+        self.db.expire_all()
 
     def generate_repo(self, repo_id):
         start = time.time()
@@ -278,12 +278,10 @@ class Resolver(KojiService):
                 prev_deps = self.get_deps_from_db(prev.package_id,
                                                   prev.repo_id)
                 if prev_deps and curr_deps:
-                    self.db.query(DependencyChange)\
-                           .filter_by(applied_in_id=build.id)\
-                           .delete(synchronize_session=False)
-                changes = self.create_dependency_changes(
-                    prev_deps, curr_deps, package_id=build.package_id,
-                    apply_id=build.id)
+                    changes = self.create_dependency_changes(
+                        prev_deps, curr_deps, package_id=build.package_id,
+                        apply_id=build.id)
+                    self.update_dependency_changes(changes, apply_id=build.id)
                 keep_builds = util.config['dependency']['keep_build_deps_for']
                 boundary_build = self.db.query(Build)\
                                      .filter_by(package_id=build.package_id)\
@@ -295,7 +293,6 @@ class Resolver(KojiService):
                            .filter(Dependency.repo_id <
                                    boundary_build.repo_id)\
                            .delete(synchronize_session=False)
-                self.update_dependency_changes(changes)
 
     def process_builds(self):
         # pylint: disable=E1101
