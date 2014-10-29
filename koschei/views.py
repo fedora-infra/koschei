@@ -158,6 +158,7 @@ def package_detail(name):
     package = db.query(Package)\
                 .filter_by(name=name)\
                 .options(subqueryload(Package.unapplied_changes))\
+                .options(subqueryload(Package.resolution_problems))\
                 .first_or_404()
     page = db.query(Build)\
              .filter_by(package_id=package.id)\

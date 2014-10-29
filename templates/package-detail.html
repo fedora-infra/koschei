@@ -10,7 +10,7 @@
     <tr class="list-header">
         <th>Dependency problems</th>
     </tr>
-    {% for problem in package.resolution_result.problems %}
+    {% for problem in package.resolution_problems %}
     <tr>
         <td>{{ problem.problem }}</td>
     </tr>
