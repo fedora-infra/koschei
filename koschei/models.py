@@ -80,7 +80,7 @@ class Package(Base):
     def state_string(self):
         if self.ignored:
             return 'ignored'
-        if not self.resolved:
+        if self.resolved is False:
             return 'unresolved'
         build = self.last_complete_build
         if build:
