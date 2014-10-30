@@ -187,7 +187,6 @@ class Resolver(KojiService):
         start = time.time()
         packages = self.get_packages()
         package_names = [pkg.name for pkg in packages]
-        prev_states = {pkg.id: pkg.state_string for pkg in packages}
         self.log.info("Generating new repo")
         self.srpm_cache.get_latest_srpms(package_names)
         srpm_repo = self.srpm_cache.get_repodata()
@@ -211,11 +210,13 @@ class Resolver(KojiService):
                         changes += self.create_dependency_changes(prev_deps,
                                                                   curr_deps,
                                                                   package.id)
+        prev_states = {pkg.id: pkg.state_string for pkg in packages}
         self.synchronize_resolution_state()
         packages = self.get_packages()
         for pkg in packages:
-            prev_state = prev_states[pkg.id]
-            check_package_state(pkg, prev_state)
+            prev_state = prev_states.get(pkg.id)
+            if prev_state:
+                check_package_state(pkg, prev_state)
 
         self.update_dependency_changes(changes)
         self.db.commit()
