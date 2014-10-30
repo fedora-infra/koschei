@@ -71,12 +71,16 @@ app.jinja_env.filters.update(columnize=columnize,
 
 
 def get_order(order_map, order_spec):
+
+    def rev(col):
+        return getattr(col, 'element', col.desc())
+
     orders = []
     components = order_spec.split(',')
     for component in components:
         if component:
             if component.startswith('-'):
-                order = [col.desc() for col in order_map.get(component[1:])]
+                order = [rev(col) for col in order_map.get(component[1:])]
             else:
                 order = order_map.get(component)
             orders.extend(order)
@@ -89,7 +93,7 @@ def package_view(template, alter_query=None, **template_args):
     order_name = request.args.get('order_by', 'name')
     # pylint: disable=E1101
     order_map = {'name': [Package.name],
-                 'state': [Build.state],
+                 'state': [Package.resolved.desc(), Build.state],
                  'task_id': [Build.task_id],
                  'started': [Build.started],
                  }
