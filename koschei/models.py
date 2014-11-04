@@ -73,6 +73,7 @@ class Package(Base):
                                    name='fkey_package_last_build_id'),
                nullable=True)
     resolved = Column(Boolean)
+    last_resolution_id = Column(Integer)
 
     ignored = Column(Boolean, nullable=False, server_default=false())
 
@@ -338,6 +339,14 @@ Package.last_complete_build = \
     relationship(Build,
                  primaryjoin=(Build.id == Package.last_complete_build_id),
                  uselist=False)
+
+Package.resolution_problems = \
+    relationship(ResolutionProblem,
+                 primaryjoin=(ResolutionProblem.resolution_id ==
+                              Package.last_resolution_id),
+                 foreign_keys=[Package.last_resolution_id],
+                 uselist=True)
+
 Package.all_builds = relationship(Build, order_by=Build.id.desc(),
                                   primaryjoin=(Build.package_id == Package.id),
                                   backref='package')
@@ -368,15 +377,3 @@ def _last_build():
     return relationship(mapper(Build, joined, non_primary=True), uselist=False,
                         primaryjoin=(Package.id == joined.c.package_id))
 Package.last_build = _last_build()
-
-def _resolution_problems():
-    max_expr = select([func.max(ResolutionResult.id).label('mx'),
-                       ResolutionResult.package_id.label('pkg_id')])\
-               .group_by(ResolutionResult.package_id).alias()
-    joined = select([ResolutionProblem, max_expr.c.pkg_id]).select_from(
-        join(ResolutionProblem, max_expr,
-             ResolutionProblem.resolution_id == max_expr.c.mx))\
-             .alias()
-    return relationship(mapper(ResolutionProblem, joined, non_primary=True),
-                        primaryjoin=(Package.id == joined.c.pkg_id))
-Package.resolution_problems = _resolution_problems()

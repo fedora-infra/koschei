@@ -251,10 +251,12 @@ class Resolver(KojiService):
     def synchronize_resolution_state(self):
         self.db.flush()
         self.db.execute("""UPDATE package
-                     SET resolved = lr.resolved
+                     SET resolved = lr.resolved,
+                         last_resolution_id = lr.id
                      FROM (
                         SELECT DISTINCT ON (package.id)
                             package.id AS package_id,
+                            resolution_result.id AS id,
                             resolution_result.resolved AS resolved
                         FROM package JOIN resolution_result
                             ON package.id = resolution_result.package_id
