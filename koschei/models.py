@@ -98,7 +98,7 @@ class KojiTask(Base):
     __tablename__ = 'koji_task'
 
     build_id = Column(ForeignKey('build.id', ondelete='CASCADE'),
-                      nullable=False)
+                      nullable=False, index=True)
     task_id = Column(Integer, primary_key=True, default=external_id)
     arch = Column(String(16))
     state = Column(Integer)
@@ -183,7 +183,8 @@ class Build(Base):
 class ResolutionResult(Base):
     __tablename__ = 'resolution_result'
     id = Column(Integer, primary_key=True)
-    package_id = Column(ForeignKey('package.id', ondelete='CASCADE'))
+    package_id = Column(ForeignKey('package.id', ondelete='CASCADE'),
+                        index=True)
     repo_id = Column(Integer, nullable=False)
     resolved = Column(Boolean, nullable=False, server_default=false())
     generated = Column(DateTime, nullable=False, default=datetime.now)
@@ -194,7 +195,8 @@ class ResolutionProblem(Base):
     __tablename__ = 'resolution_result_element'
     id = Column(Integer, primary_key=True)
     resolution_id = Column(Integer, ForeignKey(ResolutionResult.id,
-                                               ondelete='CASCADE'))
+                                               ondelete='CASCADE'),
+                           index=True)
     problem = Column(String, nullable=False)
 
 
