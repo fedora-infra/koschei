@@ -69,7 +69,7 @@ class Resolver(KojiService):
             sltr = subj.get_best_selector(sack)
             # pylint: disable=E1101
             if sltr is None or not sltr.matches():
-                problems.append(str(reldep))
+                problems.append("No package found for: {}".format(reldep))
             else:
                 goal.install(select=sltr)
         return goal, problems
