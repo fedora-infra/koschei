@@ -259,6 +259,7 @@ class Resolver(KojiService):
         return self.db.query(Build)\
                       .filter_by(package_id=build.package_id)\
                       .filter(Build.id < build.id)\
+                      .filter(Build.repo_id != None)\
                       .order_by(Build.id.desc()).first()
 
     def synchronize_resolution_state(self):
