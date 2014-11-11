@@ -19,6 +19,8 @@
 import time
 import hawkey
 import itertools
+import dnf.subject
+import dnf.sack
 
 from sqlalchemy.orm import joinedload
 
@@ -58,11 +60,19 @@ class Resolver(KojiService):
 
     def prepare_goal(self, sack, srpm, group):
         goal = hawkey.Goal(sack)
+        problems = []
         for name in group:
             sltr = hawkey.Selector(sack).set(name=name)
             goal.install(select=sltr)
-        goal.install(srpm)
-        return goal
+        for reldep in srpm.requires:
+            subj = dnf.subject.Subject(str(reldep))
+            sltr = subj.get_best_selector(sack)
+            # pylint: disable=E1101
+            if sltr is None or not sltr.matches():
+                problems.append(str(reldep))
+            else:
+                goal.install(select=sltr)
+        return goal, problems
 
     def store_deps(self, repo_id, package_id, installs):
         new_deps = []
@@ -101,9 +111,12 @@ class Resolver(KojiService):
             level += 1
 
     def resolve_dependencies(self, sack, package, srpm, group, repo_id):
-        goal = self.prepare_goal(sack, srpm, group)
+        goal, problems = self.prepare_goal(sack, srpm, group)
         if goal is not None:
-            resolved = goal.run()
+            resolved = False
+            if not problems:
+                resolved = goal.run()
+                problems = goal.problems
             result = ResolutionResult(repo_id=repo_id, package_id=package.id,
                                       resolved=resolved)
             self.db.add(result)
@@ -117,7 +130,7 @@ class Resolver(KojiService):
                 self.compute_dependency_distances(sack, srpm, deps)
                 return deps
             else:
-                for problem in goal.problems:
+                for problem in sorted(set(problems)):
                     entry = ResolutionProblem(resolution_id=result.id,
                                               problem=problem)
                     self.db.add(entry)
@@ -161,7 +174,7 @@ class Resolver(KojiService):
 
     def prepare_sack(self, repo_id):
         for_arch = util.config['dependency']['for_arch']
-        sack = hawkey.Sack(arch=for_arch)
+        sack = dnf.sack.Sack(arch=for_arch)
         repos = self.repo_cache.get_repos(repo_id)
         if repos:
             util.add_repos_to_sack(repo_id, repos, sack)

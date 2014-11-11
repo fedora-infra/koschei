@@ -22,8 +22,10 @@ BuildRequires:       python-hawkey
 BuildRequires:       python-librepo
 BuildRequires:       python-libcomps
 BuildRequires:       rpm-python
+BuildRequires:       dnf
 %endif
 
+Requires:       dnf
 Requires:       python-sqlalchemy
 Requires:       koji
 Requires:       fedmsg
