@@ -6,6 +6,7 @@
     <div>
         <label for"group">Pacakge group (optional):</label>
         <select name="group">
+            <option></option>
             {% for group in all_groups %}
             <option>{{ group.name }}</option>
             {% endfor %}
