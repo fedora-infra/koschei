@@ -304,7 +304,7 @@ class Resolver(KojiService):
                                      .filter_by(package_id=build.package_id)\
                                      .order_by(Build.task_id.desc())\
                                      .offset(keep_builds).first()
-                if boundary_build:
+                if boundary_build and boundary_build.repo_id:
                     self.db.query(Dependency)\
                            .filter_by(package_id=build.package_id)\
                            .filter(Dependency.repo_id <
