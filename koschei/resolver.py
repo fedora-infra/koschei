@@ -216,7 +216,9 @@ class Resolver(KojiService):
                                                   repo_id)
             if curr_deps is not None:
                 last_build = package.last_build
-                if last_build and last_build.repo_id:
+                if last_build and not last_build.repo_id:
+                    last_build = self.get_prev_build(last_build)
+                if last_build:
                     prev_deps = self.get_deps_from_db(last_build.package_id,
                                                       last_build.repo_id)
                     if prev_deps is not None:
