@@ -27,7 +27,8 @@
             {{ ordered_column('name', 'Name', order) }}
             {{ ordered_column('state', 'State', order) }}
             {{ ordered_column('task_id', 'Task ID', order) }}
-            {{ ordered_column('started', 'Started', order) }}
+            {{ ordered_column('started', 'Last build started', order) }}
+            {{ ordered_column('current_priority', 'Current priority', order) }}
         </tr>
     </thead>
     <tbody>
@@ -58,6 +59,9 @@
         {% else %}
         <td colspan="2"/>
         {% endif %}
+        <td>
+            {{ package.current_priority }}
+        </td>
     </tr>
     {% endfor %}
     </tbody>

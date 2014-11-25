@@ -96,6 +96,7 @@ def package_view(template, alter_query=None, **template_args):
                  'state': [Package.resolved.desc(), Build.state],
                  'task_id': [Build.task_id],
                  'started': [Build.started],
+                 'current_priority': [Package.current_priority],
                  }
     order_names, order = get_order(order_map, order_name)
     pkgs = db.query(Package)\
