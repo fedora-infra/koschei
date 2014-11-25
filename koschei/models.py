@@ -68,11 +68,17 @@ class Package(Base):
 
     build_opts = Column(String)
 
+    # cached value, populated by scheduler
+    current_priority = Column(Integer)
+
+    # denormalized field, updated by trigger on inser/update (no delete)
     last_complete_build_id = \
         Column(Integer, ForeignKey('build.id', use_alter=True,
                                    name='fkey_package_last_build_id'),
                nullable=True)
+    # denormalized field, updated manually by resolver
     resolved = Column(Boolean)
+    # denormalized field, updated manually by resolver
     last_resolution_id = Column(Integer)
 
     ignored = Column(Boolean, nullable=False, server_default=false())
