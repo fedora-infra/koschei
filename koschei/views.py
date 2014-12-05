@@ -25,7 +25,8 @@ def page_args(page=None, order_by=None):
     def proc_order(order):
         new_order = []
         for item in order:
-            if item not in new_order and '-' + item not in new_order:
+            if (item.replace('-', '')
+                    not in new_order and '-' + item not in new_order):
                 new_order.append(item)
         return ','.join(new_order)
     args = {
@@ -70,19 +71,37 @@ app.jinja_env.filters.update(columnize=columnize,
                              format_depchange=format_depchange)
 
 
+class Reversed(object):
+    def __init__(self, content):
+        self.content = content
+
+    def desc(self):
+        return self.content
+
+    def asc(self):
+        return self.content.desc()
+
+
+class NullsLast(object):
+    def __init__(self, content):
+        self.content = content
+
+    def desc(self):
+        return self.content.desc().nullslast()
+
+    def asc(self):
+        return self.content.nullslast()
+
+
 def get_order(order_map, order_spec):
-
-    def rev(col):
-        return getattr(col, 'element', col.desc())
-
     orders = []
     components = order_spec.split(',')
     for component in components:
         if component:
             if component.startswith('-'):
-                order = [rev(col) for col in order_map.get(component[1:])]
+                order = [o.desc() for o in order_map.get(component[1:])]
             else:
-                order = order_map.get(component)
+                order = [o.asc() for o in order_map.get(component)]
             orders.extend(order)
     if any(order is None for order in orders):
         abort(400)
@@ -93,10 +112,10 @@ def package_view(template, alter_query=None, **template_args):
     order_name = request.args.get('order_by', 'name')
     # pylint: disable=E1101
     order_map = {'name': [Package.name],
-                 'state': [Package.resolved.desc(), Build.state],
+                 'state': [Reversed(Package.resolved), Build.state],
                  'task_id': [Build.task_id],
                  'started': [Build.started],
-                 'current_priority': [Package.current_priority],
+                 'current_priority': [NullsLast(Package.current_priority)],
                  }
     order_names, order = get_order(order_map, order_name)
     pkgs = db.query(Package)\
