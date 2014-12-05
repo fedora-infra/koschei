@@ -77,7 +77,7 @@ class Scheduler(KojiService):
         priorities['time'] = self.get_time_priority_query()
         return priorities
 
-    def main(self):
+    def get_scheduled_package(self):
         incomplete_builds = self.db.query(Build.package_id)\
                                 .filter(Build.state == Build.RUNNING)
         queries = self.get_priority_queries().values()
@@ -99,7 +99,7 @@ class Scheduler(KojiService):
                              .all()
 
         if not prioritized or incomplete_builds.count() >= self.max_builds:
-            return
+            return None
 
         # pylint: disable=E1101
         self.db.execute(Package.__table__.update()
@@ -107,12 +107,16 @@ class Scheduler(KojiService):
                                                       value=Package.id,
                                                       else_=null())))
         self.db.commit()
-
         package = self.db.query(Package).get(prioritized[0][0])
-        priority = prioritized[0][1]
-        if (priority >= self.priority_threshold
-            and util.get_koji_load(self.koji_session) < self.load_threshold):
+        if (package.current_priority >= self.priority_threshold
+                and util.get_koji_load(self.koji_session)
+                < self.load_threshold):
+            return package
+
+    def main(self):
+        package = self.get_scheduled_package()
+        if package:
             self.log.info('Scheduling build for {}, priority {}'
-                          .format(package.name, priority))
+                          .format(package.name, package.current_priority))
             self.backend.submit_build(package)
             self.db.commit()
