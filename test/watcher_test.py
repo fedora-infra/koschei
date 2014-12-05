@@ -37,38 +37,3 @@ class WatcherTest(DBTest):
         watcher = Watcher(db=self.s, koji_session=Mock(), backend=backend_mock)
         watcher.main()
         backend_mock.update_build_state.assert_called_once_with(build, 'CLOSED')
-
-    def test_real_build(self):
-        pkg, build = self.prepare_basic_data()
-        msg = {'msg':
-            {'instance': 'primary',
-             'attribute': 'state',
-             'build_id': 123,
-             'name': 'rnv',
-             'version': '1',
-             'release': '2',
-             'old': 0,
-             'new': koji.BUILD_STATES['COMPLETE'],
-             }}
-        self.fedmsg.mock_add_message(topic=test_topic + '.build.state.change',
-                                     msg=msg)
-        koji_mock = Mock()
-        koji_mock.getLatestBuilds = Mock(return_value=[{'build_id': 123,
-            'name': 'rnv', 'epoch': None, 'version': '1', 'release': '2',
-            'task_id': 100, 'creation_time': '2014-06-08 07:09:11.339276',
-            'completion_time': '2014-06-08 07:17:41.129985', 'nvr': 'rnv-1-2',
-            'state': koji.BUILD_STATES['COMPLETE']}])
-        backend_mock = Mock()
-        watcher = Watcher(db=self.s, koji_session=koji_mock, backend=backend_mock)
-        watcher.main()
-        koji_mock.getLatestBuilds.assert_called_once_with('f22', package='rnv')
-        new_build = self.s.query(m.Build).filter(m.Build.id != build.id).one()
-        self.assertTrue(new_build.real)
-        self.assertEqual(pkg.id, new_build.package_id)
-        self.assertTrue(new_build.epoch is None)
-        self.assertEqual('1', new_build.version)
-        self.assertEqual('2', new_build.release)
-        self.assertEqual(100, new_build.task_id)
-        self.assertEqual(datetime(2014, 6, 8, 7, 9, 11, 339276), new_build.started)
-        #self.assertEqual(datetime(2014, 6, 8, 7, 17, 41, 129985), new_build.finished)
-        self.assertEqual(m.Build.COMPLETE, new_build.state)
