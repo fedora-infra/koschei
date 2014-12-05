@@ -101,6 +101,8 @@ class Scheduler(KojiService):
         if not prioritized or incomplete_builds.count() >= self.max_builds:
             return None
 
+        self.db.rollback()
+        self.lock_package_table()
         # pylint: disable=E1101
         self.db.execute(Package.__table__.update()
                         .values(current_priority=case(prioritized,
@@ -112,6 +114,9 @@ class Scheduler(KojiService):
                 and util.get_koji_load(self.koji_session)
                 < self.load_threshold):
             return package
+
+    def lock_package_table(self):
+        self.db.execute("LOCK TABLE package IN EXCLUSIVE MODE;")
 
     def main(self):
         package = self.get_scheduled_package()
