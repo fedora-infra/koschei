@@ -133,6 +133,8 @@ class Backend(object):
 
     def build_completed(self, build):
         task_info = self.koji_session.getTaskInfo(build.task_id)
+        if task_info['create_time']:
+            build.started = util.parse_koji_time(task_info['create_time'])
         if task_info['completion_time']:
             build.finished = util.parse_koji_time(task_info['completion_time'])
         else:
