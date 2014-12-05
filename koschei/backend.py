@@ -101,6 +101,8 @@ class Backend(object):
                       release=build_info['release'], package_id=package.id,
                       state=state_map[build_info['state']])
         self.db.add(build)
+        self.log.info('Registering real build for {}, task_id {}.'
+                      .format(package, build.task_id))
         self.db.flush()
         self.build_completed(build)
         self.attach_depchanges(build)
