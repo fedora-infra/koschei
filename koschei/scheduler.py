@@ -21,7 +21,7 @@ from __future__ import print_function
 import math
 
 from datetime import datetime
-from sqlalchemy import func, union_all, extract
+from sqlalchemy import func, union_all, extract, cast, Integer, case, null
 from sqlalchemy.sql.functions import coalesce
 
 from . import util
@@ -80,32 +80,38 @@ class Scheduler(KojiService):
     def main(self):
         incomplete_builds = self.db.query(Build.package_id)\
                                 .filter(Build.state == Build.RUNNING)
-        if incomplete_builds.count() >= self.max_builds:
-            return
         queries = self.get_priority_queries().values()
         union_query = union_all(*queries).alias('un')
         pkg_id = union_query.c.pkg_id
-        current_priority = func.sum(union_query.c.priority)\
-                               .label('curr_priority')
-        candidates = self.db.query(pkg_id, current_priority)\
-                            .having(current_priority >=
-                                    self.priority_threshold)\
+        current_priority = cast(func.sum(union_query.c.priority),
+                                Integer).label('curr_priority')
+        priorities = self.db.query(pkg_id, current_priority)\
                             .group_by(pkg_id).subquery()
-        to_schedule = self.db.query(Package, candidates.c.curr_priority)\
-                             .join(candidates,
-                                   Package.id == candidates.c.pkg_id)\
+        prioritized = self.db.query(Package.id, priorities.c.curr_priority)\
+                             .join(priorities,
+                                   Package.id == priorities.c.pkg_id)\
                              .filter((Package.resolved == True) |
                                      (Package.resolved == None))\
                              .filter(Package.id.notin_(
                                  incomplete_builds.subquery()))\
                              .filter(Package.ignored == False)\
-                             .order_by(candidates.c.curr_priority.desc())\
-                             .first()
+                             .order_by(priorities.c.curr_priority.desc())\
+                             .all()
 
-        if to_schedule:
-            if util.get_koji_load(self.koji_session) > self.load_threshold:
-                return
-            package, priority = to_schedule
+        if not prioritized or incomplete_builds.count() >= self.max_builds:
+            return
+
+        # pylint: disable=E1101
+        self.db.execute(Package.__table__.update()
+                        .values(current_priority=case(prioritized,
+                                                      value=Package.id,
+                                                      else_=null())))
+        self.db.commit()
+
+        package = self.db.query(Package).get(prioritized[0][0])
+        priority = prioritized[0][1]
+        if (priority >= self.priority_threshold
+            and util.get_koji_load(self.koji_session) < self.load_threshold):
             self.log.info('Scheduling build for {}, priority {}'
                           .format(package.name, priority))
             self.backend.submit_build(package)
