@@ -353,7 +353,7 @@ Package.resolution_problems = \
                  foreign_keys=[Package.last_resolution_id],
                  uselist=True)
 
-Package.all_builds = relationship(Build, order_by=Build.id.desc(),
+Package.all_builds = relationship(Build, order_by=Build.task_id.desc(),
                                   primaryjoin=(Build.package_id == Package.id),
                                   backref='package')
 Package.unapplied_changes = \

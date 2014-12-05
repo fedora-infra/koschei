@@ -260,9 +260,9 @@ class Resolver(KojiService):
     def get_prev_build(self, build):
         return self.db.query(Build)\
                       .filter_by(package_id=build.package_id)\
-                      .filter(Build.id < build.id)\
+                      .filter(Build.task_id < build.task_id)\
                       .filter(Build.repo_id != None)\
-                      .order_by(Build.id.desc()).first()
+                      .order_by(Build.task_id.desc()).first()
 
     def synchronize_resolution_state(self):
         self.db.flush()
