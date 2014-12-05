@@ -88,9 +88,13 @@ class Backend(object):
         [info] = self.koji_session.listTagged(util.source_tag, latest=True,
                                               package=package.name) or [None]
         build = package.last_build
-        if (info and (not build or info['version'] != build.version or
-                      info['epoch'] != build.epoch or
-                      info['release'] != build.release)):
+        if (info and (not build or
+                      util.compare_evr((build.epoch,
+                                        build.version,
+                                        build.release),
+                                       (info['epoch'],
+                                        info['version'],
+                                        info['release'])) < 0)):
             return info
 
     def register_real_build(self, package, build_info):
