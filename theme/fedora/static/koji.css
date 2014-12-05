@@ -527,7 +527,13 @@ span#loginInfo {
 .even {
     background-color: #fefefe;
 }
-.depchange {
+.real {
+    background-color: #eeffdd;
+}
+.real_build_description {
+    padding-top: 5px;
+}
+.mono {
     font-family: monospace;
     font-size: 12px;
 }

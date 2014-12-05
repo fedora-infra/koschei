@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {% macro next_change(changes) %}
-{{ next(changes, '') | format_depchange | columnize(css_class="depchange") }}
+{{ next(changes, '') | format_depchange | columnize(css_class="mono") }}
 {% endmacro %}
 {% block content %}
 <div class="pageHeader">{{ package.name }}</div>
@@ -26,7 +26,7 @@
 </table>
 {% endif %}
 {{ macros.pagination_row(page, "Builds") }}
-<table class="nested data-list">
+<table class="data-list">
   <thead>
     <tr class="list-header">
         <th>State</th>
@@ -38,9 +38,17 @@
   </thead>
   <tbody>
     {% for build in builds %}
-    {% set seq = ["odd", "even"][loop.index % 2] %}
+    {% set row_class = ["odd", "even"][loop.index % 2] + ["", " real"][build.real] %}
     {% set changes = iter(build.dependency_changes) %}
-    <tr class="{{ seq }}">
+    {% if build.real %}
+    <tr class="{{ row_class }}">
+        <td/>
+        <td colspan="7" class="real_build_description">
+            Real build: <span class="mono">{{ package.name }}-{% if build.epoch %}{{ build.epoch }}:{% endif %}{{ build.version }}-{{ build.release }}</span>
+        </td>
+    </tr>
+    {% endif %}
+    <tr class="{{ row_class }}">
         <td><div class="hidden">{{ build.state_string }}</div>
             <img src="{{ url_for('static', filename='images/' ~ build.state_string ~ '.png') }}"
                  title="{{ build.state_string }}" alt="{{ build.state_string }}"/></td>
@@ -58,7 +66,7 @@
         </td>
     </tr>
     {% for subtask in build.build_arch_tasks %}
-    <tr class="{{ seq }}">
+    <tr class="{{ row_class }}">
         <td>
             <div class="task{{ subtask.state_string }}">{{ subtask.arch }}</div>
         </td>
@@ -80,9 +88,9 @@
     </tr>
     {% endfor %}
     {% for change in changes %}
-    <tr class="{{ seq }}">
+    <tr class="{{ row_class }}">
         <td colspan="3"/>
-        {{ change | format_depchange | columnize(css_class="depchange") }}
+        {{ change | format_depchange | columnize(css_class="mono") }}
         <td/>
     </tr>
     {% endfor %}
