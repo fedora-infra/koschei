@@ -17,6 +17,7 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 import json
+import koji
 
 from datetime import datetime
 
@@ -73,12 +74,37 @@ class Backend(object):
             build.release = srpm['release']
             self.db.add(build)
             self.db.flush()
-            self.db.query(DependencyChange)\
-                   .filter_by(package_id=build.package_id)\
-                   .filter_by(applied_in_id=None)\
-                   .update({'applied_in_id': build.id})
+            self.attach_depchanges(build)
         else:
             package.ignored = True
+
+    def attach_depchanges(self, build):
+        self.db.query(DependencyChange)\
+               .filter_by(package_id=build.package_id)\
+               .filter_by(applied_in_id=None)\
+               .update({'applied_in_id': build.id})
+
+    def get_newer_build_if_exists(self, package):
+        [info] = self.koji_session.listTagged(util.source_tag, latest=True,
+                                              package=package.name) or [None]
+        build = package.last_build
+        if (info and (not build or info['version'] != build.version or
+                      info['epoch'] != build.epoch or
+                      info['release'] != build.release)):
+            return info
+
+    def register_real_build(self, package, build_info):
+        state_map = {koji.BUILD_STATES['COMPLETE']: Build.COMPLETE,
+                     koji.BUILD_STATES['FAILED']: Build.FAILED}
+        build = Build(task_id=build_info['task_id'], real=True,
+                      version=build_info['version'], epoch=build_info['epoch'],
+                      release=build_info['release'], package_id=package.id,
+                      state=state_map[build_info['state']])
+        self.db.add(build)
+        self.db.flush()
+        self.build_completed(build)
+        self.attach_depchanges(build)
+        return build
 
     def update_build_state(self, build, state):
         if state in Build.KOJI_STATE_MAP:

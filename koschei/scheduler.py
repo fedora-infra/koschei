@@ -116,7 +116,14 @@ class Scheduler(KojiService):
     def main(self):
         package = self.get_scheduled_package()
         if package:
-            self.log.info('Scheduling build for {}, priority {}'
-                          .format(package.name, package.current_priority))
-            self.backend.submit_build(package)
-            self.db.commit()
+            newer_build = self.backend.get_newer_build_if_exists(package)
+            if newer_build:
+                self.db.rollback()
+                self.backend.register_real_build(package, newer_build)
+                self.db.commit()
+                self.main()
+            else:
+                self.log.info('Scheduling build for {}, priority {}'
+                              .format(package.name, package.current_priority))
+                self.backend.submit_build(package)
+                self.db.commit()
