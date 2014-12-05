@@ -121,80 +121,78 @@ class SchedulerTest(DBTest):
             table.drop(bind=conn)
             self.s.commit()
 
-    def assert_submission(self, tables, submitted, koji_load=0.3):
+    def assert_scheduled(self, tables, scheduled, koji_load=0.3):
         with patch('koschei.util.get_koji_load',
-                   Mock(return_value=koji_load)) as load_getter:
+                   Mock(return_value=koji_load)):
             sched = self.get_scheduler()
             def get_prio_q():
                 return {i :self.s.query(t.c.pkg_id.label('pkg_id'), t.c.priority.label('priority'))
                         for i, t in enumerate(tables)}
             with patch.object(sched, 'get_priority_queries', get_prio_q):
-                sched.main()
-                if submitted:
-                    pkg = self.s.query(m.Package).filter_by(name=submitted).one()
-                    sched.backend.submit_build.assert_called_once_with(pkg)
-                    load_getter.assert_called()
+                pkg = sched.get_scheduled_package()
+                if scheduled:
+                    self.assertEqual(scheduled, pkg.name)
                 else:
-                    self.assertFalse(sched.backend.submit_build.called)
+                    self.assertIsNone(pkg)
 
     def test_low(self):
         with self.prio_table(rnv=10) as table:
-            self.assert_submission([table], submitted=None)
+            self.assert_scheduled([table], scheduled=None)
 
     def test_submit1(self):
         with self.prio_table(rnv=256) as table:
-            self.assert_submission([table], submitted='rnv')
+            self.assert_scheduled([table], scheduled='rnv')
 
     def test_submit_no_resolution(self):
         with self.prio_table(rnv=256, rnv_state=None) as table:
-            self.assert_submission([table], submitted='rnv')
+            self.assert_scheduled([table], scheduled='rnv')
 
     def test_load(self):
         with self.prio_table(rnv=30000) as table:
-            self.assert_submission([table], koji_load=0.7, submitted=None)
+            self.assert_scheduled([table], koji_load=0.7, scheduled=None)
 
     def test_max_builds(self):
         with self.prio_table(rnv=30, rnv_build=m.Build.RUNNING,
                              eclipse=300, eclipse_build=m.Build.RUNNING,
                              expat=400) as table:
-            self.assert_submission([table], submitted=None)
+            self.assert_scheduled([table], scheduled=None)
 
     def test_running1(self):
         with self.prio_table(rnv=30000, rnv_build=m.Build.RUNNING) as table:
-            self.assert_submission([table], submitted=None)
+            self.assert_scheduled([table], scheduled=None)
 
     def test_running2(self):
         with self.prio_table(eclipse=100, rnv=300, rnv_build=m.Build.RUNNING) as table:
-            self.assert_submission([table], submitted=None)
+            self.assert_scheduled([table], scheduled=None)
 
     def test_running3(self):
         with self.prio_table(eclipse=280, rnv=300, rnv_build=m.Build.RUNNING) as table:
-            self.assert_submission([table], submitted='eclipse')
+            self.assert_scheduled([table], scheduled='eclipse')
 
     def test_multiple(self):
         with self.prio_table(eclipse=280, rnv=300) as table:
-            self.assert_submission([table], submitted='rnv')
+            self.assert_scheduled([table], scheduled='rnv')
 
     def test_builds(self):
         with self.prio_table(eclipse=100, rnv=300, rnv_build=m.Build.COMPLETE,
                              eclipse_build=m.Build.RUNNING) as table:
-            self.assert_submission([table], submitted='rnv')
+            self.assert_scheduled([table], scheduled='rnv')
 
     def test_state1(self):
         with self.prio_table(rnv=300, rnv_state='unresolved') as table:
-            self.assert_submission([table], submitted=None)
+            self.assert_scheduled([table], scheduled=None)
 
     def test_state2(self):
         with self.prio_table(rnv=300, rnv_state='ignored') as table:
-            self.assert_submission([table], submitted=None)
+            self.assert_scheduled([table], scheduled=None)
 
     def test_union1(self):
         with self.prio_table(tablename='tmp1', rnv=100) as table1:
             with self.prio_table(tablename='tmp2', eclipse=280, rnv=200) as table2:
-                self.assert_submission([table1, table2], submitted='rnv')
+                self.assert_scheduled([table1, table2], scheduled='rnv')
 
     def test_union2(self):
         with self.prio_table(tablename='tmp1', rnv=100) as table1:
             with self.prio_table(tablename='tmp2', eclipse=300, rnv=200) as table2:
                 with self.prio_table(tablename='tmp3', eclipse=201, rnv=200) as table3:
-                    self.assert_submission([table1, table2, table3], submitted='eclipse')
+                    self.assert_scheduled([table1, table2, table3], scheduled='eclipse')
