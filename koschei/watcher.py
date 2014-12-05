@@ -69,34 +69,15 @@ class Watcher(KojiService):
 
     def register_real_build(self, msg):
         assert msg['attribute'] == 'state'
-        if msg['new'] == koji.BUILD_STATES['COMPLETE']:
+        if msg['new'] in (koji.BUILD_STATES['COMPLETE'],
+                          koji.BUILD_STATES['FAILED']):
             name = msg['name']
             pkg = self.db.query(Package).filter_by(name=name).first()
             if not pkg:
                 return
-            last_builds = self.koji_session.getLatestBuilds(self.build_tag,
-                                                            package=name)
-            if not last_builds:
-                return
-            last_build = last_builds[0]
-            if last_build['build_id'] == msg['build_id']:
-                build = self.db.query(Build)\
-                               .filter_by(task_id=last_build['task_id'])\
-                               .first()
-                if build:
-                    return
-                self.log.info("Registering real build {nvr}"
-                              .format(nvr=last_build['nvr']))
-                build = Build(package_id=pkg.id, version=last_build['version'],
-                              release=last_build['release'],
-                              epoch=last_build['epoch'],
-                              state=Build.COMPLETE, real=True,
-                              started=util.parse_koji_time(
-                                  last_build['creation_time']),
-                              task_id=last_build['task_id'])
-                self.db.add(build)
-                self.db.flush()
-                self.backend.build_completed(build)
+            newer_build = self.backend.get_newer_build_if_exists(pkg)
+            if newer_build:
+                self.backend.register_real_build(pkg, newer_build)
                 self.db.commit()
 
     def main(self):
