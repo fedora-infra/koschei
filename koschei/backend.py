@@ -94,23 +94,28 @@ class Backend(object):
                                         build.release),
                                        (info['epoch'],
                                         info['version'],
-                                        info['release'])) < 0)):
+                                        info['release'])) < 0)
+                and self.db.query(Build).filter_by(task_id=info['task_id'])
+                           .count() == 0):
             return info
 
     def register_real_build(self, package, build_info):
-        state_map = {koji.BUILD_STATES['COMPLETE']: Build.COMPLETE,
-                     koji.BUILD_STATES['FAILED']: Build.FAILED}
-        build = Build(task_id=build_info['task_id'], real=True,
-                      version=build_info['version'], epoch=build_info['epoch'],
-                      release=build_info['release'], package_id=package.id,
-                      state=state_map[build_info['state']])
-        self.db.add(build)
-        self.log.info('Registering real build for {}, task_id {}.'
-                      .format(package, build.task_id))
-        self.db.flush()
-        self.build_completed(build)
-        self.attach_depchanges(build)
-        return build
+        # we may alrady have that build
+        # (this function may be run in parallel with the same data)
+        with util.skip_on_integrity_violation(self.db):
+            state_map = {koji.BUILD_STATES['COMPLETE']: Build.COMPLETE,
+                         koji.BUILD_STATES['FAILED']: Build.FAILED}
+            build = Build(task_id=build_info['task_id'], real=True,
+                          version=build_info['version'], epoch=build_info['epoch'],
+                          release=build_info['release'], package_id=package.id,
+                          state=state_map[build_info['state']])
+            self.db.add(build)
+            self.log.info('Registering real build for {}, task_id {}.'
+                          .format(package, build.task_id))
+            self.db.flush()
+            self.build_completed(build)
+            self.attach_depchanges(build)
+            return build
 
     def update_build_state(self, build, state):
         if state in Build.KOJI_STATE_MAP:
