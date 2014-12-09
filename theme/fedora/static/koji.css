@@ -540,3 +540,6 @@ span#loginInfo {
 .details {
     padding-bottom: 20px;
 }
+.change_input {
+    width: 50px;
+}

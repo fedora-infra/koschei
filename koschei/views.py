@@ -335,3 +335,18 @@ def search():
             return query.filter(Package.name.like(matcher))
         return package_view("search-results.html", alter_query=alter_query)
     return redirect(url_for('frontpage'))
+
+@app.route('/prioritize', methods=['POST'])
+@auth.login_required()
+def prioritize():
+    form = request.form
+    try:
+        new_priority = int(form['new_priority'])
+        package = db.query(Package)\
+                    .filter_by(name=form['package']).first_or_404()
+        package.manual_priority = new_priority
+        db.commit()
+        flash("Manual priority changed to {}".format(new_priority))
+    except (KeyError, ValueError):
+        abort(400)
+    return redirect(url_for('package_detail', name=form['package']))

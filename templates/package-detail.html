@@ -20,6 +20,21 @@
         </td>
     </tr>
     <tr>
+        <th>Manual priority</th>
+        <td>
+            <form name="manual_priority" action="{{ url_for("prioritize") }}"
+                method="POST">
+                <input type="hidden" name="package" value="{{ package.name }}"/>
+                <input type="text" name="new_priority" class="change_input"
+                {% if not g.user %}disabled="disabled"{% endif %}
+                value="{{ package.manual_priority }}"/>
+                <input type="submit" value="Change"
+                {% if not g.user %}disabled="disabled"{% endif %}
+                />
+            </form>
+        </td>
+    </tr>
+    <tr>
         <th>Static priority</th>
         <td>
             {{ package.static_priority }}
