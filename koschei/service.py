@@ -120,5 +120,6 @@ class FedmsgService(Service):
         super(FedmsgService, self).__init__(**kwargs)
 
     def on_exception(self, exc):
+        self.fedmsg.destroy()
         self.fedmsg = fedmsg.core.FedMsgContext()
         super(FedmsgService, self).on_exception(exc)
