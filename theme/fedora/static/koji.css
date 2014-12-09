@@ -537,3 +537,6 @@ span#loginInfo {
     font-family: monospace;
     font-size: 12px;
 }
+.details {
+    padding-bottom: 20px;
+}

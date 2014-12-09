@@ -5,96 +5,124 @@
 {% endmacro %}
 {% block content %}
 <div class="pageHeader">{{ package.name }}</div>
-{% if package.state_string == 'unresolved' %}
-<table class="nested-data-list">
-    <tr class="list-header">
-        <th>Dependency problems</th>
-    </tr>
-    {% for problem in package.resolution_problems %}
+<table class="details">
     <tr>
+        <th>Package state</th>
+        <td>
+            <img src="{{ package.state_icon }}"/>
+            {{ package.state_string }}
+        </td>
+    </tr>
+    <tr>
+        <th>Current priority</th>
+        <td>
+            {{ package.current_priority }}
+        </td>
+    </tr>
+    <tr>
+        <th>Static priority</th>
+        <td>
+            {{ package.static_priority }}
+        </td>
+    </tr>
+    {% if package.state_string == 'unresolved'  and package.resolution_problems %}
+    <tr>
+        <th>Dependency problems</th>
+        <td>{{ package.resolution_problems[0].problem }}</td>
+    </tr>
+    {% for problem in package.resolution_problems[1:] %}
+    <tr>
+        <td></td>
         <td>{{ problem.problem }}</td>
     </tr>
     {% endfor %}
-</table>
-{% endif %}
-{% if package.unapplied_changes %}
-<table class="nested">
+    {% endif %}
+
+    {% if package.unapplied_changes %}
     <tr>
-        <th colspan="4">Dependency changes since last build</th>
+        <th>Dependency changes since last build</th>
+        {{ package.unapplied_changes[0] | format_depchange | columnize(css_class="mono") }}
     </tr>
-    {{ macros.depchange_table(package.unapplied_changes) }}
+    {% for change in package.unapplied_changes[1:] %}
+    <tr>
+        <th></th>
+        {{ change | format_depchange | columnize(css_class="mono") }}
+    </tr>
+    {% endfor %}
+    {% endif %}
 </table>
-{% endif %}
+
 {{ macros.pagination_row(page, "Builds") }}
 <table class="data-list">
-  <thead>
-    <tr class="list-header">
-        <th>State</th>
-        <th>Koji task</th>
-        <th>Started</th>
-        <th colspan="4">Dependency changes</th>
-        <th>Build details</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for build in builds %}
-    {% set row_class = ["odd", "even"][loop.index % 2] + ["", " real"][build.real] %}
-    {% set changes = iter(build.dependency_changes) %}
-    {% if build.real %}
-    <tr class="{{ row_class }}">
-        <td/>
-        <td colspan="7" class="real_build_description">
-            Real build: <span class="mono">{{ package.name }}-{% if build.epoch %}{{ build.epoch }}:{% endif %}{{ build.version }}-{{ build.release }}</span>
-        </td>
-    </tr>
-    {% endif %}
-    <tr class="{{ row_class }}">
-        <td><div class="hidden">{{ build.state_string }}</div>
-            <img src="{{ url_for('static', filename='images/' ~ build.state_string ~ '.png') }}"
-                 title="{{ build.state_string }}" alt="{{ build.state_string }}"/></td>
-        <td>
-            <a href="{{ koji_weburl }}/taskinfo?taskID={{ build.task_id }}">
-                {{ build.task_id }}
-            </a>
-        </td>
-        <td>
-            {{ build.started | date }}
-        </td>
-        {{ next_change(changes) }}
-        <td>
-            <a href="{{ url_for('build_detail', name=package.name, build_id=build.id) }}">details</a>
-        </td>
-    </tr>
-    {% for subtask in build.build_arch_tasks %}
-    <tr class="{{ row_class }}">
-        <td>
-            <div class="task{{ subtask.state_string }}">{{ subtask.arch }}</div>
-        </td>
-        <td>
-            <a href="{{ koji_weburl }}/taskinfo?taskID={{ subtask.task_id }}">
-                {{ "├└"[loop.last] }}{{ subtask.task_id }}
-            </a>
-        </td>
-        <td>(
-            <a href="{{ koji_pathinfo.task(subtask.task_id) }}/build.log">
-                build.log
-            </a>|
-            <a href="{{ koji_pathinfo.task(subtask.task_id) }}/root.log">
-                root.log
-            </a>
-        )</td>
-        {{ next_change(changes) }}
-        <td/>
-    </tr>
-    {% endfor %}
-    {% for change in changes %}
-    <tr class="{{ row_class }}">
-        <td colspan="3"/>
-        {{ change | format_depchange | columnize(css_class="mono") }}
-        <td/>
-    </tr>
-    {% endfor %}
-    {% endfor %}
-  </tbody>
+    <thead>
+        <tr class="list-header">
+            <th>State</th>
+            <th>Koji task</th>
+            <th>Started</th>
+            <th colspan="4">Dependency changes</th>
+            <th>Build details</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for build in builds %}
+        {% set row_class = ["odd", "even"][loop.index % 2] + ["", " real"][build.real] %}
+        {% set changes = iter(build.dependency_changes) %}
+        {% if build.real %}
+        <tr class="{{ row_class }}">
+            <td></td>
+            <td colspan="7" class="real_build_description">
+                Real build: <span class="mono">{{ package.name }}-{% if build.epoch %}{{ build.epoch }}:{% endif %}{{ build.version }}-{{ build.release }}</span>
+            </td>
+        </tr>
+        {% endif %}
+        <tr class="{{ row_class }}">
+            <td><div class="hidden">{{ build.state_string }}</div>
+                <img src="{{ url_for('static', filename='images/' ~ build.state_string ~ '.png') }}"
+                title="{{ build.state_string }}" alt="{{ build.state_string }}"/></td>
+            <td>
+                <a href="{{ koji_weburl }}/taskinfo?taskID={{ build.task_id }}">
+                    {{ build.task_id }}
+                </a>
+            </td>
+            <td>
+                {{ build.started | date }}
+            </td>
+            {{ next_change(changes) }}
+            <td>
+                <a href="{{ url_for('build_detail', name=package.name, build_id=build.id) }}">details</a>
+            </td>
+        </tr>
+        {% for subtask in build.build_arch_tasks %}
+        <tr class="{{ row_class }}">
+            <td>
+                <div class="task{{ subtask.state_string }}">{{ subtask.arch }}</div>
+            </td>
+            <td>
+                <a href="{{ koji_weburl }}/taskinfo?taskID={{ subtask.task_id }}">
+                    {{ "├└"[loop.last] }}{{ subtask.task_id }}
+                </a>
+            </td>
+            <td>(
+                <a href="{{ koji_pathinfo.task(subtask.task_id) }}/build.log">
+                    build.log
+                </a>|
+                <a href="{{ koji_pathinfo.task(subtask.task_id) }}/root.log">
+                    root.log
+                </a>
+                )</td>
+            {{ next_change(changes) }}
+            <td>
+            </td>
+        </tr>
+        {% endfor %}
+        {% for change in changes %}
+        <tr class="{{ row_class }}">
+            <td colspan="3"></td>
+            {{ change | format_depchange | columnize(css_class="mono") }}
+            <td></td>
+        </tr>
+        {% endfor %}
+        {% endfor %}
+    </tbody>
 </table>
 {% endblock %}
