@@ -67,32 +67,19 @@
     </tbody>
 </table>
 {% endmacro %}
-{% macro depchange_table(dependency_changes, limit=0, more_link=None) %}
-<table class="nested-data-list" style="width:100%">
-    {% set changes=dependency_changes[:limit] if limit
-                            else dependency_changes %}
-    {% for change in changes %}
-    <tr>
-        <td>{{ change.dep_name }}</td>
-        <td>{{ change.prev_dep_evr or '' }}</td>
-        <td>
-            {% if change.is_update %}
-            &gt;&gt;&gt;
-            {% else %}
-            &lt;&lt;&lt;
-            {% endif %}
-        </td>
-        <td>{{ change.curr_dep_evr or '' }}</td>
-    </tr>
-    {% if loop.index == limit %}
-    <tr>
-        <td colspan="4">
-            <a href="{{ more_link }}">More</a>
-        </td>
-    </tr>
-    {% endif %}
-    {% endfor %}
-</table>
+{% macro depchange_table(dependency_changes) %}
+{% if dependency_changes %}
+<tr>
+    <th>Dependency changes since last build</th>
+    {{ dependency_changes[0] | format_depchange | columnize(css_class="mono") }}
+</tr>
+{% for change in dependency_changes[1:] %}
+<tr>
+    <th></th>
+    {{ change | format_depchange | columnize(css_class="mono") }}
+</tr>
+{% endfor %}
+{% endif %}
 {% endmacro %}
 {% macro ordered_column(name, title, current_order) %}
 <th>

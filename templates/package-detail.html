@@ -38,18 +38,7 @@
     {% endfor %}
     {% endif %}
 
-    {% if package.unapplied_changes %}
-    <tr>
-        <th>Dependency changes since last build</th>
-        {{ package.unapplied_changes[0] | format_depchange | columnize(css_class="mono") }}
-    </tr>
-    {% for change in package.unapplied_changes[1:] %}
-    <tr>
-        <th></th>
-        {{ change | format_depchange | columnize(css_class="mono") }}
-    </tr>
-    {% endfor %}
-    {% endif %}
+    {{ macros.depchange_table(package.unapplied_changes) }}
 </table>
 
 {{ macros.pagination_row(page, "Builds") }}

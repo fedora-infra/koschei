@@ -2,34 +2,62 @@
 {% import "macros.html" as macros %}
 {% block content %}
 <div class="pageHeader">{{ build.package.name }} - {{ build.task_id }}</div>
-  <table class="data-list">
-    <tr>
-      <th>Status</th>
-      <td><div class="hidden">{{ build.state_string }}</div>
-          <img src="{{ url_for('static', filename='images/' ~ build.state_string ~ '.png') }}"
-               title="{{ build.state_string }}" alt="{{ build.state_string }}"/></td>
-    </tr>
-  </table>
 
-  <table class="data-list">
-    <thead>
+<table class="details">
     <tr>
-      <th>Koji task</th>
-      <td>
-          <a href="{{ koji_weburl }}/taskinfo?taskID={{ build.task_id }}">
-              {{ build.task_id }}
-          </a>
-      </td>
+        <th>Status</th>
+        <td>
+            <img src="{{ url_for('static', filename='images/' ~ build.state_string ~ '.png') }}"
+            title="{{ build.state_string }}" alt="{{ build.state_string }}"/>
+            {{ build.state_string }}
+        </td>
     </tr>
-    </thead>
-    <tbody>
     <tr>
-        <th>Subtasks</th>
+        <th>Epoch</th>
+        <td>
+            {{ build.epoch }}
+        </td>
+    </tr>
+    <tr>
+        <th>Version</th>
+        <td>
+            {{ build.version }}
+        </td>
+    </tr>
+    <tr>
+        <th>Release</th>
+        <td>
+            {{ build.release }}
+        </td>
+    </tr>
+    <tr>
+        <th>Started</th>
+        <td>
+            {{ build.started | date}}
+        </td>
+    </tr>
+    <tr>
+        <th>Finished</th>
+        <td>
+            {{ build.finished | date }}
+        </td>
+    </tr>
+    <tr>
+        <th>Koji tasks</th>
+        <td>
+            <a href="{{ koji_weburl }}/taskinfo?taskID={{ build.task_id }}">
+                {{ build.task_id }}
+            </a>
+        </td>
+    </tr>
+    <tr>
+        <td></td>
         <td>
             <table>
                 {% for subtask in build.build_arch_tasks %}
                 <tr>
                     <td class="task{{ subtask.state_string }}">
+                        {{ "├└"[loop.last] }}
                         <a href="{{ koji_weburl }}/taskinfo?taskID={{ subtask.task_id }}">
                             {{ subtask.task_id }}
                         </a>
@@ -42,18 +70,14 @@
                         <a href="{{ koji_pathinfo.task(subtask.task_id) }}/root.log">
                             root.log
                         </a>
-                    )</td>
+                        )</td>
                 </tr>
                 {% endfor %}
             </table>
         </td>
     </tr>
     <tr>
-        <th>Dependency changes compared to previous build</th>
-        <td style="width: 80%">
-            {{ macros.depchange_table(build.dependency_changes) }}
-        </td>
+        {{ macros.depchange_table(build.dependency_changes) }}
     </tr>
-    </tbody>
-  </table>
+</table>
 {% endblock %}
