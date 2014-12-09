@@ -42,7 +42,7 @@ config = {
     },
     "services": {
         "watcher": {
-            "watchdog_interval": 20, # in seconds
+            "watchdog_interval": 600, # in seconds
         },
         "polling": {
             "interval": 20 * 60,
