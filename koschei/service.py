@@ -23,6 +23,8 @@ import sys
 import socket
 import time
 import urllib2
+import fedmsg.core
+import fedmsg.config
 
 from . import util
 from .models import Session
@@ -92,8 +94,8 @@ class KojiService(Service):
     koji_anonymous = True
     __retry_on = (koji.GenericError, socket.error, urllib2.URLError)
 
-    def __init__(self, log=None, db=None, koji_session=None):
-        super(KojiService, self).__init__(log=log, db=db)
+    def __init__(self, koji_session=None, **kwargs):
+        super(KojiService, self).__init__(**kwargs)
         self.koji_session = util.Proxy(koji_session
                                        or self.create_koji_session())
 
@@ -106,6 +108,17 @@ class KojiService(Service):
                 super(KojiService, self).get_handled_exceptions())
 
     def on_exception(self, exc):
-        if exc in self.__retry_on:
-            self.koji_session.proxied = self.create_koji_session()
+        self.koji_session.proxied = self.create_koji_session()
         super(KojiService, self).on_exception(exc)
+
+class FedmsgService(Service):
+    def __init__(self, fedmsg_context=None, fedmsg_config=None, **kwargs):
+        self.fedsmg_config = (fedmsg_config or
+                              fedmsg.config.load_config([], None))
+        self.fedmsg = (fedmsg_context or
+                       fedmsg.core.FedMsgContext(**self.fedsmg_config))
+        super(FedmsgService, self).__init__(**kwargs)
+
+    def on_exception(self, exc):
+        self.fedmsg = fedmsg.core.FedMsgContext()
+        super(FedmsgService, self).on_exception(exc)
