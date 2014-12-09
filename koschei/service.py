@@ -40,6 +40,9 @@ class Service(object):
     def main(self):
         raise NotImplementedError()
 
+    def get_handled_exceptions(self):
+        return list()
+
     def on_exception(self, exc):
         pass
 
@@ -51,12 +54,15 @@ class Service(object):
         retry_in = service_config.get('base_retry_interval', 10)
         retry_attempts = 0
         self.log.info("{name} started".format(name=name))
+        handled_exceptions = tuple(self.get_handled_exceptions())
         while True:
             try:
                 self.main()
                 retry_attempts = 0
                 time.sleep(interval)
-            except self.retry_on as exc:
+            except KeyboardInterrupt:
+                sys.exit(0)
+            except handled_exceptions as exc:
                 while True:
                     try:
                         retry_attempts += 1
@@ -66,10 +72,8 @@ class Service(object):
                         time.sleep(sleep)
                         self.on_exception(exc)
                         break
-                    except self.retry_on as exc:
+                    except handled_exceptions as exc:
                         pass
-            except KeyboardInterrupt:
-                sys.exit(0)
             finally:
                 self.db.rollback()
 
@@ -86,8 +90,7 @@ class Service(object):
 
 class KojiService(Service):
     koji_anonymous = True
-
-    retry_on = koji.GenericError, socket.error, urllib2.URLError
+    __retry_on = (koji.GenericError, socket.error, urllib2.URLError)
 
     def __init__(self, log=None, db=None, koji_session=None):
         super(KojiService, self).__init__(log=log, db=db)
@@ -98,5 +101,11 @@ class KojiService(Service):
     def create_koji_session(cls):
         return util.create_koji_session(anonymous=cls.koji_anonymous)
 
+    def get_handled_exceptions(self):
+        return (list(self.__retry_on) +
+                super(KojiService, self).get_handled_exceptions())
+
     def on_exception(self, exc):
-        self.koji_session.proxied = self.create_koji_session()
+        if exc in self.__retry_on:
+            self.koji_session.proxied = self.create_koji_session()
+        super(KojiService, self).on_exception(exc)

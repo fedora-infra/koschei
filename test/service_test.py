@@ -30,7 +30,11 @@ class MyOtherException(Exception):
     pass
 
 class MyService(Service):
-    retry_on = (MyOtherException,)
+    __retry_on = (MyOtherException,)
+
+    def get_handled_exceptions(self):
+        return (list(self.__retry_on) +
+                super(MyService, self).get_handled_exceptions())
 
     def __init__(self, main=None, on_except=None, *args, **kwargs):
         self.__class__.main = main or (lambda inst: 0)
