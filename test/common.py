@@ -1,5 +1,4 @@
 import os
-import sys
 import unittest
 import sqlalchemy
 import logging
@@ -11,11 +10,6 @@ from datetime import datetime
 testdir = os.path.dirname(os.path.realpath(__file__))
 datadir = os.path.join(testdir, 'data')
 os.chdir(testdir)
-sys.path[:0] = [os.path.join(testdir, '..'),
-                os.path.join(testdir, 'mocks')]
-
-# our mock
-import fedmsg
 
 use_postgres = os.environ.get('TEST_WITH_POSTGRES')
 
@@ -54,7 +48,6 @@ class AbstractTest(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         super(AbstractTest, self).__init__(*args, **kwargs)
-        self.fedmsg = fedmsg
 
     def _rm_workdir(self):
         try:
@@ -66,10 +59,8 @@ class AbstractTest(unittest.TestCase):
         self._rm_workdir()
         os.mkdir(workdir)
         os.chdir(workdir)
-        self.fedmsg.mock_init()
 
     def tearDown(self):
-        self.fedmsg.mock_verify_empty()
         self._rm_workdir()
 
     @staticmethod

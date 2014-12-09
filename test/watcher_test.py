@@ -1,10 +1,6 @@
-import koji
-
-from datetime import datetime
-from mock import Mock, patch
+from mock import Mock
 from common import DBTest
 
-from koschei import models as m
 from koschei.watcher import Watcher
 
 test_topic = 'org.fedoraproject.test.buildsys'
@@ -20,20 +16,27 @@ def generate_state_change(instance='primary', task_id=666, old='OPEN', new='CLOS
 
 class WatcherTest(DBTest):
     def test_ignored_topic(self):
-        self.fedmsg.mock_add_message(topic='org.fedoraproject.prod.buildsys.task.state.change',
-                                     msg=generate_state_change())
-        Watcher(db=Mock(), koji_session=Mock()).main()
+        class FedmsgMock(object):
+            def tail_messages(self):
+                yield ('', '', 'org.fedoraproject.prod.buildsys.task.state.change',
+                       generate_state_change())
+        Watcher(db=Mock(), koji_session=Mock(), fedmsg_context=FedmsgMock()).main()
 
     def test_ignored_instance(self):
-        self.fedmsg.mock_add_message(topic=test_topic,
-                                     msg=generate_state_change(instance='ppc'))
-        Watcher(db=Mock(), koji_session=Mock()).main()
+        class FedmsgMock(object):
+            def tail_messages(self):
+                yield ('', '', test_topic,
+                       generate_state_change(instance='ppc'))
+        Watcher(db=Mock(), koji_session=Mock(), fedmsg_context=FedmsgMock()).main()
 
     def test_task_completed(self):
+        class FedmsgMock(object):
+            def tail_messages(self):
+                yield ('', '', test_topic + '.task.state.change',
+                       generate_state_change())
         _, build = self.prepare_basic_data()
-        self.fedmsg.mock_add_message(topic=test_topic + '.task.state.change',
-                                     msg=generate_state_change())
         backend_mock = Mock()
-        watcher = Watcher(db=self.s, koji_session=Mock(), backend=backend_mock)
+        watcher = Watcher(db=self.s, koji_session=Mock(), backend=backend_mock,
+                          fedmsg_context=FedmsgMock())
         watcher.main()
         backend_mock.update_build_state.assert_called_once_with(build, 'CLOSED')

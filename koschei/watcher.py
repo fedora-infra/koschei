@@ -17,21 +17,30 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-import fedmsg
 import koji
+
+from signal import signal, alarm, SIGALRM
 
 from . import util
 from .backend import Backend
-from .service import KojiService
+from .service import KojiService, FedmsgService, Service
 from .models import Build, Package, RepoGenerationRequest
 
+class WatchdogInterrupt(Exception):
+    pass
 
-class Watcher(KojiService):
+class WatchdogService(Service):
+    def get_handled_exceptions(self):
+        return (list([WatchdogInterrupt]) +
+                super(WatchdogService, self).get_handled_exceptions())
+
+class Watcher(KojiService, FedmsgService, WatchdogService):
 
     topic_name = util.config['fedmsg']['topic']
     tag = util.koji_config['build_tag']
     instance = util.config['fedmsg']['instance']
     build_tag = util.koji_config['target_tag']
+    watchdog_interval = util.config['services']['watcher']['watchdog_interval']
 
     def __init__(self, backend=None, *args, **kwargs):
         super(Watcher, self).__init__(*args, **kwargs)
@@ -81,6 +90,11 @@ class Watcher(KojiService):
                 self.db.commit()
 
     def main(self):
-        for _, _, topic, msg in fedmsg.tail_messages():
+        def handler(n, s):
+            raise WatchdogInterrupt()
+        signal(SIGALRM, handler)
+        alarm(self.watchdog_interval)
+        for _, _, topic, msg in self.fedmsg.tail_messages():
             if topic.startswith(self.topic_name + '.'):
                 self.consume(topic, msg['msg'])
+            alarm(self.watchdog_interval)
