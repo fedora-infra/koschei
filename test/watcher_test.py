@@ -1,7 +1,10 @@
+import time
+import signal
+
 from mock import Mock
 from common import DBTest
 
-from koschei.watcher import Watcher
+from koschei.watcher import Watcher, WatchdogInterrupt
 
 test_topic = 'org.fedoraproject.test.buildsys'
 
@@ -40,3 +43,15 @@ class WatcherTest(DBTest):
                           fedmsg_context=FedmsgMock())
         watcher.main()
         backend_mock.update_build_state.assert_called_once_with(build, 'CLOSED')
+
+    def test_watchdog(self):
+        class FedmsgMock(object):
+            def tail_messages(self):
+                time.sleep(5)
+                assert False
+        watcher = Watcher(db=Mock(), koji_session=Mock(),
+                          fedmsg_context=FedmsgMock())
+        try:
+            self.assertRaises(WatchdogInterrupt, watcher.main)
+        finally:
+            signal.alarm(0)
