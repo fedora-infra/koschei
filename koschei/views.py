@@ -332,7 +332,7 @@ def search():
     if term:
         def alter_query(query):
             matcher = '%{}%'.format(term.strip().replace('*', '%'))
-            return query.filter(Package.name.like(matcher))
+            return query.filter(Package.name.ilike(matcher))
         return package_view("search-results.html", alter_query=alter_query)
     return redirect(url_for('frontpage'))
 
