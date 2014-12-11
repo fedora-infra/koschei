@@ -121,5 +121,5 @@ class FedmsgService(Service):
 
     def on_exception(self, exc):
         self.fedmsg.destroy()
-        self.fedmsg = fedmsg.core.FedMsgContext()
+        self.fedmsg = fedmsg.core.FedMsgContext(**self.fedsmg_config)
         super(FedmsgService, self).on_exception(exc)
