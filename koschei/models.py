@@ -16,7 +16,6 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-import rpm
 import koji
 
 from sqlalchemy import (create_engine, Column, Integer, String, Boolean,
@@ -234,15 +233,6 @@ Index('ix_dependency_composite', Dependency.package_id, Dependency.repo_id)
 Index('build_package_id_ordered', Build.package_id.asc())
 
 
-# @Deprecated
-def format_evr(epoch, version, release):
-    if not version or not release:
-        return ''
-    if epoch:
-        return '{}:{}-{}'.format(epoch, version, release)
-    return '{}-{}'.format(version, release)
-
-
 class DependencyChange(Base):
     __tablename__ = 'dependency_change'
     id = Column(Integer, primary_key=True)
@@ -266,25 +256,6 @@ class DependencyChange(Base):
     @property
     def curr_evr(self):
         return self.curr_epoch, self.curr_version, self.curr_release
-
-    # @Deprecated
-    @property
-    def prev_dep_evr(self):
-        return format_evr(self.prev_epoch, self.prev_version,
-                          self.prev_release)
-
-    # @Deprecated
-    @property
-    def curr_dep_evr(self):
-        return format_evr(self.curr_epoch, self.curr_version,
-                          self.curr_release)
-
-    # @Deprecated
-    @property
-    def is_update(self):
-        prev = (str(self.prev_epoch), self.prev_version, self.prev_release)
-        curr = (str(self.curr_epoch), self.curr_version, self.curr_release)
-        return rpm.labelCompare(prev, curr) < 0
 
 
 @listens_for(Session, "after_begin")
