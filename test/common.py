@@ -125,7 +125,7 @@ class DBTest(AbstractTest):
         self.s.commit()
         return pkgs
 
-    def prepare_builds(self, repo_id, **builds):
+    def prepare_builds(self, repo_id=1, **builds):
         new_builds = []
         for pkg_name, state in sorted(builds.items()):
             states = {

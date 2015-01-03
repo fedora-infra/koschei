@@ -21,7 +21,8 @@ from __future__ import print_function
 import math
 
 from datetime import datetime
-from sqlalchemy import func, union_all, extract, cast, Integer, case, null
+from sqlalchemy import (func, union_all, extract, cast, Integer, case, null,
+                        literal_column)
 from sqlalchemy.sql.functions import coalesce
 
 from . import util
@@ -39,6 +40,7 @@ class Scheduler(KojiService):
 
     priority_conf = util.config['priorities']
     priority_threshold = priority_conf['build_threshold']
+    failed_priority = priority_conf['failed_build_priority']
     max_builds = util.config['koji_config']['max_builds']
     load_threshold = util.config['koji_config']['load_threshold']
 
@@ -67,6 +69,21 @@ class Scheduler(KojiService):
                              time_expr.label('priority'))\
                       .group_by(Build.package_id)
 
+    def get_failed_build_priority_query(self):
+        rank = func.rank().over(partition_by=Package.id,
+                                order_by=Build.task_id.desc()).label('rank')
+        sub = self.db.query(Package.id.label('pkg_id'), Build.state, rank)\
+                     .outerjoin(Build,
+                                Package.id == Build.package_id)\
+                     .subquery()
+        return self.db.query(sub.c.pkg_id,
+                             literal_column(str(self.failed_priority))
+                             .label('priority'))\
+                      .filter(((sub.c.rank == 1) & (sub.c.state == 5)) |
+                              ((sub.c.rank == 2) & (sub.c.state != 5)))\
+                      .group_by(sub.c.pkg_id)\
+                      .having(func.count(sub.c.pkg_id) == 2)
+
     def get_priority_queries(self):
         prio = (('manual', Package.manual_priority),
                 ('static', Package.static_priority))
@@ -75,6 +92,7 @@ class Scheduler(KojiService):
                       for name, col in prio}
         priorities['dependency'] = self.get_dependency_priority_query()
         priorities['time'] = self.get_time_priority_query()
+        priorities['failed_build'] = self.get_failed_build_priority_query()
         return priorities
 
     def get_scheduled_package(self):

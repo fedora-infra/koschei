@@ -74,7 +74,7 @@ class SchedulerTest(DBTest):
             self.s.add(pkg)
             self.s.flush()
             build = m.Build(package_id=pkg.id,
-                          started=MockDatetime.now() - timedelta(days, hours=1))
+                            started=MockDatetime.now() - timedelta(days, hours=1))
             self.s.add(build)
         self.s.commit()
         query = self.get_scheduler().get_time_priority_query()
@@ -85,6 +85,17 @@ class SchedulerTest(DBTest):
                           256.455946637, 297.675251883]
         for item, exp in zip(res, expected_prios):
             self.assertAlmostEqual(exp, item.priority)
+
+    @postgres_only
+    def test_failed_build_priority(self):
+        pkgs = self.prepare_packages(['rnv', 'eclipse', 'fop', 'i3'])
+        self.prepare_builds(rnv=True, eclipse=False, i3=True)
+        self.prepare_builds(rnv=False, eclipse=False, fop=False)
+        query = self.get_scheduler().get_failed_build_priority_query()
+        # fop has 1 failed build with no previous one, should it be prioritized?
+        # self.assertItemsEqual([(pkgs[0].id, 200), (pkgs[1].id, 200)],
+        #                       query.all())
+        self.assertItemsEqual([(pkgs[0].id, 200)], query.all())
 
     @contextmanager
     def prio_table(self, tablename='tmp', **kwargs):

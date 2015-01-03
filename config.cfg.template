@@ -37,6 +37,7 @@ config = {
         "newly_added": 3000, # should be higher than the threshold
         "build_threshold": 256,
         "package_update": 256,
+        "failed_build_priority": 200,
         "t0": 6,
         "t1": 7 * 24,
     },
