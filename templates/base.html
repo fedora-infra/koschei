@@ -55,6 +55,11 @@ href="{{ url_for('static', filename='koji.css') }}"/>
         {% endif %}
         {% endwith %}
 
+        {% set global_notice = get_global_notice() %}
+        {% if global_notice %}
+        <h3 class="notice">{{ global_notice.content }}</h3>
+        {% endif %}
+
         <div id="content">
             {% block content %}
             {% endblock %}

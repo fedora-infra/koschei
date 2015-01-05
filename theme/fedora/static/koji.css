@@ -543,3 +543,9 @@ span#loginInfo {
 .change_input {
     width: 50px;
 }
+
+.notice {
+    border: 2px solid red;
+    padding: 10px;
+    font-size: 1.3em;
+}

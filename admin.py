@@ -6,7 +6,8 @@ import argparse
 import json
 import logging
 
-from koschei.models import engine, Base, Package, PackageGroup, Session
+from koschei.models import (engine, Base, Package, PackageGroup, Session,
+                            AdminNotice)
 from koschei.backend import Backend, PackagesDontExist
 from koschei import util
 
@@ -56,6 +57,25 @@ class CreateDb(Command):
         Base.metadata.create_all(engine)
         alembic_cfg = Config(util.config['alembic']['alembic_ini'])
         command.stamp(alembic_cfg, "head")
+
+class Notice(Command):
+    """ Set admin notice displayed in web interface """
+
+    def setup_parser(self, parser):
+        parser.add_argument('content')
+
+    def execute(self, backend, content):
+        db = backend.db
+        key = 'global_notice'
+        content = content.strip()
+        notice = db.query(AdminNotice).filter_by(key=key).first()
+        if not content or content == 'clear':
+            if notice:
+                db.delete(notice)
+        else:
+            notice = notice or AdminNotice(key=key)
+            notice.content = content
+            db.add(notice)
 
 class AddPkg(Command):
     """ Adds given packages to database """

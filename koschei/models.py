@@ -258,6 +258,12 @@ class DependencyChange(Base):
         return self.curr_epoch, self.curr_version, self.curr_release
 
 
+class AdminNotice(Base):
+    __tablename__ = 'admin_notice'
+    key = Column(String, primary_key=True)
+    content = Column(String, nullable=False)
+
+
 @listens_for(Session, "after_begin")
 def session_begin(db, transaction, connection):
     db._event_queue = EventQueue()

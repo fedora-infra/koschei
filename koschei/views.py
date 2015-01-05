@@ -9,7 +9,8 @@ from flask import abort, render_template, request, url_for, redirect, g, flash
 from sqlalchemy.orm import joinedload, subqueryload, undefer, contains_eager
 from jinja2 import Markup, escape
 
-from .models import Package, Build, PackageGroup, PackageGroupRelation
+from .models import (Package, Build, PackageGroup, PackageGroupRelation,
+                     AdminNotice)
 from . import util, auth, backend
 from .frontend import app, db
 
@@ -62,13 +63,19 @@ def columnize(what, css_class=None):
     return Markup('\n'.join('<td{}>{}</td>'.format(attrs, escape(item))
                             for item in what))
 
+def get_global_notice():
+    return db.query(AdminNotice).filter_by(key="global_notice").first()
+
+
 pathinfo = koji.PathInfo(topdir=util.koji_config['topurl'])
 app.jinja_env.globals.update(koji_weburl=util.config['koji_config']['weburl'],
                              koji_pathinfo=pathinfo, next=next, iter=iter,
-                             min=min, max=max, page_args=page_args)
+                             min=min, max=max, page_args=page_args,
+                             get_global_notice=get_global_notice)
 
 app.jinja_env.filters.update(columnize=columnize,
                              format_depchange=format_depchange)
+
 
 
 class Reversed(object):
