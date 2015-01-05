@@ -23,6 +23,7 @@ BuildRequires:       python-librepo
 BuildRequires:       python-libcomps
 BuildRequires:       rpm-python
 BuildRequires:       dnf
+BuildRequires:       fedmsg
 %endif
 
 Requires:       dnf
