@@ -245,7 +245,8 @@ def get_build_group():
     session = create_koji_session(anonymous=True)
     groups = session.getTagGroups(tag_name)
     [packages] = [group['packagelist'] for group in groups if group['name'] == group_name]
-    return [package['package'] for package in packages if not package['blocked']]
+    return [package['package'] for package in packages
+            if not package['blocked'] and package['type'] == 'default']
 
 
 def get_koji_packages(package_names):
