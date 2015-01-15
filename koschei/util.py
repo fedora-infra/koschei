@@ -86,7 +86,6 @@ srpm_dir = config['directories']['srpms']
 repodata_dir = config['directories']['repodata']
 
 dep_config = config['dependency']
-koji_config = config['koji_config']
 koji_repos = dep_config['repos']
 
 
