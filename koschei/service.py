@@ -22,7 +22,6 @@ import signal
 import sys
 import socket
 import time
-import urllib2
 import fedmsg.core
 import fedmsg.config
 
@@ -92,7 +91,7 @@ class Service(object):
 
 class KojiService(Service):
     koji_anonymous = True
-    __retry_on = (koji.GenericError, socket.error, urllib2.URLError)
+    __retry_on = (koji.GenericError, socket.error)
 
     def __init__(self, koji_session=None, **kwargs):
         super(KojiService, self).__init__(**kwargs)

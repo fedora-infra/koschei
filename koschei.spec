@@ -20,7 +20,6 @@ BuildRequires:       python-sqlalchemy
 BuildRequires:       koji
 BuildRequires:       python-hawkey
 BuildRequires:       python-librepo
-BuildRequires:       python-libcomps
 BuildRequires:       rpm-python
 BuildRequires:       dnf
 BuildRequires:       fedmsg
@@ -43,7 +42,6 @@ Requires:       python-flask-openid
 Requires:       mod_wsgi
 Requires:       httpd
 Requires:       python-librepo
-Requires:       python-libcomps
 Requires:       rpm-python
 Requires(pre):  shadow-utils
 Requires(post): systemd
