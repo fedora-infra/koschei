@@ -87,17 +87,20 @@ class Backend(object):
     def get_newer_build_if_exists(self, package):
         [info] = self.koji_session.listTagged(util.source_tag, latest=True,
                                               package=package.name) or [None]
-        build = package.last_build
-        if (info and (not build or
-                      util.compare_evr((build.epoch,
-                                        build.version,
-                                        build.release),
-                                       (info['epoch'],
-                                        info['version'],
-                                        info['release'])) < 0)
-                and self.db.query(Build).filter_by(task_id=info['task_id'])
-                           .count() == 0):
+        if self.is_build_newer(package.last_build, info):
             return info
+
+    def is_build_newer(self, current_build, task_info):
+        return (task_info and (not current_build or
+                               util.compare_evr((current_build.epoch,
+                                                 current_build.version,
+                                                 current_build.release),
+                                                (task_info['epoch'],
+                                                 task_info['version'],
+                                                 task_info['release'])) < 0)
+                and self.db.query(Build)
+                .filter_by(task_id=task_info['task_id'])
+                .count() == 0)
 
     def register_real_build(self, package, build_info):
         # we may alrady have that build
@@ -175,6 +178,16 @@ class Backend(object):
             rel = PackageGroupRelation(group_id=group_obj.id,
                                        package_id=pkg.id)
             self.db.add(rel)
+
+    def register_real_builds(self, task_info_mapping):
+        """
+        Takes a dictionary mapping package (ORM entity) to koji task_infos
+        and registers possible real builds.
+        """
+        for pkg, info in task_info_mapping.items():
+            if self.is_build_newer(pkg.last_build, info):
+                self.register_real_build(pkg, info)
+        self.db.commit()
 
     def add_packages(self, names, group=None, static_priority=None,
                      manual_priority=None):

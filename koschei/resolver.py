@@ -31,7 +31,8 @@ from koschei import util
 from koschei.service import KojiService
 from koschei.srpm_cache import SRPMCache
 from koschei.repo_cache import RepoCache
-from koschei.backend import check_package_state
+from koschei.backend import check_package_state, Backend
+from koschei.util import itercall
 
 
 def get_srpm_pkg(sack, name, evr=None):
@@ -51,12 +52,15 @@ def get_srpm_pkg(sack, name, evr=None):
 class Resolver(KojiService):
 
     def __init__(self, log=None, db=None, koji_session=None,
-                 srpm_cache=None, repo_cache=None):
+                 srpm_cache=None, repo_cache=None, backend=None):
         super(Resolver, self).__init__(log=log, db=db,
                                        koji_session=koji_session)
         self.srpm_cache = (srpm_cache
                            or SRPMCache(koji_session=self.koji_session))
         self.repo_cache = repo_cache or RepoCache()
+        self.backend = backend or Backend(db=self.db,
+                                          koji_session=self.koji_session,
+                                          log=self.log)
 
     def prepare_goal(self, sack, srpm, group):
         goal = hawkey.Goal(sack)
@@ -208,12 +212,20 @@ class Resolver(KojiService):
             if last_build.state in Build.FINISHED_STATES:
                 return self.get_prev_build_with_repo_id(last_build)
 
+    def get_latest_task_infos(self, packages):
+        source_tag = util.koji_config['source_tag']
+        infos = itercall(self.koji_session, packages,
+                         lambda k, p: k.listTagged(source_tag, latest=True,
+                                                   package=p.name))
+        return {pkg: i[0] for pkg, i in zip(packages, infos) if i}
+
     def generate_repo(self, repo_id):
         start = time.time()
-        packages = self.get_packages()
-        package_names = [pkg.name for pkg in packages]
         self.log.info("Generating new repo")
-        self.srpm_cache.get_latest_srpms(package_names)
+        packages = self.get_packages()
+        task_infos = self.get_latest_task_infos(packages)
+        self.backend.register_real_builds(task_infos)
+        self.srpm_cache.get_latest_srpms([i for (_, i) in task_infos.items()])
         srpm_repo = self.srpm_cache.get_repodata()
         sack = self.prepare_sack(repo_id)
         util.add_repo_to_sack('src', srpm_repo, sack)

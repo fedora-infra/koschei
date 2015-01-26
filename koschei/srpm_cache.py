@@ -86,11 +86,7 @@ class SRPMCache(object):
                     self._cache[nevr] = path
                     return path
 
-    def get_latest_srpms(self, package_names):
-        infos = itercall(self._koji_session, package_names,
-                         lambda k, p: k.listTagged(source_tag, latest=True,
-                                                   package=p))
-        task_infos = [x[0] for x in infos if x]
+    def get_latest_srpms(self, task_infos):
         urls = map(pathinfo.build, task_infos)
         srpms = itercall(self._koji_session, task_infos,
                          lambda k, i: k.listRPMs(buildID=i['build_id'],
