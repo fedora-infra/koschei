@@ -196,6 +196,18 @@ class Resolver(KojiService):
                             changes)
         self.db.expire_all()
 
+    def get_build_for_comparison(self, package):
+        """
+        Returns newest build which should be used for dependency
+        comparisons or None if it shouldn't be compared at all
+        """
+        last_build = package.last_build
+        if last_build:
+            if last_build.repo_id:
+                return last_build
+            if last_build.state in Build.FINISHED_STATES:
+                return self.get_prev_build_with_repo_id(last_build)
+
     def generate_repo(self, repo_id):
         start = time.time()
         packages = self.get_packages()
@@ -215,9 +227,7 @@ class Resolver(KojiService):
             curr_deps = self.resolve_dependencies(sack, package, srpm, group,
                                                   repo_id)
             if curr_deps is not None:
-                last_build = package.last_build
-                if last_build and not last_build.repo_id:
-                    last_build = self.get_prev_build(last_build)
+                last_build = self.get_build_for_comparison(package)
                 if last_build:
                     prev_deps = self.get_deps_from_db(last_build.package_id,
                                                       last_build.repo_id)
@@ -257,7 +267,7 @@ class Resolver(KojiService):
                    .delete()
             self.db.commit()
 
-    def get_prev_build(self, build):
+    def get_prev_build_with_repo_id(self, build):
         return self.db.query(Build)\
                       .filter_by(package_id=build.package_id)\
                       .filter(Build.task_id < build.task_id)\
@@ -285,7 +295,7 @@ class Resolver(KojiService):
         build.deps_processed = True
         if build.repo_id:
             self.log.info("Processing build {}".format(build.id))
-            prev = self.get_prev_build(build)
+            prev = self.get_prev_build_with_repo_id(build)
             srpm = get_srpm_pkg(sack, build.package.name, (build.epoch,
                                                            build.version,
                                                            build.release))
