@@ -22,7 +22,7 @@ import librepo
 from common import DBTest, testdir, postgres_only
 from mock import Mock, patch
 from koschei.models import (Dependency, ResolutionResult, ResolutionProblem,
-                            DependencyChange, Package)
+                            DependencyChange, Package, Build)
 from koschei.resolver import Resolver
 
 FOO_DEPS = [
@@ -69,6 +69,18 @@ class ResolverTest(DBTest):
         foo_build.release = '1.fc22'
         self.s.commit()
         return foo_build
+
+    def test_dont_resolve_against_old_build_when_new_is_running(self):
+        foo = self.prepare_packages(['foo'])[0]
+        self.prepare_builds(foo=False, repo_id=2)
+        self.prepare_builds(foo=None, repo_id=None)
+        self.assertIsNone(self.resolver.get_build_for_comparison(foo))
+
+    def test_skip_failed_build_with_no_repo_id(self):
+        foo = self.prepare_packages(['foo'])[0]
+        b1 = self.prepare_builds(foo=False, repo_id=2)[0]
+        self.prepare_builds(foo=False, repo_id=None)
+        self.assertEqual(b1, self.resolver.get_build_for_comparison(foo))
 
     def test_resolve_build(self):
         foo_build = self.prepare_foo_build()
