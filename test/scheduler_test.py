@@ -88,9 +88,10 @@ class SchedulerTest(DBTest):
 
     @postgres_only
     def test_failed_build_priority(self):
-        pkgs = self.prepare_packages(['rnv', 'eclipse', 'fop', 'i3'])
-        self.prepare_builds(rnv=True, eclipse=False, i3=True)
-        self.prepare_builds(rnv=False, eclipse=False, fop=False)
+        pkgs = self.prepare_packages(['rnv', 'eclipse', 'fop', 'freemind', 'i3'])
+        self.prepare_builds(rnv=True, eclipse=False, i3=True, freemind=False)
+        self.prepare_builds(rnv=False, eclipse=False, fop=False, freemind=False)
+        self.prepare_builds(freemind=False)
         query = self.get_scheduler().get_failed_build_priority_query()
         # fop has 1 failed build with no previous one, should it be prioritized?
         # self.assertItemsEqual([(pkgs[0].id, 200), (pkgs[1].id, 200)],
