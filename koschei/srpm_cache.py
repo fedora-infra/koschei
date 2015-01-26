@@ -25,6 +25,7 @@ import subprocess
 import rpm
 
 from koschei import util
+from koschei.util import itercall
 
 log = logging.getLogger('koschei.srpm_cache')
 
@@ -86,32 +87,24 @@ class SRPMCache(object):
                     return path
 
     def get_latest_srpms(self, package_names):
-        while package_names:
-            self._koji_session.multicall = True
-            for package_name in package_names[:50]:
-                self._koji_session.listTagged(source_tag, latest=True,
-                                              package=package_name)
-            urls = []
-            infos = self._koji_session.multiCall()
-            self._koji_session.multicall = True
-            for [info] in infos:
-                if info:
-                    self._koji_session.listRPMs(buildID=info[0]['build_id'],
-                                                arches='src')
-                    urls.append(pathinfo.build(info[0]))
-            srpms = self._koji_session.multiCall()
-            assert len(srpms) == len(urls)
-            for [srpm], build_url in zip(srpms, urls):
-                srpm = srpm[0]
-                srpm_url = pathinfo.rpm(srpm)
-                srpm_name = os.path.basename(srpm_url)
-                util.download_rpm_header(
-                    build_url + '/' + srpm_url, self._srpm_dir)
-                nevr = (srpm['name'], srpm['epoch'], srpm['version'],
-                        srpm['release'])
-                self._cache[nevr] = os.path.join(self._srpm_dir, srpm_name)
-                self._dirty = True
-            package_names = package_names[50:]
+        infos = itercall(self._koji_session, package_names,
+                         lambda k, p: k.listTagged(source_tag, latest=True,
+                                                   package=p))
+        task_infos = [x[0] for x in infos if x]
+        urls = map(pathinfo.build, task_infos)
+        srpms = itercall(self._koji_session, task_infos,
+                         lambda k, i: k.listRPMs(buildID=i['build_id'],
+                                                 arches='src'))
+
+        for [srpm], build_url in zip(srpms, urls):
+            srpm_url = pathinfo.rpm(srpm)
+            srpm_name = os.path.basename(srpm_url)
+            util.download_rpm_header(
+                build_url + '/' + srpm_url, self._srpm_dir)
+            nevr = (srpm['name'], srpm['epoch'], srpm['version'],
+                    srpm['release'])
+            self._cache[nevr] = os.path.join(self._srpm_dir, srpm_name)
+            self._dirty = True
 
     def _createrepo(self):
         log.debug('createrepo_c')

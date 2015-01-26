@@ -118,6 +118,14 @@ class Proxy(object):
 def parse_koji_time(string):
     return datetime.strptime(string, "%Y-%m-%d %H:%M:%S.%f")
 
+def itercall(koji_session, args, koji_call):
+    while args:
+        koji_session.multicall = True
+        for arg in args[:50]:
+            koji_call(koji_session, arg)
+        for [info] in koji_session.multiCall():
+            yield info
+        args = args[50:]
 
 def create_koji_session(anonymous=False):
     koji_session = koji.ClientSession(server, {'timeout': 3600})
