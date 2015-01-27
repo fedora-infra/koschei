@@ -17,8 +17,6 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-import koji
-
 from signal import signal, alarm, SIGALRM
 
 from . import util
@@ -60,7 +58,7 @@ class Watcher(KojiService, FedmsgService, WatchdogService):
         elif topic == self.get_topic('repo.done'):
             if content.get('tag') == self.tag:
                 self.repo_done(content['repo_id'])
-        elif topic == self.get_topic('build.state.change'):
+        elif topic == self.get_topic('build.tag'):
             self.register_real_build(content)
 
     def repo_done(self, repo_id):
@@ -77,17 +75,13 @@ class Watcher(KojiService, FedmsgService, WatchdogService):
             self.backend.update_build_state(build, state)
 
     def register_real_build(self, msg):
-        assert msg['attribute'] == 'state'
-        if msg['new'] in (koji.BUILD_STATES['COMPLETE'],
-                          koji.BUILD_STATES['FAILED']):
-            name = msg['name']
-            pkg = self.db.query(Package).filter_by(name=name).first()
-            if not pkg:
-                return
-            newer_build = self.backend.get_newer_build_if_exists(pkg)
-            if newer_build:
-                self.backend.register_real_build(pkg, newer_build)
-                self.db.commit()
+        if msg['tag'] == self.tag:
+            pkg = self.db.query(Package).filter_by(name=msg['name']).first()
+            if pkg:
+                newer_build = self.backend.get_newer_build_if_exists(pkg)
+                if newer_build:
+                    self.backend.register_real_build(pkg, newer_build)
+                    self.db.commit()
 
     def main(self):
         def handler(n, s):
