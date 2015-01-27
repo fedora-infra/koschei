@@ -219,13 +219,20 @@ class Resolver(KojiService):
                                                    package=p.name))
         return {pkg: i[0] for pkg, i in zip(packages, infos) if i}
 
+    def refresh_latest_builds(self, packages):
+        """
+        Checks Koji for latest builds of all packages and registers possible
+        new real builds and obtains srpms for them
+        """
+        task_infos = self.get_latest_task_infos(packages)
+        self.backend.register_real_builds(task_infos)
+        self.srpm_cache.get_latest_srpms([i for (_, i) in task_infos.items()])
+
     def generate_repo(self, repo_id):
         start = time.time()
         self.log.info("Generating new repo")
         packages = self.get_packages()
-        task_infos = self.get_latest_task_infos(packages)
-        self.backend.register_real_builds(task_infos)
-        self.srpm_cache.get_latest_srpms([i for (_, i) in task_infos.items()])
+        self.refresh_latest_builds(packages)
         srpm_repo = self.srpm_cache.get_repodata()
         sack = self.prepare_sack(repo_id)
         util.add_repo_to_sack('src', srpm_repo, sack)

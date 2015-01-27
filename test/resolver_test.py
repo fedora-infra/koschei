@@ -59,7 +59,8 @@ class ResolverTest(DBTest):
         self.srpm_mock = Mock()
         self.srpm_mock.get_repodata.return_value = get_repo('src')
         self.resolver = Resolver(db=self.s, koji_session=Mock(),
-                        repo_cache=self.repo_mock, srpm_cache=self.srpm_mock)
+                                 repo_cache=self.repo_mock,
+                                 srpm_cache=self.srpm_mock)
 
     def prepare_foo_build(self, repo_id=666, version='4'):
         self.prepare_packages(['foo'])
@@ -157,8 +158,8 @@ class ResolverTest(DBTest):
     def test_repo_generation(self):
         self.prepare_old_build()
         with patch('koschei.util.get_build_group', return_value=['R']):
-            self.resolver.generate_repo(666)
+            with patch.object(self.resolver, 'refresh_latest_builds'):
+                self.resolver.generate_repo(666)
         self.repo_mock.get_repos.assert_called_once_with(666)
-        self.srpm_mock.get_latest_srpms.assert_called_once_with(['foo'])
         self.srpm_mock.get_repodata.assert_called_once_with()
         self.verify_changes()
