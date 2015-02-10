@@ -20,7 +20,8 @@ config = {
         "build_opts": {
         },
         "load_threshold": 0.5,
-        "task_priority": 30
+        "task_priority": 30,
+        "multicall_chunk_size": 100,
     },
     "dependency": {
         "build_group": "build",

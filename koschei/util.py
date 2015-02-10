@@ -119,13 +119,14 @@ def parse_koji_time(string):
     return datetime.strptime(string, "%Y-%m-%d %H:%M:%S.%f")
 
 def itercall(koji_session, args, koji_call):
+    chunk_size = koji_config['multicall_chunk_size']
     while args:
         koji_session.multicall = True
-        for arg in args[:50]:
+        for arg in args[:chunk_size]:
             koji_call(koji_session, arg)
         for [info] in koji_session.multiCall():
             yield info
-        args = args[50:]
+        args = args[chunk_size:]
 
 def create_koji_session(anonymous=False):
     koji_session = koji.ClientSession(server, {'timeout': 3600})
