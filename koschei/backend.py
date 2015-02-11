@@ -187,7 +187,7 @@ class Backend(object):
         for pkg, info in task_info_mapping.items():
             if self.is_build_newer(pkg.last_build, info):
                 self.register_real_build(pkg, info)
-        self.db.commit()
+                self.db.commit()
 
     def add_packages(self, names, group=None, static_priority=None,
                      manual_priority=None):

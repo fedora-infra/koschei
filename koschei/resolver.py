@@ -232,7 +232,13 @@ class Resolver(KojiService):
         start = time.time()
         self.log.info("Generating new repo")
         packages = self.get_packages()
+        # detaches objects from ORM, prevents spurious queries that hinder
+        # performance
+        self.db.expunge_all()
         self.refresh_latest_builds(packages)
+        packages = self.get_packages()
+        # ! caution, no writes to packages will be propagated to DB
+        self.db.expunge_all()
         srpm_repo = self.srpm_cache.get_repodata()
         sack = self.prepare_sack(repo_id)
         util.add_repo_to_sack('src', srpm_repo, sack)
@@ -254,9 +260,9 @@ class Resolver(KojiService):
                         changes += self.create_dependency_changes(prev_deps,
                                                                   curr_deps,
                                                                   package.id)
-        prev_states = {pkg.id: pkg.state_string for pkg in packages}
         self.synchronize_resolution_state()
         packages = self.get_packages()
+        prev_states = {pkg.id: pkg.state_string for pkg in packages}
         for pkg in packages:
             prev_state = prev_states.get(pkg.id)
             if prev_state:
