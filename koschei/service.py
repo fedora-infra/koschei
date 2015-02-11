@@ -18,6 +18,7 @@
 
 import koji
 import logging
+import requests
 import signal
 import sys
 import socket
@@ -117,6 +118,10 @@ class FedmsgService(Service):
         self.fedmsg = (fedmsg_context or
                        fedmsg.core.FedMsgContext(**self.fedsmg_config))
         super(FedmsgService, self).__init__(**kwargs)
+
+    def get_handled_exceptions(self):
+        return ([requests.exceptions.ConnectionError] +
+                super(FedmsgService, self).get_handled_exceptions())
 
     def on_exception(self, exc):
         self.fedmsg.destroy()
