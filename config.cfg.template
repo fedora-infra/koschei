@@ -12,9 +12,9 @@ config = {
         "cert": "~/.fedora.cert",
         "ca": "~/.fedora-server-ca.cert",
         "server_ca": "~/.fedora-server-ca.cert",
-        "source_tag": "f22",
-        "target_tag": "f22",
-        "build_tag": "f22-build",
+        "source_tag": "f23",
+        "target_tag": "f23",
+        "build_tag": "f23-build",
         "max_builds": 30,
         "build_arches": ['i386', 'x86_64', 'armhfp'],
         "build_opts": {
@@ -28,8 +28,8 @@ config = {
         "repo_cache_items": 10,
         "keep_build_deps_for": 5,
         "repos": {
-            "x86_64": "http://koji.fedoraproject.org/repos/f22-build/{repo_id}/x86_64",
-            "i386": "http://koji.fedoraproject.org/repos/f22-build/{repo_id}/i386",
+            "x86_64": "http://koji.fedoraproject.org/repos/f23-build/{repo_id}/x86_64",
+            "i386": "http://koji.fedoraproject.org/repos/f23-build/{repo_id}/i386",
         },
     },
     "priorities": {
