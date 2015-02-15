@@ -241,6 +241,9 @@ class Resolver(KojiService):
         self.db.expunge_all()
         srpm_repo = self.srpm_cache.get_repodata()
         sack = self.prepare_sack(repo_id)
+        if not sack:
+            self.log.error('Cannot generate repo: {}'.format(repo_id))
+            return
         util.add_repo_to_sack('src', srpm_repo, sack)
         # TODO repo_id
         group = util.get_build_group()
