@@ -16,6 +16,7 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+import os
 import time
 import hawkey
 import itertools
@@ -228,6 +229,11 @@ class Resolver(KojiService):
         self.backend.register_real_builds(task_infos)
         self.srpm_cache.get_latest_srpms([i for (_, i) in task_infos.items()])
 
+    def update_repo_index(self, repo_id):
+        index_path = os.path.join(util.config['directories']['repodata'], 'index')
+        with open(index_path, 'w') as index:
+            index.write('{}\n'.format(repo_id))
+
     def generate_repo(self, repo_id):
         start = time.time()
         self.log.info("Generating new repo")
@@ -244,6 +250,7 @@ class Resolver(KojiService):
         if not sack:
             self.log.error('Cannot generate repo: {}'.format(repo_id))
             return
+        self.update_repo_index(repo_id)
         util.add_repo_to_sack('src', srpm_repo, sack)
         # TODO repo_id
         group = util.get_build_group()
