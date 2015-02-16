@@ -68,7 +68,7 @@ class Service(object):
                 while True:
                     try:
                         retry_attempts += 1
-                        self.log.error("Service error: {}".format(exc))
+                        self.log.error("Service error: {}: {}".format(type(exc), exc))
                         sleep = retry_in * retry_attempts
                         self.log.info("Retrying in {} seconds".format(sleep))
                         time.sleep(sleep)
