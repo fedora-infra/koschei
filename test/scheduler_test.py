@@ -118,10 +118,7 @@ class SchedulerTest(DBTest):
                     self.s.add(pkg)
                     self.s.flush()
                     if states.get(name, True) is not None:
-                        res = m.ResolutionResult(resolved=(states.get(name) != 'unresolved'),
-                                                 package_id=pkg.id, repo_id=666)
-                        pkg.resolved = res.resolved
-                        self.s.add(res)
+                        pkg.resolved = states.get(name) != 'unresolved'
                 pkgs.append((name, pkg))
                 if name in builds:
                     self.s.add(m.Build(package_id=pkg.id, state=builds[name]))

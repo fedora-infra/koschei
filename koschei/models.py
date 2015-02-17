@@ -75,10 +75,8 @@ class Package(Base):
         Column(Integer, ForeignKey('build.id', use_alter=True,
                                    name='fkey_package_last_build_id'),
                nullable=True)
-    # denormalized field, updated manually by resolver
     resolved = Column(Boolean)
-    # denormalized field, updated manually by resolver
-    last_resolution_id = Column(Integer)
+    resolution_problems = relationship('ResolutionProblem', backref='package')
 
     ignored = Column(Boolean, nullable=False, server_default=false())
 
@@ -92,8 +90,7 @@ class Package(Base):
         if build:
             # pylint: disable=E1101
             return {Build.COMPLETE: 'ok',
-                    Build.FAILED: 'failing',
-                    }.get(build.state)
+                    Build.FAILED: 'failing'}.get(build.state)
         return 'ignored'
 
     def __repr__(self):
@@ -182,27 +179,17 @@ class Build(Base):
         return [change.get_trigger() for change in self.dependency_changes]
 
     def __repr__(self):
-        return '{0.id} (name={0.package.name}, state={0.state_string})'\
-               .format(self)
-
-
-class ResolutionResult(Base):
-    __tablename__ = 'resolution_result'
-    id = Column(Integer, primary_key=True)
-    package_id = Column(ForeignKey('package.id', ondelete='CASCADE'),
-                        index=True)
-    repo_id = Column(Integer, nullable=False)
-    resolved = Column(Boolean, nullable=False, server_default=false())
-    generated = Column(DateTime, nullable=False, default=datetime.now)
-    problems = relationship('ResolutionProblem')
+        # pylint: disable=W1306
+        return '{p.id} (name={p.package.name}, state={p.state_string})'\
+               .format(p=self)
 
 
 class ResolutionProblem(Base):
     __tablename__ = 'resolution_result_element'
     id = Column(Integer, primary_key=True)
-    resolution_id = Column(Integer, ForeignKey(ResolutionResult.id,
-                                               ondelete='CASCADE'),
-                           index=True)
+    package_id = Column(Integer, ForeignKey(Package.id,
+                                            ondelete='CASCADE'),
+                        index=True)
     problem = Column(String, nullable=False)
 
 
@@ -256,6 +243,11 @@ class DependencyChange(Base):
     @property
     def curr_evr(self):
         return self.curr_epoch, self.curr_version, self.curr_release
+
+
+class Repo(Base):
+    __tablename__ = 'repo'
+    repo_id = Column(Integer, primary_key=True, default=external_id)
 
 
 class AdminNotice(Base):
@@ -322,13 +314,6 @@ Package.last_complete_build = \
     relationship(Build,
                  primaryjoin=(Build.id == Package.last_complete_build_id),
                  uselist=False)
-
-Package.resolution_problems = \
-    relationship(ResolutionProblem,
-                 primaryjoin=(ResolutionProblem.resolution_id ==
-                              Package.last_resolution_id),
-                 foreign_keys=[Package.last_resolution_id],
-                 uselist=True)
 
 Package.all_builds = relationship(Build, order_by=Build.task_id.desc(),
                                   primaryjoin=(Build.package_id == Package.id),

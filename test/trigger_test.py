@@ -17,7 +17,7 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 from common import DBTest, postgres_only
-from koschei.models import Build, ResolutionResult
+from koschei.models import Build
 
 class TriggerTest(DBTest):
 

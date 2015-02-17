@@ -25,9 +25,8 @@ import dnf.sack
 
 from sqlalchemy.orm import joinedload
 
-from koschei.models import (Package, Dependency, DependencyChange,
-                            ResolutionResult, ResolutionProblem,
-                            RepoGenerationRequest, Build)
+from koschei.models import (Package, Dependency, DependencyChange, Repo,
+                            ResolutionProblem, RepoGenerationRequest, Build)
 from koschei import util
 from koschei.service import KojiService
 from koschei.srpm_cache import SRPMCache
@@ -62,6 +61,8 @@ class Resolver(KojiService):
         self.backend = backend or Backend(db=self.db,
                                           koji_session=self.koji_session,
                                           log=self.log)
+        #XXX
+        self.problems = None
 
     def prepare_goal(self, sack, srpm, group):
         goal = hawkey.Goal(sack)
@@ -72,7 +73,7 @@ class Resolver(KojiService):
         for reldep in srpm.requires:
             subj = dnf.subject.Subject(str(reldep))
             sltr = subj.get_best_selector(sack)
-            # pylint: disable=E1101
+            # pylint: disable=E1103
             if sltr is None or not sltr.matches():
                 problems.append("No package found for: {}".format(reldep))
             else:
@@ -122,10 +123,7 @@ class Resolver(KojiService):
             if not problems:
                 resolved = goal.run()
                 problems = goal.problems
-            result = ResolutionResult(repo_id=repo_id, package_id=package.id,
-                                      resolved=resolved)
-            self.db.add(result)
-            self.db.flush()
+            package.resolved = resolved
             if resolved:
                 # pylint: disable=E1101
                 deps = [Dependency(name=pkg.name, epoch=pkg.epoch,
@@ -136,9 +134,9 @@ class Resolver(KojiService):
                 return deps
             else:
                 for problem in sorted(set(problems)):
-                    entry = ResolutionProblem(resolution_id=result.id,
-                                              problem=problem)
-                    self.db.add(entry)
+                    entry = dict(package_id=package.id,
+                                 problem=problem)
+                    self.problems.append(entry)
 
     def get_deps_from_db(self, package_id, repo_id):
         deps = self.db.query(Dependency)\
@@ -186,10 +184,15 @@ class Resolver(KojiService):
             return sack
 
     def get_packages(self):
-        return self.db.query(Package)\
-                      .filter(Package.ignored == False)\
-                      .options(joinedload(Package.last_build))\
-                      .all()
+        packages = self.db.query(Package)\
+                          .filter(Package.ignored == False)\
+                          .options(joinedload(Package.last_build))\
+                          .options(joinedload(Package.last_complete_build))\
+                          .all()
+        # detaches objects from ORM, prevents spurious queries that hinder
+        # performance
+        self.db.expunge_all()
+        return packages
 
     def update_dependency_changes(self, changes, apply_id=None):
         # pylint: disable=E1101
@@ -234,28 +237,7 @@ class Resolver(KojiService):
         with open(index_path, 'w') as index:
             index.write('{}\n'.format(repo_id))
 
-    def generate_repo(self, repo_id):
-        start = time.time()
-        self.log.info("Generating new repo")
-        packages = self.get_packages()
-        # detaches objects from ORM, prevents spurious queries that hinder
-        # performance
-        self.db.expunge_all()
-        self.refresh_latest_builds(packages)
-        packages = self.get_packages()
-        # ! caution, no writes to packages will be propagated to DB
-        self.db.expunge_all()
-        srpm_repo = self.srpm_cache.get_repodata()
-        sack = self.prepare_sack(repo_id)
-        if not sack:
-            self.log.error('Cannot generate repo: {}'.format(repo_id))
-            return
-        self.update_repo_index(repo_id)
-        util.add_repo_to_sack('src', srpm_repo, sack)
-        # TODO repo_id
-        group = util.get_build_group()
-        self.log.info("Resolving dependencies")
-        resolution_start = time.time()
+    def generate_dependency_changes(self, packages, sack, group, repo_id):
         changes = []
         for package in packages:
             srpm = get_srpm_pkg(sack, package.name)
@@ -270,21 +252,42 @@ class Resolver(KojiService):
                         changes += self.create_dependency_changes(prev_deps,
                                                                   curr_deps,
                                                                   package.id)
-        self.synchronize_resolution_state()
-        packages = self.get_packages()
-        prev_states = {pkg.id: pkg.state_string for pkg in packages}
-        for pkg in packages:
-            prev_state = prev_states.get(pkg.id)
-            if prev_state:
-                check_package_state(pkg, prev_state)
+        return changes
 
+    def generate_repo(self, repo_id):
+        start = time.time()
+        self.log.info("Generating new repo")
+        self.db.add(Repo(repo_id=repo_id))
+        # XXX
+        self.problems = []
+        packages = self.get_packages()
+        self.refresh_latest_builds(packages)
+        packages = self.get_packages()
+        srpm_repo = self.srpm_cache.get_repodata()
+        sack = self.prepare_sack(repo_id)
+        if not sack:
+            self.log.error('Cannot generate repo: {}'.format(repo_id))
+            return
+        self.update_repo_index(repo_id)
+        util.add_repo_to_sack('src', srpm_repo, sack)
+        # TODO repo_id
+        group = util.get_build_group()
+        self.log.info("Resolving dependencies")
+        resolution_start = time.time()
+        self.db.query(ResolutionProblem).delete(synchronize_session=False)
+        # pylint: disable=E1101
+        if self.problems:
+            self.db.execute(ResolutionProblem.__table__.insert(), self.problems)
+        changes = self.generate_dependency_changes(packages, sack, group, repo_id)
+        resolution_end = time.time()
+        self.synchronize_resolution_state(packages)
         self.update_dependency_changes(changes)
         self.db.commit()
         end = time.time()
 
         self.log.info(("New repo done. Resolution time: {} minutes\n"
                        "Overall time: {} minutes.")
-                      .format((end - resolution_start) / 60,
+                      .format((resolution_end - resolution_start) / 60,
                               (end - start) / 60))
 
     def process_repo_generation_requests(self):
@@ -294,8 +297,10 @@ class Resolver(KojiService):
                                 .first()
         if latest_request:
             repo_id = latest_request.repo_id
-            if not self.db.query(ResolutionResult)\
-                          .filter_by(repo_id=repo_id).first():
+            [last_repo] = (self.db.query(Repo.repo_id)
+                           .order_by(Repo.repo_id.desc())
+                           .first() or [0])
+            if repo_id > last_repo:
                 self.generate_repo(repo_id)
             self.db.query(RepoGenerationRequest)\
                    .filter(RepoGenerationRequest.repo_id <= repo_id)\
@@ -309,24 +314,21 @@ class Resolver(KojiService):
                       .filter(Build.repo_id != None)\
                       .order_by(Build.task_id.desc()).first()
 
-    def synchronize_resolution_state(self):
-        self.db.flush()
-        self.db.execute("""UPDATE package
-                     SET resolved = lr.resolved,
-                         last_resolution_id = lr.id
-                     FROM (
-                        SELECT DISTINCT ON (package.id)
-                            package.id AS package_id,
-                            resolution_result.id AS id,
-                            resolution_result.resolved AS resolved
-                        FROM package JOIN resolution_result
-                            ON package.id = resolution_result.package_id
-                        ORDER BY package.id, resolution_result.repo_id DESC
-                     ) AS lr
-                     WHERE package.id = lr.package_id""")
-        self.db.expire_all()
+    def synchronize_resolution_state(self, packages):
+        prev_states = {p.id: p.state_string for p in self.get_packages()}
+        for pkg in packages:
+            prev_state = prev_states.get(pkg.id)
+            if prev_state:
+                check_package_state(pkg, prev_state)
+
+        for state in True, False:
+            ids = [p.id for p in packages if p.resolved is state]
+            if ids:
+                self.db.query(Package).filter(Package.id.in_(ids))\
+                    .update({'resolved': state}, synchronize_session=False)
 
     def process_build(self, build, sack, build_group):
+        self.problems = []
         build.deps_processed = True
         if build.repo_id:
             self.log.info("Processing build {}".format(build.id))
