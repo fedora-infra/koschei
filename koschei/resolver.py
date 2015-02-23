@@ -35,44 +35,44 @@ from koschei.backend import check_package_state, Backend
 from koschei.util import itercall
 
 
-def get_srpm_pkg(sack, name, evr=None):
-    if evr:
-        # pylint: disable=W0633
-        epoch, version, release = evr
-        hawk_pkg = hawkey.Query(sack).filter(name=name, epoch=epoch or 0,
-                                             arch='src', version=version,
-                                             release=release)
-    else:
-        hawk_pkg = hawkey.Query(sack).filter(name=name, arch='src',
-                                             latest_per_arch=True)
-    if hawk_pkg:
-        return hawk_pkg[0]
+class AbstractResolverTask(object):
+    def __init__(self, log, db, koji_session,
+                 srpm_cache, repo_cache, backend):
+        self.log = log
+        self.db = db
+        self.koji_session = koji_session
+        self.srpm_cache = srpm_cache
+        self.repo_cache = repo_cache
+        self.backend = backend
+        self.problems = []
+        self.sack = None
+        self.group = None
+        self.resolved_packages = {}
 
+    def get_srpm_pkg(self, name, evr=None):
+        if evr:
+            # pylint: disable=W0633
+            epoch, version, release = evr
+            hawk_pkg = hawkey.Query(self.sack)\
+                             .filter(name=name, epoch=epoch or 0,
+                                     arch='src', version=version,
+                                     release=release)
+        else:
+            hawk_pkg = hawkey.Query(self.sack)\
+                             .filter(name=name, arch='src',
+                                     latest_per_arch=True)
+        if hawk_pkg:
+            return hawk_pkg[0]
 
-class Resolver(KojiService):
-
-    def __init__(self, log=None, db=None, koji_session=None,
-                 srpm_cache=None, repo_cache=None, backend=None):
-        super(Resolver, self).__init__(log=log, db=db,
-                                       koji_session=koji_session)
-        self.srpm_cache = (srpm_cache
-                           or SRPMCache(koji_session=self.koji_session))
-        self.repo_cache = repo_cache or RepoCache()
-        self.backend = backend or Backend(db=self.db,
-                                          koji_session=self.koji_session,
-                                          log=self.log)
-        #XXX
-        self.problems = None
-
-    def prepare_goal(self, sack, srpm, group):
-        goal = hawkey.Goal(sack)
+    def prepare_goal(self, srpm):
+        goal = hawkey.Goal(self.sack)
         problems = []
-        for name in group:
-            sltr = hawkey.Selector(sack).set(name=name)
+        for name in self.group:
+            sltr = hawkey.Selector(self.sack).set(name=name)
             goal.install(select=sltr)
         for reldep in srpm.requires:
             subj = dnf.subject.Subject(str(reldep))
-            sltr = subj.get_best_selector(sack)
+            sltr = subj.get_best_selector(self.sack)
             # pylint: disable=E1103
             if sltr is None or not sltr.matches():
                 problems.append("No package found for: {}".format(reldep))
@@ -100,13 +100,13 @@ class Resolver(KojiService):
             self.db.connection().execute(table.insert(), dicts)
             self.db.expire_all()
 
-    def compute_dependency_distances(self, sack, srpm, deps):
+    def compute_dependency_distances(self, srpm, deps):
         dep_map = {dep.name: dep for dep in deps}
         visited = set()
         level = 1
         reldeps = srpm.requires
         while level < 5 and reldeps:
-            pkgs_on_level = set(hawkey.Query(sack).filter(provides=reldeps))
+            pkgs_on_level = set(hawkey.Query(self.sack).filter(provides=reldeps))
             reldeps = {req for pkg in pkgs_on_level if pkg not in visited
                        for req in pkg.requires}
             visited.update(pkgs_on_level)
@@ -116,21 +116,21 @@ class Resolver(KojiService):
                     dep.distance = level
             level += 1
 
-    def resolve_dependencies(self, sack, package, srpm, group, repo_id):
-        goal, problems = self.prepare_goal(sack, srpm, group)
+    def resolve_dependencies(self, package, srpm, repo_id):
+        goal, problems = self.prepare_goal(srpm)
         if goal is not None:
             resolved = False
             if not problems:
                 resolved = goal.run()
                 problems = goal.problems
-            package.resolved = resolved
+            self.resolved_packages[package.id] = resolved
             if resolved:
                 # pylint: disable=E1101
                 deps = [Dependency(name=pkg.name, epoch=pkg.epoch,
                                    version=pkg.version, release=pkg.release,
                                    arch=pkg.arch)
                         for pkg in goal.list_installs() if pkg.arch != 'src']
-                self.compute_dependency_distances(sack, srpm, deps)
+                self.compute_dependency_distances(srpm, deps)
                 return deps
             else:
                 for problem in sorted(set(problems)):
@@ -175,13 +175,33 @@ class Resolver(KojiService):
             changes[dep.name] = change
         return changes.values() if changes else []
 
+    def update_dependency_changes(self, changes, apply_id=None):
+        # pylint: disable=E1101
+        self.db.query(DependencyChange)\
+               .filter_by(applied_in_id=apply_id)\
+               .delete(synchronize_session=False)
+        if changes:
+            self.db.execute(DependencyChange.__table__.insert(),
+                            changes)
+        self.db.expire_all()
+
+    def get_prev_build_with_repo_id(self, build):
+        return self.db.query(Build)\
+                      .filter_by(package_id=build.package_id)\
+                      .filter(Build.task_id < build.task_id)\
+                      .filter(Build.repo_id != None)\
+                      .order_by(Build.task_id.desc()).first()
+
     def prepare_sack(self, repo_id):
         for_arch = util.config['dependency']['for_arch']
         sack = dnf.sack.Sack(arch=for_arch)
         repos = self.repo_cache.get_repos(repo_id)
         if repos:
             util.add_repos_to_sack(repo_id, repos, sack)
-            return sack
+            self.sack = sack
+
+
+class GenerateRepoTask(AbstractResolverTask):
 
     def get_packages(self):
         packages = self.db.query(Package)\
@@ -193,28 +213,6 @@ class Resolver(KojiService):
         # performance
         self.db.expunge_all()
         return packages
-
-    def update_dependency_changes(self, changes, apply_id=None):
-        # pylint: disable=E1101
-        self.db.query(DependencyChange)\
-               .filter_by(applied_in_id=apply_id)\
-               .delete(synchronize_session=False)
-        if changes:
-            self.db.execute(DependencyChange.__table__.insert(),
-                            changes)
-        self.db.expire_all()
-
-    def get_build_for_comparison(self, package):
-        """
-        Returns newest build which should be used for dependency
-        comparisons or None if it shouldn't be compared at all
-        """
-        last_build = package.last_build
-        if last_build:
-            if last_build.repo_id:
-                return last_build
-            if last_build.state in Build.FINISHED_STATES:
-                return self.get_prev_build_with_repo_id(last_build)
 
     def get_latest_task_infos(self, packages):
         source_tag = util.koji_config['source_tag']
@@ -237,12 +235,39 @@ class Resolver(KojiService):
         with open(index_path, 'w') as index:
             index.write('{}\n'.format(repo_id))
 
-    def generate_dependency_changes(self, packages, sack, group, repo_id):
+    def synchronize_resolution_state(self):
+        packages = self.get_packages()
+        for pkg in packages:
+            curr_state = self.resolved_packages.get(pkg.id)
+            if curr_state is not None:
+                prev_state = pkg.state_string
+                pkg.resolved = curr_state
+                check_package_state(pkg, prev_state)
+
+        for state in True, False:
+            ids = [id for id, resolved in self.resolved_packages.iteritems()
+                   if resolved is state]
+            if ids:
+                self.db.query(Package).filter(Package.id.in_(ids))\
+                    .update({'resolved': state}, synchronize_session=False)
+
+    def get_build_for_comparison(self, package):
+        """
+        Returns newest build which should be used for dependency
+        comparisons or None if it shouldn't be compared at all
+        """
+        last_build = package.last_build
+        if last_build:
+            if last_build.repo_id:
+                return last_build
+            if last_build.state in Build.FINISHED_STATES:
+                return self.get_prev_build_with_repo_id(last_build)
+
+    def generate_dependency_changes(self, packages, repo_id):
         changes = []
         for package in packages:
-            srpm = get_srpm_pkg(sack, package.name)
-            curr_deps = self.resolve_dependencies(sack, package, srpm, group,
-                                                  repo_id)
+            srpm = self.get_srpm_pkg(package.name)
+            curr_deps = self.resolve_dependencies(package, srpm, repo_id)
             if curr_deps is not None:
                 last_build = self.get_build_for_comparison(package)
                 if last_build:
@@ -254,33 +279,32 @@ class Resolver(KojiService):
                                                                   package.id)
         return changes
 
-    def generate_repo(self, repo_id):
+    def run(self, repo_id):
         start = time.time()
         self.log.info("Generating new repo")
         self.db.add(Repo(repo_id=repo_id))
-        # XXX
-        self.problems = []
+        self.db.flush()
         packages = self.get_packages()
         self.refresh_latest_builds(packages)
         packages = self.get_packages()
         srpm_repo = self.srpm_cache.get_repodata()
-        sack = self.prepare_sack(repo_id)
-        if not sack:
+        self.prepare_sack(repo_id)
+        if not self.sack:
             self.log.error('Cannot generate repo: {}'.format(repo_id))
             return
         self.update_repo_index(repo_id)
-        util.add_repo_to_sack('src', srpm_repo, sack)
+        util.add_repo_to_sack('src', srpm_repo, self.sack)
         # TODO repo_id
-        group = util.get_build_group()
+        self.group = util.get_build_group()
         self.log.info("Resolving dependencies")
         resolution_start = time.time()
+        changes = self.generate_dependency_changes(packages, repo_id)
+        resolution_end = time.time()
         self.db.query(ResolutionProblem).delete(synchronize_session=False)
         # pylint: disable=E1101
         if self.problems:
             self.db.execute(ResolutionProblem.__table__.insert(), self.problems)
-        changes = self.generate_dependency_changes(packages, sack, group, repo_id)
-        resolution_end = time.time()
-        self.synchronize_resolution_state(packages)
+        self.synchronize_resolution_state()
         self.update_dependency_changes(changes)
         self.db.commit()
         end = time.time()
@@ -290,54 +314,18 @@ class Resolver(KojiService):
                       .format((resolution_end - resolution_start) / 60,
                               (end - start) / 60))
 
-    def process_repo_generation_requests(self):
-        latest_request = self.db.query(RepoGenerationRequest)\
-                                .order_by(RepoGenerationRequest.repo_id
-                                          .desc())\
-                                .first()
-        if latest_request:
-            repo_id = latest_request.repo_id
-            [last_repo] = (self.db.query(Repo.repo_id)
-                           .order_by(Repo.repo_id.desc())
-                           .first() or [0])
-            if repo_id > last_repo:
-                self.generate_repo(repo_id)
-            self.db.query(RepoGenerationRequest)\
-                   .filter(RepoGenerationRequest.repo_id <= repo_id)\
-                   .delete()
-            self.db.commit()
+class ProcessBuildsTask(AbstractResolverTask):
 
-    def get_prev_build_with_repo_id(self, build):
-        return self.db.query(Build)\
-                      .filter_by(package_id=build.package_id)\
-                      .filter(Build.task_id < build.task_id)\
-                      .filter(Build.repo_id != None)\
-                      .order_by(Build.task_id.desc()).first()
-
-    def synchronize_resolution_state(self, packages):
-        prev_states = {p.id: p.state_string for p in self.get_packages()}
-        for pkg in packages:
-            prev_state = prev_states.get(pkg.id)
-            if prev_state:
-                check_package_state(pkg, prev_state)
-
-        for state in True, False:
-            ids = [p.id for p in packages if p.resolved is state]
-            if ids:
-                self.db.query(Package).filter(Package.id.in_(ids))\
-                    .update({'resolved': state}, synchronize_session=False)
-
-    def process_build(self, build, sack, build_group):
-        self.problems = []
+    def process_build(self, build):
         build.deps_processed = True
         if build.repo_id:
             self.log.info("Processing build {}".format(build.id))
             prev = self.get_prev_build_with_repo_id(build)
-            srpm = get_srpm_pkg(sack, build.package.name, (build.epoch,
-                                                           build.version,
-                                                           build.release))
-            curr_deps = self.resolve_dependencies(sack, package=build.package,
-                                                  srpm=srpm, group=build_group,
+            srpm = self.get_srpm_pkg(build.package.name, (build.epoch,
+                                                          build.version,
+                                                          build.release))
+            curr_deps = self.resolve_dependencies(package=build.package,
+                                                  srpm=srpm,
                                                   repo_id=build.repo_id)
             self.store_deps(build.repo_id, build.package_id, curr_deps)
             if prev and prev.repo_id:
@@ -360,14 +348,14 @@ class Resolver(KojiService):
                                    boundary_build.repo_id)\
                            .delete(synchronize_session=False)
 
-    def process_builds(self):
+    def run(self):
         # pylint: disable=E1101
         unprocessed = self.db.query(Build)\
                              .filter_by(deps_processed=False)\
                              .filter(Build.repo_id != None)\
                              .order_by(Build.repo_id).all()
         # TODO repo_id
-        group = util.get_build_group()
+        self.group = util.get_build_group()
 
         # do this before processing to avoid multiple runs of createrepo
         for build in unprocessed:
@@ -378,13 +366,48 @@ class Resolver(KojiService):
         for repo_id, builds in itertools.groupby(unprocessed,
                                                  lambda build: build.repo_id):
             if repo_id is not None:
-                sack = self.prepare_sack(repo_id)
-                if sack:
-                    util.add_repos_to_sack('srpm', {'src': srpm_repo}, sack)
+                self.prepare_sack(repo_id)
+                if self.sack:
+                    util.add_repos_to_sack('srpm', {'src': srpm_repo}, self.sack)
                     for build in builds:
-                        self.process_build(build, sack, group)
+                        self.process_build(build)
+            self.db.commit()
+
+class Resolver(KojiService):
+
+    def __init__(self, log=None, db=None, koji_session=None,
+                 srpm_cache=None, repo_cache=None, backend=None):
+        super(Resolver, self).__init__(log=log, db=db,
+                                       koji_session=koji_session)
+        self.srpm_cache = (srpm_cache
+                           or SRPMCache(koji_session=self.koji_session))
+        self.repo_cache = repo_cache or RepoCache()
+        self.backend = backend or Backend(db=self.db,
+                                          koji_session=self.koji_session,
+                                          log=self.log)
+
+    def create_task(self, cls):
+        return cls(log=self.log, db=self.db, koji_session=self.koji_session,
+                   srpm_cache=self.srpm_cache, repo_cache=self.repo_cache,
+                   backend=self.backend)
+
+    def process_repo_generation_requests(self):
+        latest_request = self.db.query(RepoGenerationRequest)\
+                                .order_by(RepoGenerationRequest.repo_id
+                                          .desc())\
+                                .first()
+        if latest_request:
+            repo_id = latest_request.repo_id
+            [last_repo] = (self.db.query(Repo.repo_id)
+                           .order_by(Repo.repo_id.desc())
+                           .first() or [0])
+            if repo_id > last_repo:
+                self.create_task(GenerateRepoTask).run(repo_id)
+            self.db.query(RepoGenerationRequest)\
+                   .filter(RepoGenerationRequest.repo_id <= repo_id)\
+                   .delete()
             self.db.commit()
 
     def main(self):
-        self.process_builds()
+        self.create_task(ProcessBuildsTask).run()
         self.process_repo_generation_requests()
