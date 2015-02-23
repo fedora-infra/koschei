@@ -268,6 +268,8 @@ class GenerateRepoTask(AbstractResolverTask):
         changes = []
         for package in packages:
             srpm = self.get_srpm_pkg(package.name)
+            if not srpm:
+                continue
             curr_deps = self.resolve_dependencies(package, srpm, repo_id)
             if curr_deps is not None:
                 last_build = self.get_build_for_comparison(package)
