@@ -18,6 +18,7 @@
 from __future__ import print_function
 
 import sys
+import logging
 
 if __name__ != '__main__':
     print("This module shall not be imported", file=sys.stderr)
@@ -27,7 +28,9 @@ from .service import Service
 
 # Importing all modules that define services
 # pylint: disable=W0611
-from . import scheduler, resolver, polling, watcher, plugin
+from . import util, scheduler, resolver, polling, watcher, plugin
+
+log = logging.getLogger('koschei.main')
 
 if len(sys.argv) < 2:
     print("Requires service name", file=sys.stderr)
@@ -38,4 +41,8 @@ service = Service.find_service(name)
 if not service:
     print("No such service", file=sys.stderr)
     sys.exit(2)
-service().run_service()
+try:
+    service().run_service()
+except Exception as exc:
+    log.error("Service {} crashed: {}: {}"
+              .format(name, type(exc), exc))

@@ -85,7 +85,7 @@ class Watcher(KojiService, FedmsgService, WatchdogService):
 
     def main(self):
         def handler(n, s):
-            raise WatchdogInterrupt()
+            raise WatchdogInterrupt("Watchdog timeout")
         signal(SIGALRM, handler)
         alarm(self.watchdog_interval)
         for _, _, topic, msg in self.fedmsg.tail_messages():
