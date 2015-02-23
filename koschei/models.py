@@ -184,11 +184,11 @@ class Build(Base):
 
 
 class ResolutionProblem(Base):
-    __tablename__ = 'resolution_result_element'
+    __tablename__ = 'resolution_problem'
     id = Column(Integer, primary_key=True)
     package_id = Column(Integer, ForeignKey(Package.id,
                                             ondelete='CASCADE'),
-                        index=True)
+                        nullable=False, index=True)
     problem = Column(String, nullable=False)
 
 
