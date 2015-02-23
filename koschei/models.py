@@ -225,7 +225,7 @@ class DependencyChange(Base):
     package_id = Column(ForeignKey('package.id', ondelete='CASCADE'),
                         nullable=False)
     applied_in_id = Column(ForeignKey('build.id', ondelete='CASCADE'),
-                           nullable=True, default=None)
+                           nullable=True, default=None, index=True)
     dep_name = Column(String, nullable=False)
     prev_epoch = Column(Integer)
     prev_version = Column(String)
