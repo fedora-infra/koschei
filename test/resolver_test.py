@@ -21,9 +21,8 @@ import shutil
 import librepo
 from common import DBTest, testdir, postgres_only
 from mock import Mock, patch
-from koschei.models import (Dependency, ResolutionProblem,
-                            DependencyChange, Package, Build)
-from koschei.resolver import Resolver
+from koschei.models import Dependency, DependencyChange, Package, ResolutionProblem
+from koschei.resolver import Resolver, GenerateRepoTask, ProcessBuildsTask
 
 FOO_DEPS = [
     ('A', 0, '1', '1.fc22', 'x86_64'),
@@ -75,19 +74,19 @@ class ResolverTest(DBTest):
         foo = self.prepare_packages(['foo'])[0]
         self.prepare_builds(foo=False, repo_id=2)
         self.prepare_builds(foo=None, repo_id=None)
-        self.assertIsNone(self.resolver.get_build_for_comparison(foo))
+        self.assertIsNone(self.resolver.create_task(GenerateRepoTask).get_build_for_comparison(foo))
 
     def test_skip_failed_build_with_no_repo_id(self):
         foo = self.prepare_packages(['foo'])[0]
         b1 = self.prepare_builds(foo=False, repo_id=2)[0]
         self.prepare_builds(foo=False, repo_id=None)
-        self.assertEqual(b1, self.resolver.get_build_for_comparison(foo))
+        self.assertEqual(b1, self.resolver.create_task(GenerateRepoTask).get_build_for_comparison(foo))
 
     def test_resolve_build(self):
         foo_build = self.prepare_foo_build()
         package_id = foo_build.package_id
         with patch('koschei.util.get_build_group', return_value=['R']):
-            self.resolver.process_builds()
+            self.resolver.create_task(ProcessBuildsTask).run()
         self.repo_mock.get_repos.assert_called_once_with(666)
         self.srpm_mock.get_srpm.assert_called_once_with('foo', None, '4', '1.fc22')
         self.srpm_mock.get_repodata.assert_called_once_with()
@@ -141,15 +140,26 @@ class ResolverTest(DBTest):
         self.prepare_old_build()
         self.prepare_foo_build(repo_id=666, version='4')
         with patch('koschei.util.get_build_group', return_value=['R']):
-            self.resolver.process_builds()
+            self.resolver.create_task(ProcessBuildsTask).run()
         self.verify_changes()
 
     @postgres_only
     def test_repo_generation(self):
         self.prepare_old_build()
+        self.prepare_packages(['bar'])
+        task = self.resolver.create_task(GenerateRepoTask)
+        task.refresh_latest_builds = lambda _: None
         with patch('koschei.util.get_build_group', return_value=['R']):
-            with patch.object(self.resolver, 'refresh_latest_builds'):
-                self.resolver.generate_repo(666)
+            task.run(666)
+        self.s.expire_all()
+        foo = self.s.query(Package).filter_by(name='foo').first()
+        bar = self.s.query(Package).filter_by(name='bar').first()
         self.repo_mock.get_repos.assert_called_once_with(666)
         self.srpm_mock.get_repodata.assert_called_once_with()
         self.verify_changes()
+        self.assertTrue(foo.resolved)
+        self.assertFalse(self.s.query(ResolutionProblem)
+                         .filter_by(package_id=foo.id).count())
+        self.assertFalse(bar.resolved)
+        self.assertTrue(self.s.query(ResolutionProblem)
+                        .filter_by(package_id=bar.id).count())
