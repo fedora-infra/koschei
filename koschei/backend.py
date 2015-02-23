@@ -22,7 +22,7 @@ import koji
 from datetime import datetime
 
 from . import util
-from .models import (Build, DependencyChange, KojiTask, Session, Package,
+from .models import (Build, DependencyChange, KojiTask, Package,
                      PackageGroup, PackageGroupRelation)
 from .event import Event
 
@@ -41,11 +41,10 @@ class PackageStateUpdateEvent(Event):
 
 
 def check_package_state(package, prev_pkg_state):
-    db = Session.object_session(package)
     new_pkg_state = package.state_string
     if prev_pkg_state != new_pkg_state:
         event = PackageStateUpdateEvent(package, prev_pkg_state, new_pkg_state)
-        db._event_queue.add(event)
+        event.dispatch()
 
 
 class Backend(object):

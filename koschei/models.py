@@ -24,11 +24,10 @@ from sqlalchemy.sql.expression import extract, func, select, false, join
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, column_property, mapper
 from sqlalchemy.engine.url import URL
-from sqlalchemy.event import listens_for, listen
+from sqlalchemy.event import listen
 from datetime import datetime
 
 from .util import config
-from .event import EventQueue
 
 Base = declarative_base()
 
@@ -254,25 +253,6 @@ class AdminNotice(Base):
     __tablename__ = 'admin_notice'
     key = Column(String, primary_key=True)
     content = Column(String, nullable=False)
-
-
-@listens_for(Session, "after_begin")
-def session_begin(db, transaction, connection):
-    db._event_queue = EventQueue()
-
-
-@listens_for(Session, "before_commit")
-def session_commit(db):
-    if hasattr(db, '_event_queue'):
-        if not db._event_queue.empty():
-            db.flush()
-        db._event_queue.flush()
-
-
-@listens_for(Session, "after_rollback")
-def session_rollback(db):
-    if hasattr(db, '_event_queue'):
-        db._event_queue.rollback()
 
 # Triggers
 
