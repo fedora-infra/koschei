@@ -203,7 +203,7 @@ class AbstractResolverTask(object):
 
 class GenerateRepoTask(AbstractResolverTask):
 
-    def get_packages(self):
+    def get_packages(self, expunge=True):
         packages = self.db.query(Package)\
                           .filter(Package.ignored == False)\
                           .options(joinedload(Package.last_build))\
@@ -211,7 +211,8 @@ class GenerateRepoTask(AbstractResolverTask):
                           .all()
         # detaches objects from ORM, prevents spurious queries that hinder
         # performance
-        self.db.expunge_all()
+        if expunge:
+            self.db.expunge_all()
         return packages
 
     def get_latest_task_infos(self, packages):
@@ -236,7 +237,7 @@ class GenerateRepoTask(AbstractResolverTask):
             index.write('{}\n'.format(repo_id))
 
     def synchronize_resolution_state(self):
-        packages = self.get_packages()
+        packages = self.get_packages(expunge=False)
         for pkg in packages:
             curr_state = self.resolved_packages.get(pkg.id)
             if curr_state is not None:

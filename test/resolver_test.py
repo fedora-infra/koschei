@@ -150,7 +150,9 @@ class ResolverTest(DBTest):
         task = self.resolver.create_task(GenerateRepoTask)
         task.refresh_latest_builds = lambda _: None
         with patch('koschei.util.get_build_group', return_value=['R']):
-            task.run(666)
+            with patch('fedmsg.publish') as fedmsg_mock:
+                task.run(666)
+                self.assertTrue(fedmsg_mock.called)
         self.s.expire_all()
         foo = self.s.query(Package).filter_by(name='foo').first()
         bar = self.s.query(Package).filter_by(name='bar').first()
