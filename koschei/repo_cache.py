@@ -41,11 +41,6 @@ class RepoCache(object):
         self._lru = {}
         self._index = 0
         self._cache = {}
-        self._skipped = set()
-        self._skipped_path = os.path.join(repo_dir, 'skipped')
-        if os.path.isfile(self._skipped_path):
-            with open(self._skipped_path, 'r') as skipped_file:
-                self._skipped = pickle.load(skipped_file)
 
         existing_repos = []
         for repo in os.listdir(self._repo_dir):
@@ -54,10 +49,6 @@ class RepoCache(object):
         existing_repos.sort()
         for repo in existing_repos:
             self._load_from_disk(repo)
-
-    def _sync_skipped(self):
-        with open(self._skipped_path, 'w') as skipped:
-            pickle.dump(self._skipped, skipped)
 
     def _get_repo_dir(self, repo_id, arch=None):
         if arch:
@@ -88,8 +79,6 @@ class RepoCache(object):
         except librepo.LibrepoException as e:
             if e.args[0] == REPO_404:
                 log.info("Repo id={} not available, skipping".format(repo_id))
-                self._skipped.add(repo_id)
-                self._sync_skipped()
                 return None
             raise
 
@@ -123,12 +112,10 @@ class RepoCache(object):
             return repos.get(arch)
 
     def get_repos(self, repo_id):
-        if repo_id in self._skipped:
-            return None
-        self._index += 1
         repo = self._cache.get(repo_id)
         if not repo:
             repo = self._download_repo(repo_id)
         if repo:
+            self._index += 1
             self._lru[repo_id] = self._index
             return repo
