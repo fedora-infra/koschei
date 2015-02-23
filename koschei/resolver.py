@@ -356,6 +356,7 @@ class ProcessBuildsTask(AbstractResolverTask):
         unprocessed = self.db.query(Build)\
                              .filter_by(deps_processed=False)\
                              .filter(Build.repo_id != None)\
+                             .options(joinedload(Build.package))\
                              .order_by(Build.repo_id).all()
         # TODO repo_id
         self.group = util.get_build_group()
