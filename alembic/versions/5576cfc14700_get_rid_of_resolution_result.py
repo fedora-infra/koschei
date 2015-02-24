@@ -28,7 +28,7 @@ def upgrade():
     sa.ForeignKeyConstraint(['package_id'], [u'package.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_resolution_problem_package_id'), 'resolution_problem', ['package_id'], unique=False)
+    op.create_index('ix_resolution_problem_package_id', 'resolution_problem', ['package_id'], unique=False)
     op.drop_table('resolution_result_element')
     op.drop_table('resolution_result')
     ### end Alembic commands ###
@@ -54,7 +54,7 @@ def downgrade():
     sa.ForeignKeyConstraint(['resolution_id'], [u'resolution_result.id'], name=u'resolution_result_element_resolution_id_fkey', ondelete=u'CASCADE'),
     sa.PrimaryKeyConstraint('id', name=u'resolution_result_element_pkey')
     )
-    op.drop_index(op.f('ix_resolution_problem_package_id'), table_name='resolution_problem')
+    op.drop_index('ix_resolution_problem_package_id', table_name='resolution_problem')
     op.drop_table('resolution_problem')
     op.drop_table('repo')
     ### end Alembic commands ###
