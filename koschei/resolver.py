@@ -320,7 +320,6 @@ class GenerateRepoTask(AbstractResolverTask):
 class ProcessBuildsTask(AbstractResolverTask):
 
     def process_build(self, build):
-        build.deps_processed = True
         if build.repo_id:
             self.log.info("Processing build {}".format(build.id))
             prev = self.get_prev_build_with_repo_id(build)
@@ -375,6 +374,9 @@ class ProcessBuildsTask(AbstractResolverTask):
                     util.add_repos_to_sack('srpm', {'src': srpm_repo}, self.sack)
                     for build in builds:
                         self.process_build(build)
+            self.db.query(Build).filter(Build.id.in_([b.id for b in builds]))\
+                                .update({'deps_processed': True},
+                                        synchronize_session=False)
             self.db.commit()
 
 class Resolver(KojiService):
