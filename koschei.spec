@@ -119,10 +119,10 @@ exit 0
 %systemd_preun %{name}-resolver.service
 
 %postun
-%systemd_postun_with_restart %{name}-scheduler.service
-%systemd_postun_with_restart %{name}-watcher.service
-%systemd_postun_with_restart %{name}-polling.service
-%systemd_postun_with_restart %{name}-resolver.service
+%systemd_postun %{name}-scheduler.service
+%systemd_postun %{name}-watcher.service
+%systemd_postun %{name}-polling.service
+%systemd_postun %{name}-resolver.service
 
 %files
 %doc LICENSE.txt
