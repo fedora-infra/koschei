@@ -368,6 +368,7 @@ class ProcessBuildsTask(AbstractResolverTask):
 
         for repo_id, builds in itertools.groupby(unprocessed,
                                                  lambda build: build.repo_id):
+            builds = list(builds)
             if repo_id is not None:
                 self.prepare_sack(repo_id)
                 if self.sack:
