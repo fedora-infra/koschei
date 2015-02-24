@@ -29,7 +29,6 @@ Requires:       dnf
 Requires:       python-sqlalchemy
 Requires:       koji
 Requires:       fedmsg
-Requires:       postgresql-server
 Requires:       python-psycopg2
 Requires:       createrepo_c
 Requires:       curl
