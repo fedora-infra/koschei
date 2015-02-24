@@ -70,7 +70,7 @@
     <tbody>
         {% for build in builds %}
         {% set row_class = ["odd", "even"][loop.index % 2] + ["", " real"][build.real] %}
-        {% set changes = iter(build.dependency_changes) %}
+        {% set changes = iter(build.dependency_changes) if build.deps_processed else iter([]) %}
         {% if build.real %}
         <tr class="{{ row_class }}">
             <td></td>
@@ -91,7 +91,11 @@
             <td>
                 {{ build.started | date }}
             </td>
+            {% if build.deps_processed %}
             {{ next_change(changes) }}
+            {% else %}
+            <td colspan="4">Dependencies for this build weren't processed yet</td>
+            {% endif %}
             <td>
                 <a href="{{ url_for('build_detail', name=package.name, build_id=build.id) }}">details</a>
             </td>

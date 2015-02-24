@@ -77,7 +77,12 @@
         </td>
     </tr>
     <tr>
+        {% if build.deps_procesed %}
         {{ macros.depchange_table(build.dependency_changes) }}
+        {% else %}
+        <th></th>
+        <td>Dependencies for this build weren't processed yet</td>
+        {% endif %}
     </tr>
 </table>
 {% endblock %}
