@@ -73,15 +73,15 @@ class Backend(object):
             build.release = srpm['release']
             self.db.add(build)
             self.db.flush()
-            self.attach_depchanges(build)
+            self.flush_depchanges(build)
         else:
             package.ignored = True
 
-    def attach_depchanges(self, build):
+    def flush_depchanges(self, build):
         self.db.query(DependencyChange)\
                .filter_by(package_id=build.package_id)\
                .filter_by(applied_in_id=None)\
-               .update({'applied_in_id': build.id})
+               .delete()
 
     def get_newer_build_if_exists(self, package):
         [info] = self.koji_session.listTagged(util.source_tag, latest=True,
@@ -116,7 +116,7 @@ class Backend(object):
                           .format(package, build.task_id))
             self.db.flush()
             self.build_completed(build)
-            self.attach_depchanges(build)
+            self.flush_depchanges(build)
             return build
 
     def update_build_state(self, build, state):
