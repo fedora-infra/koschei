@@ -87,7 +87,6 @@ class Package(Base):
             return 'unresolved'
         build = self.last_complete_build
         if build:
-            # pylint: disable=E1101
             return {Build.COMPLETE: 'ok',
                     Build.FAILED: 'failing'}.get(build.state)
         return 'ignored'

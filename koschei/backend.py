@@ -20,6 +20,7 @@ import json
 import koji
 
 from datetime import datetime
+from sqlalchemy.exc import IntegrityError
 
 from . import util
 from .models import (Build, DependencyChange, KojiTask, Package,
@@ -102,9 +103,8 @@ class Backend(object):
                 .count() == 0)
 
     def register_real_build(self, package, build_info):
-        # we may alrady have that build
-        # (this function may be run in parallel with the same data)
-        with util.skip_on_integrity_violation(self.db):
+        # TODO send fedmsg for real builds?
+        try:
             state_map = {koji.BUILD_STATES['COMPLETE']: Build.COMPLETE,
                          koji.BUILD_STATES['FAILED']: Build.FAILED}
             build = Build(task_id=build_info['task_id'], real=True,
@@ -112,33 +112,50 @@ class Backend(object):
                           release=build_info['release'], package_id=package.id,
                           state=state_map[build_info['state']])
             self.db.add(build)
+            self.db.flush()
+            self._build_completed(build)
+            self.flush_depchanges(build)
             self.log.info('Registering real build for {}, task_id {}.'
                           .format(package, build.task_id))
-            self.db.flush()
-            self.build_completed(build)
-            self.flush_depchanges(build)
             return build
+        except IntegrityError:
+            # other daemon adds the same concurrently
+            self.db.rollback()
 
     def update_build_state(self, build, state):
         if state in Build.KOJI_STATE_MAP:
             state = Build.KOJI_STATE_MAP[state]
+            self.db.expire_all()
+            # lock build
+            build = self.db.query(Build).filter_by(id=build.id)\
+                           .with_lockmode('update').first()
+            if not build or build.state == state:
+                # other process did the job already
+                self.db.rollback()
+                return
             if state == Build.CANCELED:
                 self.log.info('Deleting build {0} because it was canceled'
                               .format(build))
                 self.db.delete(build)
-            else:
-                self.log.info('Setting build {build} state to {state}'
-                              .format(build=build,
-                                      state=Build.REV_STATE_MAP[state]))
-                prev_pkg_state = build.package.state_string
-                build.state = state
-                if state in (Build.COMPLETE, Build.FAILED):
-                    self.build_completed(build)
-                    self.db.flush()
-                    check_package_state(build.package, prev_pkg_state)
+                self.db.commit()
+                return
+            assert state in (Build.COMPLETE, Build.FAILED)
+            self.log.info('Setting build {build} state to {state}'
+                          .format(build=build,
+                                  state=Build.REV_STATE_MAP[state]))
+            self._build_completed(build)
+            # lock package so there are no concurrent state changes
+            package = self.db.query(Package).filter_by(id=build.package_id)\
+                             .with_lockmode('update').one()
+            prev_state = package.state_string
+            build.state = state
+            # unlock
             self.db.commit()
+            new_state = package.state_string
+            if prev_state != new_state:
+                PackageStateUpdateEvent(package, prev_state, new_state).dispatch()
 
-    def build_completed(self, build):
+    def _build_completed(self, build):
         task_info = self.koji_session.getTaskInfo(build.task_id)
         if task_info['create_time']:
             build.started = util.parse_koji_time(task_info['create_time'])
@@ -151,20 +168,20 @@ class Backend(object):
                                                      request=True)
         build_arch_tasks = [task for task in subtasks
                             if task['method'] == 'buildArch']
-        with util.skip_on_integrity_violation(self.db):
-            for task in build_arch_tasks:
-                try:
-                    # They all have the same repo_id, right?
-                    build.repo_id = task['request'][4]['repo_id']
-                except KeyError:
-                    pass
-                db_task = KojiTask(build_id=build.id,
-                                   task_id=task['id'],
-                                   state=task['state'],
-                                   started=task['create_time'],
-                                   finished=task['completion_time'],
-                                   arch=task['arch'])
-                self.db.add(db_task)
+        for task in build_arch_tasks:
+            try:
+                # They all have the same repo_id, right?
+                build.repo_id = task['request'][4]['repo_id']
+            except KeyError:
+                pass
+            db_task = KojiTask(build_id=build.id,
+                               task_id=task['id'],
+                               state=task['state'],
+                               started=util.parse_koji_time(task['create_time']),
+                               finished=util.parse_koji_time(task['completion_time']),
+                               arch=task['arch'])
+            self.db.add(db_task)
+        self.db.flush()
 
     def add_group(self, group, pkgs):
         group_obj = self.db.query(PackageGroup)\

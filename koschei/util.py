@@ -31,7 +31,6 @@ import errno
 
 from datetime import datetime
 from contextlib import contextmanager
-from sqlalchemy.exc import IntegrityError
 
 
 def merge_dict(d1, d2):
@@ -87,16 +86,6 @@ repodata_dir = config['directories']['repodata']
 
 dep_config = config['dependency']
 koji_repos = dep_config['repos']
-
-
-@contextmanager
-def skip_on_integrity_violation(db):
-    db.begin_nested()
-    try:
-        yield
-        db.commit()
-    except IntegrityError:
-        db.rollback()
 
 
 class Proxy(object):
