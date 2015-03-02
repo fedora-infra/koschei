@@ -46,3 +46,4 @@ try:
 except Exception as exc:
     log.error("Service {} crashed: {}: {}"
               .format(name, type(exc), exc))
+    raise
