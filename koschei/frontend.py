@@ -30,10 +30,9 @@ app = Flask('koschei', template_folder=dirs['templates'],
 app.config.update(config['flask'])
 
 frontend_config = config['frontend']
-items_per_page = frontend_config['items_per_page']
 
 
-def paginate(self):
+def paginate(self, items_per_page):
     page = int(request.args.get('page', 1))
     if page < 1:
         abort(404)

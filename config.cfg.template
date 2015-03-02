@@ -68,7 +68,8 @@ config = {
         "SECRET_KEY": "isecretlylovebabymetal",
     },
     "frontend": {
-        "items_per_page": 100,
+        "packages_per_page": 100,
+        "builds_per_page": 15,
     },
     "alembic": {
         "alembic_ini": "@DATADIR@/alembic.ini"

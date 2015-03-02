@@ -12,9 +12,12 @@ from jinja2 import Markup, escape
 from .models import (Package, Build, PackageGroup, PackageGroupRelation,
                      AdminNotice)
 from . import util, auth, backend
-from .frontend import app, db
+from .frontend import app, db, frontend_config
 
 log = logging.getLogger('koschei.views')
+
+packages_per_page = frontend_config['packages_per_page']
+builds_per_page = frontend_config['builds_per_page']
 
 
 def create_backend():
@@ -30,11 +33,9 @@ def page_args(page=None, order_by=None):
                     not in new_order and '-' + item not in new_order):
                 new_order.append(item)
         return ','.join(new_order)
-    args = {
-        'page': page or request.args.get('page'),
-        'order_by': proc_order(order_by) if order_by
-        else request.args.get('order_by'),
-        }
+    args = {'page': page or request.args.get('page'),
+            'order_by': proc_order(order_by) if order_by
+                        else request.args.get('order_by')}
     return urllib.urlencode({k: '' if v is True else v for k, v in args.items()
                              if v})
 
@@ -122,8 +123,7 @@ def package_view(template, alter_query=None, **template_args):
                  'state': [Reversed(Package.resolved), Build.state],
                  'task_id': [Build.task_id],
                  'started': [Build.started],
-                 'current_priority': [NullsLast(Package.current_priority)],
-                 }
+                 'current_priority': [NullsLast(Package.current_priority)]}
     order_names, order = get_order(order_map, order_name)
     pkgs = db.query(Package)\
              .outerjoin(Package.last_complete_build)\
@@ -131,7 +131,7 @@ def package_view(template, alter_query=None, **template_args):
              .order_by(*order)
     if alter_query:
         pkgs = alter_query(pkgs)
-    page = pkgs.paginate()
+    page = pkgs.paginate(packages_per_page)
     return render_template(template, packages=page.items, page=page,
                            order=order_names, **template_args)
 
@@ -140,8 +140,7 @@ def package_view(template, alter_query=None, **template_args):
 def state_icon(package):
     icon = {'ok': 'complete',
             'failing': 'failed',
-            'unresolved': 'cross'
-            }.get(package.state_string, 'unknown')
+            'unresolved': 'cross'}.get(package.state_string, 'unknown')
     return url_for('static', filename='images/{name}.png'.format(name=icon))
 Package.state_icon = state_icon
 
@@ -195,7 +194,7 @@ def package_detail(name):
              .options(subqueryload(Build.dependency_changes),
                       subqueryload(Build.build_arch_tasks))\
              .order_by(Build.task_id.desc())\
-             .paginate()
+             .paginate(builds_per_page)
 
     return render_template("package-detail.html", package=package, page=page,
                            builds=page.items)
