@@ -215,7 +215,7 @@ class Dependency(Base):
     nevra = (name, epoch, version, release, arch)
 
 Index('ix_dependency_composite', Dependency.package_id, Dependency.repo_id)
-Index('build_package_id_ordered', Build.package_id.asc())
+Index('ix_build_composite', Build.package_id, Build.task_id.desc())
 
 
 class DependencyChange(Base):
