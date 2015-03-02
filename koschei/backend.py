@@ -125,9 +125,10 @@ class Backend(object):
     def update_build_state(self, build, state):
         if state in Build.KOJI_STATE_MAP:
             state = Build.KOJI_STATE_MAP[state]
+            build_id = build.id
             self.db.expire_all()
             # lock build
-            build = self.db.query(Build).filter_by(id=build.id)\
+            build = self.db.query(Build).filter_by(id=build_id)\
                            .with_lockmode('update').first()
             if not build or build.state == state:
                 # other process did the job already
@@ -144,6 +145,7 @@ class Backend(object):
                           .format(build=build,
                                   state=Build.REV_STATE_MAP[state]))
             self._build_completed(build)
+            self.db.expire(build.package)
             # lock package so there are no concurrent state changes
             package = self.db.query(Package).filter_by(id=build.package_id)\
                              .with_lockmode('update').one()
