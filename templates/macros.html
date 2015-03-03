@@ -66,6 +66,9 @@
     {% endfor %}
     </tbody>
 </table>
+{% if page %}
+{{ pagination_row(page, 'Packages') }}
+{% endif %}
 {% endmacro %}
 {% macro depchange_table(dependency_changes) %}
 {% if dependency_changes %}
