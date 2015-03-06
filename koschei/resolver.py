@@ -330,6 +330,8 @@ class ProcessBuildsTask(AbstractResolverTask):
                                                   srpm=srpm,
                                                   repo_id=build.repo_id)
             self.store_deps(build.repo_id, build.package_id, curr_deps)
+            if curr_deps is not None:
+                build.deps_resolved = True
             if prev and prev.repo_id:
                 prev_deps = self.get_deps_from_db(prev.package_id,
                                                   prev.repo_id)

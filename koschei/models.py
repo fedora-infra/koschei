@@ -162,7 +162,12 @@ class Build(Base):
     version = Column(String)
     release = Column(String)
     repo_id = Column(Integer)
+
+    # deps_processed means we tried to resolve them, deps_resolved means we
+    # succeeded
     deps_processed = Column(Boolean, nullable=False, server_default=false())
+    deps_resolved = Column(Boolean, nullable=False, server_default=false())
+
     build_arch_tasks = relationship(KojiTask, backref='build',
                                     order_by=KojiTask.arch)
     # was the build done by koschei or was it real build done by packager
