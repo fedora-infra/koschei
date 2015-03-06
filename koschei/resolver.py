@@ -185,11 +185,11 @@ class AbstractResolverTask(object):
                             changes)
         self.db.expire_all()
 
-    def get_prev_build_with_repo_id(self, build):
+    def get_prev_build_for_comparison(self, build):
         return self.db.query(Build)\
                       .filter_by(package_id=build.package_id)\
                       .filter(Build.task_id < build.task_id)\
-                      .filter(Build.repo_id != None)\
+                      .filter(Build.deps_resolved == True)\
                       .order_by(Build.task_id.desc()).first()
 
     def prepare_sack(self, repo_id):
@@ -258,11 +258,12 @@ class GenerateRepoTask(AbstractResolverTask):
         comparisons or None if it shouldn't be compared at all
         """
         last_build = package.last_build
-        if last_build:
-            if last_build.repo_id:
+        if last_build and last_build.state in Build.FINISHED_STATES:
+            if last_build.deps_resolved:
                 return last_build
-            if last_build.state in Build.FINISHED_STATES:
-                return self.get_prev_build_with_repo_id(last_build)
+            if last_build.deps_processed:
+                # unresolved build, skip it
+                return self.get_prev_build_for_comparison(last_build)
 
     def generate_dependency_changes(self, packages, repo_id):
         changes = []
@@ -322,7 +323,7 @@ class ProcessBuildsTask(AbstractResolverTask):
     def process_build(self, build):
         if build.repo_id:
             self.log.info("Processing build {}".format(build.id))
-            prev = self.get_prev_build_with_repo_id(build)
+            prev = self.get_prev_build_for_comparison(build)
             srpm = self.get_srpm_pkg(build.package.name, (build.epoch,
                                                           build.version,
                                                           build.release))

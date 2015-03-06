@@ -63,8 +63,7 @@ class ResolverTest(DBTest):
 
     def prepare_foo_build(self, repo_id=666, version='4'):
         self.prepare_packages(['foo'])
-        foo_build = self.prepare_builds(foo=True, repo_id=None)[0]
-        foo_build.repo_id = repo_id
+        foo_build = self.prepare_builds(foo=True, repo_id=repo_id)[0]
         foo_build.version = version
         foo_build.release = '1.fc22'
         self.s.commit()
@@ -72,14 +71,18 @@ class ResolverTest(DBTest):
 
     def test_dont_resolve_against_old_build_when_new_is_running(self):
         foo = self.prepare_packages(['foo'])[0]
-        self.prepare_builds(foo=False, repo_id=2)
+        build = self.prepare_builds(foo=False, repo_id=2)[0]
+        build.deps_processed = build.deps_resolved = True
         self.prepare_builds(foo=None, repo_id=None)
         self.assertIsNone(self.resolver.create_task(GenerateRepoTask).get_build_for_comparison(foo))
 
-    def test_skip_failed_build_with_no_repo_id(self):
+    def test_skip_unresolved_failed_build(self):
         foo = self.prepare_packages(['foo'])[0]
         b1 = self.prepare_builds(foo=False, repo_id=2)[0]
-        self.prepare_builds(foo=False, repo_id=None)
+        b1.deps_processed = b1.deps_resolved = True
+        b2 = self.prepare_builds(foo=False, repo_id=None)[0]
+        b2.deps_processed = True
+        self.s.commit()
         self.assertEqual(b1, self.resolver.create_task(GenerateRepoTask).get_build_for_comparison(foo))
 
     def test_resolve_build(self):
@@ -115,7 +118,7 @@ class ResolverTest(DBTest):
 
     def prepare_old_build(self):
         old_build = self.prepare_foo_build(repo_id=555, version='3')
-        old_build.deps_processed = True
+        old_build.deps_processed = old_build.deps_resolved = True
         old_deps = FOO_DEPS[:]
         old_deps[2] = ('C', 1, '2', '1.fc22', 'x86_64')
         del old_deps[4] # E
