@@ -215,19 +215,23 @@ class GenerateRepoTask(AbstractResolverTask):
             self.db.expunge_all()
         return packages
 
-    def get_latest_task_infos(self, packages):
-        source_tag = util.koji_config['source_tag']
-        infos = itercall(self.koji_session, packages,
-                         lambda k, p: k.listTagged(source_tag, latest=True,
-                                                   package=p.name))
-        return {pkg: i[0] for pkg, i in zip(packages, infos) if i}
-
     def refresh_latest_builds(self, packages):
         """
         Checks Koji for latest builds of all packages and registers possible
         new real builds and obtains srpms for them
         """
-        task_infos = self.get_latest_task_infos(packages)
+        source_tag = util.koji_config['source_tag']
+        infos = itercall(self.koji_session, packages,
+                         lambda k, p: k.listTagged(source_tag, latest=True,
+                                                   package=p.name))
+        task_infos = {pkg: i[0] for pkg, i in zip(packages, infos) if i}
+        blocked = [p['package_name'] for p in
+                   self.koji_session.listPackages(tagID=source_tag)
+                   if p['blocked']]
+        if blocked:
+            self.db.query(Package).filter(Package.name.in_(blocked))\
+                   .update({'ignored': True}, synchronize_session=False)
+            self.db.commit()
         self.backend.register_real_builds(task_infos)
         self.srpm_cache.get_latest_srpms([i for (_, i) in task_infos.items()])
 
