@@ -87,8 +87,7 @@ install -dm 755 %{buildroot}%{_sharedstatedir}/%{name}
 cp -pr templates %{buildroot}%{_datadir}/%{name}/
 
 cp -pr alembic/ alembic.ini %{buildroot}%{_datadir}/%{name}/
-cp -pr theme %{buildroot}%{_datadir}/%{name}/
-ln -s theme/fedora/static %{buildroot}%{_datadir}/%{name}/static
+cp -pr static %{buildroot}%{_datadir}/%{name}/
 cp -p %{name}.wsgi %{buildroot}%{_datadir}/%{name}/
 cp -p httpd.conf %{buildroot}%{_sysconfdir}/httpd/conf.d/%{name}.conf
 
