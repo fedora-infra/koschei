@@ -6,6 +6,40 @@ packages in Koji instance when their build-dependencies change or
 after some time elapse.
 
 
+Dependencies
+------------
+
+Python code dependencies:
+- alembic
+- dnf
+- fedmsg
+- flask
+- flask-openid
+- flask-sqlalchemy
+- hawkey
+- jinja2
+- koji
+- librepo
+- psycopg2
+- rpm
+- sqlalchemy
+
+Other runtime dependencies:
+- createrepo_c
+- curl
+
+Test dependencies (optional):
+- nose
+- mock
+
+Infrastructure:
+- httpd with mod_wsgi (other WSGI servers should work too, but were not tested)
+- postgresql (can be external service)
+- koji hub (can be external service)
+- fedmsg (optional)
+- systemd (optional)
+
+
 Deployment
 ----------
 For production deployment install koschei RPM package.
