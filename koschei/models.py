@@ -266,11 +266,11 @@ trigger = DDL("""
               BEGIN
                   UPDATE package
                   SET last_complete_build_id = lcb.id
-                  FROM (SELECT id, task_id, state, started
+                  FROM (SELECT id, state, started
                         FROM build
                         WHERE package_id = NEW.package_id
                               AND (state = 3 OR state = 5)
-                        ORDER BY task_id DESC
+                        ORDER BY id DESC
                         LIMIT 1) AS lcb
                   WHERE package.id = NEW.package_id;
                   RETURN NEW;
