@@ -188,9 +188,9 @@ class AbstractResolverTask(object):
     def get_prev_build_for_comparison(self, build):
         return self.db.query(Build)\
                       .filter_by(package_id=build.package_id)\
-                      .filter(Build.task_id < build.task_id)\
+                      .filter(Build.id < build.id)\
                       .filter(Build.deps_resolved == True)\
-                      .order_by(Build.task_id.desc()).first()
+                      .order_by(Build.id.desc()).first()
 
     def prepare_sack(self, repo_id):
         for_arch = util.config['dependency']['for_arch']
@@ -348,7 +348,7 @@ class ProcessBuildsTask(AbstractResolverTask):
                 keep_builds = util.config['dependency']['keep_build_deps_for']
                 boundary_build = self.db.query(Build)\
                                      .filter_by(package_id=build.package_id)\
-                                     .order_by(Build.task_id.desc())\
+                                     .order_by(Build.id.desc())\
                                      .offset(keep_builds).first()
                 if boundary_build and boundary_build.repo_id:
                     self.db.query(Dependency)\

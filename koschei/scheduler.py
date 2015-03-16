@@ -71,7 +71,7 @@ class Scheduler(KojiService):
 
     def get_failed_build_priority_query(self):
         rank = func.rank().over(partition_by=Package.id,
-                                order_by=Build.task_id.desc()).label('rank')
+                                order_by=Build.id.desc()).label('rank')
         sub = self.db.query(Package.id.label('pkg_id'), Build.state, rank)\
                      .outerjoin(Build,
                                 Package.id == Build.package_id)\
