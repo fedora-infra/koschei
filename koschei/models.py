@@ -220,7 +220,7 @@ class Dependency(Base):
     nevra = (name, epoch, version, release, arch)
 
 Index('ix_dependency_composite', Dependency.package_id, Dependency.repo_id)
-Index('ix_build_composite', Build.package_id, Build.task_id.desc())
+Index('ix_build_composite', Build.package_id, Build.id.desc())
 
 
 class DependencyChange(Base):
@@ -299,7 +299,7 @@ Package.last_complete_build = \
                  primaryjoin=(Build.id == Package.last_complete_build_id),
                  uselist=False)
 
-Package.all_builds = relationship(Build, order_by=Build.task_id.desc(),
+Package.all_builds = relationship(Build, order_by=Build.id.desc(),
                                   primaryjoin=(Build.package_id == Package.id),
                                   backref='package')
 Package.unapplied_changes = \
@@ -321,10 +321,10 @@ Package.groups = relationship(PackageGroup,
                               secondary=PackageGroupRelation.__table__,
                               order_by=PackageGroup.name)
 def _last_build():
-    max_expr = select([func.max(Build.task_id).label('mx')])\
+    max_expr = select([func.max(Build.id).label('mx')])\
                .group_by(Build.package_id).alias()
     joined = select([Build]).select_from(join(Build, max_expr,
-                                              Build.task_id == max_expr.c.mx))\
+                                              Build.id == max_expr.c.mx))\
              .alias()
     return relationship(mapper(Build, joined, non_primary=True), uselist=False,
                         primaryjoin=(Package.id == joined.c.package_id))

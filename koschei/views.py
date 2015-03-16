@@ -193,7 +193,7 @@ def package_detail(name):
              .filter_by(package_id=package.id)\
              .options(subqueryload(Build.dependency_changes),
                       subqueryload(Build.build_arch_tasks))\
-             .order_by(Build.task_id.desc())\
+             .order_by(Build.id.desc())\
              .paginate(builds_per_page)
 
     return render_template("package-detail.html", package=package, page=page,
