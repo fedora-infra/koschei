@@ -1,12 +1,12 @@
 %bcond_without tests
 
 Name:           koschei
-Version:        0.1
-Release:        2%{?dist}
+Version:        0.2
+Release:        1%{?dist}
 Summary:        Continuous integration for Fedora packages
 License:        GPLv2+
 URL:            https://github.com/msimacek/%{name}
-Source0:        https://github.com/msimacek/%{name}/archive/%{name}-%{version}.tar.gz
+Source0:        https://github.com/msimacek/%{name}/archive/%{version}.tar.gz
 BuildArch:      noarch
 
 BuildRequires:  python2-devel
@@ -21,11 +21,19 @@ BuildRequires:       koji
 BuildRequires:       python-hawkey
 BuildRequires:       python-librepo
 BuildRequires:       rpm-python
+%if %{?fedora} < 22
 BuildRequires:       dnf
+%else
+BuildRequires:       python-dnf
+%endif
 BuildRequires:       fedmsg
 %endif
 
+%if %{?fedora} < 22
 Requires:       dnf
+%else
+Requires:       python-dnf
+%endif
 Requires:       python-sqlalchemy
 Requires:       koji
 Requires:       fedmsg
@@ -53,7 +61,7 @@ dependencies change too much. It uses Koji scratch builds to do the rebuilds and
 provides a web interface to the results.
 
 %prep
-%setup -q -n %{name}-%{name}-%{version}
+%setup -q
 
 sed 's|@CACHEDIR@|%{_localstatedir}/cache/%{name}|g
      s|@DATADIR@|%{_datadir}/%{name}|g
@@ -135,6 +143,9 @@ exit 0
 %{_unitdir}/*
 
 %changelog
+* Thu Mar 12 2015 Michael Simacek <msimacek@redhat.com> - 0.2-1
+- Update to version 0.2
+
 * Mon Sep 01 2014 Michael Simacek <msimacek@redhat.com> - 0.1-2
 - Fixed BR python-devel -> python2-devel
 - Fixed changelog format
