@@ -8,7 +8,6 @@ config = {
         "server": "http://koji.fedoraproject.org/kojihub",
         "topurl": "http://kojipkgs.fedoraproject.org",
         "weburl": "http://koji.fedoraproject.org/koji",
-        "scm_url": "git://pkgs.fedoraproject.org",
         "cert": "~/.fedora.cert",
         "ca": "~/.fedora-server-ca.cert",
         "server_ca": "~/.fedora-server-ca.cert",

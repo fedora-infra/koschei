@@ -74,7 +74,6 @@ ca_cert = os.path.expanduser(koji_config['ca'])
 base_build_opts = koji_config.get('build_opts', {})
 pathinfo = koji.PathInfo(topdir=koji_config['topurl'])
 rel_pathinfo = koji.PathInfo(topdir='..')
-scm_url = koji_config['scm_url']
 source_tag = koji_config['source_tag']
 target_tag = koji_config['target_tag']
 
