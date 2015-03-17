@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
+{% block title %}Koschei - {{ package.name }}{% endblock %}
 {% macro next_change(changes) %}
 {{ next(changes, '') | format_depchange | columnize(css_class="mono") }}
 {% endmacro %}

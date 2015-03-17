@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
+{% block title %}Koschei - {{ build.package.name }} - build {{ build.task_id }}{% endblock %}
 {% block content %}
 <div class="pageHeader">{{ build.package.name }} - {{ build.task_id }}</div>
 
