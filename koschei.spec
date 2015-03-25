@@ -112,6 +112,11 @@ getent passwd %{name} >/dev/null || \
     -c "Runs %{name} services" %{name}
 exit 0
 
+# Workaround for RPM bug #646523 - can't change symlink to directory
+%pretrans -p <lua>
+dir = "%{_datadir}/%{name}/static"
+dummy = posix.readlink(dir) and os.remove(dir)
+
 %post
 %systemd_post %{name}-scheduler.service
 %systemd_post %{name}-watcher.service
