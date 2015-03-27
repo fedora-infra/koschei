@@ -359,20 +359,14 @@ def prioritize():
 
 @app.route('/bugreport/<name>')
 def bugreport(name):
-    package = db.query(Package)\
-                .filter_by(name=name)\
-                .first_or_404()
-    build = db.query(Build)\
-              .filter_by(package_id=package.id)\
-              .filter_by(real=True)\
-              .order_by(Build.id.desc())\
-              .first_or_404()
-    bug = {
+    session = util.create_koji_session(anonymous=True)
+    srpm, _ = (util.get_last_srpm(session, name) or abort(404))
+    template = {
         'product': 'Fedora',
-        'component': name,
+        'component': '{name}',
         'version': 'rawhide',
-        'short_desc': '{name}: FTBFS in rawhide'.format(name=name),
-        'bug_file_loc': 'http://koschei.cloud.fedoraproject.org/package/{name}'.format(name=name),
+        'short_desc': '{name}: FTBFS in rawhide',
+        'bug_file_loc': 'http://koschei.cloud.fedoraproject.org/package/{name}',
         'comment': '''Description of problem:
 Package {name} fails to build from source in rawhide.
 
@@ -380,12 +374,13 @@ Version-Release number of selected component (if applicable):
 {version}-{release}
 
 Steps to Reproduce:
-koji build --scratch rawhide {name}-{version}-{release}.src.rpm
+koji build --scratch rawhide {nvr}.{arch}.rpm
 
 Additional info:
 This package is tracked by Koschei. See:
-http://koschei.cloud.fedoraproject.org/package/{name}'''.format(name=name, version=build.version, release=build.release)
+http://koschei.cloud.fedoraproject.org/package/{name}'''
     }
+    bug = { key: template[key].format(**srpm) for key in template.keys() }
     bugzilla_url = "https://bugzilla.redhat.com"
     query = urllib.urlencode(bug)
     bugreport_url = "%s/enter_bug.cgi?%s" % (bugzilla_url, query)
