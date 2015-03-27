@@ -6,7 +6,7 @@ Release:        1%{?dist}
 Summary:        Continuous integration for Fedora packages
 License:        GPLv2+
 URL:            https://github.com/msimacek/%{name}
-Source0:        https://github.com/msimacek/%{name}/archive/%{version}.tar.gz
+Source0:        https://github.com/msimacek/%{name}/archive/%{version}.tar.gz#/%{name}-%{version}.tar.gz
 BuildArch:      noarch
 
 BuildRequires:  python2-devel

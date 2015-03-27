@@ -7,7 +7,7 @@ VERSION="$(python setup.py -V)"
 RELNO="$(git rev-list "$(git describe --tags --abbrev=0)..HEAD" --count)"
 USERNAME="$(sed 's/@.*//' <<< "$EMAIL")"
 test -n "$USERNAME"
-git archive HEAD --prefix="koschei-koschei-$VERSION/"| gzip >koschei-${VERSION}.tar.gz
+git archive HEAD --prefix="koschei-$VERSION/"| gzip >koschei-${VERSION}.tar.gz
 mkdir -p build
 cd build
 sed "s/^Release:[^%]*/&.$RELNO/" ../koschei.spec > koschei.spec
