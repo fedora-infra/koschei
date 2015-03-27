@@ -41,6 +41,17 @@
             {{ package.static_priority }}
         </td>
     </tr>
+    <tr>
+        <th>Links</th>
+        <td>
+            <a href="http://koji.fedoraproject.org/koji/packageinfo?packageID={{ package.name }}">Koji</a>,
+            <a href="https://bugzilla.redhat.com/buglist.cgi?product=Fedora&component={{ package.name }}">Bugzilla</a>,
+            <a href="http://pkgs.fedoraproject.org/cgit/{{ package.name }}.git">Dist-git</a>,
+            <a href="https://admin.fedoraproject.org/pkgdb/package/{{ package.name }}">PkgDB</a>,
+            <a href="https://admin.fedoraproject.org/updates/{{ package.name }}">Bodhi</a>,
+            <a href="https://apps.fedoraproject.org/packages/{{ package.name }}">Apps</a>
+        </td>
+    </tr>
     {% if package.state_string == 'unresolved'  and package.resolution_problems %}
     <tr>
         <th>Dependency problems</th>
