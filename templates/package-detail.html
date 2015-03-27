@@ -52,6 +52,12 @@
             <a href="https://apps.fedoraproject.org/packages/{{ package.name }}">Apps</a>
         </td>
     </tr>
+    <tr>
+        <th>Bug reports</th>
+        <td>
+            <a href="{{ url_for('bugreport', name=package.name) }}">File new FTBFS bug</a>
+        </td>
+    </tr>
     {% if package.state_string == 'unresolved'  and package.resolution_problems %}
     <tr>
         <th>Dependency problems</th>

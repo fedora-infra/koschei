@@ -356,3 +356,37 @@ def prioritize():
     except (KeyError, ValueError):
         abort(400)
     return redirect(url_for('package_detail', name=form['package']))
+
+@app.route('/bugreport/<name>')
+def bugreport(name):
+    package = db.query(Package)\
+                .filter_by(name=name)\
+                .first_or_404()
+    build = db.query(Build)\
+              .filter_by(package_id=package.id)\
+              .filter_by(real=True)\
+              .order_by(Build.id.desc())\
+              .first_or_404()
+    bug = {
+        'product': 'Fedora',
+        'component': name,
+        'version': 'rawhide',
+        'short_desc': '{name}: FTBFS in rawhide'.format(name=name),
+        'bug_file_loc': 'http://koschei.cloud.fedoraproject.org/package/{name}'.format(name=name),
+        'comment': '''Description of problem:
+Package {name} fails to build from source in rawhide.
+
+Version-Release number of selected component (if applicable):
+{version}-{release}
+
+Steps to Reproduce:
+koji build --scratch rawhide {name}-{version}-{release}.src.rpm
+
+Additional info:
+This package is tracked by Koschei. See:
+http://koschei.cloud.fedoraproject.org/package/{name}'''.format(name=name, version=build.version, release=build.release)
+    }
+    bugzilla_url = "https://bugzilla.redhat.com"
+    query = urllib.urlencode(bug)
+    bugreport_url = "%s/enter_bug.cgi?%s" % (bugzilla_url, query)
+    return redirect(bugreport_url)
