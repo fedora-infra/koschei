@@ -44,7 +44,7 @@
     <tr>
         <th>Links</th>
         <td>
-            <a href="http://koji.fedoraproject.org/koji/packageinfo?packageID={{ package.name }}">Koji</a>,
+            <a href="{{ koji_weburl }}/packageinfo?packageID={{ package.name }}">Koji</a>,
             <a href="https://bugzilla.redhat.com/buglist.cgi?product=Fedora&component={{ package.name }}">Bugzilla</a>,
             <a href="http://pkgs.fedoraproject.org/cgit/{{ package.name }}.git">Dist-git</a>,
             <a href="https://admin.fedoraproject.org/pkgdb/package/{{ package.name }}">PkgDB</a>,
