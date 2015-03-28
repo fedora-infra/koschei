@@ -93,7 +93,7 @@
         <tr class="{{ row_class }}">
             <td></td>
             <td colspan="7" class="real_build_description">
-                Real build: <span class="mono">{{ package.name }}-{% if build.epoch %}{{ build.epoch }}:{% endif %}{{ build.version }}-{{ build.release }}</span>
+                Real build: <a class="mono" href="{{ koji_weburl }}/search?match=&type=build&terms={{ package.name }}-{{ build.version }}-{{ build.release }}">{{ package.name }}-{{ build.version }}-{{ build.release }}</a>
             </td>
         </tr>
         {% endif %}
