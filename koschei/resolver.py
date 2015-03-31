@@ -245,7 +245,7 @@ class GenerateRepoTask(AbstractResolverTask):
         for pkg in packages:
             curr_state = self.resolved_packages.get(pkg.id)
             if curr_state is not None:
-                prev_state = pkg.state_string
+                prev_state = pkg.msg_state_string
                 pkg.resolved = curr_state
                 check_package_state(pkg, prev_state)
 

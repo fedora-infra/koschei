@@ -42,7 +42,7 @@ class PackageStateUpdateEvent(Event):
 
 
 def check_package_state(package, prev_pkg_state):
-    new_pkg_state = package.state_string
+    new_pkg_state = package.msg_state_string
     if prev_pkg_state != new_pkg_state:
         event = PackageStateUpdateEvent(package, prev_pkg_state, new_pkg_state)
         event.dispatch()
@@ -149,11 +149,11 @@ class Backend(object):
             # lock package so there are no concurrent state changes
             package = self.db.query(Package).filter_by(id=build.package_id)\
                              .with_lockmode('update').one()
-            prev_state = package.state_string
+            prev_state = package.msg_state_string
             build.state = state
             # unlock
             self.db.commit()
-            new_state = package.state_string
+            new_state = package.msg_state_string
             if prev_state != new_state:
                 PackageStateUpdateEvent(package, prev_state, new_state).dispatch()
 

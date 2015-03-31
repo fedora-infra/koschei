@@ -79,8 +79,7 @@ class Package(Base):
 
     ignored = Column(Boolean, nullable=False, server_default=false())
 
-    @property
-    def state_string(self):
+    def get_state(self):
         if self.ignored:
             return 'ignored'
         if self.resolved is False:
@@ -89,7 +88,16 @@ class Package(Base):
         if build:
             return {Build.COMPLETE: 'ok',
                     Build.FAILED: 'failing'}.get(build.state)
-        return 'ignored'
+
+    @property
+    def state_string(self):
+        """String representation of state used when disaplying to user"""
+        return self.get_state() or 'unknown'
+
+    @property
+    def msg_state_string(self):
+        """String representation of state used when publishing messages"""
+        return self.get_state() or 'ignored'
 
     def __repr__(self):
         return '{0.id} (name={0.name})'.format(self)
