@@ -42,6 +42,14 @@
         </td>
     </tr>
     <tr>
+        <th>Package groups</th>
+        <td>
+            {% for group in package.groups %}
+            <a href="{{ url_for('group_detail', name=group.name) }}">{{ group.name }}</a>
+            {% endfor %}
+        </td>
+    </tr>
+    <tr>
         <th>Links</th>
         <td>
             <a href="{{ koji_weburl }}/packageinfo?packageID={{ package.name }}">Koji</a>,
