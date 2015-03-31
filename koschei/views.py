@@ -90,15 +90,9 @@ class Reversed(object):
         return self.content.desc()
 
 
-class NullsLast(object):
-    def __init__(self, content):
-        self.content = content
-
-    def desc(self):
-        return self.content.desc().nullslast()
-
+class PriorityOrder(Reversed):
     def asc(self):
-        return self.content.nullslast()
+        return self.content.desc().nullslast()
 
 
 def get_order(order_map, order_spec):
@@ -120,10 +114,10 @@ def package_view(template, alter_query=None, **template_args):
     order_name = request.args.get('order_by', 'name')
     # pylint: disable=E1101
     order_map = {'name': [Package.name],
-                 'state': [Reversed(Package.resolved), Build.state],
+                 'state': [Package.resolved, Reversed(Build.state)],
                  'task_id': [Build.task_id],
                  'started': [Build.started],
-                 'current_priority': [NullsLast(Package.current_priority)]}
+                 'current_priority': [PriorityOrder(Package.current_priority)]}
     order_names, order = get_order(order_map, order_name)
     pkgs = db.query(Package)\
              .outerjoin(Package.last_complete_build)\
