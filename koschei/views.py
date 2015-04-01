@@ -355,27 +355,8 @@ def prioritize():
 def bugreport(name):
     session = util.create_koji_session(anonymous=True)
     srpm, _ = (util.get_last_srpm(session, name) or abort(404))
-    template = {
-        'product': 'Fedora',
-        'component': '{name}',
-        'version': 'rawhide',
-        'short_desc': '{name}: FTBFS in rawhide',
-        'bug_file_loc': 'http://koschei.cloud.fedoraproject.org/package/{name}',
-        'comment': '''Description of problem:
-Package {name} fails to build from source in rawhide.
-
-Version-Release number of selected component (if applicable):
-{version}-{release}
-
-Steps to Reproduce:
-koji build --scratch rawhide {nvr}.{arch}.rpm
-
-Additional info:
-This package is tracked by Koschei. See:
-http://koschei.cloud.fedoraproject.org/package/{name}'''
-    }
+    template = util.config['bugreport']['template']
     bug = { key: template[key].format(**srpm) for key in template.keys() }
-    bugzilla_url = "https://bugzilla.redhat.com"
     query = urllib.urlencode(bug)
-    bugreport_url = "%s/enter_bug.cgi?%s" % (bugzilla_url, query)
+    bugreport_url = util.config['bugreport']['url'] % query
     return redirect(bugreport_url)

@@ -91,5 +91,27 @@ config = {
             },
         },
     },
+    "bugreport": {
+        "url": "https://bugzilla.redhat.com/enter_bug.cgi?%s",
+        "template": {
+            "product": "Fedora",
+            "component": "{name}",
+            "version": "rawhide",
+            "short_desc": "{name}: FTBFS in rawhide",
+            "bug_file_loc": "http://koschei.cloud.fedoraproject.org/package/{name}",
+            "comment": """Description of problem:
+Package {name} fails to build from source in rawhide.
+
+Version-Release number of selected component (if applicable):
+{version}-{release}
+
+Steps to Reproduce:
+koji build --scratch rawhide {nvr}.{arch}.rpm
+
+Additional info:
+This package is tracked by Koschei. See:
+http://koschei.cloud.fedoraproject.org/package/{name}"""
+        },
+    },
 }
 
