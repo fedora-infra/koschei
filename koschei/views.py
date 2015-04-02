@@ -8,6 +8,7 @@ from functools import wraps
 from flask import abort, render_template, request, url_for, redirect, g, flash
 from sqlalchemy.orm import joinedload, subqueryload, undefer, contains_eager
 from jinja2 import Markup, escape
+from textwrap import dedent
 
 from .models import (Package, Build, PackageGroup, PackageGroupRelation,
                      AdminNotice)
@@ -361,7 +362,8 @@ def bugreport(name):
     session = util.create_koji_session(anonymous=True)
     srpm, _ = (util.get_last_srpm(session, name) or abort(404))
     template = util.config['bugreport']['template']
-    bug = { key: template[key].format(**srpm) for key in template.keys() }
+    bug = {key: template[key].format(**srpm) for key in template.keys()}
+    bug['comment'] = dedent(bug['comment']).strip()
     query = urllib.urlencode(bug)
     bugreport_url = util.config['bugreport']['url'] % query
     return redirect(bugreport_url)

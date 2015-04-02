@@ -30,7 +30,6 @@ import shutil
 import errno
 
 from datetime import datetime
-from contextlib import contextmanager
 
 
 def merge_dict(d1, d2):
