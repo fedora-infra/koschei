@@ -64,7 +64,7 @@ class Package(Base):
     manual_priority = Column(Integer, nullable=False, default=0)
     added = Column(DateTime, nullable=False, default=datetime.now)
 
-    build_opts = Column(String)
+    arch_override = Column(String)
 
     # cached value, populated by scheduler
     current_priority = Column(Integer)

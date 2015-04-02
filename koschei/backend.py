@@ -59,9 +59,9 @@ class Backend(object):
         build = Build(package_id=package.id, state=Build.RUNNING)
         name = package.name
         build.state = Build.RUNNING
-        build_opts = None
-        if package.build_opts:
-            build_opts = json.loads(package.build_opts)
+        build_opts = {}
+        if package.arch_override:
+            build_opts = {'arch_override': package.arch_override}
         srpm, srpm_url = (util.get_last_srpm(self.koji_session, name)
                           or (None, None))
         if srpm_url:
