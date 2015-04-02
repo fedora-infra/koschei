@@ -6,6 +6,7 @@
 {% endmacro %}
 {% block content %}
 <div class="pageHeader">{{ package.name }}</div>
+{% set editable = "" if g.user else 'disabled="disabled"' %}
 <table class="details">
     <tr>
         <th>Package state</th>
@@ -23,15 +24,11 @@
     <tr>
         <th>Manual priority</th>
         <td>
-            <form name="manual_priority" action="{{ url_for("prioritize") }}"
-                method="POST">
+            <form name="manual_priority" action="{{ url_for("edit_package") }}" method="POST">
                 <input type="hidden" name="package" value="{{ package.name }}"/>
-                <input type="text" name="new_priority" class="change_input"
-                {% if not g.user %}disabled="disabled"{% endif %}
-                value="{{ package.manual_priority }}"/>
-                <input type="submit" value="Change"
-                {% if not g.user %}disabled="disabled"{% endif %}
-                />
+                <input type="text" name="manual_priority" class="change_input"
+                value="{{ package.manual_priority }}" {{ editable }}/>
+                <input type="submit" value="Change" {{ editable }}/>
             </form>
         </td>
     </tr>
@@ -44,7 +41,12 @@
     <tr>
         <th>Arch override</th>
         <td>
-            <span class="mono">{{ package.arch_override }}</span>
+            <form name="manual_priority" action="{{ url_for("edit_package") }}" method="POST">
+                <input type="hidden" name="package" value="{{ package.name }}"/>
+                <input type="text" name="arch_override" class="change_input"
+                value="{{ package.arch_override or "" }}" {{ editable }}/>
+                <input type="submit" value="Change" {{ editable }}/>
+            </form>
         </td>
     </tr>
     <tr>

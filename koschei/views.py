@@ -336,19 +336,24 @@ def search():
         return package_view("search-results.html", alter_query=alter_query)
     return redirect(url_for('frontpage'))
 
-@app.route('/prioritize', methods=['POST'])
+@app.route('/edit_package', methods=['POST'])
 @auth.login_required()
-def prioritize():
+def edit_package():
     form = request.form
+    package = db.query(Package)\
+                .filter_by(name=form['package']).first_or_404()
     try:
-        new_priority = int(form['new_priority'])
-        package = db.query(Package)\
-                    .filter_by(name=form['package']).first_or_404()
-        package.manual_priority = new_priority
-        db.commit()
-        flash("Manual priority changed to {}".format(new_priority))
+        if 'manual_priority' in form:
+            new_priority = int(form['manual_priority'])
+            package.manual_priority = new_priority
+            flash("Manual priority changed to {}".format(new_priority))
+        if 'arch_override' in form:
+            package.arch_override = form['arch_override'].strip() or None
+            flash("Arch override changed to {}".format(package.arch_override))
     except (KeyError, ValueError):
         abort(400)
+
+    db.commit()
     return redirect(url_for('package_detail', name=form['package']))
 
 @app.route('/bugreport/<name>')
