@@ -69,6 +69,14 @@ config = {
     "frontend": {
         "packages_per_page": 100,
         "builds_per_page": 15,
+
+        # Production copies for fedmenu
+        #"fedmenu_url": "https://apps.fedoraproject.org/fedmenu",
+        #"fedmenu_data_url": "https://apps.fedoraproject.org/js/data.js",
+
+        # Development copies for fedmenu
+        #"fedmenu_url": "http://threebean.org/fedmenu",
+        #"fedmenu_data_url": "http://threebean.org/fedmenu/dev-data.js",
     },
     "alembic": {
         "alembic_ini": "@DATADIR@/alembic.ini"
