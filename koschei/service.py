@@ -92,7 +92,7 @@ class Service(object):
 
 class KojiService(Service):
     koji_anonymous = True
-    __retry_on = (util.KojiException)
+    __retry_on = (util.KojiException,)
 
     def __init__(self, koji_session=None, **kwargs):
         super(KojiService, self).__init__(**kwargs)
