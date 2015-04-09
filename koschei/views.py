@@ -23,7 +23,7 @@ builds_per_page = frontend_config['builds_per_page']
 
 def create_backend():
     return backend.Backend(db=db, log=log,
-                           koji_session=util.Proxy(util.create_koji_session))
+                           koji_session=util.create_koji_session())
 
 
 def page_args(page=None, order_by=None):

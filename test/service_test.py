@@ -16,9 +16,6 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-import koji
-import socket
-
 from mock import Mock, patch, call
 from common import AbstractTest
 from koschei.service import Service, KojiService
@@ -116,7 +113,7 @@ class ServiceTest(AbstractTest):
 class KojiServiceTest(AbstractTest):
     def test_proxy(self):
         session_mock = Mock()
-        with patch('koschei.util.Proxy') as proxy:
+        with patch('koschei.util.KojiSessionProxy') as proxy:
             s = KojiService(log=Mock(), db=Mock(),
                             koji_session=session_mock)
             proxy.assert_called_with(session_mock)

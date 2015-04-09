@@ -16,12 +16,10 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-import koji
 import logging
 import requests
 import signal
 import sys
-import socket
 import time
 import fedmsg.core
 import fedmsg.config
@@ -94,12 +92,12 @@ class Service(object):
 
 class KojiService(Service):
     koji_anonymous = True
-    __retry_on = (koji.GenericError, socket.error)
+    __retry_on = (util.KojiException)
 
     def __init__(self, koji_session=None, **kwargs):
         super(KojiService, self).__init__(**kwargs)
-        self.koji_session = util.Proxy(koji_session
-                                       or self.create_koji_session())
+        self.koji_session = util.KojiSessionProxy(koji_session
+                                                  or self.create_koji_session())
 
     @classmethod
     def create_koji_session(cls):

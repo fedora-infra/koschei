@@ -85,8 +85,21 @@ repodata_dir = config['directories']['repodata']
 dep_config = config['dependency']
 koji_repos = dep_config['repos']
 
+class KojiException(Exception):
+    def __init__(self, cause):
+        self.cause = cause
+        message = '{}: {}'.format(type(cause), cause)
+        super(KojiException, self).__init__(message)
 
-class Proxy(object):
+def koji_exception_rewrap_decorator(fn):
+    def decorated(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:
+            raise KojiException(e)
+    return decorated
+
+class KojiSessionProxy(object):
     def __init__(self, proxied):
         self.proxied = proxied
 
@@ -94,13 +107,15 @@ class Proxy(object):
         proxied = object.__getattribute__(self, 'proxied')
         if name == 'proxied':
             return proxied
-        return getattr(proxied, name)
+        result = getattr(proxied, name)
+        if callable(result):
+            return koji_exception_rewrap_decorator(result)
+        return result
 
     def __setattr__(self, name, value):
         if name == 'proxied':
             object.__setattr__(self, name, value)
         setattr(self.proxied, name, value)
-
 
 def parse_koji_time(string):
     return datetime.strptime(string, "%Y-%m-%d %H:%M:%S.%f")
