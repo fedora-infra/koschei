@@ -13,7 +13,6 @@ down_revision = 'c9c6e92946b'
 from alembic import op
 import sqlalchemy as sa
 
-conn = op.get_bind()
 deptable = sa.Table(
         'dependency',
         sa.MetaData(),
@@ -48,7 +47,7 @@ def con_evr(evr):
     return int(epoch) if epoch else None, version, release
 
 def upgrade():
-
+    conn = op.get_bind()
     op.add_column('dependency', sa.Column('epoch', sa.Integer(), nullable=True))
     op.add_column('dependency', sa.Column('version', sa.String(), nullable=True))
     op.add_column('dependency', sa.Column('release', sa.String(), nullable=True))
