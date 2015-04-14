@@ -227,13 +227,13 @@ def download_koji_repos():
     return repos
 
 
-def load_local_repos():
+def load_local_repos(repo_id):
     repos = {}
     for arch in koji_repos.keys():
         h = librepo.Handle()
         h.local = True
         h.repotype = librepo.LR_YUMREPO
-        h.urls = [os.path.join(repodata_dir, arch)]
+        h.urls = [os.path.join(repodata_dir, str(repo_id), arch)]
         h.yumdlist = ['primary', 'filelists', 'group']
         repos[arch] = h.perform(librepo.Result())
     return repos
