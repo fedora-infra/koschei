@@ -131,10 +131,13 @@ def itercall(koji_session, args, koji_call):
         args = args[chunk_size:]
 
 def create_koji_session(anonymous=False):
-    koji_session = koji.ClientSession(server, {'timeout': 3600})
-    if not anonymous:
-        koji_session.ssl_login(cert, ca_cert, ca_cert)
-    return koji_session
+    try:
+        koji_session = koji.ClientSession(server, {'timeout': 3600})
+        if not anonymous:
+            koji_session.ssl_login(cert, ca_cert, ca_cert)
+        return koji_session
+    except Exception as e:
+        raise KojiException(e)
 
 
 def prepare_build_opts(opts=None):
