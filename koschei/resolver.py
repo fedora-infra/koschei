@@ -20,6 +20,7 @@ import os
 import time
 import hawkey
 import itertools
+import librepo
 import dnf.subject
 import dnf.sack
 
@@ -399,6 +400,10 @@ class Resolver(KojiService):
         self.backend = backend or Backend(db=self.db,
                                           koji_session=self.koji_session,
                                           log=self.log)
+
+    def get_handled_exceptions(self):
+        return ([librepo.LibrepoException] +
+                super(Resolver, self).get_handled_exceptions())
 
     def create_task(self, cls):
         return cls(log=self.log, db=self.db, koji_session=self.koji_session,
