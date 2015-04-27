@@ -56,6 +56,11 @@ config = {
         "enabled": False,
         "modname": "koschei",
     },
+    "pkgdb": {
+        "enabled": True,
+        "pkgdb_url": 'https://admin.fedoraproject.org/pkgdb/api',
+        "topic_re": r'\.prod\.pkgdb\.',
+    },
     "directories": {
         "srpms": "@CACHEDIR@/srpms",
         "repodata": "@CACHEDIR@/repodata",

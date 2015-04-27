@@ -19,7 +19,7 @@
 
 from signal import signal, alarm, SIGALRM
 
-from . import util
+from . import util, plugin
 from .backend import Backend
 from .service import KojiService, FedmsgService, Service
 from .models import Build, Package, RepoGenerationRequest
@@ -49,7 +49,8 @@ class Watcher(KojiService, FedmsgService, WatchdogService):
     def get_topic(self, name):
         return '{}.{}'.format(self.topic_name, name)
 
-    def consume(self, topic, content):
+    def consume(self, topic, msg):
+        content = msg['msg']
         if not content.get('instance') == self.instance:
             return
         self.log.info('consuming ' + topic)
@@ -60,6 +61,8 @@ class Watcher(KojiService, FedmsgService, WatchdogService):
                 self.repo_done(content['repo_id'])
         elif topic == self.get_topic('build.tag'):
             self.register_real_build(content)
+        plugin.dispatch_event('fedmsg_event', topic, msg, db=self.db,
+                              koji_session=self.koji_session)
 
     def repo_done(self, repo_id):
         request = RepoGenerationRequest(repo_id=repo_id)
@@ -90,5 +93,5 @@ class Watcher(KojiService, FedmsgService, WatchdogService):
         alarm(self.watchdog_interval)
         for _, _, topic, msg in self.fedmsg.tail_messages():
             if topic.startswith(self.topic_name + '.'):
-                self.consume(topic, msg['msg'])
+                self.consume(topic, msg)
             alarm(self.watchdog_interval)

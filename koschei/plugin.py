@@ -4,7 +4,7 @@ import logging
 
 from collections import defaultdict
 
-loaded = False
+loaded = {}
 plugin_dir = os.path.join(os.path.dirname(__file__), 'plugins')
 log = logging.getLogger('koschei.plugin')
 
@@ -12,7 +12,6 @@ listeners = defaultdict(list)
 
 
 def load_plugins(only=None):
-    global loaded
     if not loaded:
         for path in os.listdir(plugin_dir):
             if path.endswith('.py'):
@@ -20,8 +19,7 @@ def load_plugins(only=None):
                 if (only is None or name in only) and not name.startswith('_'):
                     descriptor = imp.find_module(name, [plugin_dir])
                     log.info('Loading {} plugin'.format(name))
-                    imp.load_module(name, *descriptor)
-        loaded = True
+                    loaded[name] = imp.load_module(name, *descriptor)
 
 def listen_event(name):
     def decorator(fn):

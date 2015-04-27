@@ -62,6 +62,9 @@ class User(Base):
     timezone = Column(String)
     admin = Column(Boolean, nullable=False, server_default=false())
 
+    # Whether packages for this user were retrieved. Setting to false invalidates cache
+    packages_retrieved = Column(Boolean, nullable=False, server_default=false())
+
 
 class Package(Base):
     __tablename__ = 'package'
