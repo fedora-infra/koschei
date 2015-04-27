@@ -207,7 +207,7 @@ class Backend(object):
         newly_added_prio = util.config['priorities']['newly_added']
         existing = [x for [x] in
                     self.db.query(Package.name)
-                    .filter(Package.name.in_(names))]
+                           .filter(Package.name.in_(names))]
         koji_pkgs = util.get_koji_packages(names)
         nonexistent = [name for name, pkg in zip(names, koji_pkgs) if not pkg]
         if nonexistent:

@@ -32,20 +32,21 @@ log = logging.getLogger('koschei.pkgdb_plugin')
 pkgdb_config = config['pkgdb']
 
 
+def query_pkgdb(url):
+    baseurl = pkgdb_config['pkgdb_url']
+    req = requests.get(baseurl + '/' + url)
+    if req.status_code != 200:
+        log.info("pkgdb query failed {}, status={}"
+                 .format(url, req.status_code))
+        return None
+    return req.json()
+
 def query_users_packages(username):
     log.debug("Requesting pkgdb packages for " + username)
-
-    baseurl = pkgdb_config['pkgdb_url']
-    url = '{0}/packager/package/{1}'.format(baseurl, username)
-    req = requests.get(url)
-    if req.status_code != 200:
-        log.info("Couldn't get pkgdb packages for {}, status={}"
-                 .format(username, req.status_code))
-        return []
-
-    data = req.json()
-    packages = data['point of contact'] + data['co-maintained'] + data['watch']
-    return [p['name'] for p in packages]
+    packages = query_pkgdb('packager/package/' + username)
+    if packages:
+        packages = packages['point of contact'] + packages['co-maintained'] + packages['watch']
+        return [p['name'] for p in packages]
 
 
 if pkgdb_config['enabled']:
@@ -57,11 +58,17 @@ if pkgdb_config['enabled']:
     def refresh_user_packages(user):
         if not user.packages_retrieved:
             db = Session.object_session(user)
-            packages = query_users_packages(user.name)
-            user.packages_retrieved = True
-            if packages:
-                existing = db.query(Package.id).filter(Package.name.in_(packages)).all()
-                entries = [{'user_id': user.id, 'package_id': pkg.id} for pkg in existing]
+            names = query_users_packages(user.name)
+            if names is not None:
+                user.packages_retrieved = True
+                existing = {p for [p] in db.query(Package.name).filter(Package.name.in_(names)).all()}
+                for name in names:
+                    if name not in existing:
+                        pkg = Package(name=name, ignored=True)
+                        db.add(pkg)
+                db.flush()
+                packages = db.query(Package.id).filter(Package.name.in_(names)).all()
+                entries = [{'user_id': user.id, 'package_id': pkg.id} for pkg in packages]
                 db.execute(delete(UserPackageRelation, UserPackageRelation.user_id == user.id))
                 db.execute(insert(UserPackageRelation, entries))
             db.commit()

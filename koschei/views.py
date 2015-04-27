@@ -124,6 +124,7 @@ def package_view(package_query, template, **template_args):
     pkgs = package_query\
              .outerjoin(Package.last_complete_build)\
              .options(contains_eager(Package.last_complete_build))\
+             .filter(Package.ignored == False)\
              .order_by(*order)
     page = pkgs.paginate(packages_per_page)
     return render_template(template, packages=page.items, page=page,
