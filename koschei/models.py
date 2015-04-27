@@ -45,6 +45,14 @@ def external_id():
     raise AssertionError("ID needs to be supplied")
 
 
+def get_or_create(db, table, **cond):
+    item = db.query(table).filter_by(**cond).first()
+    if not item:
+        item = table(**cond)
+        db.add(item)
+    return item
+
+
 class User(Base):
     __tablename__ = 'user'
 

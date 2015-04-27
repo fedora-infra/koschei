@@ -21,7 +21,7 @@ import functools
 from flask.ext.openid import OpenID
 
 from koschei.util import config
-from koschei.models import User
+from koschei.models import User, get_or_create
 from koschei.frontend import app, db
 
 openid = OpenID(app, config['openid']['openid_store'], safe_roots=[])
@@ -50,10 +50,7 @@ def login():
 def create_or_login(response):
     flask.session["openid"] = response.identity_url
     username = openid_to_username(response.identity_url)
-    user = db.query(User).filter_by(name=username).first()
-    if not user:
-        user = User(name=username)
-        db.add(user)
+    user = get_or_create(db, User, name=username)
     user.email = response.email
     user.timezone = response.timezone
     db.commit()

@@ -111,7 +111,7 @@ def get_order(order_map, order_spec):
     return components, orders
 
 
-def package_view(template, alter_query=None, **template_args):
+def package_view(package_query, template, **template_args):
     order_name = request.args.get('order_by', 'name')
     # pylint: disable=E1101
     order_map = {'name': [Package.name],
@@ -120,12 +120,10 @@ def package_view(template, alter_query=None, **template_args):
                  'started': [Build.started],
                  'current_priority': [PriorityOrder(Package.current_priority)]}
     order_names, order = get_order(order_map, order_name)
-    pkgs = db.query(Package)\
+    pkgs = package_query\
              .outerjoin(Package.last_complete_build)\
              .options(contains_eager(Package.last_complete_build))\
              .order_by(*order)
-    if alter_query:
-        pkgs = alter_query(pkgs)
     page = pkgs.paginate(packages_per_page)
     return render_template(template, packages=page.items, page=page,
                            order=order_names, **template_args)
@@ -185,7 +183,7 @@ def inject_fedmenu():
 @app.route('/')
 @tab('Packages')
 def frontpage():
-    return package_view("frontpage.html")
+    return package_view(db.query(Package), "frontpage.html")
 
 
 @app.route('/package/<name>')
@@ -237,12 +235,11 @@ def group_detail(name=None, id=None):
     group = db.query(PackageGroup)\
               .filter_by(**filt).first_or_404()
 
-    def alter_query(q):
-        return q.outerjoin(PackageGroupRelation)\
-                .filter(PackageGroupRelation.group_id == group.id)
+    query = db.query(Package)\
+              .outerjoin(PackageGroupRelation)\
+              .filter(PackageGroupRelation.group_id == group.id)
 
-    return package_view("group-detail.html", alter_query=alter_query,
-                        group=group)
+    return package_view(query, "group-detail.html", group=group)
 
 
 def process_group_form(group=None, success_msg="Group updated"):
@@ -342,10 +339,9 @@ def documentation():
 def search():
     term = request.args.get('q')
     if term:
-        def alter_query(query):
-            matcher = '%{}%'.format(term.strip().replace('*', '%'))
-            return query.filter(Package.name.ilike(matcher))
-        return package_view("search-results.html", alter_query=alter_query)
+        matcher = '%{}%'.format(term.strip().replace('*', '%'))
+        query = db.query(Package).filter(Package.name.ilike(matcher))
+        return package_view(query, "search-results.html")
     return redirect(url_for('frontpage'))
 
 @app.route('/edit_package', methods=['POST'])
