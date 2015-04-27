@@ -247,6 +247,8 @@ def group_detail(name=None, id=None):
 @app.route('/user/<name>')
 @tab('Packages', slave=True)
 def user_packages(name):
+    if g.user and name == g.user.name:
+        g.current_tab = 'my_packages'
     user = get_or_create(db, User, name=name)
     plugin.dispatch_event('refresh_user_packages', user=user)
     query = db.query(Package)\

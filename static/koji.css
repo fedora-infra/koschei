@@ -151,7 +151,7 @@ p#footer a {
 
 }
 
-#mainNav ul li a {
+#mainNav ul li a, ul li div {
     display: block;
     color: rgba(255,255,255,0.8);
     text-decoration: none;
@@ -179,6 +179,10 @@ background-color:rgba(255,255,255,0.1);
 -moz-border-radius-topright: 5px;
 border-top-left-radius: 5px;
 border-top-right-radius: 5px;
+}
+
+#mainNav li div {
+    color: #777;
 }
 
 table {

@@ -47,6 +47,13 @@ href="{{ url_for('static', filename='koji.css') }}"/>
                     <a href="{{ url_for(tab_name) }}">{{ tab_caption }}</a>
                 </li>
                 {% endfor %}
+                <li {% if g.current_tab == 'my_packages' %}id="activeTab"{% endif %}>
+                    {% if g.user %}
+                    <a href="{{ url_for('user_packages', name=g.user.name) }}">My packages</a>
+                    {% else %}
+                    <div>My packages</div>
+                    {% endif %}
+                </li>
             </ul>
         </div>
 
