@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% import "macros.html" as macros %}
+{% block title %}Koschei - {{ user.name }}'s packages{% endblock %}
+{% block content %}
+<div class="pageHeader">{{ user.name }}'s packages</div>
+{{ macros.package_table(packages, page, order) }}
+{% endblock %}

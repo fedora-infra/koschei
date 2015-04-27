@@ -11,8 +11,8 @@ from jinja2 import Markup, escape
 from textwrap import dedent
 
 from .models import (Package, Build, PackageGroup, PackageGroupRelation,
-                     AdminNotice)
-from . import util, auth, backend
+                     AdminNotice, User, UserPackageRelation, get_or_create)
+from . import util, auth, backend, plugin
 from .frontend import app, db, frontend_config
 
 log = logging.getLogger('koschei.views')
@@ -20,6 +20,7 @@ log = logging.getLogger('koschei.views')
 packages_per_page = frontend_config['packages_per_page']
 builds_per_page = frontend_config['builds_per_page']
 
+plugin.load_plugins()
 
 def create_backend():
     return backend.Backend(db=db, log=log,
@@ -240,6 +241,18 @@ def group_detail(name=None, id=None):
               .filter(PackageGroupRelation.group_id == group.id)
 
     return package_view(query, "group-detail.html", group=group)
+
+
+@app.route('/user/<name>')
+@tab('Packages', slave=True)
+def user_packages(name):
+    user = get_or_create(db, User, name=name)
+    plugin.dispatch_event('refresh_user_packages', user=user)
+    query = db.query(Package)\
+              .outerjoin(UserPackageRelation)\
+              .filter(UserPackageRelation.user_id == user.id)
+
+    return package_view(query, "user-packages.html", user=user)
 
 
 def process_group_form(group=None, success_msg="Group updated"):
