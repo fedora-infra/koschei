@@ -103,6 +103,14 @@ class Package(Base):
         return '{0.id} (name={0.name})'.format(self)
 
 
+class UserPackageRelation(Base):
+    __tablename__ = 'user_package_relation'
+    user_id = Column(Integer, ForeignKey('user.id', ondelete='CASCADE'),
+                     primary_key=True)
+    package_id = Column(Integer, ForeignKey('package.id', ondelete='CASCADE'),
+                        primary_key=True)
+
+
 class KojiTask(Base):
     __tablename__ = 'koji_task'
 
@@ -328,6 +336,9 @@ PackageGroup.package_count = column_property(
 Package.groups = relationship(PackageGroup,
                               secondary=PackageGroupRelation.__table__,
                               order_by=PackageGroup.name)
+User.packages = relationship(Package,
+                             secondary=UserPackageRelation.__table__)
+
 def _last_build():
     max_expr = select([func.max(Build.id).label('mx')])\
                .group_by(Build.package_id).alias()
