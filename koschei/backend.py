@@ -16,7 +16,6 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-import json
 import koji
 
 from datetime import datetime
@@ -25,7 +24,7 @@ from sqlalchemy.exc import IntegrityError
 from . import util
 from .models import (Build, DependencyChange, KojiTask, Package,
                      PackageGroup, PackageGroupRelation)
-from .event import Event
+from .plugin import dispatch_event
 
 
 class PackagesDontExist(Exception):
@@ -34,18 +33,12 @@ class PackagesDontExist(Exception):
         self.names = names
 
 
-class PackageStateUpdateEvent(Event):
-    def __init__(self, package, prev_state, new_state):
-        self.package = package
-        self.prev_state = prev_state
-        self.new_state = new_state
-
-
-def check_package_state(package, prev_pkg_state):
-    new_pkg_state = package.msg_state_string
-    if prev_pkg_state != new_pkg_state:
-        event = PackageStateUpdateEvent(package, prev_pkg_state, new_pkg_state)
-        event.dispatch()
+def check_package_state(package, prev_state):
+    new_state = package.msg_state_string
+    if prev_state != new_state:
+        dispatch_event('package_state_change', package=package,
+                       prev_state=prev_state,
+                       new_state=new_state)
 
 
 class Backend(object):
@@ -155,7 +148,9 @@ class Backend(object):
             self.db.commit()
             new_state = package.msg_state_string
             if prev_state != new_state:
-                PackageStateUpdateEvent(package, prev_state, new_state).dispatch()
+                dispatch_event('package_state_change', package=package,
+                               prev_state=prev_state,
+                               new_state=new_state)
 
     def _build_completed(self, build):
         task_info = self.koji_session.getTaskInfo(build.task_id)
@@ -212,7 +207,7 @@ class Backend(object):
         newly_added_prio = util.config['priorities']['newly_added']
         existing = [x for [x] in
                     self.db.query(Package.name)
-                           .filter(Package.name.in_(names))]
+                    .filter(Package.name.in_(names))]
         koji_pkgs = util.get_koji_packages(names)
         nonexistent = [name for name, pkg in zip(names, koji_pkgs) if not pkg]
         if nonexistent:

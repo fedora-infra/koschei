@@ -2,7 +2,6 @@ from mock import patch
 from common import DBTest
 from koschei import plugin
 from koschei.models import PackageGroup, PackageGroupRelation
-from koschei.backend import PackageStateUpdateEvent
 
 class FedmsgSenderTest(DBTest):
     def setUp(self):
@@ -23,7 +22,8 @@ class FedmsgSenderTest(DBTest):
     def test_event(self):
         package = self.prepare_package()
         with patch('fedmsg.publish') as publish:
-            PackageStateUpdateEvent(package, 'failed', 'ok').dispatch()
+            plugin.dispatch_event('package_state_change', package=package,
+                                  prev_state='failed', new_state='ok')
             publish.assert_called_once_with(topic='package.state.change',
                                             modname='koschei',
                                             msg={'name': 'rnv',
@@ -36,5 +36,6 @@ class FedmsgSenderTest(DBTest):
     def test_same_state(self):
         package = self.prepare_package()
         with patch('fedmsg.publish') as publish:
-            PackageStateUpdateEvent(package, 'ok', 'ok').dispatch()
+            plugin.dispatch_event('package_state_change', package=package,
+                                  prev_state='ok', new_state='ok')
             self.assertFalse(publish.called)

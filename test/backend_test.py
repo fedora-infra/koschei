@@ -121,11 +121,11 @@ class BackendTest(DBTest):
         running_build.task_id = rnv_task['id']
         self.s.commit()
         self.assertEqual('failing', package.state_string)
-        with patch('koschei.backend.PackageStateUpdateEvent') as event:
+        with patch('koschei.plugin.dispatch_event') as event:
             self.backend.update_build_state(running_build, 'CLOSED')
             self.koji_session.getTaskInfo.assert_called_once_with(rnv_task['id'])
             self.koji_session.getTaskChildren.assert_called_once_with(rnv_task['id'],
                                                                       request=True)
             self.assertEqual('ok', package.state_string)
-            event.assert_called_once_with(package, 'failing', 'ok')
-            event().dispatch.assert_called_once_with()
+            event.assert_called_once_with('package_state_change', package=package,
+                                          prev_state='failing', new_state='ok')

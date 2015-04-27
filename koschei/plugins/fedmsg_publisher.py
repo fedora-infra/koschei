@@ -20,26 +20,25 @@ import fedmsg
 import logging
 
 from koschei.util import config
-from koschei.backend import PackageStateUpdateEvent
+from koschei.plugin import listen_event
 
 log = logging.getLogger('koschei.fedmsg_publisher')
 
 fedmsg_config = config['fedmsg-publisher']
 
 if fedmsg_config['enabled']:
-    @PackageStateUpdateEvent.listen
-    def emit_package_state_update(event):
-        if event.prev_state == event.new_state:
+    @listen_event('package_state_change')
+    def emit_package_state_update(package, prev_state, new_state):
+        if prev_state == new_state:
             return
-        group_names = [group.name for group in event.package.groups]
+        group_names = [group.name for group in package.groups]
         message = dict(topic='package.state.change',
                        modname=fedmsg_config['modname'],
-                       msg={'name': event.package.name,
-                            'old': event.prev_state,
-                            'new': event.new_state,
+                       msg={'name': package.name,
+                            'old': prev_state,
+                            'new': new_state,
                             'koji_instance': config['fedmsg']['instance'],
                             'repo': config['koji_config']['target_tag'],
-                            'groups': group_names,
-                            })
+                            'groups': group_names})
         log.info('Publishing fedmsg:\n' + str(message))
         fedmsg.publish(**message)

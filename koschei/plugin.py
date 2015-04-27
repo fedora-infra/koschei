@@ -2,9 +2,13 @@ import imp
 import os
 import logging
 
+from collections import defaultdict
+
 loaded = False
 plugin_dir = os.path.join(os.path.dirname(__file__), 'plugins')
 log = logging.getLogger('koschei.plugin')
+
+listeners = defaultdict(list)
 
 
 def load_plugins(only=None):
@@ -18,3 +22,14 @@ def load_plugins(only=None):
                     log.info('Loading {} plugin'.format(name))
                     imp.load_module(name, *descriptor)
         loaded = True
+
+def listen_event(name):
+    def decorator(fn):
+        if fn not in listeners[name]:
+            listeners[name].append(fn)
+        return fn
+    return decorator
+
+def dispatch_event(name, *args, **kwargs):
+    for listener in listeners[name]:
+        listener(*args, **kwargs)
