@@ -21,10 +21,10 @@ import koji
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 
-from . import util
-from .models import (Build, DependencyChange, KojiTask, Package,
-                     PackageGroup, PackageGroupRelation)
-from .plugin import dispatch_event
+from koschei import util
+from koschei.models import (Build, DependencyChange, KojiTask, Package,
+                            PackageGroup, PackageGroupRelation)
+from koschei.plugin import dispatch_event
 
 
 class PackagesDontExist(Exception):
