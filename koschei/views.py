@@ -12,7 +12,7 @@ from textwrap import dedent
 
 from .models import (Package, Build, PackageGroup, PackageGroupRelation,
                      AdminNotice, User, UserPackageRelation, get_or_create)
-from . import util, auth, backend, plugin
+from . import util, auth, backend, main, plugin
 from .frontend import app, db, frontend_config
 
 log = logging.getLogger('koschei.views')
@@ -20,7 +20,7 @@ log = logging.getLogger('koschei.views')
 packages_per_page = frontend_config['packages_per_page']
 builds_per_page = frontend_config['builds_per_page']
 
-plugin.load_plugins()
+main.load_globals()
 
 def create_backend():
     return backend.Backend(db=db, log=log,

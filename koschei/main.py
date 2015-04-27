@@ -19,31 +19,38 @@ from __future__ import print_function
 
 import sys
 import logging
+import fedmsg
+import fedmsg.config
+import fedmsg.meta
 
-if __name__ != '__main__':
-    print("This module shall not be imported", file=sys.stderr)
-    sys.exit(2)
+def load_globals():
+    from . import plugin
+    plugin.load_plugins()
+    fedmsg_config = fedmsg.config.load_config()
+    fedmsg.meta.make_processors(**fedmsg_config)
 
-from .service import Service
 
-# Importing all modules that define services
-# pylint: disable=W0611
-from . import util, scheduler, resolver, polling, watcher, plugin
+if __name__ == '__main__':
+    from .service import Service
 
-log = logging.getLogger('koschei.main')
+    # Importing all modules that define services
+    # pylint: disable=W0611
+    from . import scheduler, resolver, polling, watcher
 
-if len(sys.argv) < 2:
-    print("Requires service name", file=sys.stderr)
-    sys.exit(2)
-name = sys.argv[1]
-plugin.load_plugins()
-service = Service.find_service(name)
-if not service:
-    print("No such service", file=sys.stderr)
-    sys.exit(2)
-try:
-    service().run_service()
-except Exception as exc:
-    log.error("Service {} crashed: {}: {}"
-              .format(name, type(exc), exc))
-    raise
+    log = logging.getLogger('koschei.main')
+
+    if len(sys.argv) < 2:
+        print("Requires service name", file=sys.stderr)
+        sys.exit(2)
+    name = sys.argv[1]
+    load_globals()
+    service = Service.find_service(name)
+    if not service:
+        print("No such service", file=sys.stderr)
+        sys.exit(2)
+    try:
+        service().run_service()
+    except Exception as exc:
+        log.error("Service {} crashed: {}: {}"
+                  .format(name, type(exc), exc))
+        raise

@@ -37,6 +37,7 @@ Requires:       python-dnf
 Requires:       python-sqlalchemy
 Requires:       koji
 Requires:       fedmsg
+Requires:       python-fedmsg-meta-fedora-infrastructure
 Requires:       python-psycopg2
 Requires:       createrepo_c
 Requires:       curl
