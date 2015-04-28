@@ -21,51 +21,60 @@
 {% if page %}
 {{ pagination_row(page, 'Packages') }}
 {% endif %}
-<table class="data-list">
-    <thead>
-        <tr class="list-header">
-            {{ ordered_column('name', 'Name', order) }}
-            {{ ordered_column('state', 'State', order) }}
-            {{ ordered_column('task_id', 'Task ID', order) }}
-            {{ ordered_column('started', 'Last build started', order) }}
-            {{ ordered_column('current_priority', 'Current priority', order) }}
-        </tr>
-    </thead>
-    <tbody>
+<form action="{{ url_for('add_packages') }}" method="POST">
+    <input type="hidden" name="next" value="{{ request.url }}"/>
+    <table class="data-list">
+        <thead>
+            <tr class="list-header">
+                {{ ordered_column('name', 'Name', order) }}
+                {{ ordered_column('state', 'State', order) }}
+                {{ ordered_column('task_id', 'Task ID', order) }}
+                {{ ordered_column('started', 'Last build started', order) }}
+                {{ ordered_column('current_priority', 'Current priority', order) }}
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
 
-    {% for package in packages %}
-    {% set last_complete_build = package.last_complete_build %}
+            {% for package in packages %}
+            {% set last_complete_build = package.last_complete_build %}
 
-    <tr class="row-odd pkg-{{ package.state_string }}">
-        <td>
-            <a href="{{ url_for('package_detail', name=package.name) }}">{{ package.name }}</a>
-        </td>
-        <td>
-            <div class="hidden">{{ package.state_string }}</div>
-            {% if package.state_string %}
-            <img src="{{ package.state_icon }}"
-                 title="{{ package.state_string }}" alt="{{ package.state_string }}"/>
-            {% endif %}
-        </td>
-        {% if package.last_complete_build and package.resolved %}
-        <td>
-            <a href="{{ koji_weburl }}/taskinfo?taskID={{ last_complete_build.task_id }}">
-                {{ last_complete_build.task_id }}
-            </a>
-        </td>
-        <td>
-            {{ last_complete_build.started | date }}
-        </td>
-        {% else %}
-        <td colspan="2"/>
-        {% endif %}
-        <td>
-            {{ package.current_priority }}
-        </td>
-    </tr>
-    {% endfor %}
-    </tbody>
-</table>
+            <tr class="row-odd pkg-{{ package.state_string }}">
+                <td>
+                    <a href="{{ url_for('package_detail', name=package.name) }}">{{ package.name }}</a>
+                </td>
+                <td>
+                    <div class="hidden">{{ package.state_string }}</div>
+                    {% if package.state_string %}
+                    <img src="{{ package.state_icon }}"
+                    title="{{ package.state_string }}" alt="{{ package.state_string }}"/>
+                    {% endif %}
+                </td>
+                {% if package.last_complete_build and package.resolved %}
+                <td>
+                    <a href="{{ koji_weburl }}/taskinfo?taskID={{ last_complete_build.task_id }}">
+                        {{ last_complete_build.task_id }}
+                    </a>
+                </td>
+                <td>
+                    {{ last_complete_build.started | date }}
+                </td>
+                {% else %}
+                <td colspan="2"></td>
+                {% endif %}
+                <td>
+                    {{ package.current_priority }}
+                </td>
+                <td>
+                    {% if package.ignored %}
+                    <button type="submit" name="names" value="{{ package.name }}">Add to Koschei</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</form>
 {% if page %}
 {{ pagination_row(page, 'Packages') }}
 {% endif %}

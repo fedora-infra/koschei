@@ -517,14 +517,6 @@ span#loginInfo {
     color: red;
 }
 
-
-.pkg-ignored {
-    display: none;
-}
-
-.pkg-retired {
-    display: none;
-}
 .odd {
     background-color: #f1f6ff;
 }

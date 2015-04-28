@@ -112,7 +112,7 @@ def get_order(order_map, order_spec):
     return components, orders
 
 
-def package_view(package_query, template, **template_args):
+def package_view(package_query, template, keep_ignored=False, **template_args):
     order_name = request.args.get('order_by', 'name')
     # pylint: disable=E1101
     order_map = {'name': [Package.name],
@@ -121,10 +121,10 @@ def package_view(package_query, template, **template_args):
                  'started': [Build.started],
                  'current_priority': [PriorityOrder(Package.current_priority)]}
     order_names, order = get_order(order_map, order_name)
-    pkgs = package_query\
+    pkgs = (package_query if keep_ignored
+            else package_query.filter(Package.ignored == False))\
              .outerjoin(Package.last_complete_build)\
              .options(contains_eager(Package.last_complete_build))\
-             .filter(Package.ignored == False)\
              .order_by(*order)
     page = pkgs.paginate(packages_per_page)
     return render_template(template, packages=page.items, page=page,
@@ -254,8 +254,10 @@ def user_packages(name):
     query = db.query(Package)\
               .outerjoin(UserPackageRelation)\
               .filter(UserPackageRelation.user_id == user.id)
+    untracked = request.args.get('untracked') == '1'
 
-    return package_view(query, "user-packages.html", user=user)
+    return package_view(query, "user-packages.html", keep_ignored=untracked,
+                        user=user, untracked=untracked)
 
 @app.route('/user/<name>/resync')
 def resync_packages(name):
@@ -332,7 +334,7 @@ def add_packages():
         if names:
             try:
                 added = be.add_packages(names,
-                                        group=request.form['group'] or None)
+                                        group=request.form.get('group') or None)
                 if added:
                     added = ' '.join(x.name for x in added)
                     log.info("{user} added\n{added}".format(user=g.user.name,
@@ -344,7 +346,7 @@ def add_packages():
             except backend.PackagesDontExist as e:
                 flash("Packages don't exist: " + ','.join(e.names))
                 return redirect(url_for('add_packages'))
-            return redirect(url_for('frontpage'))
+            return redirect(request.form.get('next') or url_for('frontpage'))
     all_groups = db.query(PackageGroup)\
                    .order_by(PackageGroup.name).all()
     return render_template("add-packages.html", all_groups=all_groups)

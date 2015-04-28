@@ -3,6 +3,10 @@
 {% block title %}Koschei - {{ user.name }}'s packages{% endblock %}
 {% block content %}
 <div class="pageHeader">{{ user.name }}'s packages</div>
+<form name="show-untracked" action="" method="GET">
+    <input type="hidden" name="untracked" value="{{ "10"[untracked] }}"/>
+    <button type="submit">{% if untracked %}Hide untracked{% else %}Show untracked{% endif %}</button>
+</form>
 {{ macros.package_table(packages, page, order) }}
 <div>
     <a href="{{ url_for('resync_packages', name=user.name) }}">Force pkgdb resync</a>
