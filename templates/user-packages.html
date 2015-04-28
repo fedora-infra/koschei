@@ -4,4 +4,7 @@
 {% block content %}
 <div class="pageHeader">{{ user.name }}'s packages</div>
 {{ macros.package_table(packages, page, order) }}
+<div>
+    <a href="{{ url_for('resync_packages', name=user.name) }}">Force pkgdb resync</a>
+</div>
 {% endblock %}

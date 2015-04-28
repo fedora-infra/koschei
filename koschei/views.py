@@ -257,6 +257,12 @@ def user_packages(name):
 
     return package_view(query, "user-packages.html", user=user)
 
+@app.route('/user/<name>/resync')
+def resync_packages(name):
+    user = get_or_create(db, User, name=name)
+    user.packages_retrieved = False
+    db.commit()
+    return redirect(url_for('user_packages', name=name))
 
 def process_group_form(group=None, success_msg="Group updated"):
     def redir(msg):
