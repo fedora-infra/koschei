@@ -39,18 +39,18 @@ class Polling(KojiService):
     def poll_builds(self):
         running_builds = self.db.query(Build)\
                                 .filter_by(state=Build.RUNNING)
-        for build in running_builds:
+
+
+        infos = util.itercall(self.koji_session, running_builds,
+                              lambda k, b: k.getTaskInfo(b.task_id))
+
+        for task_info, build in zip(infos, running_builds):
             name = build.package.name
-            if not build.task_id:
-                self.log.warn('No task id assigned to build {0})'
-                              .format(build))
-            else:
-                task_info = self.koji_session.getTaskInfo(build.task_id)
-                self.log.debug('Polling task {id} ({name}): task_info={info}'
-                               .format(id=build.task_id, name=name,
-                                       info=task_info))
-                state = koji.TASK_STATES.getvalue(task_info['state'])
-                self.backend.update_build_state(build, state)
+            self.log.debug('Polling task {id} ({name}): task_info={info}'
+                           .format(id=build.task_id, name=name,
+                                   info=task_info))
+            state = koji.TASK_STATES.getvalue(task_info['state'])
+            self.backend.update_build_state(build, state)
 
     def poll_repo(self):
         curr_repo = self.koji_session.getRepo(build_tag, state=koji.REPO_READY)
