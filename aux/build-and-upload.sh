@@ -2,7 +2,7 @@
 set -e
 
 cd "$(git rev-parse --show-toplevel)"
-MOCK_CONFIG=fedora-20-x86_64
+MOCK_CONFIG=epel-7-x86_64
 VERSION="$(python setup.py -V)"
 RELNO="$(git rev-list "$(git describe --tags --abbrev=0)..HEAD" --count)"
 USERNAME="$(sed 's/@.*//' <<< "$EMAIL")"
