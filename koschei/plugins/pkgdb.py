@@ -46,7 +46,7 @@ def query_users_packages(username):
     packages = query_pkgdb('packager/package/' + username)
     if packages:
         packages = packages['point of contact'] + packages['co-maintained'] + packages['watch']
-        return [p['name'] for p in packages]
+        return {p['name'] for p in packages}
 
 
 if pkgdb_config['enabled']:
