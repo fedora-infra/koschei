@@ -191,7 +191,7 @@ def download_rpm_header(url, target_dir):
     if not os.path.isfile(rpm_path):
         tmp_filename = os.path.join(target_dir, '.rpm.tmp')
         log.info('downloading {}'.format(rpm_path))
-        cmd = 'curl -s {} | tee {} | rpm -qp /dev/fd/0'.format(url,
+        cmd = 'curl -s -L {} | tee {} | rpm -qp /dev/fd/0'.format(url,
                                                                tmp_filename)
         with open(os.devnull, 'w') as devnull:
             subprocess.call(['bash', '-e', '-c', cmd],
