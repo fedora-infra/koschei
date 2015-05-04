@@ -21,7 +21,7 @@ BuildRequires:       koji
 BuildRequires:       python-hawkey
 BuildRequires:       python-librepo
 BuildRequires:       rpm-python
-%if 0%{?fedora} < 22
+%if 0%{?fedora} < 22 && !0%{?rhel}
 BuildRequires:       dnf
 %else
 BuildRequires:       python-dnf
@@ -29,7 +29,7 @@ BuildRequires:       python-dnf
 BuildRequires:       fedmsg
 %endif
 
-%if 0%{?fedora} < 22
+%if 0%{?fedora} < 22 && !0%{?rhel}
 Requires:       dnf
 %else
 Requires:       python-dnf
