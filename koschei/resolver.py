@@ -33,7 +33,6 @@ from koschei.service import KojiService
 from koschei.srpm_cache import SRPMCache
 from koschei.repo_cache import RepoCache
 from koschei.backend import check_package_state, Backend
-from koschei.util import itercall
 
 
 class AbstractResolverTask(object):
@@ -216,26 +215,6 @@ class GenerateRepoTask(AbstractResolverTask):
             self.db.expunge_all()
         return packages
 
-    def refresh_latest_builds(self, packages):
-        """
-        Checks Koji for latest builds of all packages and registers possible
-        new real builds and obtains srpms for them
-        """
-        source_tag = util.koji_config['source_tag']
-        infos = itercall(self.koji_session, packages,
-                         lambda k, p: k.listTagged(source_tag, latest=True,
-                                                   package=p.name))
-        task_infos = {pkg: i[0] for pkg, i in zip(packages, infos) if i}
-        blocked = [p['package_name'] for p in
-                   self.koji_session.listPackages(tagID=source_tag)
-                   if p['blocked']]
-        if blocked:
-            self.db.query(Package).filter(Package.name.in_(blocked))\
-                   .update({'ignored': True}, synchronize_session=False)
-            self.db.commit()
-        self.backend.register_real_builds(task_infos)
-        self.srpm_cache.get_latest_srpms([i for (_, i) in task_infos.items()])
-
     def update_repo_index(self, repo_id):
         index_path = os.path.join(util.config['directories']['repodata'], 'index')
         with open(index_path, 'w') as index:
@@ -294,7 +273,7 @@ class GenerateRepoTask(AbstractResolverTask):
         self.db.add(Repo(repo_id=repo_id))
         self.db.flush()
         packages = self.get_packages()
-        self.refresh_latest_builds(packages)
+        self.backend.refresh_latest_builds(packages)
         packages = self.get_packages()
         srpm_repo = self.srpm_cache.get_repodata()
         self.prepare_sack(repo_id)
@@ -399,7 +378,8 @@ class Resolver(KojiService):
         self.repo_cache = repo_cache or RepoCache()
         self.backend = backend or Backend(db=self.db,
                                           koji_session=self.koji_session,
-                                          log=self.log)
+                                          log=self.log,
+                                          srpm_cache=srpm_cache)
 
     def get_handled_exceptions(self):
         return ([librepo.LibrepoException] +

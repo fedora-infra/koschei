@@ -43,10 +43,11 @@ def check_package_state(package, prev_state):
 
 class Backend(object):
 
-    def __init__(self, log, db, koji_session):
+    def __init__(self, log, db, koji_session, srpm_cache=None):
         self.log = log
         self.db = db
         self.koji_session = koji_session
+        self.srpm_cache = srpm_cache
 
     def submit_build(self, package):
         build = Build(package_id=package.id, state=Build.RUNNING)
@@ -201,6 +202,26 @@ class Backend(object):
             if self.is_build_newer(pkg.last_build, info):
                 self.register_real_build(pkg, info)
                 self.db.commit()
+
+    def refresh_latest_builds(self, packages):
+        """
+        Checks Koji for latest builds of all packages and registers possible
+        new real builds and obtains srpms for them
+        """
+        source_tag = util.koji_config['source_tag']
+        infos = util.itercall(self.koji_session, packages,
+                              lambda k, p: k.listTagged(source_tag, latest=True,
+                                                        package=p.name))
+        task_infos = {pkg: i[0] for pkg, i in zip(packages, infos) if i}
+        blocked = [p['package_name'] for p in
+                   self.koji_session.listPackages(tagID=source_tag)
+                   if p['blocked']]
+        if blocked:
+            self.db.query(Package).filter(Package.name.in_(blocked))\
+                   .update({'ignored': True}, synchronize_session=False)
+            self.db.commit()
+        self.register_real_builds(task_infos)
+        self.srpm_cache.get_latest_srpms([i for (_, i) in task_infos.items()])
 
     def add_packages(self, names, group=None, static_priority=None,
                      manual_priority=None):
