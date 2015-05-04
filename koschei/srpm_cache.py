@@ -38,6 +38,7 @@ class SRPMCache(object):
     def __init__(self, koji_session,
                  srpm_dir=util.config['directories']['srpms']):
         self._srpm_dir = srpm_dir
+        self._lock_path = os.path.join(srpm_dir, '.lock')
         self._koji_session = koji_session
         repodata_dir = os.path.join(srpm_dir, 'repodata')
         if os.path.exists(repodata_dir):
@@ -47,24 +48,25 @@ class SRPMCache(object):
         self._read_existing_srpms()
 
     def _read_existing_srpms(self):
-        srpms = os.listdir(self._srpm_dir)
-        ts = rpm.TransactionSet()
-        for srpm in srpms:
-            if not srpm.endswith('.rpm'):
-                continue
-            path = os.path.join(self._srpm_dir, srpm)
-            try:
-                fd = os.open(path, os.O_RDONLY)
-                hdr = ts.hdrFromFdno(fd)
-                nevr = (hdr['name'], hdr['epoch'], hdr['version'],
-                        hdr['release'])
-                self._cache[nevr] = path
-            except rpm.error as e:
-                log.warn("Unreadable rpm in srpm_dir: {}\nRPM error: {}"
-                         .format(path, e.message))
-            finally:
-                if fd:
-                    os.close(fd)
+        with util.lock(self._lock_path):
+            srpms = os.listdir(self._srpm_dir)
+            ts = rpm.TransactionSet()
+            for srpm in srpms:
+                if not srpm.endswith('.rpm'):
+                    continue
+                path = os.path.join(self._srpm_dir, srpm)
+                try:
+                    fd = os.open(path, os.O_RDONLY)
+                    hdr = ts.hdrFromFdno(fd)
+                    nevr = (hdr['name'], hdr['epoch'], hdr['version'],
+                            hdr['release'])
+                    self._cache[nevr] = path
+                except rpm.error as e:
+                    log.warn("Unreadable rpm in srpm_dir: {}\nRPM error: {}"
+                             .format(path, e.message))
+                finally:
+                    if fd:
+                        os.close(fd)
 
     def get_srpm(self, name, epoch, version, release):
         nevr = name, epoch, version, release
@@ -81,8 +83,9 @@ class SRPMCache(object):
                 if srpms:
                     build_url = pathinfo.build(build)
                     srpm_name = pathinfo.rpm(srpms[0])
-                    path = util.download_rpm_header(
-                        build_url + '/' + srpm_name, self._srpm_dir)
+                    with util.lock(self._lock_path):
+                        path = util.download_rpm_header(
+                            build_url + '/' + srpm_name, self._srpm_dir)
                     self._cache[nevr] = path
                     return path
 
@@ -95,8 +98,9 @@ class SRPMCache(object):
         for [srpm], build_url in zip(srpms, urls):
             srpm_url = pathinfo.rpm(srpm)
             srpm_name = os.path.basename(srpm_url)
-            util.download_rpm_header(
-                build_url + '/' + srpm_url, self._srpm_dir)
+            with util.lock(self._lock_path):
+                util.download_rpm_header(
+                    build_url + '/' + srpm_url, self._srpm_dir)
             nevr = (srpm['name'], srpm['epoch'], srpm['version'],
                     srpm['release'])
             self._cache[nevr] = os.path.join(self._srpm_dir, srpm_name)
@@ -116,10 +120,11 @@ class SRPMCache(object):
         self._dirty = False
 
     def get_repodata(self):
-        if self._dirty:
-            self._createrepo()
-        h = librepo.Handle()
-        h.local = True
-        h.repotype = librepo.LR_YUMREPO
-        h.urls = [self._srpm_dir]
-        return h.perform(librepo.Result())
+        with util.lock(self._lock_path):
+            if self._dirty:
+                self._createrepo()
+            h = librepo.Handle()
+            h.local = True
+            h.repotype = librepo.LR_YUMREPO
+            h.urls = [self._srpm_dir]
+            return h.perform(librepo.Result())

@@ -27,8 +27,10 @@ import subprocess
 import hawkey
 import librepo
 import errno
+import fcntl
 
 from datetime import datetime
+from contextlib import contextmanager
 
 
 def merge_dict(d1, d2):
@@ -281,3 +283,9 @@ def compare_evr(evr1, evr2):
 def set_difference(s1, s2, key):
     compset = {key(x) for x in s2}
     return {x for x in s1 if key(x) not in compset}
+
+@contextmanager
+def lock(lock_path):
+    with open(lock_path, 'a+') as lock_file:
+        fcntl.lockf(lock_file.fileno(), fcntl.LOCK_EX)
+        yield
