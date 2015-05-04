@@ -24,7 +24,7 @@ from koschei.util import config
 from koschei.models import User, get_or_create
 from koschei.frontend import app, db
 
-provider = OpenID(app, config['openid']['openid_provider'])
+provider = config['openid']['openid_provider']
 openid = OpenID(app, config['openid']['openid_store'], safe_roots=[])
 
 
