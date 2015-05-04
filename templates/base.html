@@ -19,6 +19,9 @@ href="{{ url_for('static', filename='koji.css') }}"/>
       {% if package is defined %}
       'package': '{{ package.name }}',
       {% endif %}
+      {% if user is defined %}
+      'user': '{{ user.name }}',
+      {% endif %}
   });
 </script>
 {% endif %}
