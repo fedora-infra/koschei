@@ -87,6 +87,7 @@ config = {
         "alembic_ini": "@DATADIR@/alembic.ini"
     },
     "openid": {
+        "openid_provider": "id.fedoraproject.org",
         "openid_store": "@STATEDIR@/openid",
     },
     "logging": {

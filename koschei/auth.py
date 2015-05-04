@@ -24,15 +24,16 @@ from koschei.util import config
 from koschei.models import User, get_or_create
 from koschei.frontend import app, db
 
+provider = OpenID(app, config['openid']['openid_provider'])
 openid = OpenID(app, config['openid']['openid_store'], safe_roots=[])
 
 
 def username_to_openid(name):
-    return "http://{}.id.fedoraproject.org/".format(name)
+    return "http://{}.{}/".format(name, provider)
 
 
 def openid_to_username(oid):
-    return oid.replace(".id.fedoraproject.org/", "")\
+    return oid.replace(".{}/".format(provider), "")\
               .replace("http://", "")
 
 
@@ -42,7 +43,7 @@ def login():
     if flask.g.user is not None:
         return flask.redirect(openid.get_next_url())
     else:
-        return openid.try_login("https://id.fedoraproject.org/",
+        return openid.try_login("https://{}/".format(provider),
                                 ask_for=["email", "timezone"])
 
 
