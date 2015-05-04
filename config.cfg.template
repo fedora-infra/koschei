@@ -27,10 +27,9 @@ config = {
         "for_arch": "x86_64",
         "repo_cache_items": 10,
         "keep_build_deps_for": 5,
-        "repos": {
-            "x86_64": "http://kojipkgs.fedoraproject.org/repos/f23-build/{repo_id}/x86_64",
-            "i386": "http://kojipkgs.fedoraproject.org/repos/f23-build/{repo_id}/i386",
-        },
+        "local": False,
+        "arches": ['x86_64', 'i386'],
+        "remote_repo": "http://kojipkgs.fedoraproject.org/repos/f23-build/{repo_id}/{arch}",
     },
     "priorities": {
         "newly_added": 3000, # should be higher than the threshold

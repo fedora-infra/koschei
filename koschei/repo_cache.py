@@ -20,7 +20,6 @@ import os
 import librepo
 import shutil
 import logging
-import pickle
 
 from koschei import util
 
@@ -33,22 +32,30 @@ class RepoCache(object):
 
     def __init__(self, repo_dir=util.config['directories']['repodata'],
                  max_repos=util.config['dependency']['repo_cache_items'],
-                 koji_repos=util.config['dependency']['repos']):
+                 remote_repo=util.config['dependency']['remote_repo'],
+                 arches=util.config['dependency']['arches'],
+                 local=util.config['dependency']['local']):
         self._repo_dir = repo_dir
         assert max_repos > 2
         self._max_repos = max_repos
-        self._koji_repos = koji_repos
+        if not local:
+            assert '{repo_id}' in remote_repo and '{arch}' in remote_repo
+        self._remote_repo = remote_repo
+        self._arches = arches
+        self._local = local
         self._lru = {}
         self._index = 0
         self._cache = {}
 
-        existing_repos = []
-        for repo in os.listdir(self._repo_dir):
-            if repo.isdigit():
-                existing_repos.append(int(repo))
-        existing_repos.sort()
-        for repo in existing_repos:
-            self._load_from_disk(repo)
+        if not local:
+            # registers old repos so they can be deleted when chosen as victims
+            existing_repos = []
+            for repo in os.listdir(self._repo_dir):
+                if repo.isdigit():
+                    existing_repos.append(int(repo))
+            existing_repos.sort()
+            for repo in existing_repos:
+                self._load_from_disk(repo)
 
     def _get_repo_dir(self, repo_id, arch=None):
         if arch:
@@ -56,9 +63,11 @@ class RepoCache(object):
         return os.path.join(self._repo_dir, str(repo_id))
 
     def _download_repo(self, repo_id):
+        if self._local:
+            return
         repos = {}
         try:
-            for arch, repo_url in self._koji_repos.items():
+            for arch in self._arches:
                 h = librepo.Handle()
                 destdir = self._get_repo_dir(repo_id, arch)
                 if os.path.exists(destdir):
@@ -66,8 +75,7 @@ class RepoCache(object):
                 os.makedirs(destdir)
                 h.destdir = destdir
                 h.repotype = librepo.LR_YUMREPO
-                assert '{repo_id}' in repo_url
-                url = repo_url.format(repo_id=repo_id)
+                url = self._remote_repo.format(repo_id=repo_id, arch=arch)
                 h.urls = [url]
                 h.yumdlist = ['primary', 'filelists', 'group']
                 log.info("Downloading {arch} repo from {url}".format(arch=arch,
@@ -85,7 +93,7 @@ class RepoCache(object):
     def _load_from_disk(self, repo_id):
         try:
             repos = {}
-            for arch in self._koji_repos.keys():
+            for arch in self._arches:
                 h = librepo.Handle()
                 h.local = True
                 h.repotype = librepo.LR_YUMREPO
@@ -102,7 +110,8 @@ class RepoCache(object):
             victim = sorted(self._lru.items(), key=lambda (k, v): (v, k))[0][0]
             del self._cache[victim]
             del self._lru[victim]
-            shutil.rmtree(self._get_repo_dir(victim))
+            if not self._local:
+                shutil.rmtree(self._get_repo_dir(victim))
         self._cache[repo_id] = repos
         self._lru[repo_id] = self._index
 
@@ -113,6 +122,8 @@ class RepoCache(object):
 
     def get_repos(self, repo_id):
         repo = self._cache.get(repo_id)
+        if not repo:
+            repo = self._load_from_disk(repo_id)
         if not repo:
             repo = self._download_repo(repo_id)
         if repo:

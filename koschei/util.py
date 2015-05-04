@@ -26,7 +26,6 @@ import logging.config
 import subprocess
 import hawkey
 import librepo
-import shutil
 import errno
 
 from datetime import datetime
@@ -83,7 +82,6 @@ srpm_dir = config['directories']['srpms']
 repodata_dir = config['directories']['repodata']
 
 dep_config = config['dependency']
-koji_repos = dep_config['repos']
 
 class KojiException(Exception):
     def __init__(self, cause):
@@ -207,36 +205,6 @@ def get_srpm_repodata():
     h.repotype = librepo.LR_YUMREPO
     h.urls = [srpm_dir]
     return h.perform(librepo.Result())
-
-
-def download_koji_repos():
-    repos = {}
-    for arch, repo_url in koji_repos.items():
-        h = librepo.Handle()
-        h.destdir = os.path.join(repodata_dir, arch)
-        if os.path.exists(h.destdir):
-            shutil.rmtree(h.destdir)
-        os.mkdir(h.destdir)
-        h.repotype = librepo.LR_YUMREPO
-        h.urls = [repo_url]
-        h.yumdlist = ['primary', 'filelists', 'group']
-        log.info("Downloading {arch} repo from {url}".format(arch=arch,
-                                                             url=repo_url))
-        result = h.perform(librepo.Result())
-        repos[arch] = result
-    return repos
-
-
-def load_local_repos(repo_id):
-    repos = {}
-    for arch in koji_repos.keys():
-        h = librepo.Handle()
-        h.local = True
-        h.repotype = librepo.LR_YUMREPO
-        h.urls = [os.path.join(repodata_dir, str(repo_id), arch)]
-        h.yumdlist = ['primary', 'filelists', 'group']
-        repos[arch] = h.perform(librepo.Result())
-    return repos
 
 
 def add_repo_to_sack(repoid, repo_result, sack):
