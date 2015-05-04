@@ -39,7 +39,9 @@ class PollingTest(DBTest):
 
     def get_koji_mock(self, state='CLOSED'):
         koji_mock = Mock()
-        koji_mock.getTaskInfo = Mock(return_value={'state': koji.TASK_STATES[state]})
+        def multiCall():
+            return [[{'state': koji.TASK_STATES[state]}]] * 2
+        koji_mock.multiCall = multiCall
         return koji_mock
 
     def test_poll_none(self):
