@@ -23,9 +23,10 @@ import koji
 from sqlalchemy.sql import exists
 
 from . import util
-from .models import Build, RepoGenerationRequest
+from .models import Build, RepoGenerationRequest, Package
 from .service import KojiService
 from .backend import Backend
+from .srpm_cache import SRPMCache
 
 build_tag = util.koji_config['build_tag']
 
@@ -34,7 +35,8 @@ class Polling(KojiService):
     def __init__(self, backend=None, *args, **kwargs):
         super(Polling, self).__init__(*args, **kwargs)
         self.backend = backend or Backend(log=self.log, db=self.db,
-                                          koji_session=self.koji_session)
+                                          koji_session=self.koji_session,
+                                          srpm_cache=SRPMCache(koji_session=self.koji_session))
 
     def poll_builds(self):
         running_builds = self.db.query(Build)\
@@ -62,6 +64,11 @@ class Polling(KojiService):
                 self.db.add(request)
                 self.db.commit()
 
+    def poll_real_builds(self):
+        pkgs = self.db.query(Package).filter_by(ignored=False).all()
+        self.backend.refresh_latest_builds(pkgs)
+
     def main(self):
         self.poll_builds()
         self.poll_repo()
+        self.poll_real_builds()
