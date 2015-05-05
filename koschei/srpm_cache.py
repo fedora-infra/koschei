@@ -23,6 +23,7 @@ import os
 import shutil
 import subprocess
 import rpm
+import glob
 
 from koschei import util
 from koschei.util import itercall
@@ -44,7 +45,6 @@ class SRPMCache(object):
         if os.path.exists(repodata_dir):
             shutil.rmtree(repodata_dir)
         self._cache = {}
-        self._dirty = True
         self._read_existing_srpms()
 
     def _read_existing_srpms(self):
@@ -73,7 +73,6 @@ class SRPMCache(object):
         cached = self._cache.get(nevr)
         if cached:
             return cached
-        self._dirty = True
         builds = self._koji_session.listTagged(source_tag, package=name)
         for build in builds:
             if (build['epoch'] == epoch and build['version'] == version and
@@ -104,7 +103,6 @@ class SRPMCache(object):
             nevr = (srpm['name'], srpm['epoch'], srpm['version'],
                     srpm['release'])
             self._cache[nevr] = os.path.join(self._srpm_dir, srpm_name)
-            self._dirty = True
 
     def _createrepo(self):
         log.debug('createrepo_c')
@@ -117,11 +115,15 @@ class SRPMCache(object):
             raise Exception("Createrepo failed: return code {ret}\n{err}"
                             .format(ret=ret, err=err))
         log.debug(out)
-        self._dirty = False
 
     def get_repodata(self):
         with util.lock(self._lock_path):
-            if self._dirty:
+            mtime = 0
+            repodata_dir = os.path.join(self._srpm_dir, 'repodata')
+            if os.path.exists(repodata_dir):
+                mtime = os.path.getmtime(repodata_dir)
+            if any(os.path.getmtime(f) > mtime for f in
+                   glob.glob(os.path.join(self._srpm_dir, '*.src.rpm'))):
                 self._createrepo()
             h = librepo.Handle()
             h.local = True
