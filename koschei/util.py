@@ -185,20 +185,14 @@ def reset_sigpipe():
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 
-def download_rpm_header(url, target_dir):
-    mkdir_if_absent(target_dir)
-    rpm_path = os.path.join(target_dir, os.path.basename(url))
-    if not os.path.isfile(rpm_path):
-        tmp_filename = os.path.join(target_dir, '.rpm.tmp')
-        log.info('downloading {}'.format(rpm_path))
-        cmd = 'curl -s -L {} | tee {} | rpm -qp /dev/fd/0'.format(url,
-                                                               tmp_filename)
-        with open(os.devnull, 'w') as devnull:
-            subprocess.call(['bash', '-e', '-c', cmd],
-                            preexec_fn=reset_sigpipe,
-                            stdout=devnull)
-        os.rename(tmp_filename, rpm_path)
-    return rpm_path
+def download_rpm_header(url, target_path):
+    log.info('downloading {}'.format(target_path))
+    cmd = 'curl -s -L {} | tee {} | rpm -qp /dev/fd/0'\
+          .format(url, target_path)
+    with open(os.devnull, 'w') as devnull:
+        subprocess.call(['bash', '-e', '-c', cmd],
+                        preexec_fn=reset_sigpipe,
+                        stdout=devnull)
 
 
 def get_srpm_repodata():

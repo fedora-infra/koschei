@@ -20,7 +20,6 @@ import koji
 import librepo
 import logging
 import os
-import shutil
 import subprocess
 import rpm
 import glob
@@ -41,38 +40,33 @@ class SRPMCache(object):
         self._srpm_dir = srpm_dir
         self._lock_path = os.path.join(srpm_dir, '.lock')
         self._koji_session = koji_session
-        repodata_dir = os.path.join(srpm_dir, 'repodata')
-        if os.path.exists(repodata_dir):
-            shutil.rmtree(repodata_dir)
-        self._cache = {}
-        self._read_existing_srpms()
 
-    def _read_existing_srpms(self):
+    def _get_srpm_path(self, name, epoch, version, release):
+        srpm_name = '{n}-{e}:{v}-{r}.src.rpm' if epoch else '{n}-{v}-{r}.src.rpm'
+        srpm_name = srpm_name.format(e=epoch, n=name, v=version, r=release)
+        return os.path.join(self._srpm_dir, srpm_name)
+
+    def _read_local_srpm(self, path):
         with util.lock(self._lock_path):
-            srpms = os.listdir(self._srpm_dir)
             ts = rpm.TransactionSet()
-            for srpm in srpms:
-                if not srpm.endswith('.rpm'):
-                    continue
-                path = os.path.join(self._srpm_dir, srpm)
-                try:
-                    fd = os.open(path, os.O_RDONLY)
-                    hdr = ts.hdrFromFdno(fd)
-                    nevr = (hdr['name'], hdr['epoch'], hdr['version'],
-                            hdr['release'])
-                    self._cache[nevr] = path
-                except rpm.error as e:
-                    log.warn("Unreadable rpm in srpm_dir: {}\nRPM error: {}"
-                             .format(path, e.message))
-                finally:
-                    if fd:
-                        os.close(fd)
+            if not os.path.exists(path):
+                return
+            try:
+                fd = os.open(path, os.O_RDONLY)
+                ts.hdrFromFdno(fd)
+                return path
+            except rpm.error as e:
+                log.warn("Unreadable rpm in srpm_dir: {}\nRPM error: {}"
+                         .format(path, e.message))
+            finally:
+                if fd:
+                    os.close(fd)
 
     def get_srpm(self, name, epoch, version, release):
-        nevr = name, epoch, version, release
-        cached = self._cache.get(nevr)
-        if cached:
-            return cached
+        path = self._get_srpm_path(name, epoch, version, release)
+        local = self._read_local_srpm(path)
+        if local:
+            return local
         builds = self._koji_session.listTagged(source_tag, package=name)
         for build in builds:
             if (build['epoch'] == epoch and build['version'] == version and
@@ -83,10 +77,12 @@ class SRPMCache(object):
                     build_url = pathinfo.build(build)
                     srpm_name = pathinfo.rpm(srpms[0])
                     with util.lock(self._lock_path):
-                        path = util.download_rpm_header(
-                            build_url + '/' + srpm_name, self._srpm_dir)
-                    self._cache[nevr] = path
-                    return path
+                        util.download_rpm_header(build_url + '/' + srpm_name, path)
+                        break
+        # verify it downloaded
+        local = self._read_local_srpm(path)
+        if local:
+            return local
 
     def get_latest_srpms(self, task_infos):
         urls = map(pathinfo.build, task_infos)
@@ -96,13 +92,11 @@ class SRPMCache(object):
 
         for [srpm], build_url in zip(srpms, urls):
             srpm_url = pathinfo.rpm(srpm)
-            srpm_name = os.path.basename(srpm_url)
+            path = self._get_srpm_path(srpm['name'], srpm['epoch'],
+                                       srpm['version'], srpm['release'])
             with util.lock(self._lock_path):
                 util.download_rpm_header(
-                    build_url + '/' + srpm_url, self._srpm_dir)
-            nevr = (srpm['name'], srpm['epoch'], srpm['version'],
-                    srpm['release'])
-            self._cache[nevr] = os.path.join(self._srpm_dir, srpm_name)
+                    build_url + '/' + srpm_url, path)
 
     def _createrepo(self):
         log.debug('createrepo_c')
