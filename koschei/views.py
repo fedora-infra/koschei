@@ -72,7 +72,7 @@ def get_global_notice():
 
 pathinfo = koji.PathInfo(topdir=util.koji_config['topurl'])
 app.jinja_env.globals.update(koji_weburl=util.config['koji_config']['weburl'],
-                             koji_pathinfo=pathinfo, next=next, iter=iter,
+                             koji_pathinfo=pathinfo, inext=next, iter=iter,
                              min=min, max=max, page_args=page_args,
                              get_global_notice=get_global_notice)
 
