@@ -379,7 +379,7 @@ class Resolver(KojiService):
         self.backend = backend or Backend(db=self.db,
                                           koji_session=self.koji_session,
                                           log=self.log,
-                                          srpm_cache=srpm_cache)
+                                          srpm_cache=self.srpm_cache)
 
     def get_handled_exceptions(self):
         return ([librepo.LibrepoException] +
