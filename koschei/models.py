@@ -319,6 +319,21 @@ trigger = DDL("""
 
 listen(Base.metadata, 'after_create', trigger.execute_if(dialect='postgresql'))
 
+
+def grant_db_access():
+    user = config['database_config'].get('unpriv_username')
+    if user:
+        conn = engine.connect()
+        conn.execute("""
+                     GRANT SELECT, INSERT, UPDATE, DELETE
+                     ON ALL TABLES IN SCHEMA PUBLIC TO {user};
+                     GRANT SELECT, USAGE ON ALL SEQUENCES
+                     IN SCHEMA PUBLIC TO {user};
+                     """.format(user=user))
+
+
+listen(Base.metadata, 'after_create', grant_db_access)
+
 # Relationships
 
 Package.last_complete_build = \
