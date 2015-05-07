@@ -18,7 +18,7 @@
 
 import koji
 
-from sqlalchemy import (create_engine, Column, Integer, String, Boolean,
+from sqlalchemy import (create_engine, Table, Column, Integer, String, Boolean,
                         ForeignKey, DateTime, Index, DDL)
 from sqlalchemy.sql.expression import extract, func, select, false, join
 from sqlalchemy.ext.declarative import declarative_base
@@ -320,10 +320,9 @@ trigger = DDL("""
 listen(Base.metadata, 'after_create', trigger.execute_if(dialect='postgresql'))
 
 
-def grant_db_access():
+def grant_db_access(_, conn, *args, **kwargs):
     user = config['database_config'].get('unpriv_username')
     if user:
-        conn = engine.connect()
         conn.execute("""
                      GRANT SELECT, INSERT, UPDATE, DELETE
                      ON ALL TABLES IN SCHEMA PUBLIC TO {user};
@@ -332,7 +331,7 @@ def grant_db_access():
                      """.format(user=user))
 
 
-listen(Base.metadata, 'after_create', grant_db_access)
+listen(Table, 'after_create', grant_db_access)
 
 # Relationships
 
