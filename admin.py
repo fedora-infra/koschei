@@ -1,9 +1,14 @@
 #!/usr/bin/python
 from __future__ import print_function
 
+import os
 import sys
 import argparse
 import logging
+
+# FIXME we should have some nicer solution to override configs
+if 'KOSCHEI_CONFIG' not in os.environ:
+    os.environ['KOSCHEI_CONFIG'] = '/usr/share/koschei/config.cfg:/etc/koschei/config.cfg:/etc/koschei/config-admin.cfg'
 
 from koschei.models import (engine, Base, Package, PackageGroup, Session,
                             AdminNotice)

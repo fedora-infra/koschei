@@ -1,6 +1,12 @@
 from __future__ import with_statement
+import os
 from alembic import context
 from logging.config import fileConfig
+
+# FIXME we should have some nicer solution to override configs
+if 'KOSCHEI_CONFIG' not in os.environ:
+    os.environ['KOSCHEI_CONFIG'] = '/usr/share/koschei/config.cfg:/etc/koschei/config.cfg:/etc/koschei/config-admin.cfg'
+
 from koschei.models import Base
 
 # this is the Alembic Config object, which provides

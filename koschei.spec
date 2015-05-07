@@ -80,6 +80,7 @@ mkdir -p %{buildroot}%{_sysconfdir}/%{name}
 mkdir -p %{buildroot}%{_sysconfdir}/httpd/conf.d
 
 cp -p empty_config.cfg %{buildroot}%{_sysconfdir}/%{name}/config.cfg
+cp -p empty_admin_config.cfg %{buildroot}%{_sysconfdir}/%{name}/config-admin.cfg
 cp -p config.cfg %{buildroot}%{_datadir}/koschei/
 
 install -dm 755 %{buildroot}%{_unitdir}
@@ -145,6 +146,7 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %{python2_sitelib}/*
 %dir %{_sysconfdir}/%{name}
 %config(noreplace) %{_sysconfdir}/%{name}/config.cfg
+%config(noreplace) %{_sysconfdir}/%{name}/config-admin.cfg
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/%{name}.conf
 %{_unitdir}/*
 
