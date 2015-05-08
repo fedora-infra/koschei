@@ -79,8 +79,10 @@ class Backend(object):
                .delete()
 
     def get_newer_build_if_exists(self, package):
-        [info] = self.koji_session.listTagged(util.source_tag, latest=True,
-                                              package=package.name) or [None]
+        [info] = self.koji_session.listTagged(util.source_tag,
+                                              latest=True,
+                                              package=package.name,
+                                              inherit=True) or [None]
         if self.is_build_newer(package.last_build, info):
             return info
 
@@ -211,7 +213,7 @@ class Backend(object):
         source_tag = util.koji_config['source_tag']
         infos = util.itercall(self.koji_session, packages,
                               lambda k, p: k.listTagged(source_tag, latest=True,
-                                                        package=p.name))
+                                                        package=p.name, inherit=True))
         task_infos = {pkg: i[0] for pkg, i in zip(packages, infos) if i}
         blocked = [p['package_name'] for p in
                    self.koji_session.listPackages(tagID=source_tag)

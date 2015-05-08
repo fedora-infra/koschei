@@ -149,7 +149,8 @@ def prepare_build_opts(opts=None):
 
 
 def get_last_srpm(koji_session, name):
-    info = koji_session.listTagged(source_tag, latest=True, package=name)
+    info = koji_session.listTagged(source_tag, latest=True,
+                                   package=name, inherit=True)
     if info:
         srpms = koji_session.listRPMs(buildID=info[0]['build_id'],
                                       arches='src')
