@@ -1,0 +1,21 @@
+{
+    "completion_time": "2014-07-29 04:46:31.990911",
+    "completion_ts": 1406609191.99091,
+    "creation_event_id": 7881308,
+    "creation_time": "2014-07-28 16:38:14.030685",
+    "creation_ts": 1406565494.03068,
+    "epoch": 1,
+    "id": 548392,
+    "name": "eclipse",
+    "nvr": "eclipse-4.4.0-10.fc22",
+    "owner_id": 1172,
+    "owner_name": "rgrunber",
+    "package_id": 183,
+    "package_name": "eclipse",
+    "release": "10.fc22",
+    "state": 1,
+    "task_id": 7204016,
+    "version": "4.4.0",
+    "volume_id": 0,
+    "volume_name": "DEFAULT"
+}

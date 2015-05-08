@@ -41,9 +41,8 @@ class SRPMCache(object):
         self._lock_path = os.path.join(srpm_dir, '.lock')
         self._koji_session = koji_session
 
-    def _get_srpm_path(self, name, epoch, version, release):
-        srpm_name = '{n}-{e}:{v}-{r}.src.rpm' if epoch else '{n}-{v}-{r}.src.rpm'
-        srpm_name = srpm_name.format(e=epoch, n=name, v=version, r=release)
+    def _get_srpm_path(self, name, version, release):
+        srpm_name = '{n}-{v}-{r}.src.rpm'.format(n=name, v=version, r=release)
         return os.path.join(self._srpm_dir, srpm_name)
 
     def _read_local_srpm(self, path):
@@ -62,23 +61,20 @@ class SRPMCache(object):
                 if fd:
                     os.close(fd)
 
-    def get_srpm(self, name, epoch, version, release):
-        path = self._get_srpm_path(name, epoch, version, release)
+    def get_srpm(self, name, version, release):
+        path = self._get_srpm_path(name, version, release)
         local = self._read_local_srpm(path)
         if local:
             return local
-        builds = self._koji_session.listTagged(source_tag, package=name)
-        for build in builds:
-            if (build['epoch'] == epoch and build['version'] == version and
-                    build['release'] == release):
-                srpms = self._koji_session.listRPMs(buildID=build['build_id'],
-                                                    arches='src')
-                if srpms:
-                    build_url = pathinfo.build(build)
-                    srpm_name = pathinfo.rpm(srpms[0])
-                    with util.lock(self._lock_path):
-                        util.download_rpm_header(build_url + '/' + srpm_name, path)
-                        break
+        nvr = "{}-{}-{}".format(name, version, release)
+        build = self._koji_session.getBuild(nvr)
+        if build:
+            srpms = self._koji_session.listRPMs(build['id'], arches='src')
+            if srpms:
+                build_url = pathinfo.build(build)
+                srpm_name = pathinfo.rpm(srpms[0])
+                with util.lock(self._lock_path):
+                    util.download_rpm_header(build_url + '/' + srpm_name, path)
         # verify it downloaded
         local = self._read_local_srpm(path)
         if local:
@@ -92,12 +88,9 @@ class SRPMCache(object):
 
         for [srpm], build_url in zip(srpms, urls):
             srpm_url = pathinfo.rpm(srpm)
-            path = self._get_srpm_path(srpm['name'], srpm['epoch'],
-                                       srpm['version'], srpm['release'])
+            path = self._get_srpm_path(srpm['name'], srpm['version'], srpm['release'])
             with util.lock(self._lock_path):
-                util.download_rpm_header(
-                    build_url + '/' + srpm_url, path)
-
+                util.download_rpm_header(build_url + '/' + srpm_url, path)
     def _createrepo(self):
         log.debug('createrepo_c')
         createrepo = subprocess.Popen(['createrepo_c', self._srpm_dir],

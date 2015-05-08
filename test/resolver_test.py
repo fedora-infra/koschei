@@ -91,7 +91,7 @@ class ResolverTest(DBTest):
         with patch('koschei.util.get_build_group', return_value=['R']):
             self.resolver.create_task(ProcessBuildsTask).run()
         self.repo_mock.get_repos.assert_called_once_with(666)
-        self.srpm_mock.get_srpm.assert_called_once_with('foo', None, '4', '1.fc22')
+        self.srpm_mock.get_srpm.assert_called_once_with('foo', '4', '1.fc22')
         self.srpm_mock.get_repodata.assert_called_once_with()
         expected_deps = [tuple([package_id, 666] + list(nevr)) for nevr in FOO_DEPS]
         actual_deps = self.s.query(Dependency.package_id, Dependency.repo_id,
@@ -111,7 +111,7 @@ class ResolverTest(DBTest):
     #     with patch('koschei.util.get_build_group', return_value=['R']):
     #         self.resolver.process_builds()
     #     self.repo_mock.get_repos.assert_called_once_with(666)
-    #     self.srpm_mock.get_srpm.assert_called_once_with('bar', 1, '2', '2')
+    #     self.srpm_mock.get_srpm.assert_called_once_with('bar', '2', '2')
     #     self.srpm_mock.get_repodata.assert_called_once_with()
     #     self.assertFalse(self.s.query(Package).get(bar.package_id).resolved)
     #     self.assertFalse(self.s.query(ResolutionProblem).count())

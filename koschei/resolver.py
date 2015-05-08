@@ -349,7 +349,7 @@ class ProcessBuildsTask(AbstractResolverTask):
 
         # do this before processing to avoid multiple runs of createrepo
         for build in unprocessed:
-            self.srpm_cache.get_srpm(build.package.name, build.epoch,
+            self.srpm_cache.get_srpm(build.package.name,
                                      build.version, build.release)
         srpm_repo = self.srpm_cache.get_repodata()
 

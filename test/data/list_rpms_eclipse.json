@@ -1,18 +1,18 @@
 [
     {
-        "arch": "src", 
-        "build_id": 548392, 
-        "buildroot_id": 2210300, 
-        "buildtime": 1406565656, 
-        "epoch": 1, 
-        "external_repo_id": 0, 
-        "external_repo_name": "INTERNAL", 
-        "id": 5308732, 
-        "name": "eclipse", 
-        "nvr": "eclipse-4.4.0-10.fc22", 
-        "payloadhash": "bac98c2cc93b45b25fc4e53dc2878f1a", 
-        "release": "10.fc22", 
-        "size": 164168275, 
+        "arch": "src",
+        "build_id": 548392,
+        "buildroot_id": 2210300,
+        "buildtime": 1406565656,
+        "epoch": 1,
+        "external_repo_id": 0,
+        "external_repo_name": "INTERNAL",
+        "id": 5308732,
+        "name": "eclipse",
+        "nvr": "eclipse-4.4.0-10.fc22",
+        "payloadhash": "bac98c2cc93b45b25fc4e53dc2878f1a",
+        "release": "10.fc22",
+        "size": 164168275,
         "version": "4.4.0"
     }
 ]
