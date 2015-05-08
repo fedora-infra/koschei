@@ -110,7 +110,7 @@ cp -p httpd.conf %{buildroot}%{_sysconfdir}/httpd/conf.d/%{name}.conf
 getent group %{name} >/dev/null || groupadd -r %{name}
 # services and koschei-admin script is supposed to be run as this user
 getent passwd %{name} >/dev/null || \
-    useradd -r -g %{name} -d %{_datadir}/%{name} -s /bin/sh \
+    useradd -r -g %{name} -d %{_localstatedir}/cache/%{name} -s /bin/sh \
     -c "Runs %{name} services" %{name}
 exit 0
 
