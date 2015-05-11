@@ -88,9 +88,13 @@ class SRPMCache(object):
 
         for [srpm], build_url in zip(srpms, urls):
             srpm_url = pathinfo.rpm(srpm)
-            path = self._get_srpm_path(srpm['name'], srpm['version'], srpm['release'])
-            with util.lock(self._lock_path):
-                util.download_rpm_header(build_url + '/' + srpm_url, path)
+            path = self._get_srpm_path(srpm['name'], srpm['version'],
+                                       srpm['release'])
+            local = self._read_local_srpm(path)
+            if not local:
+                with util.lock(self._lock_path):
+                    util.download_rpm_header(build_url + '/' + srpm_url, path)
+
     def _createrepo(self):
         log.debug('createrepo_c')
         createrepo = subprocess.Popen(['createrepo_c', self._srpm_dir],
