@@ -19,6 +19,7 @@
 import koji
 
 from datetime import datetime
+from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
 
 from koschei import util
@@ -205,11 +206,14 @@ class Backend(object):
                 self.register_real_build(pkg, info)
                 self.db.commit()
 
-    def refresh_latest_builds(self, packages):
+    def refresh_latest_builds(self):
         """
         Checks Koji for latest builds of all packages and registers possible
         new real builds and obtains srpms for them
         """
+        packages = self.db.query(Package).filter_by(ignored=False)\
+                          .options(joinedload(Package.last_build)).all()
+        self.db.expunge_all()
         source_tag = util.koji_config['source_tag']
         infos = util.itercall(self.koji_session, packages,
                               lambda k, p: k.listTagged(source_tag, latest=True,
