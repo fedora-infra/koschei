@@ -151,7 +151,7 @@ class ResolverTest(DBTest):
         self.prepare_old_build()
         self.prepare_packages(['bar'])
         task = self.resolver.create_task(GenerateRepoTask)
-        task.backend.refresh_latest_builds = lambda _: None
+        task.backend.refresh_latest_builds = lambda: None
         with patch('koschei.util.get_build_group', return_value=['R']):
             with patch('fedmsg.publish') as fedmsg_mock:
                 task.run(666)
