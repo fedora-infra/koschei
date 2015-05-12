@@ -113,8 +113,8 @@ class SRPMCache(object):
             repodata_dir = os.path.join(self._srpm_dir, 'repodata')
             if os.path.exists(repodata_dir):
                 mtime = os.path.getmtime(repodata_dir)
-            if any(os.path.getmtime(f) > mtime for f in
-                   glob.glob(os.path.join(self._srpm_dir, '*.src.rpm'))):
+            srpms = glob.glob(os.path.join(self._srpm_dir, '*.src.rpm'))
+            if not srpms or any(os.path.getmtime(f) > mtime for f in srpms):
                 self._createrepo()
             h = librepo.Handle()
             h.local = True
