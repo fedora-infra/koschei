@@ -321,7 +321,7 @@ listen(Base.metadata, 'after_create', trigger.execute_if(dialect='postgresql'))
 
 
 def grant_db_access(_, conn, *args, **kwargs):
-    user = config['database_config'].get('unpriv_username')
+    user = config.get('unpriv_db_username')
     if user:
         conn.execute("""
                      GRANT SELECT, INSERT, UPDATE, DELETE
