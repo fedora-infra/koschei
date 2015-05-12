@@ -90,8 +90,10 @@ class Watcher(KojiService, FedmsgService, WatchdogService):
         def handler(n, s):
             raise WatchdogInterrupt("Watchdog timeout")
         signal(SIGALRM, handler)
-        alarm(self.watchdog_interval)
+        if self.watchdog_interval:
+            alarm(self.watchdog_interval)
         for _, _, topic, msg in self.fedmsg.tail_messages():
             if topic.startswith(self.topic_name + '.'):
                 self.consume(topic, msg)
-            alarm(self.watchdog_interval)
+            if self.watchdog_interval:
+                alarm(self.watchdog_interval)
