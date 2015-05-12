@@ -193,7 +193,7 @@ def download_rpm_header(url, target_path):
     with open(os.devnull, 'w') as devnull:
         subprocess.call(['bash', '-e', '-c', cmd],
                         preexec_fn=reset_sigpipe,
-                        stdout=devnull)
+                        stdout=devnull, stderr=devnull)
 
 
 def get_srpm_repodata():
