@@ -310,6 +310,8 @@ class ProcessBuildsTask(AbstractResolverTask):
             srpm = self.get_srpm_pkg(build.package.name, (build.epoch,
                                                           build.version,
                                                           build.release))
+            if not srpm:
+                return
             curr_deps = self.resolve_dependencies(package=build.package,
                                                   srpm=srpm,
                                                   repo_id=build.repo_id)
