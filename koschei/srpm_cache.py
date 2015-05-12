@@ -55,8 +55,8 @@ class SRPMCache(object):
                 ts.hdrFromFdno(fd)
                 return path
             except rpm.error as e:
-                log.warn("Unreadable rpm in srpm_dir: {}\nRPM error: {}"
-                         .format(path, e.message))
+                log.debug("Unreadable rpm in srpm_dir: {}\nRPM error: {}"
+                          .format(path, e.message))
             finally:
                 if fd:
                     os.close(fd)
