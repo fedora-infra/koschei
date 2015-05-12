@@ -62,6 +62,39 @@ class CreateDb(Command):
         alembic_cfg = Config(util.config['alembic']['alembic_ini'])
         command.stamp(alembic_cfg, "head")
 
+class Cleanup(Command):
+    """ Cleans old builds from the database """
+
+    def setup_parser(self, parser):
+        parser.add_argument('--older-than', type=int,
+                            help="Delete builds older than N months",
+                            default=6)
+        parser.add_argument('--reindex', action='store_true')
+        parser.add_argument('--vacuum', action='store_true')
+
+    def execute(self, backend, older_than, reindex, vacuum):
+        if older_than < 2:
+            fail("Minimal allowed value is 2 months")
+        conn = backend.db.connection()
+        conn.connection.connection.rollback()
+        conn.connection.connection.autocommit = True
+        res = conn.execute(
+            """DELETE FROM build WHERE started < now() - '{months} month'::interval
+            AND id NOT IN (SELECT last_complete_build_id FROM package
+                           WHERE last_complete_build_id IS NOT NULL)
+            """.format(months=older_than))
+        print("Deleted {} builds".format(res.rowcount))
+        res.close()
+        if reindex:
+            conn.execute("REINDEX TABLE build")
+            conn.execute("REINDEX TABLE dependency_change")
+            conn.execute("REINDEX TABLE koji_task")
+            print("Reindexed")
+        if vacuum:
+            conn.execute("VACUUM FULL ANALYZE")
+            print("Vacuum full analyze done")
+
+
 class Notice(Command):
     """ Set admin notice displayed in web interface """
 
