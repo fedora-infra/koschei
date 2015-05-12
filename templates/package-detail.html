@@ -125,8 +125,10 @@
             <td>
                 {{ build.started | date }}
             </td>
-            {% if build.deps_processed %}
+            {% if build.deps_processed and build.deps_resolved %}
             {{ next_change(changes) }}
+            {% elif build.deps_processed %}
+            <td colspan="4">Dependencies for this build couldn't be processed</td>
             {% else %}
             <td colspan="4">Dependencies for this build weren't processed yet</td>
             {% endif %}
