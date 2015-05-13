@@ -11,7 +11,9 @@ git archive HEAD --prefix="koschei-$VERSION/"| gzip >koschei-${VERSION}.tar.gz
 mkdir -p build
 cd build
 sed "s/^Release:[^%]*/&.$RELNO/" ../koschei.spec > koschei.spec
-mock -r $MOCK_CONFIG -n --buildsrpm --spec koschei.spec --sources .. --resultdir .
+rpmbuild -bs -D"_sourcedir $PWD/.." -D"_srcrpmdir $PWD" koschei.spec
 mock -r $MOCK_CONFIG -n --rebuild koschei-${VERSION}-*.$RELNO.*.src.rpm --resultdir .
 createrepo_c .
-scp -r repodata koschei-${VERSION}-*.$RELNO.*.noarch.rpm "$USERNAME@fedorapeople.org:public_html/koschei/repo/"
+RPM=`echo koschei-${VERSION}-*.$RELNO.*.noarch.rpm`
+scp -r repodata "$RPM" "$USERNAME@fedorapeople.org:public_html/koschei/repo/"
+echo "https://$USERNAME.fedorapeople.org/koschei/repo/$RPM"
