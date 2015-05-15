@@ -170,6 +170,9 @@ def date_filter(date):
 def inject_times():
     return {'since': datetime.min, 'until': datetime.now()}
 
+@app.context_processor
+def inject_links():
+    return {'links': util.config['links']}
 
 @app.context_processor
 def inject_fedmenu():
