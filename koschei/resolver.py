@@ -282,7 +282,7 @@ class GenerateRepoTask(AbstractResolverTask):
         self.update_repo_index(repo_id)
         util.add_repo_to_sack('src', srpm_repo, self.sack)
         # TODO repo_id
-        self.group = util.get_build_group()
+        self.group = util.get_build_group(self.koji_session)
         self.log.info("Resolving dependencies")
         resolution_start = time.time()
         changes = self.generate_dependency_changes(packages, repo_id)
@@ -345,7 +345,7 @@ class ProcessBuildsTask(AbstractResolverTask):
                              .options(joinedload(Build.package))\
                              .order_by(Build.repo_id).all()
         # TODO repo_id
-        self.group = util.get_build_group()
+        self.group = util.get_build_group(self.koji_session)
 
         # do this before processing to avoid multiple runs of createrepo
         for build in unprocessed:

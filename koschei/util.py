@@ -218,11 +218,10 @@ def add_repos_to_sack(repo_id, repo_results, sack):
         add_repo_to_sack('{}-{}'.format(repo_id, arch), repo_result, sack)
 
 
-def get_build_group():
+def get_build_group(koji_session):
     tag_name = koji_config['build_tag']
     group_name = dep_config['build_group']
-    session = create_koji_session(anonymous=True)
-    groups = session.getTagGroups(tag_name)
+    groups = koji_session.getTagGroups(tag_name)
     [packages] = [group['packagelist'] for group in groups if group['name'] == group_name]
     return [package['package'] for package in packages
             if not package['blocked'] and package['type'] == 'default']
