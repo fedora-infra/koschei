@@ -373,3 +373,34 @@ def _last_build():
     return relationship(mapper(Build, joined, non_primary=True), uselist=False,
                         primaryjoin=(Package.id == joined.c.package_id))
 Package.last_build = _last_build()
+
+
+def compact_row(relation):
+    """
+    Memory efficient representation of a row for insert which expects
+    a dictionary
+    """
+
+    class CompactRow(object):
+
+        __slots__ = [c.name for c in relation.__table__.c if c.name != 'id']
+
+        def __init__(self, **kwargs):
+            self.update(**kwargs)
+
+        def keys(self):
+            return self.__slots__
+
+        def update(self, **kwargs):
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+
+        def __getitem__(self, item):
+            return getattr(self, item)
+
+        def __iter__(self):
+            return iter(self.keys())
+
+    return CompactRow
+
+CompactDependencyChange = compact_row(DependencyChange)

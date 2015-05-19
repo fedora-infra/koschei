@@ -27,7 +27,8 @@ import dnf.sack
 from sqlalchemy.orm import joinedload
 
 from koschei.models import (Package, Dependency, DependencyChange, Repo,
-                            ResolutionProblem, RepoGenerationRequest, Build)
+                            ResolutionProblem, RepoGenerationRequest, Build,
+                            CompactDependencyChange)
 from koschei import util
 from koschei.service import KojiService
 from koschei.srpm_cache import SRPMCache
@@ -157,10 +158,10 @@ class AbstractResolverTask(object):
         new = util.set_difference(deps2, deps1, key)
 
         def create_change(name):
-            return dict(package_id=package_id, applied_in_id=apply_id,
-                        dep_name=name,
-                        prev_epoch=None, prev_version=None, prev_release=None,
-                        curr_epoch=None, curr_version=None, curr_release=None)
+            return CompactDependencyChange(
+                package_id=package_id, applied_in_id=apply_id, dep_name=name,
+                prev_epoch=None, prev_version=None, prev_release=None,
+                curr_epoch=None, curr_version=None, curr_release=None)
 
         changes = {}
         for dep in old:
