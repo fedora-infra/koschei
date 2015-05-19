@@ -232,13 +232,11 @@ def groups_overview():
     return render_template("groups.html", groups=groups)
 
 
-@app.route('/groups/<int:id>')
 @app.route('/groups/<name>')
 @tab('Group', slave=True)
 def group_detail(name=None, id=None):
-    filt = {'name': name} if name else {'id': id}
     group = db.query(PackageGroup)\
-              .filter_by(**filt).first_or_404()
+              .filter_by(name=name).first_or_404()
 
     query = db.query(Package)\
               .outerjoin(PackageGroupRelation)\
@@ -275,6 +273,8 @@ def process_group_form(group=None, success_msg="Group updated"):
         if group:
             return redirect(url_for('edit_group', name=group.name))
         return redirect(url_for('add_group'))
+    if 'packages' not in request.form:
+        abort(400)
     pkg_names = [name.strip() for name in request.form['packages'].split()]
     packages = db.query(Package)\
                  .filter(Package.name.in_(pkg_names)).all()
@@ -284,8 +284,8 @@ def process_group_form(group=None, success_msg="Group updated"):
     if not pkg_names:
         return redir("Empty group not allowed")
     if len(pkg_names) != len(packages):
-        return redir("Package doesn't exist")
-    # TODO validation
+        nonexistent = set(pkg_names) - {p.name for p in packages}
+        return redir("Packages doesn't exist: " + ','.join(nonexistent))
     if not group:
         group = PackageGroup(name=name)
         db.add(group)
@@ -294,11 +294,10 @@ def process_group_form(group=None, success_msg="Group updated"):
         group.name = name
         db.query(PackageGroupRelation)\
           .filter_by(group_id=group.id).delete()
-    pkg_names = [name.strip() for name in request.form['packages'].split()]
-    # TODO bulk insert
+    rels = []
     for pkg in packages:
-        rel = PackageGroupRelation(group_id=group.id, package_id=pkg.id)
-        db.add(rel)
+        rels.append(dict(group_id=group.id, package_id=pkg.id))
+    db.execute(PackageGroupRelation.__table__.insert(), rels)
     db.commit()
     flash(success_msg)
     return redirect(url_for('group_detail', name=group.name))
