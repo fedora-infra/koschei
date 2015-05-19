@@ -33,7 +33,10 @@ frontend_config = config['frontend']
 
 
 def paginate(self, items_per_page):
-    page = int(request.args.get('page', 1))
+    try:
+        page = int(request.args.get('page', 1))
+    except ValueError:
+        abort(400)
     if page < 1:
         abort(404)
     items = self.limit(items_per_page)\

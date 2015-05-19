@@ -375,9 +375,9 @@ def search():
 @auth.login_required()
 def edit_package():
     form = request.form
-    package = db.query(Package)\
-                .filter_by(name=form['package']).first_or_404()
     try:
+        package = db.query(Package)\
+                    .filter_by(name=form['package']).first_or_404()
         if 'manual_priority' in form:
             new_priority = int(form['manual_priority'])
             package.manual_priority = new_priority
