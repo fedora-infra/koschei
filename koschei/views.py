@@ -27,7 +27,7 @@ def create_backend():
                            koji_session=util.create_koji_session(anonymous=True))
 
 
-def page_args(page=None, order_by=None):
+def page_args(**kwargs):
     def proc_order(order):
         new_order = []
         for item in order:
@@ -35,11 +35,11 @@ def page_args(page=None, order_by=None):
                     not in new_order and '-' + item not in new_order):
                 new_order.append(item)
         return ','.join(new_order)
-    args = {'page': page or request.args.get('page'),
-            'order_by': proc_order(order_by) if order_by
-                        else request.args.get('order_by')}
-    return urllib.urlencode({k: '' if v is True else v for k, v in args.items()
-                             if v})
+    if 'order_by' in kwargs:
+        kwargs['order_by'] = proc_order(kwargs['order_by'])
+    # the supposedly unnecessary call to items() is needed
+    args = {k: v for k, v in dict(request.args.items(), **kwargs).items() if v is not None}
+    return urllib.urlencode(args)
 
 
 def format_evr(epoch, version, release):
