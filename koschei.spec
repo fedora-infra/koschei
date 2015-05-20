@@ -1,7 +1,7 @@
 %bcond_without tests
 
 Name:           koschei
-Version:        0.2
+Version:        1.0
 Release:        1%{?dist}
 Summary:        Continuous integration for Fedora packages
 License:        GPLv2+
@@ -151,6 +151,9 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %{_unitdir}/*
 
 %changelog
+* Wed May 20 2015 Mikolaj Izdebski <mizdebsk@redhat.com> - 1.0-1
+- Release version 1.0
+
 * Thu Mar 12 2015 Michael Simacek <msimacek@redhat.com> - 0.2-1
 - Update to version 0.2
 
