@@ -281,6 +281,11 @@ class Repo(Base):
     base_resolved = Column(Boolean)
 
 
+def is_buildroot_broken(db):
+    repo = db.query(Repo).order_by(Repo.repo_id.desc()).first()
+    return repo is not None and repo.base_resolved is False
+
+
 class AdminNotice(Base):
     __tablename__ = 'admin_notice'
     key = Column(String, primary_key=True)

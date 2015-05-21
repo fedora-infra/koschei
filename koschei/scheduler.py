@@ -26,7 +26,7 @@ from sqlalchemy import (func, union_all, extract, cast, Integer, case, null,
 from sqlalchemy.sql.functions import coalesce
 
 from . import util
-from .models import Package, Build, DependencyChange
+from .models import Package, Build, DependencyChange, is_buildroot_broken
 from .service import KojiService
 from .backend import Backend
 
@@ -96,6 +96,8 @@ class Scheduler(KojiService):
         return priorities
 
     def get_scheduled_package(self):
+        if is_buildroot_broken(db):
+            return
         incomplete_builds = self.db.query(Build.package_id)\
                                 .filter(Build.state == Build.RUNNING)
         queries = self.get_priority_queries().values()
