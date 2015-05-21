@@ -11,7 +11,8 @@ from jinja2 import Markup, escape
 from textwrap import dedent
 
 from .models import (Package, Build, PackageGroup, PackageGroupRelation,
-                     AdminNotice, User, UserPackageRelation, get_or_create)
+                     AdminNotice, User, UserPackageRelation, get_or_create,
+                     is_buildroot_broken)
 from . import util, auth, backend, main, plugin
 from .frontend import app, db, frontend_config
 
@@ -66,15 +67,18 @@ def columnize(what, css_class=None):
     return Markup('\n'.join('<td{}>{}</td>'.format(attrs, escape(item))
                             for item in what))
 
-def get_global_notice():
-    return db.query(AdminNotice).filter_by(key="global_notice").first()
+def get_global_notices():
+    notices = db.query(AdminNotice).filter_by(key="global_notice").all()
+    if is_buildroot_broken(db):
+        notices.append("Base buildroot is not installable. Operation suspended.")
+    return notices
 
 
 pathinfo = koji.PathInfo(topdir=util.koji_config['topurl'])
 app.jinja_env.globals.update(koji_weburl=util.config['koji_config']['weburl'],
                              koji_pathinfo=pathinfo, inext=next, iter=iter,
                              min=min, max=max, page_args=page_args,
-                             get_global_notice=get_global_notice)
+                             get_global_notices=get_global_notices)
 
 app.jinja_env.filters.update(columnize=columnize,
                              format_depchange=format_depchange)
