@@ -168,3 +168,14 @@ class ResolverTest(DBTest):
         self.assertFalse(bar.resolved)
         self.assertTrue(self.s.query(ResolutionProblem)
                         .filter_by(package_id=bar.id).count())
+
+    @postgres_only
+    def test_broken_buildroot(self):
+        self.prepare_old_build()
+        self.prepare_packages(['bar'])
+        task = self.resolver.create_task(GenerateRepoTask)
+        task.backend.refresh_latest_builds = lambda: None
+        with patch('koschei.util.get_build_group', return_value=['bar']):
+            with patch('fedmsg.publish') as fedmsg_mock:
+                task.run(666)
+                self.assertFalse(fedmsg_mock.called)

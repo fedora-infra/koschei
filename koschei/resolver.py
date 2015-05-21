@@ -65,20 +65,21 @@ class AbstractResolverTask(object):
         if hawk_pkg:
             return hawk_pkg[0]
 
-    def prepare_goal(self, srpm):
+    def prepare_goal(self, srpm=None):
         goal = hawkey.Goal(self.sack)
         problems = []
         for name in self.group:
             sltr = hawkey.Selector(self.sack).set(name=name)
             goal.install(select=sltr)
-        for reldep in srpm.requires:
-            subj = dnf.subject.Subject(str(reldep))
-            sltr = subj.get_best_selector(self.sack)
-            # pylint: disable=E1103
-            if sltr is None or not sltr.matches():
-                problems.append("No package found for: {}".format(reldep))
-            else:
-                goal.install(select=sltr)
+        if srpm:
+            for reldep in srpm.requires:
+                subj = dnf.subject.Subject(str(reldep))
+                sltr = subj.get_best_selector(self.sack)
+                # pylint: disable=E1103
+                if sltr is None or not sltr.matches():
+                    problems.append("No package found for: {}".format(reldep))
+                else:
+                    goal.install(select=sltr)
         return goal, problems
 
     def store_deps(self, repo_id, package_id, installs):
@@ -117,7 +118,7 @@ class AbstractResolverTask(object):
                     dep.distance = level
             level += 1
 
-    def resolve_dependencies(self, package, srpm, repo_id):
+    def resolve_dependencies(self, package, srpm):
         goal, problems = self.prepare_goal(srpm)
         if goal is not None:
             resolved = False
@@ -256,7 +257,7 @@ class GenerateRepoTask(AbstractResolverTask):
             srpm = self.get_srpm_pkg(package.name)
             if not srpm:
                 continue
-            curr_deps = self.resolve_dependencies(package, srpm, repo_id)
+            curr_deps = self.resolve_dependencies(package, srpm)
             if curr_deps is not None:
                 last_build = self.get_build_for_comparison(package)
                 if last_build:
@@ -268,10 +269,15 @@ class GenerateRepoTask(AbstractResolverTask):
                                                                   package.id)
         return changes
 
+    def is_buildroot_installable(self):
+        goal, _ = self.prepare_goal()
+        return goal.run()
+
     def run(self, repo_id):
         start = time.time()
         self.log.info("Generating new repo")
-        self.db.add(Repo(repo_id=repo_id))
+        repo = Repo(repo_id=repo_id)
+        self.db.add(repo)
         self.db.flush()
         self.backend.refresh_latest_builds()
         packages = self.get_packages()
@@ -284,6 +290,12 @@ class GenerateRepoTask(AbstractResolverTask):
         util.add_repo_to_sack('src', srpm_repo, self.sack)
         # TODO repo_id
         self.group = util.get_build_group(self.koji_session)
+        base_installable = self.is_buildroot_installable()
+        if not base_installable:
+            self.log.info("Build group not resolvable")
+            repo.base_resolved = False
+            self.db.commit()
+            return
         self.log.info("Resolving dependencies")
         resolution_start = time.time()
         changes = self.generate_dependency_changes(packages, repo_id)
@@ -294,6 +306,7 @@ class GenerateRepoTask(AbstractResolverTask):
             self.db.execute(ResolutionProblem.__table__.insert(), self.problems)
         self.synchronize_resolution_state()
         self.update_dependency_changes(changes)
+        repo.base_resolved = True
         self.db.commit()
         end = time.time()
 
@@ -314,8 +327,7 @@ class ProcessBuildsTask(AbstractResolverTask):
             if not srpm:
                 return
             curr_deps = self.resolve_dependencies(package=build.package,
-                                                  srpm=srpm,
-                                                  repo_id=build.repo_id)
+                                                  srpm=srpm)
             self.store_deps(build.repo_id, build.package_id, curr_deps)
             if curr_deps is not None:
                 build.deps_resolved = True
