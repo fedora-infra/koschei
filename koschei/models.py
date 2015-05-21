@@ -281,6 +281,13 @@ class Repo(Base):
     base_resolved = Column(Boolean)
 
 
+class BuildrootProblem(Base):
+    __tablename__ = 'buildroot_problem'
+    id = Column(Integer, primary_key=True)
+    repo_id = Column(ForeignKey(Repo.repo_id), index=True)
+    problem = Column(String, nullable=False)
+
+
 def is_buildroot_broken(db):
     repo = db.query(Repo).order_by(Repo.repo_id.desc()).first()
     return repo is not None and repo.base_resolved is False

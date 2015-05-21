@@ -21,7 +21,8 @@ import shutil
 import librepo
 from common import DBTest, testdir, postgres_only
 from mock import Mock, patch
-from koschei.models import Dependency, DependencyChange, Package, ResolutionProblem
+from koschei.models import (Dependency, DependencyChange, Package,
+                            ResolutionProblem, Repo, BuildrootProblem)
 from koschei.resolver import Resolver, GenerateRepoTask, ProcessBuildsTask
 
 FOO_DEPS = [
@@ -179,3 +180,6 @@ class ResolverTest(DBTest):
             with patch('fedmsg.publish') as fedmsg_mock:
                 task.run(666)
                 self.assertFalse(fedmsg_mock.called)
+        repo = self.s.query(Repo).one()
+        self.assertFalse(repo.base_resolved)
+        self.assertTrue(self.s.query(BuildrootProblem).count())

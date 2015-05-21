@@ -28,7 +28,7 @@ from sqlalchemy.orm import joinedload
 
 from koschei.models import (Package, Dependency, DependencyChange, Repo,
                             ResolutionProblem, RepoGenerationRequest, Build,
-                            CompactDependencyChange)
+                            CompactDependencyChange, BuildrootProblem)
 from koschei import util
 from koschei.service import KojiService
 from koschei.srpm_cache import SRPMCache
@@ -269,9 +269,9 @@ class GenerateRepoTask(AbstractResolverTask):
                                                                   package.id)
         return changes
 
-    def is_buildroot_installable(self):
+    def try_install_buildroot(self):
         goal, _ = self.prepare_goal()
-        return goal.run()
+        return goal.run(), goal.problems
 
     def run(self, repo_id):
         start = time.time()
@@ -290,10 +290,13 @@ class GenerateRepoTask(AbstractResolverTask):
         util.add_repo_to_sack('src', srpm_repo, self.sack)
         # TODO repo_id
         self.group = util.get_build_group(self.koji_session)
-        base_installable = self.is_buildroot_installable()
+        base_installable, base_problems = self.try_install_buildroot()
         if not base_installable:
             self.log.info("Build group not resolvable")
             repo.base_resolved = False
+            self.db.execute(BuildrootProblem.__table__.insert(),
+                            [{'repo_id': repo.repo_id, 'problem': problem}
+                             for problem in base_problems])
             self.db.commit()
             return
         self.log.info("Resolving dependencies")
