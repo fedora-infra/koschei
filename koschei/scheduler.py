@@ -96,7 +96,7 @@ class Scheduler(KojiService):
         return priorities
 
     def get_scheduled_package(self):
-        if is_buildroot_broken(db):
+        if is_buildroot_broken(self.db):
             return
         incomplete_builds = self.db.query(Build.package_id)\
                                 .filter(Build.state == Build.RUNNING)
