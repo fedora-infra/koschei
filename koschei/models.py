@@ -287,9 +287,11 @@ class BuildrootProblem(Base):
     repo_id = Column(ForeignKey(Repo.repo_id), index=True)
     problem = Column(String, nullable=False)
 
+def get_last_repo(db):
+    return db.query(Repo).order_by(Repo.repo_id.desc()).first()
 
 def is_buildroot_broken(db):
-    repo = db.query(Repo).order_by(Repo.repo_id.desc()).first()
+    repo = get_last_repo(db)
     return repo is not None and repo.base_resolved is False
 
 

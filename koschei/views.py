@@ -11,8 +11,8 @@ from jinja2 import Markup, escape
 from textwrap import dedent
 
 from .models import (Package, Build, PackageGroup, PackageGroupRelation,
-                     AdminNotice, User, UserPackageRelation, get_or_create,
-                     is_buildroot_broken)
+                     AdminNotice, User, UserPackageRelation, BuildrootProblem,
+                     get_or_create, get_last_repo)
 from . import util, auth, backend, main, plugin
 from .frontend import app, db, frontend_config
 
@@ -69,8 +69,11 @@ def columnize(what, css_class=None):
 
 def get_global_notices():
     notices = db.query(AdminNotice).filter_by(key="global_notice").all()
-    if is_buildroot_broken(db):
-        notices.append("Base buildroot is not installable. Operation suspended.")
+    repo = get_last_repo(db)
+    if repo and repo.base_resolved is False:
+        problems = db.query(BuildrootProblem).filter_by(repo_id=repo.repo_id).all()
+        notices.append("Base buildroot is not installable. Operation suspended. "
+                       "Dependency problems: " + ', '.join((p.problem for p in problems)))
     return notices
 
 
