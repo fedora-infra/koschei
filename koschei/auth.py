@@ -37,7 +37,7 @@ def openid_to_username(oid):
               .replace("http://", "")
 
 
-@app.route("/login", methods=["GET"])
+@app.route("/login", methods=["GET", "POST"])
 @openid.loginhandler
 def login():
     if flask.g.user is not None:
