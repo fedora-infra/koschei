@@ -13,9 +13,10 @@ down_revision = '258ebf8f2f2a'
 from alembic import op
 
 from koschei.models import Build, Session, KojiTask
-from koschei.util import create_koji_session, parse_koji_time
+#from koschei.util import create_koji_session, parse_koji_time
 
 def upgrade():
+    raise NotImplementedError()
     s = Session(bind=op.get_bind())
     k = create_koji_session(anonymous=True)
 
