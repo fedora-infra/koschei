@@ -159,9 +159,9 @@ class Backend(object):
     def _build_completed(self, build):
         task_info = self.koji_session.getTaskInfo(build.task_id)
         if task_info['create_time']:
-            build.started = util.parse_koji_time(task_info['create_time'])
+            build.started = datetime.fromtimestamp(task_info['create_ts'])
         if task_info['completion_time']:
-            build.finished = util.parse_koji_time(task_info['completion_time'])
+            build.finished = datetime.fromtimestamp(task_info['completion_ts'])
         else:
             # When fedmsg delivery is fast, the time is not set yet
             build.finished = datetime.now()
@@ -178,8 +178,8 @@ class Backend(object):
             db_task = KojiTask(build_id=build.id,
                                task_id=task['id'],
                                state=task['state'],
-                               started=util.parse_koji_time(task['create_time']),
-                               finished=util.parse_koji_time(task['completion_time']),
+                               started=datetime.fromtimestamp(task['create_ts']),
+                               finished=datetime.fromtimestamp(task['completion_ts']),
                                arch=task['arch'])
             self.db.add(db_task)
         self.db.flush()

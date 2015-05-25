@@ -117,8 +117,6 @@ class KojiSessionProxy(object):
             object.__setattr__(self, name, value)
         setattr(self.proxied, name, value)
 
-def parse_koji_time(string):
-    return datetime.strptime(string, "%Y-%m-%d %H:%M:%S.%f")
 
 def itercall(koji_session, args, koji_call):
     chunk_size = koji_config['multicall_chunk_size']
