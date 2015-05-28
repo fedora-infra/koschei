@@ -227,17 +227,54 @@ Koschei
 \begin{frame}
   \frametitle{Watcher}
   \begin{itemize}
-    \item Await Koji build state changes
+    \item \tt{buildsys.task.state.change}
     \begin{itemize}
       \item fedmsg
       \item periodic polling as fallback
     \end{itemize}
-    \item Await new Koji repos
+    \item \tt{buildsys.repo.done}
     \begin{itemize}
       \item not builds, not tags
       \item fedmsg
       \item no polling
     \end{itemize}
+    \item \tt{buildsys.build.tag}
+    \begin{itemize}
+      \item not builds, not tags
+      \item fedmsg
+      \item no polling
+    \end{itemize}
+    \item \tt{pkgdb.*}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Scheduler}
+  \begin{itemize}
+    \item Schedule builds for execution
+    \begin{itemize}
+      \item priority scheduling
+    \end{itemize}
+    \item Request scratch builds on Koji
+    \begin{itemize}
+      \item from existing SRPM
+      \item very low priority
+      \item needs Koji certificate
+    \end{itemize}
+    \item Conditions
+    \begin{itemize}
+      \item package is not disabled
+      \item build dependencies are resolvable
+      \item priority is high enough
+      \item Koji load is low enough
+      \item buildroot is not broken
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Resolver}
+  \begin{itemize}
     \item Analyze dependency changes
     \begin{itemize}
       \item hawkey
@@ -252,48 +289,13 @@ Koschei
 \end{frame}
 
 \begin{frame}
-  \frametitle{Scheduler}
-  \begin{itemize}
-    \item Schedule builds for execution
-    \begin{itemize}
-      \item priority scheduling
-    \end{itemize}
-    \item Conditions
-    \begin{itemize}
-      \item package is not disabled
-      \item build dependencies are resolvable
-      \item priority is high enough
-      \item Koji load is low enough
-    \end{itemize}
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Submitter}
-  \begin{itemize}
-    \item Request scratch builds on Koji
-    \begin{itemize}
-      \item from existing SRPM
-      \item very low priority
-      \item needs Koji certificate
-    \end{itemize}
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Reporter}
+  \frametitle{Frontend}
   \begin{itemize}
     \item Generate HTML reports
     \item Per group, not per maintainer
     \item Failures separately
     \item Dependency problems
     \item Detailed package history
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{RPC}
-  \begin{itemize}
     \item Add and disable packages
     \item Adjust package importance
     \item Force build
@@ -316,11 +318,8 @@ Koschei
   \frametitle{Current state}
   \begin{itemize}
     \item code at Github
-    \item packaged as RPM
-    \begin{itemize}
-      \item not yet in Fedora
-    \end{itemize}
-    \item running at OpenStack
+    \item available in Fedora and EPEL 7
+    \item running at Fedora infrastructure
   \end{itemize}
 \end{frame}
 
@@ -380,9 +379,13 @@ Sqlite DBs complete
     \begin{itemize}
       \item \url{https://github.com/msimacek/koschei}
     \end{itemize}
-    \item Instance hosted at Fedora Cloud
+    \item Development instance
     \begin{itemize}
       \item \url{http://koschei.cloud.fedoraproject.org/}
+    \end{itemize}
+    \item Staging instance
+    \begin{itemize}
+      \item \url{https://apps.stg.fedoraproject.org/koschei}
     \end{itemize}
   \end{itemize}
 \end{frame}
