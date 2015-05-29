@@ -110,9 +110,9 @@ def get_order(order_map, order_spec):
     for component in components:
         if component:
             if component.startswith('-'):
-                order = [o.desc() for o in order_map.get(component[1:])]
+                order = [o.desc() for o in order_map.get(component[1:], ())]
             else:
-                order = [o.asc() for o in order_map.get(component)]
+                order = [o.asc() for o in order_map.get(component, ())]
             orders.extend(order)
     if any(order is None for order in orders):
         abort(400)
