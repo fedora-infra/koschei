@@ -16,6 +16,7 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+import logging
 import flask
 import functools
 from flask.ext.openid import OpenID
@@ -27,6 +28,11 @@ from koschei.frontend import app, db
 provider = config['openid']['openid_provider']
 openid = OpenID(app, config['openid']['openid_store'], safe_roots=[])
 
+class TypeURIMismatchFilter(logging.Filter):
+    def filter(self, record):
+        return 'TypeURIMismatch' not in record.getMessage()
+
+logging.getLogger().addFilter(TypeURIMismatchFilter())
 
 def username_to_openid(name):
     return "http://{}.{}/".format(name, provider)
