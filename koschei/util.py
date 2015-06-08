@@ -1,4 +1,4 @@
-# Copyright (C) 2014  Red Hat, Inc.
+# Copyright (C) 2014-2015  Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,6 +15,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 # Author: Michael Simacek <msimacek@redhat.com>
+# Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 from __future__ import print_function
 
@@ -31,6 +32,7 @@ import fcntl
 
 from datetime import datetime
 from contextlib import contextmanager
+from rpm import RPMSENSE_LESS, RPMSENSE_GREATER, RPMSENSE_EQUAL
 
 
 def merge_dict(d1, d2):
@@ -80,7 +82,6 @@ target_tag = koji_config['target_tag']
 git_reference = config.get('git_reference', 'origin/master')
 
 
-srpm_dir = config['directories']['srpms']
 repodata_dir = config['directories']['repodata']
 
 dep_config = config['dependency']
@@ -179,29 +180,6 @@ def mkdir_if_absent(path):
             raise
 
 
-def reset_sigpipe():
-    import signal
-    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-
-
-def download_rpm_header(url, target_path):
-    log.info('downloading {}'.format(target_path))
-    cmd = 'curl -s -L {} | tee {} | rpm -qp /dev/fd/0'\
-          .format(url, target_path)
-    with open(os.devnull, 'w') as devnull:
-        subprocess.call(['bash', '-e', '-c', cmd],
-                        preexec_fn=reset_sigpipe,
-                        stdout=devnull, stderr=devnull)
-
-
-def get_srpm_repodata():
-    h = librepo.Handle()
-    h.local = True
-    h.repotype = librepo.LR_YUMREPO
-    h.urls = [srpm_dir]
-    return h.perform(librepo.Result())
-
-
 def add_repo_to_sack(repoid, repo_result, sack):
     repodata = repo_result.yum_repo
     repo = hawkey.Repo(repoid)
@@ -232,6 +210,26 @@ def get_koji_packages(package_names):
         session.getPackage(name)
     pkgs = session.multiCall()
     return [pkg for [pkg] in pkgs]
+
+
+def get_rpm_requires(koji_session, nvras):
+    deps_list = itercall(koji_session, nvras,
+                         lambda k, nvra: k.getRPMDeps(nvra, koji.DEP_REQUIRE))
+    requires_list = []
+    for deps in deps_list:
+        requires = []
+        for dep in deps:
+            flags = dep['flags']
+            if flags & ~(RPMSENSE_LESS | RPMSENSE_GREATER | RPMSENSE_EQUAL):
+                continue
+            order = ""
+            while flags:
+                old = flags
+                flags &= flags - 1
+                order += {RPMSENSE_LESS: '<', RPMSENSE_GREATER: '>', RPMSENSE_EQUAL: '='}[old ^ flags]
+            requires.append(("%s %s %s" % (dep['name'], order, dep['version'])).rstrip())
+        requires_list.append(requires)
+    return requires
 
 
 def get_koji_load(koji_session):

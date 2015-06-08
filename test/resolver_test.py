@@ -1,4 +1,4 @@
-# Copyright (C) 2014  Red Hat, Inc.
+# Copyright (C) 2014-2015  Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,6 +15,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 # Author: Michael Simacek <msimacek@redhat.com>
+# Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 import os
 import shutil
@@ -49,18 +50,14 @@ class ResolverTest(DBTest):
     def __init__(self, *args, **kwargs):
         super(ResolverTest, self).__init__(*args, **kwargs)
         self.repo_mock = None
-        self.srpm_mock = None
 
     def setUp(self):
         super(ResolverTest, self).setUp()
         shutil.copytree(os.path.join(testdir, 'test_repo'), 'repo')
         self.repo_mock = Mock()
         self.repo_mock.get_repos.return_value = {'x86_64': get_repo('x86_64')}
-        self.srpm_mock = Mock()
-        self.srpm_mock.get_repodata.return_value = get_repo('src')
         self.resolver = Resolver(db=self.s, koji_session=Mock(),
-                                 repo_cache=self.repo_mock,
-                                 srpm_cache=self.srpm_mock)
+                                 repo_cache=self.repo_mock)
 
     def prepare_foo_build(self, repo_id=666, version='4'):
         self.prepare_packages(['foo'])
@@ -90,10 +87,9 @@ class ResolverTest(DBTest):
         foo_build = self.prepare_foo_build()
         package_id = foo_build.package_id
         with patch('koschei.util.get_build_group', return_value=['R']):
-            self.resolver.create_task(ProcessBuildsTask).run()
+            with patch('koschei.util.get_rpm_requires', return_value=[['F','A']]):
+                self.resolver.create_task(ProcessBuildsTask).run()
         self.repo_mock.get_repos.assert_called_once_with(666)
-        self.srpm_mock.get_srpm.assert_called_once_with('foo', '4', '1.fc22')
-        self.srpm_mock.get_repodata.assert_called_once_with()
         expected_deps = [tuple([package_id, 666] + list(nevr)) for nevr in FOO_DEPS]
         actual_deps = self.s.query(Dependency.package_id, Dependency.repo_id,
                                    Dependency.name, Dependency.epoch,
@@ -110,10 +106,9 @@ class ResolverTest(DBTest):
     #     bar.release = '2'
     #     self.s.commit()
     #     with patch('koschei.util.get_build_group', return_value=['R']):
-    #         self.resolver.process_builds()
+    #         with patch('koschei.util.get_rpm_requires', return_value=[['nonexistent']]):
+    #             self.resolver.process_builds()
     #     self.repo_mock.get_repos.assert_called_once_with(666)
-    #     self.srpm_mock.get_srpm.assert_called_once_with('bar', '2', '2')
-    #     self.srpm_mock.get_repodata.assert_called_once_with()
     #     self.assertFalse(self.s.query(Package).get(bar.package_id).resolved)
     #     self.assertFalse(self.s.query(ResolutionProblem).count())
 
@@ -144,7 +139,8 @@ class ResolverTest(DBTest):
         self.prepare_old_build()
         self.prepare_foo_build(repo_id=666, version='4')
         with patch('koschei.util.get_build_group', return_value=['R']):
-            self.resolver.create_task(ProcessBuildsTask).run()
+            with patch('koschei.util.get_rpm_requires', return_value=[['F','A']]):
+                self.resolver.create_task(ProcessBuildsTask).run()
         self.verify_changes()
 
     @postgres_only
@@ -154,14 +150,14 @@ class ResolverTest(DBTest):
         task = self.resolver.create_task(GenerateRepoTask)
         task.backend.refresh_latest_builds = lambda: None
         with patch('koschei.util.get_build_group', return_value=['R']):
-            with patch('fedmsg.publish') as fedmsg_mock:
-                task.run(666)
-                self.assertTrue(fedmsg_mock.called)
+            with patch('koschei.util.get_rpm_requires', return_value=[['F','A']]):
+                with patch('fedmsg.publish') as fedmsg_mock:
+                    task.run(666)
+                    self.assertTrue(fedmsg_mock.called)
         self.s.expire_all()
         foo = self.s.query(Package).filter_by(name='foo').first()
         bar = self.s.query(Package).filter_by(name='bar').first()
         self.repo_mock.get_repos.assert_called_once_with(666)
-        self.srpm_mock.get_repodata.assert_called_once_with()
         self.verify_changes()
         self.assertTrue(foo.resolved)
         self.assertFalse(self.s.query(ResolutionProblem)
@@ -177,9 +173,10 @@ class ResolverTest(DBTest):
         task = self.resolver.create_task(GenerateRepoTask)
         task.backend.refresh_latest_builds = lambda: None
         with patch('koschei.util.get_build_group', return_value=['bar']):
-            with patch('fedmsg.publish') as fedmsg_mock:
-                task.run(666)
-                self.assertFalse(fedmsg_mock.called)
+            with patch('koschei.util.get_rpm_requires', return_value=[['nonexistent']]):
+                with patch('fedmsg.publish') as fedmsg_mock:
+                    task.run(666)
+                    self.assertFalse(fedmsg_mock.called)
         repo = self.s.query(Repo).one()
         self.assertFalse(repo.base_resolved)
         self.assertTrue(self.s.query(BuildrootProblem).count())
