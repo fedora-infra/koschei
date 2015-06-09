@@ -187,10 +187,10 @@ class AbstractResolverTask(object):
 
 class GenerateRepoTask(AbstractResolverTask):
 
-    def get_packages(self, expunge=True, requireBuild=False):
-        query = self.db.query(Package).filter(Package.ignored == False);
-        if requireBuild:
-            query = query.filter(Package.last_complete_build != None)
+    def get_packages(self, expunge=True, require_build=False):
+        query = self.db.query(Package).filter(Package.ignored == False)
+        if require_build:
+            query = query.filter(Package.last_complete_build_id != None)
         packages = query.options(joinedload(Package.last_build))\
                         .options(joinedload(Package.last_complete_build))\
                         .all()
@@ -256,7 +256,7 @@ class GenerateRepoTask(AbstractResolverTask):
         self.db.add(repo)
         self.db.flush()
         self.backend.refresh_latest_builds()
-        packages = self.get_packages(requireBuild=True)
+        packages = self.get_packages(require_build=True)
         self.prepare_sack(repo_id)
         if not self.sack:
             self.log.error('Cannot generate repo: {}'.format(repo_id))
