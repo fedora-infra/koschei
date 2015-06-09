@@ -49,11 +49,14 @@ class AbstractResolverTask(object):
         self.group = None
         self.resolved_packages = {}
 
-    def prepare_goal(self, br=[]):
+    def run_goal(self, br=()):
+        # pylint:disable=E1101
         goal = hawkey.Goal(self.sack)
         problems = []
         for name in self.group:
             sltr = hawkey.Selector(self.sack).set(name=name)
+            if not sltr.matches():
+                problems.append("Package in base build group not found: {}".format(name))
             goal.install(select=sltr)
         for r in br:
             subj = dnf.subject.Subject(r)
@@ -63,7 +66,9 @@ class AbstractResolverTask(object):
                 problems.append("No package found for: {}".format(r))
             else:
                 goal.install(select=sltr)
-        return goal, problems
+        if not problems:
+            return goal.run(), goal.problems, goal.list_installs()
+        return False, problems, None
 
     def store_deps(self, repo_id, package_id, installs):
         new_deps = []
@@ -102,26 +107,20 @@ class AbstractResolverTask(object):
             level += 1
 
     def resolve_dependencies(self, package, br):
-        goal, problems = self.prepare_goal(br)
-        if goal is not None:
-            resolved = False
-            if not problems:
-                resolved = goal.run()
-                problems = goal.problems
-            self.resolved_packages[package.id] = resolved
-            if resolved:
-                # pylint: disable=E1101
-                deps = [Dependency(name=pkg.name, epoch=pkg.epoch,
-                                   version=pkg.version, release=pkg.release,
-                                   arch=pkg.arch)
-                        for pkg in goal.list_installs() if pkg.arch != 'src']
-                self.compute_dependency_distances(br, deps)
-                return deps
-            else:
-                for problem in sorted(set(problems)):
-                    entry = dict(package_id=package.id,
-                                 problem=problem)
-                    self.problems.append(entry)
+        resolved, problems, installs = self.run_goal(br)
+        self.resolved_packages[package.id] = resolved
+        if resolved:
+            deps = [Dependency(name=pkg.name, epoch=pkg.epoch,
+                               version=pkg.version, release=pkg.release,
+                               arch=pkg.arch)
+                    for pkg in installs if pkg.arch != 'src']
+            self.compute_dependency_distances(br, deps)
+            return deps
+        else:
+            for problem in sorted(set(problems)):
+                entry = dict(package_id=package.id,
+                             problem=problem)
+                self.problems.append(entry)
 
     def get_deps_from_db(self, package_id, repo_id):
         deps = self.db.query(Dependency)\
@@ -250,10 +249,6 @@ class GenerateRepoTask(AbstractResolverTask):
                                                                   package.id)
         return changes
 
-    def try_install_buildroot(self):
-        goal, _ = self.prepare_goal()
-        return goal.run(), goal.problems
-
     def run(self, repo_id):
         start = time.time()
         self.log.info("Generating new repo")
@@ -269,7 +264,7 @@ class GenerateRepoTask(AbstractResolverTask):
         self.update_repo_index(repo_id)
         # TODO repo_id
         self.group = util.get_build_group(self.koji_session)
-        base_installable, base_problems = self.try_install_buildroot()
+        base_installable, base_problems, _ = self.run_goal()
         if not base_installable:
             self.log.info("Build group not resolvable")
             repo.base_resolved = False
