@@ -67,7 +67,8 @@ class AbstractResolverTask(object):
             else:
                 goal.install(select=sltr)
         if not problems:
-            return goal.run(), goal.problems, goal.list_installs()
+            resolved = goal.run()
+            return resolved, goal.problems, goal.list_installs() if resolved else None
         return False, problems, None
 
     def store_deps(self, repo_id, package_id, installs):
