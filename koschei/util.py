@@ -24,13 +24,10 @@ import rpm
 import koji
 import logging
 import logging.config
-import subprocess
 import hawkey
-import librepo
 import errno
 import fcntl
 
-from datetime import datetime
 from contextlib import contextmanager
 from rpm import RPMSENSE_LESS, RPMSENSE_GREATER, RPMSENSE_EQUAL
 
