@@ -87,7 +87,7 @@ class ResolverTest(DBTest):
         foo_build = self.prepare_foo_build()
         package_id = foo_build.package_id
         with patch('koschei.util.get_build_group', return_value=['R']):
-            with patch('koschei.util.get_rpm_requires', return_value=[['F','A']]):
+            with patch('koschei.util.get_rpm_requires', return_value=[['F', 'A']]):
                 self.resolver.create_task(ProcessBuildsTask).run()
         self.repo_mock.get_repos.assert_called_once_with(666)
         expected_deps = [tuple([package_id, 666] + list(nevr)) for nevr in FOO_DEPS]
@@ -98,18 +98,18 @@ class ResolverTest(DBTest):
         self.assertItemsEqual(expected_deps, actual_deps)
 
     # def test_resolution_fail(self):
-    #     self.prepare_packages(['foo', 'bar'])
-    #     bar = self.prepare_builds(bar=True, repo_id=None)[0]
-    #     bar.repo_id = 666
-    #     bar.epoch = 1
-    #     bar.version = '2'
-    #     bar.release = '2'
+    #     self.prepare_packages(['bar'])
+    #     b = self.prepare_builds(bar=True, repo_id=None)[0]
+    #     b.repo_id = 666
+    #     b.epoch = 1
+    #     b.version = '2'
+    #     b.release = '2'
     #     self.s.commit()
     #     with patch('koschei.util.get_build_group', return_value=['R']):
     #         with patch('koschei.util.get_rpm_requires', return_value=[['nonexistent']]):
-    #             self.resolver.process_builds()
+    #             self.resolver.create_task(ProcessBuildsTask).run()
     #     self.repo_mock.get_repos.assert_called_once_with(666)
-    #     self.assertFalse(self.s.query(Package).get(bar.package_id).resolved)
+    #     self.assertTrue(self.s.query(Package).filter_by(id=b.package_id).first().resolved is False)
     #     self.assertFalse(self.s.query(ResolutionProblem).count())
 
     def prepare_old_build(self):
@@ -139,32 +139,26 @@ class ResolverTest(DBTest):
         self.prepare_old_build()
         self.prepare_foo_build(repo_id=666, version='4')
         with patch('koschei.util.get_build_group', return_value=['R']):
-            with patch('koschei.util.get_rpm_requires', return_value=[['F','A']]):
+            with patch('koschei.util.get_rpm_requires', return_value=[['F', 'A']]):
                 self.resolver.create_task(ProcessBuildsTask).run()
         self.verify_changes()
 
     @postgres_only
     def test_repo_generation(self):
         self.prepare_old_build()
-        self.prepare_packages(['bar'])
         task = self.resolver.create_task(GenerateRepoTask)
         task.backend.refresh_latest_builds = lambda: None
         with patch('koschei.util.get_build_group', return_value=['R']):
-            with patch('koschei.util.get_rpm_requires', return_value=[['F','A']]):
-                with patch('fedmsg.publish') as fedmsg_mock:
-                    task.run(666)
-                    self.assertTrue(fedmsg_mock.called)
+            with patch('koschei.util.get_rpm_requires',
+                       return_value=[['F', 'A'], ['nonexistent']]):
+                task.run(666)
         self.s.expire_all()
         foo = self.s.query(Package).filter_by(name='foo').first()
-        bar = self.s.query(Package).filter_by(name='bar').first()
         self.repo_mock.get_repos.assert_called_once_with(666)
         self.verify_changes()
         self.assertTrue(foo.resolved)
         self.assertFalse(self.s.query(ResolutionProblem)
                          .filter_by(package_id=foo.id).count())
-        self.assertFalse(bar.resolved)
-        self.assertTrue(self.s.query(ResolutionProblem)
-                        .filter_by(package_id=bar.id).count())
 
     @postgres_only
     def test_broken_buildroot(self):
