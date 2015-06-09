@@ -44,11 +44,10 @@ def check_package_state(package, prev_state):
 
 class Backend(object):
 
-    def __init__(self, log, db, koji_session, srpm_cache=None):
+    def __init__(self, log, db, koji_session):
         self.log = log
         self.db = db
         self.koji_session = koji_session
-        self.srpm_cache = srpm_cache
 
     def submit_build(self, package):
         build = Build(package_id=package.id, state=Build.RUNNING)
@@ -227,7 +226,6 @@ class Backend(object):
                    .update({'ignored': True}, synchronize_session=False)
             self.db.commit()
         self.register_real_builds(task_infos)
-        self.srpm_cache.get_latest_srpms([i for (_, i) in task_infos.items()])
 
     def add_packages(self, names, group=None, static_priority=None,
                      manual_priority=None):

@@ -1,4 +1,4 @@
-# Copyright (C) 2014  Red Hat, Inc.
+# Copyright (C) 2014-2015  Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,6 +15,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 # Author: Michael Simacek <msimacek@redhat.com>
+# Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 import os
 import time
@@ -31,18 +32,16 @@ from koschei.models import (Package, Dependency, DependencyChange, Repo,
                             CompactDependencyChange, BuildrootProblem)
 from koschei import util
 from koschei.service import KojiService
-from koschei.srpm_cache import SRPMCache
 from koschei.repo_cache import RepoCache
 from koschei.backend import check_package_state, Backend
 
 
 class AbstractResolverTask(object):
     def __init__(self, log, db, koji_session,
-                 srpm_cache, repo_cache, backend):
+                 repo_cache, backend):
         self.log = log
         self.db = db
         self.koji_session = koji_session
-        self.srpm_cache = srpm_cache
         self.repo_cache = repo_cache
         self.backend = backend
         self.problems = []
@@ -50,37 +49,26 @@ class AbstractResolverTask(object):
         self.group = None
         self.resolved_packages = {}
 
-    def get_srpm_pkg(self, name, evr=None):
-        if evr:
-            # pylint: disable=W0633
-            epoch, version, release = evr
-            hawk_pkg = hawkey.Query(self.sack)\
-                             .filter(name=name, epoch=epoch or 0,
-                                     arch='src', version=version,
-                                     release=release)
-        else:
-            hawk_pkg = hawkey.Query(self.sack)\
-                             .filter(name=name, arch='src',
-                                     latest_per_arch=True)
-        if hawk_pkg:
-            return hawk_pkg[0]
-
-    def prepare_goal(self, srpm=None):
+    def run_goal(self, br=()):
+        # pylint:disable=E1101
         goal = hawkey.Goal(self.sack)
         problems = []
         for name in self.group:
             sltr = hawkey.Selector(self.sack).set(name=name)
+            if not sltr.matches():
+                problems.append("Package in base build group not found: {}".format(name))
             goal.install(select=sltr)
-        if srpm:
-            for reldep in srpm.requires:
-                subj = dnf.subject.Subject(str(reldep))
-                sltr = subj.get_best_selector(self.sack)
-                # pylint: disable=E1103
-                if sltr is None or not sltr.matches():
-                    problems.append("No package found for: {}".format(reldep))
-                else:
-                    goal.install(select=sltr)
-        return goal, problems
+        for r in br:
+            subj = dnf.subject.Subject(r)
+            sltr = subj.get_best_selector(self.sack)
+            # pylint: disable=E1103
+            if sltr is None or not sltr.matches():
+                problems.append("No package found for: {}".format(r))
+            else:
+                goal.install(select=sltr)
+        if not problems:
+            return goal.run(), goal.problems, goal.list_installs()
+        return False, problems, None
 
     def store_deps(self, repo_id, package_id, installs):
         new_deps = []
@@ -102,11 +90,11 @@ class AbstractResolverTask(object):
             self.db.connection().execute(table.insert(), dicts)
             self.db.expire_all()
 
-    def compute_dependency_distances(self, srpm, deps):
+    def compute_dependency_distances(self, br, deps):
         dep_map = {dep.name: dep for dep in deps}
         visited = set()
         level = 1
-        reldeps = srpm.requires
+        reldeps = [hawkey.Reldep(self.sack, r) for r in br]
         while level < 5 and reldeps:
             pkgs_on_level = set(hawkey.Query(self.sack).filter(provides=reldeps))
             reldeps = {req for pkg in pkgs_on_level if pkg not in visited
@@ -118,27 +106,21 @@ class AbstractResolverTask(object):
                     dep.distance = level
             level += 1
 
-    def resolve_dependencies(self, package, srpm):
-        goal, problems = self.prepare_goal(srpm)
-        if goal is not None:
-            resolved = False
-            if not problems:
-                resolved = goal.run()
-                problems = goal.problems
-            self.resolved_packages[package.id] = resolved
-            if resolved:
-                # pylint: disable=E1101
-                deps = [Dependency(name=pkg.name, epoch=pkg.epoch,
-                                   version=pkg.version, release=pkg.release,
-                                   arch=pkg.arch)
-                        for pkg in goal.list_installs() if pkg.arch != 'src']
-                self.compute_dependency_distances(srpm, deps)
-                return deps
-            else:
-                for problem in sorted(set(problems)):
-                    entry = dict(package_id=package.id,
-                                 problem=problem)
-                    self.problems.append(entry)
+    def resolve_dependencies(self, package, br):
+        resolved, problems, installs = self.run_goal(br)
+        self.resolved_packages[package.id] = resolved
+        if resolved:
+            deps = [Dependency(name=pkg.name, epoch=pkg.epoch,
+                               version=pkg.version, release=pkg.release,
+                               arch=pkg.arch)
+                    for pkg in installs if pkg.arch != 'src']
+            self.compute_dependency_distances(br, deps)
+            return deps
+        else:
+            for problem in sorted(set(problems)):
+                entry = dict(package_id=package.id,
+                             problem=problem)
+                self.problems.append(entry)
 
     def get_deps_from_db(self, package_id, repo_id):
         deps = self.db.query(Dependency)\
@@ -205,12 +187,13 @@ class AbstractResolverTask(object):
 
 class GenerateRepoTask(AbstractResolverTask):
 
-    def get_packages(self, expunge=True):
-        packages = self.db.query(Package)\
-                          .filter(Package.ignored == False)\
-                          .options(joinedload(Package.last_build))\
-                          .options(joinedload(Package.last_complete_build))\
-                          .all()
+    def get_packages(self, expunge=True, require_build=False):
+        query = self.db.query(Package).filter(Package.ignored == False)
+        if require_build:
+            query = query.filter(Package.last_complete_build_id != None)
+        packages = query.options(joinedload(Package.last_build))\
+                        .options(joinedload(Package.last_complete_build))\
+                        .all()
         # detaches objects from ORM, prevents spurious queries that hinder
         # performance
         if expunge:
@@ -251,13 +234,10 @@ class GenerateRepoTask(AbstractResolverTask):
                 # unresolved build, skip it
                 return self.get_prev_build_for_comparison(last_build)
 
-    def generate_dependency_changes(self, packages, repo_id):
+    def generate_dependency_changes(self, packages, brs, repo_id):
         changes = []
-        for package in packages:
-            srpm = self.get_srpm_pkg(package.name)
-            if not srpm:
-                continue
-            curr_deps = self.resolve_dependencies(package, srpm)
+        for package, br in zip(packages, brs):
+            curr_deps = self.resolve_dependencies(package, br)
             if curr_deps is not None:
                 last_build = self.get_build_for_comparison(package)
                 if last_build:
@@ -269,10 +249,6 @@ class GenerateRepoTask(AbstractResolverTask):
                                                                   package.id)
         return changes
 
-    def try_install_buildroot(self):
-        goal, _ = self.prepare_goal()
-        return goal.run(), goal.problems
-
     def run(self, repo_id):
         start = time.time()
         self.log.info("Generating new repo")
@@ -280,17 +256,15 @@ class GenerateRepoTask(AbstractResolverTask):
         self.db.add(repo)
         self.db.flush()
         self.backend.refresh_latest_builds()
-        packages = self.get_packages()
-        srpm_repo = self.srpm_cache.get_repodata()
+        packages = self.get_packages(require_build=True)
         self.prepare_sack(repo_id)
         if not self.sack:
             self.log.error('Cannot generate repo: {}'.format(repo_id))
             return
         self.update_repo_index(repo_id)
-        util.add_repo_to_sack('src', srpm_repo, self.sack)
         # TODO repo_id
         self.group = util.get_build_group(self.koji_session)
-        base_installable, base_problems = self.try_install_buildroot()
+        base_installable, base_problems, _ = self.run_goal()
         if not base_installable:
             self.log.info("Build group not resolvable")
             repo.base_resolved = False
@@ -299,9 +273,14 @@ class GenerateRepoTask(AbstractResolverTask):
                              for problem in base_problems])
             self.db.commit()
             return
+        brs = util.get_rpm_requires(self.koji_session,
+                                    [dict(name=p.name,
+                                          version=p.last_complete_build.version,
+                                          release=p.last_complete_build.release,
+                                          arch='src') for p in packages])
         self.log.info("Resolving dependencies")
         resolution_start = time.time()
-        changes = self.generate_dependency_changes(packages, repo_id)
+        changes = self.generate_dependency_changes(packages, brs, repo_id)
         resolution_end = time.time()
         self.db.query(ResolutionProblem).delete(synchronize_session=False)
         # pylint: disable=E1101
@@ -320,17 +299,11 @@ class GenerateRepoTask(AbstractResolverTask):
 
 class ProcessBuildsTask(AbstractResolverTask):
 
-    def process_build(self, build):
+    def process_build(self, build, br):
         if build.repo_id:
             self.log.info("Processing build {}".format(build.id))
             prev = self.get_prev_build_for_comparison(build)
-            srpm = self.get_srpm_pkg(build.package.name, (build.epoch,
-                                                          build.version,
-                                                          build.release))
-            if not srpm:
-                return
-            curr_deps = self.resolve_dependencies(package=build.package,
-                                                  srpm=srpm)
+            curr_deps = self.resolve_dependencies(build.package, br)
             self.store_deps(build.repo_id, build.package_id, curr_deps)
             if curr_deps is not None:
                 build.deps_resolved = True
@@ -363,21 +336,19 @@ class ProcessBuildsTask(AbstractResolverTask):
         # TODO repo_id
         self.group = util.get_build_group(self.koji_session)
 
-        # do this before processing to avoid multiple runs of createrepo
-        for build in unprocessed:
-            self.srpm_cache.get_srpm(build.package.name,
-                                     build.version, build.release)
-        srpm_repo = self.srpm_cache.get_repodata()
-
         for repo_id, builds in itertools.groupby(unprocessed,
                                                  lambda build: build.repo_id):
             builds = list(builds)
             if repo_id is not None:
                 self.prepare_sack(repo_id)
                 if self.sack:
-                    util.add_repos_to_sack('srpm', {'src': srpm_repo}, self.sack)
-                    for build in builds:
-                        self.process_build(build)
+                    brs = util.get_rpm_requires(self.koji_session,
+                                                [dict(name=b.package.name,
+                                                      version=b.version,
+                                                      release=b.release,
+                                                      arch='src') for b in builds])
+                    for build, br in zip(builds, brs):
+                        self.process_build(build, br)
             self.db.query(Build).filter(Build.id.in_([b.id for b in builds]))\
                                 .update({'deps_processed': True},
                                         synchronize_session=False)
@@ -386,16 +357,13 @@ class ProcessBuildsTask(AbstractResolverTask):
 class Resolver(KojiService):
 
     def __init__(self, log=None, db=None, koji_session=None,
-                 srpm_cache=None, repo_cache=None, backend=None):
+                 repo_cache=None, backend=None):
         super(Resolver, self).__init__(log=log, db=db,
                                        koji_session=koji_session)
-        self.srpm_cache = (srpm_cache
-                           or SRPMCache(koji_session=self.koji_session))
         self.repo_cache = repo_cache or RepoCache()
         self.backend = backend or Backend(db=self.db,
                                           koji_session=self.koji_session,
-                                          log=self.log,
-                                          srpm_cache=self.srpm_cache)
+                                          log=self.log)
 
     def get_handled_exceptions(self):
         return ([librepo.LibrepoException] +
@@ -403,8 +371,7 @@ class Resolver(KojiService):
 
     def create_task(self, cls):
         return cls(log=self.log, db=self.db, koji_session=self.koji_session,
-                   srpm_cache=self.srpm_cache, repo_cache=self.repo_cache,
-                   backend=self.backend)
+                   repo_cache=self.repo_cache, backend=self.backend)
 
     def process_repo_generation_requests(self):
         latest_request = self.db.query(RepoGenerationRequest)\

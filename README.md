@@ -24,10 +24,6 @@ Python code dependencies:
 - rpm
 - sqlalchemy
 
-Other runtime dependencies:
-- createrepo_c
-- curl
-
 Test dependencies (optional):
 - nose
 - mock

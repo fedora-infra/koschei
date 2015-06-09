@@ -61,7 +61,6 @@ config = {
         "topic_re": r'\.prod\.pkgdb\.',
     },
     "directories": {
-        "srpms": "@CACHEDIR@/srpms",
         "repodata": "@CACHEDIR@/repodata",
         "templates": "@DATADIR@/templates",
         "static_folder": "@DATADIR@/static",

@@ -39,8 +39,6 @@ Requires:       koji
 Requires:       fedmsg
 Requires:       python-fedmsg-meta-fedora-infrastructure
 Requires:       python-psycopg2
-Requires:       createrepo_c
-Requires:       curl
 Requires:       python-jinja2
 Requires:       python-hawkey
 Requires:       python-alembic
@@ -91,7 +89,6 @@ done
 install -pm 755 admin.py %{buildroot}%{_bindir}/%{name}-admin
 
 install -dm 755 %{buildroot}%{_localstatedir}/cache/%{name}/repodata
-install -dm 755 %{buildroot}%{_localstatedir}/cache/%{name}/srpms
 install -dm 755 %{buildroot}%{_sharedstatedir}/%{name}
 
 cp -pr templates %{buildroot}%{_datadir}/%{name}/
