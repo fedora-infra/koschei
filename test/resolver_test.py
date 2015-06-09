@@ -20,8 +20,10 @@
 import os
 import shutil
 import librepo
+import koji
 from common import DBTest, testdir, postgres_only
 from mock import Mock, patch
+from koschei import util
 from koschei.models import (Dependency, DependencyChange, Package,
                             ResolutionProblem, Repo, BuildrootProblem)
 from koschei.resolver import Resolver, GenerateRepoTask, ProcessBuildsTask
@@ -174,3 +176,21 @@ class ResolverTest(DBTest):
         repo = self.s.query(Repo).one()
         self.assertFalse(repo.base_resolved)
         self.assertTrue(self.s.query(BuildrootProblem).count())
+
+    def test_buildrequires(self):
+        call_result = [{'flags': 0, 'name': 'maven-local', 'type': 0, 'version': ''},
+                       {'flags': 0, 'name': 'jetty-toolchain', 'type': 0, 'version': ''},
+                       {'flags': 16777226,
+                        'name': 'rpmlib(FileDigests)',
+                        'type': 0,
+                        'version': '4.6.0-1'},
+                       {'flags': 16777226,
+                        'name': 'rpmlib(CompressedFileNames)',
+                        'type': 0,
+                        'version': '3.0.4-1'}]
+        koji_mock = Mock()
+        koji_mock.multiCall = Mock(return_value=[[call_result]])
+        inp = dict(name='jetty-schemas', version='3.1', release='3.fc21', arch='src')
+        res = util.get_rpm_requires(koji_mock, [inp])
+        koji_mock.getRPMDeps.assert_called_once_with(inp, koji.DEP_REQUIRE)
+        self.assertEqual(res, [['maven-local', 'jetty-toolchain']])
