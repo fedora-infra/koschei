@@ -95,17 +95,21 @@ class AbstractResolverTask(object):
         dep_map = {dep.name: dep for dep in deps}
         visited = set()
         level = 1
-        reldeps = [hawkey.Reldep(self.sack, r) for r in br]
-        while level < 5 and reldeps:
-            pkgs_on_level = set(hawkey.Query(self.sack).filter(provides=reldeps))
-            reldeps = {req for pkg in pkgs_on_level if pkg not in visited
-                       for req in pkg.requires}
-            visited.update(pkgs_on_level)
+        # pylint:disable=E1103
+        pkgs_on_level = {x for r in br for x in
+                         dnf.subject.Subject(r).get_best_selector(self.sack).matches()}
+        while pkgs_on_level:
             for pkg in pkgs_on_level:
                 dep = dep_map.get(pkg.name)
                 if dep and dep.distance is None:
                     dep.distance = level
             level += 1
+            if level >= 5:
+                break
+            reldeps = {req for pkg in pkgs_on_level if pkg not in visited
+                       for req in pkg.requires}
+            visited.update(pkgs_on_level)
+            pkgs_on_level = set(hawkey.Query(self.sack).filter(provides=reldeps))
 
     def resolve_dependencies(self, package, br):
         resolved, problems, installs = self.run_goal(br)
