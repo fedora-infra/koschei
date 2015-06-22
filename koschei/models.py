@@ -147,11 +147,22 @@ class PackageGroupRelation(Base):
     package_id = Column(Integer, ForeignKey('package.id', ondelete='CASCADE'),
                         primary_key=True)
 
+class GroupACL(Base):
+    __tablename__ = 'group_acl'
+
+    group_id = Column(Integer, ForeignKey('package_group.id',
+                                          ondelete='CASCADE'),
+                      primary_key=True)
+    user_id = Column(Integer, ForeignKey('user.id',
+                                         ondelete='CASCADE'),
+                     primary_key=True)
+
 
 class PackageGroup(Base):
     __tablename__ = 'package_group'
 
     id = Column(Integer, primary_key=True)
+    namespace = Column(String)
     name = Column(String, nullable=False)
 
     # pylint: disable=E1101
@@ -246,8 +257,11 @@ class Dependency(Base):
     nevr = (name, epoch, version, release)
     nevra = (name, epoch, version, release, arch)
 
+
 Index('ix_dependency_composite', Dependency.package_id, Dependency.repo_id)
 Index('ix_build_composite', Build.package_id, Build.id.desc())
+Index('ix_package_group_name', PackageGroup.namespace, PackageGroup.name,
+      unique=True)
 
 
 class DependencyChange(Base):

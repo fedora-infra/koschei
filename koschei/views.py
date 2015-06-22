@@ -235,15 +235,17 @@ def build_detail(name, build_id):
 def groups_overview():
     groups = db.query(PackageGroup)\
                .options(undefer(PackageGroup.package_count))\
+               .filter_by(namespace=None)\
                .order_by(PackageGroup.name).all()
     return render_template("groups.html", groups=groups)
 
 
 @app.route('/groups/<name>')
+@app.route('/groups/<namespace>/<name>')
 @tab('Group', slave=True)
-def group_detail(name=None, id=None):
+def group_detail(name=None, namespace=None):
     group = db.query(PackageGroup)\
-              .filter_by(name=name).first_or_404()
+              .filter_by(name=name, namespace=namespace).first_or_404()
 
     query = db.query(Package)\
               .outerjoin(PackageGroupRelation)\
