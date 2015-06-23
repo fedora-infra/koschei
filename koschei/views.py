@@ -237,11 +237,17 @@ def build_detail(name, build_id):
 @app.route('/groups')
 @tab('Groups')
 def groups_overview():
+    users_groups = None
+    if g.user:
+        users_groups = db.query(PackageGroup)\
+                         .options(undefer(PackageGroup.package_count))\
+                         .filter_by(namespace=g.user.name)\
+                         .order_by(PackageGroup.name).all()
     groups = db.query(PackageGroup)\
                .options(undefer(PackageGroup.package_count))\
                .filter_by(namespace=None)\
                .order_by(PackageGroup.name).all()
-    return render_template("groups.html", groups=groups)
+    return render_template("groups.html", groups=groups, users_groups=users_groups)
 
 
 @app.route('/groups/<name>')

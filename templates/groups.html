@@ -1,7 +1,6 @@
 {% extends "base.html" %}
-{% block content %}
-<div class="pageHeader">Groups</div>
-<table class="nested data-list">
+{% macro render_groups(groups) %}
+<table class="data-list">
     <thead>
     <tr class="list-header">
         <th>Group</th>
@@ -21,5 +20,17 @@
     {% endfor %}
     </tbody>
 </table>
+{% endmacro %}
+{% block content %}
+{% if users_groups %}
+<div>
+    <div class="pageHeader">Your groups</div>
+    {{ render_groups(users_groups) }}
+    {% endif %}
+</div>
+<div>
+    <div class="pageHeader">Global groups</div>
+    {{ render_groups(groups) }}
+</div>
 {% endblock %}
 
