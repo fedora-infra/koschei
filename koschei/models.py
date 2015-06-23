@@ -387,7 +387,7 @@ Package.unapplied_changes = \
     relationship(DependencyChange,
                  primaryjoin=((DependencyChange.package_id == Package.id)
                               & (DependencyChange.applied_in_id == None)),
-                 order_by=DependencyChange.distance)
+                 order_by=[DependencyChange.distance, DependencyChange.dep_name])
 Build.dependency_changes = relationship(DependencyChange, backref='applied_in',
                                         order_by=DependencyChange.distance
                                         .nullslast())
