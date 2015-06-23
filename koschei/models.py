@@ -169,6 +169,12 @@ class PackageGroup(Base):
     packages = relationship(Package, secondary=PackageGroupRelation.__table__,
                             order_by=Package.name)
 
+    @property
+    def full_name(self):
+        if self.namespace:
+            return self.namespace + '/' + self.name
+        return self.name
+
 
 class Build(Base):
     __tablename__ = 'build'

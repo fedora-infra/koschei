@@ -7,6 +7,7 @@ from datetime import datetime
 from functools import wraps
 from flask import abort, render_template, request, url_for, redirect, g, flash
 from sqlalchemy.orm import joinedload, subqueryload, undefer, contains_eager
+from sqlalchemy.sql import exists
 from jinja2 import Markup, escape
 from textwrap import dedent
 from flask_wtf import Form
@@ -15,7 +16,7 @@ from wtforms.validators import Regexp
 
 from .models import (Package, Build, PackageGroup, PackageGroupRelation,
                      AdminNotice, User, UserPackageRelation, BuildrootProblem,
-                     get_or_create, get_last_repo)
+                     GroupACL, get_or_create, get_last_repo)
 from . import util, auth, backend, main, plugin
 from .frontend import app, db, frontend_config
 
@@ -291,6 +292,15 @@ class GroupForm(Form):
                            filters=[lift_none(unicode.strip)])
 
 
+def can_edit_group(group):
+    return g.user and (g.user.admin or g.user.name == group.namespace
+                       or db.query(exists()
+                                   .where((GroupACL.user_id == g.user.id) &
+                                          (GroupACL.group_id == group.id)))
+                       .scalar())
+
+PackageGroup.editable = property(can_edit_group)
+
 def process_group_form(group=None):
     form = GroupForm()
     if request.method == 'GET':
@@ -311,7 +321,7 @@ def process_group_form(group=None):
         group = PackageGroup(name=form.name.data, namespace=g.user.name)
         db.add(group)
         db.flush()
-    elif group.namespace == g.user.name:
+    elif group.editable:
         group.name = form.name.data
         db.query(PackageGroupRelation)\
           .filter_by(group_id=group.id).delete()
