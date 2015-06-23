@@ -3,13 +3,20 @@
 {% block title %}Koschei - {{ group.full_name }} group{% endblock %}
 {% block content %}
 <div class="pageHeader">{{ group.full_name }}</div>
-{% if group.editable %}
-<form method="GET" action="{{ url_for('edit_group', name=group.name, namespace=group.namespace) }}">
-    <button type="submit">Edit group</button>
-</form>
-<div>
-    Group comaintainers: {{ group.owners_list }}
-</div>
-{% endif %}
 {{ macros.package_table(packages, page, order) }}
+{% if group.editable %}
+<table>
+    <tr>
+        <td>Group comaintainers:</td>
+        <td>{{ group.owners_list }}</td>
+    </tr>
+    <tr>
+        <td>
+            <form method="GET" action="{{ url_for('edit_group', name=group.name, namespace=group.namespace) }}">
+                <button type="submit">Edit group</button>
+            </form>
+        </td>
+    </tr>
+</table>
+{% endif %}
 {% endblock %}
