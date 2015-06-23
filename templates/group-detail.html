@@ -1,7 +1,12 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
-{% block title %}Koschei - {% if group.namespace %}{{ group.namespace }}/{% endif %}{{ group.name }} group{% endblock %}
+{% block title %}Koschei - {{ group.full_name }} group{% endblock %}
 {% block content %}
-<div class="pageHeader">{{ group.name }}</div>
+<div class="pageHeader">{{ group.full_name }}</div>
+{% if group.editable %}
+<form method="GET" action="{{ url_for('edit_group', name=group.name, namespace=group.namespace) }}">
+    <button type="submit">Edit group</button>
+</form>
+{% endif %}
 {{ macros.package_table(packages, page, order) }}
 {% endblock %}
