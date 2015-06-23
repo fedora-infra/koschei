@@ -63,7 +63,7 @@
                 <td colspan="2"></td>
                 {% endif %}
                 <td>
-                    {{ package.current_priority }}
+                    {{ package.current_priority or ""}}
                 </td>
                 <td>
                     {% if package.ignored %}
