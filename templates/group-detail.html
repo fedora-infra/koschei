@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
-{% block title %}Koschei - {{ group.name }} group{% endblock %}
+{% block title %}Koschei - {% if group.namespace %}{{ group.namespace }}/{% endif %}{{ group.name }} group{% endblock %}
 {% block content %}
 <div class="pageHeader">{{ group.name }}</div>
 {{ macros.package_table(packages, page, order) }}

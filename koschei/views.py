@@ -308,20 +308,24 @@ def process_group_form(group=None):
     packages = db.query(Package).filter(Package.name.in_(names))
     created = not group
     if not group:
-        group = PackageGroup(name=form.name.data)
+        group = PackageGroup(name=form.name.data, namespace=g.user.name)
         db.add(group)
         db.flush()
-    else:
+    elif group.namespace == g.user.name:
         group.name = form.name.data
         db.query(PackageGroupRelation)\
           .filter_by(group_id=group.id).delete()
+    else:
+        flash("You don't have permission to edit this group")
+        redirect(url_for('group_detail', name=group.name))
     rels = []
     for pkg in packages:
         rels.append(dict(group_id=group.id, package_id=pkg.id))
     db.execute(PackageGroupRelation.__table__.insert(), rels)
     db.commit()
     flash("Group created" if created else "Group modified")
-    return redirect(url_for('group_detail', name=group.name))
+    return redirect(url_for('group_detail', name=group.name,
+                            namespace=group.namespace))
 
 
 @app.route('/add_group', methods=['GET', 'POST'])
@@ -332,12 +336,13 @@ def add_group():
 
 
 @app.route('/groups/<name>/edit', methods=['GET', 'POST'])
+@app.route('/groups/<namespace>/<name>/edit', methods=['GET', 'POST'])
 @tab('Group', slave=True)
 @auth.login_required()
-def edit_group(name):
+def edit_group(name, namespace=None):
     group = db.query(PackageGroup)\
               .options(joinedload(PackageGroup.packages))\
-              .filter_by(name=name).first_or_404()
+              .filter_by(name=name, namespace=namespace).first_or_404()
     return process_group_form(group=group)
 
 
