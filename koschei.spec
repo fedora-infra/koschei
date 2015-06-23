@@ -45,6 +45,7 @@ Requires:       python-alembic
 Requires:       python-flask
 Requires:       python-flask-sqlalchemy
 Requires:       python-flask-openid
+Requires:       python-flask-wtf
 Requires:       mod_wsgi
 Requires:       httpd
 Requires:       python-librepo

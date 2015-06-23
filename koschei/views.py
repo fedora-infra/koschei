@@ -9,6 +9,9 @@ from flask import abort, render_template, request, url_for, redirect, g, flash
 from sqlalchemy.orm import joinedload, subqueryload, undefer, contains_eager
 from jinja2 import Markup, escape
 from textwrap import dedent
+from flask_wtf import Form
+from wtforms import StringField
+from wtforms.validators import Regexp
 
 from .models import (Package, Build, PackageGroup, PackageGroupRelation,
                      AdminNotice, User, UserPackageRelation, BuildrootProblem,
@@ -276,31 +279,40 @@ def resync_packages(name):
     db.commit()
     return redirect(url_for('user_packages', name=name))
 
-def process_group_form(group=None, success_msg="Group updated"):
-    def redir(msg):
-        flash(msg)
-        if group:
-            return redirect(url_for('edit_group', name=group.name))
-        return redirect(url_for('add_group'))
-    if 'packages' not in request.form:
-        abort(400)
-    pkg_names = [name.strip() for name in request.form['packages'].split()]
-    packages = db.query(Package)\
-                 .filter(Package.name.in_(pkg_names)).all()
-    name = request.form['name'].strip()
-    if not name:
-        return redir("Empty name not allowed")
-    if not pkg_names:
-        return redir("Empty group not allowed")
-    if len(pkg_names) != len(packages):
-        nonexistent = set(pkg_names) - {p.name for p in packages}
-        return redir("Packages doesn't exist: " + ','.join(nonexistent))
+def lift_none(fn):
+    return lambda x: None if x is None else fn(x)
+
+class GroupForm(Form):
+    name = StringField('name', [Regexp(r'^\s*[a-zA-Z0-9_-]+\s*$',
+                                       message="Invalid group name")],
+                       filters=[lift_none(unicode.strip)])
+    packages = StringField('packages', [Regexp(r'^\s*([a-zA-Z0-9_-]+\s*)+$',
+                                               message="Empty group not allowed")],
+                           filters=[lift_none(unicode.strip)])
+
+
+def process_group_form(group=None):
+    form = GroupForm()
+    if request.method == 'GET':
+        return render_template('edit-group.html', group=group, form=form)
+    if not form.validate_on_submit():
+        flash(', '.join(x for i in form.errors.values() for x in i))
+        return render_template('edit-group.html', group=group, form=form)
+    be = create_backend()
+    names = form.packages.data.split()
+    try:
+        be.add_packages(names)
+    except backend.PackagesDontExist as e:
+        flash("Packages don't exist: " + ', '.join(e.names))
+        return render_template('edit-group.html', group=group, form=form)
+    packages = db.query(Package).filter(Package.name.in_(names))
+    created = not group
     if not group:
-        group = PackageGroup(name=name)
+        group = PackageGroup(name=form.name.data)
         db.add(group)
         db.flush()
     else:
-        group.name = name
+        group.name = form.name.data
         db.query(PackageGroupRelation)\
           .filter_by(group_id=group.id).delete()
     rels = []
@@ -308,31 +320,25 @@ def process_group_form(group=None, success_msg="Group updated"):
         rels.append(dict(group_id=group.id, package_id=pkg.id))
     db.execute(PackageGroupRelation.__table__.insert(), rels)
     db.commit()
-    flash(success_msg)
+    flash("Group created" if created else "Group modified")
     return redirect(url_for('group_detail', name=group.name))
 
 
 @app.route('/add_group', methods=['GET', 'POST'])
 @tab('Group', slave=True)
 @auth.login_required()
-def add_group(name=None, id=None):
-    if request.method == 'POST':
-        return process_group_form(success_msg="Group created")
-    return render_template("edit-group.html")
+def add_group():
+    return process_group_form()
 
 
-@app.route('/groups/<int:id>/edit', methods=['GET', 'POST'])
 @app.route('/groups/<name>/edit', methods=['GET', 'POST'])
 @tab('Group', slave=True)
 @auth.login_required()
-def edit_group(name=None, id=None):
-    filt = {'name': name} if name else {'id': id}
+def edit_group(name):
     group = db.query(PackageGroup)\
               .options(joinedload(PackageGroup.packages))\
-              .filter_by(**filt).first_or_404()
-    if request.method == 'POST':
-        return process_group_form(group)
-    return render_template("edit-group.html", group=group)
+              .filter_by(name=name).first_or_404()
+    return process_group_form(group=group)
 
 
 @app.route('/add_packages', methods=['GET', 'POST'])

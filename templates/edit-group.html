@@ -6,6 +6,7 @@
 <div class="pageHeader">Create new group</div>
 {% endif %}
 <form action="" method="POST" name="edit_group">
+    {{ form.csrf_token }}
     <label for="name">Name: </label>
     <input type="text" name="name"{% if group %} value="{{ group.name }}"{% endif %}/>
     <div>Packages in group:</div>
