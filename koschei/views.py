@@ -299,10 +299,10 @@ class GroupForm(Form):
     name = StringField('name', [Regexp(r'^\s*[a-zA-Z0-9_-]+\s*$',
                                        message="Invalid group name")],
                        filters=[lift_none(unicode.strip)])
-    packages = StringField('packages', [Regexp(r'^\s*([a-zA-Z0-9_-]+\s*)+$',
+    packages = StringField('packages', [Regexp(r'^\s*([,a-zA-Z0-9_-]+\s*)+$',
                                                message="Empty group not allowed")],
                            filters=[lift_none(unicode.strip)])
-    owners = StringField('owners', [Regexp(r'^\s*([a-zA-Z0-9_-]+\s*)*$',
+    owners = StringField('owners', [Regexp(r'^\s*([,a-zA-Z0-9_-]+\s*)*$',
                                            message="Invalid username")],
                          filters=[lift_none(unicode.strip)])
 
@@ -316,6 +316,11 @@ def can_edit_group(group):
 
 PackageGroup.editable = property(can_edit_group)
 
+split_re = re.compile(r'[ \t\n\r,]+')
+
+def split(s):
+    return filter(None, split_re.split(s))
+
 def process_group_form(group=None):
     form = GroupForm()
     if request.method == 'GET':
@@ -324,7 +329,7 @@ def process_group_form(group=None):
         flash(', '.join(x for i in form.errors.values() for x in i))
         return render_template('edit-group.html', group=group, form=form)
     be = create_backend()
-    names = form.packages.data.split()
+    names = split(form.packages.data)
     try:
         be.add_packages(names)
     except backend.PackagesDontExist as e:
@@ -346,7 +351,7 @@ def process_group_form(group=None):
         else:
             flash("You don't have permission to edit this group")
             redirect(url_for('group_detail', name=group.name))
-        owners = (form.owners.data or "").split()
+        owners = split(form.owners.data or "")
         rels = [dict(group_id=group.id, package_id=pkg.id) for pkg in packages]
         acls = [dict(group_id=group.id, user_id=get_or_create(db, User, name=u).id)
                 for u in owners]
@@ -387,7 +392,7 @@ def edit_group(name, namespace=None):
 def add_packages():
     if request.method == 'POST':
         be = create_backend()
-        names = re.split(r'[ \t\n\r,]+', request.form['names'])
+        names = split(request.form['names'])
         if names:
             try:
                 added = be.add_packages(names,
