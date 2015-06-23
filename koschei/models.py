@@ -165,15 +165,20 @@ class PackageGroup(Base):
     namespace = Column(String)
     name = Column(String, nullable=False)
 
-    # pylint: disable=E1101
     packages = relationship(Package, secondary=PackageGroupRelation.__table__,
                             order_by=Package.name)
+    owners = relationship(User, secondary=GroupACL.__table__,
+                          order_by=User.name)
 
     @property
     def full_name(self):
         if self.namespace:
             return self.namespace + '/' + self.name
         return self.name
+
+    @property
+    def owners_list(self):
+        return ', '.join(u.name for u in self.owners)
 
 
 class Build(Base):

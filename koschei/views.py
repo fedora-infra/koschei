@@ -302,6 +302,9 @@ class GroupForm(Form):
     packages = StringField('packages', [Regexp(r'^\s*([a-zA-Z0-9_-]+\s*)+$',
                                                message="Empty group not allowed")],
                            filters=[lift_none(unicode.strip)])
+    owners = StringField('owners', [Regexp(r'^\s*([a-zA-Z0-9_-]+\s*)*$',
+                                           message="Invalid username")],
+                         filters=[lift_none(unicode.strip)])
 
 
 def can_edit_group(group):
@@ -338,13 +341,18 @@ def process_group_form(group=None):
             group.name = form.name.data
             db.query(PackageGroupRelation)\
               .filter_by(group_id=group.id).delete()
+            db.query(GroupACL)\
+              .filter_by(group_id=group.id).delete()
         else:
             flash("You don't have permission to edit this group")
             redirect(url_for('group_detail', name=group.name))
-        rels = []
-        for pkg in packages:
-            rels.append(dict(group_id=group.id, package_id=pkg.id))
+        owners = (form.owners.data or "").split()
+        rels = [dict(group_id=group.id, package_id=pkg.id) for pkg in packages]
+        acls = [dict(group_id=group.id, user_id=get_or_create(db, User, name=u).id)
+                for u in owners]
         db.execute(PackageGroupRelation.__table__.insert(), rels)
+        if acls:
+            db.execute(GroupACL.__table__.insert(), acls)
         db.commit()
         flash("Group created" if created else "Group modified")
         return redirect(url_for('group_detail', name=group.name,
