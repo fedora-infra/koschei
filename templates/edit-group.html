@@ -14,7 +14,7 @@
         {# Has to be on one line to not add whitespace #}
         <textarea name="packages" rows="20" cols="80">{% if group %}{% for pkg in group.packages %}{{ pkg.name }}{{ '\n' }}{% endfor %}{% endif %}</textarea>
     </div>
-    <div><button type="submit"/>Update</button></div>
+    <div><button type="submit"/>{% if group %}Update{% else %}Create{% endif %}</button></div>
 </form>
 
 {% endblock %}

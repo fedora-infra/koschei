@@ -28,6 +28,9 @@
     {{ render_groups(users_groups) }}
     {% endif %}
 </div>
+<form method="GET" action="{{ url_for('add_group') }}">
+    <button type="submit" {{ require_login() }}>Create new group</button>
+</form>
 <div>
     <div class="pageHeader">Global groups</div>
     {{ render_groups(groups) }}
