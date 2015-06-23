@@ -8,6 +8,7 @@ from functools import wraps
 from flask import abort, render_template, request, url_for, redirect, g, flash
 from sqlalchemy.orm import joinedload, subqueryload, undefer, contains_eager
 from sqlalchemy.sql import exists
+from sqlalchemy.exc import IntegrityError
 from jinja2 import Markup, escape
 from textwrap import dedent
 from flask_wtf import Form
@@ -328,25 +329,30 @@ def process_group_form(group=None):
         return render_template('edit-group.html', group=group, form=form)
     packages = db.query(Package).filter(Package.name.in_(names))
     created = not group
-    if not group:
-        group = PackageGroup(name=form.name.data, namespace=g.user.name)
-        db.add(group)
-        db.flush()
-    elif group.editable:
-        group.name = form.name.data
-        db.query(PackageGroupRelation)\
-          .filter_by(group_id=group.id).delete()
-    else:
-        flash("You don't have permission to edit this group")
-        redirect(url_for('group_detail', name=group.name))
-    rels = []
-    for pkg in packages:
-        rels.append(dict(group_id=group.id, package_id=pkg.id))
-    db.execute(PackageGroupRelation.__table__.insert(), rels)
-    db.commit()
-    flash("Group created" if created else "Group modified")
-    return redirect(url_for('group_detail', name=group.name,
-                            namespace=group.namespace))
+    try:
+        if not group:
+            group = PackageGroup(name=form.name.data, namespace=g.user.name)
+            db.add(group)
+            db.flush()
+        elif group.editable:
+            group.name = form.name.data
+            db.query(PackageGroupRelation)\
+              .filter_by(group_id=group.id).delete()
+        else:
+            flash("You don't have permission to edit this group")
+            redirect(url_for('group_detail', name=group.name))
+        rels = []
+        for pkg in packages:
+            rels.append(dict(group_id=group.id, package_id=pkg.id))
+        db.execute(PackageGroupRelation.__table__.insert(), rels)
+        db.commit()
+        flash("Group created" if created else "Group modified")
+        return redirect(url_for('group_detail', name=group.name,
+                                namespace=group.namespace))
+    except IntegrityError:
+        db.rollback()
+        flash("Group already exists")
+        return render_template('edit-group.html', group=group, form=form)
 
 
 @app.route('/add_group', methods=['GET', 'POST'])
