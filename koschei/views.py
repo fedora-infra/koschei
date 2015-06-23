@@ -319,7 +319,7 @@ PackageGroup.editable = property(can_edit_group)
 split_re = re.compile(r'[ \t\n\r,]+')
 
 def split(s):
-    return filter(None, split_re.split(s))
+    return set(filter(None, split_re.split(s)))
 
 def process_group_form(group=None):
     form = GroupForm()
