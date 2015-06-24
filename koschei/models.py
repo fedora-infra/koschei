@@ -403,6 +403,9 @@ Package.groups = relationship(PackageGroup,
                               order_by=PackageGroup.name)
 User.packages = relationship(Package,
                              secondary=UserPackageRelation.__table__)
+User.groups = relationship(PackageGroup,
+                           secondary=GroupACL.__table__,
+                           order_by=[PackageGroup.namespace, PackageGroup.name])
 
 def _last_build():
     max_expr = select([func.max(Build.id).label('mx')])\

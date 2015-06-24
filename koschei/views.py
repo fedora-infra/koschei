@@ -13,7 +13,7 @@ from jinja2 import Markup, escape
 from textwrap import dedent
 from flask_wtf import Form
 from wtforms import StringField
-from wtforms.validators import Regexp
+from wtforms.validators import Regexp, ValidationError
 
 from .models import (Package, Build, PackageGroup, PackageGroupRelation,
                      AdminNotice, User, UserPackageRelation, BuildrootProblem,
@@ -243,17 +243,11 @@ def build_detail(name, build_id):
 @app.route('/groups')
 @tab('Groups')
 def groups_overview():
-    users_groups = None
-    if g.user:
-        users_groups = db.query(PackageGroup)\
-                         .options(undefer(PackageGroup.package_count))\
-                         .filter_by(namespace=g.user.name)\
-                         .order_by(PackageGroup.name).all()
     groups = db.query(PackageGroup)\
                .options(undefer(PackageGroup.package_count))\
                .filter_by(namespace=None)\
                .order_by(PackageGroup.name).all()
-    return render_template("groups.html", groups=groups, users_groups=users_groups)
+    return render_template("groups.html", groups=groups)
 
 
 @app.route('/groups/<name>')
@@ -292,34 +286,66 @@ def resync_packages(name):
     db.commit()
     return redirect(url_for('user_packages', name=name))
 
-def lift_none(fn):
-    return lambda x: None if x is None else fn(x)
+
+class StrippedStringField(StringField):
+    def process_formdata(self, values):
+        # pylint:disable=W0201
+        self.data = values and values[0].strip()
+
+
+class ListField(StringField):
+    split_re = re.compile(r'[ \t\n\r,]+')
+
+    def _value(self):
+        return ', '.join(self.data or ())
+
+    def process_formdata(self, values):
+        # pylint:disable=W0201
+        values = values and values[0]
+        self.data = filter(None, self.split_re.split(values or ''))
+
+class ListAreaField(ListField):
+    def _value(self):
+        return '\n'.join(self.data or ())
+
+name_re = re.compile(r'^[a-zA-Z0-9.+_-]+$')
+group_re = re.compile(r'^([a-zA-Z0-9.+_-]+(/[a-zA-Z0-9.+_-]+)?)?$')
+
+class NameListValidator(object):
+    def __init__(self, message):
+        self.message = message
+
+    def __call__(self, _, field):
+        if not all(map(name_re.match, field.data)):
+            raise ValidationError(self.message)
+
+class NonEmptyList(object):
+    def __init__(self, message):
+        self.message = message
+
+    def __call__(self, _, field):
+        if not field.data:
+            raise ValidationError(self.message)
 
 class GroupForm(Form):
-    name = StringField('name', [Regexp(r'^\s*[a-zA-Z0-9_-]+\s*$',
-                                       message="Invalid group name")],
-                       filters=[lift_none(unicode.strip)])
-    packages = StringField('packages', [Regexp(r'^\s*([,a-zA-Z0-9_-]+\s*)+$',
-                                               message="Empty group not allowed")],
-                           filters=[lift_none(unicode.strip)])
-    owners = StringField('owners', [Regexp(r'^\s*([,a-zA-Z0-9_-]+\s*)*$',
-                                           message="Invalid username")],
-                         filters=[lift_none(unicode.strip)])
+    name = StrippedStringField('name', [Regexp(name_re, message="Invalid group name")])
+    packages = ListAreaField('packages', [NonEmptyList("Empty group not allowed"),
+                                          NameListValidator("Invalid package list")])
+    owners = ListField('owners', [NameListValidator("Invalid owner list")])
 
+class AddPackagesForm(Form):
+    packages = ListAreaField('packages', [NonEmptyList("No packages given"),
+                                          NameListValidator("Invalid package list")])
+    group = StrippedStringField('group', [Regexp(group_re, message="Invalid group")])
 
 def can_edit_group(group):
-    return g.user and (g.user.admin or g.user.name == group.namespace
-                       or db.query(exists()
-                                   .where((GroupACL.user_id == g.user.id) &
-                                          (GroupACL.group_id == group.id)))
+    return g.user and (g.user.admin or
+                       db.query(exists()
+                                .where((GroupACL.user_id == g.user.id) &
+                                       (GroupACL.group_id == group.id)))
                        .scalar())
 
 PackageGroup.editable = property(can_edit_group)
-
-split_re = re.compile(r'[ \t\n\r,]+')
-
-def split(s):
-    return set(filter(None, split_re.split(s)))
 
 def process_group_form(group=None):
     form = GroupForm()
@@ -329,7 +355,7 @@ def process_group_form(group=None):
         flash(', '.join(x for i in form.errors.values() for x in i))
         return render_template('edit-group.html', group=group, form=form)
     be = create_backend()
-    names = split(form.packages.data)
+    names = set(form.packages.data)
     try:
         be.add_packages(names)
     except backend.PackagesDontExist as e:
@@ -351,7 +377,9 @@ def process_group_form(group=None):
         else:
             flash("You don't have permission to edit this group")
             redirect(url_for('group_detail', name=group.name))
-        owners = split(form.owners.data or "")
+        owners = set(form.owners.data)
+        if group.namespace:
+            owners.add(group.namespace)
         rels = [dict(group_id=group.id, package_id=pkg.id) for pkg in packages]
         acls = [dict(group_id=group.id, user_id=get_or_create(db, User, name=u).id)
                 for u in owners]
