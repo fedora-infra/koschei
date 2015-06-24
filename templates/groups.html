@@ -22,10 +22,10 @@
 </table>
 {% endmacro %}
 {% block content %}
-{% if users_groups %}
+{% if g.user %}
 <div>
     <div class="pageHeader">Your groups</div>
-    {{ render_groups(users_groups) }}
+    {{ render_groups(g.user.groups) }}
     {% endif %}
 </div>
 <form method="GET" action="{{ url_for('add_group') }}">

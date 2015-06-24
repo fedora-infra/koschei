@@ -418,28 +418,41 @@ def edit_group(name, namespace=None):
 @tab('Add packages')
 @auth.login_required()
 def add_packages():
+    form = AddPackagesForm()
     if request.method == 'POST':
         be = create_backend()
-        names = split(request.form['names'])
-        if names:
-            try:
-                added = be.add_packages(names,
-                                        group=request.form.get('group') or None)
-                if added:
-                    added = ' '.join(x.name for x in added)
-                    log.info("{user} added\n{added}".format(user=g.user.name,
-                                                            added=added))
-                    flash("Packages added: {added}".format(added=added))
-                else:
-                    flash("Given packages already present")
-                db.commit()
-            except backend.PackagesDontExist as e:
-                flash("Packages don't exist: " + ','.join(e.names))
-                return redirect(url_for('add_packages'))
-            return redirect(request.form.get('next') or url_for('frontpage'))
-    all_groups = db.query(PackageGroup)\
-                   .order_by(PackageGroup.name).all()
-    return render_template("add-packages.html", all_groups=all_groups)
+        if not form.validate_on_submit():
+            flash(', '.join(x for i in form.errors.values() for x in i))
+            return render_template("add-packages.html", form=form)
+        names = set(form.packages.data)
+        try:
+            added = be.add_packages(names)
+        except backend.PackagesDontExist as e:
+            flash("Packages don't exist: " + ','.join(e.names))
+            return render_template("add-packages.html", form=form)
+        if form.group.data:
+            name, _, namespace = reversed(form.group.data.partition('/'))
+            group = db.query(PackageGroup)\
+                      .filter_by(namespace=namespace or None, name=name)\
+                      .first() or abort(400)
+            if not group.editable:
+                abort(400)
+            subq = db.query(PackageGroupRelation.package_id)\
+                     .filter_by(group_id=group.id).subquery()
+            packages = db.query(Package)\
+                         .filter(Package.name.in_(names))\
+                         .filter(Package.id.notin_(subq)).all()
+            rels = [dict(group_id=group.id, package_id=pkg.id) for pkg in packages]
+            if rels:
+                db.execute(PackageGroupRelation.__table__.insert(), rels)
+        if added:
+            added = ' '.join(x.name for x in added)
+            log.info("{user} added\n{added}".format(user=g.user.name,
+                                                    added=added))
+            flash("Packages added: {added}".format(added=added))
+        db.commit()
+        return redirect(request.form.get('next') or url_for('frontpage'))
+    return render_template("add-packages.html", form=form)
 
 
 @app.route('/documentation')
