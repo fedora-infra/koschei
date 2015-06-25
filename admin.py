@@ -189,5 +189,23 @@ class SetArchOverride(Command):
                 fail("Package {} not found".format(name))
             pkg.arch_override = arch_override
 
+
+class PSQL(Command):
+    """ Convenience to get psql shell connected to koschei DB. """
+
+    needs_backend = False
+
+    def execute(self):
+        conf = util.config['database_config']
+        cmd = ['psql', conf["database"]]
+        if 'username' in conf:
+            cmd += ['-U', conf['username']]
+        if 'host' in conf:
+            cmd += ['-h', conf['host']]
+        env = os.environ.copy()
+        if 'password' in conf:
+            env['PGPASSWORD'] = conf['password']
+        os.execve('/usr/bin/psql', cmd, env)
+
 if __name__ == '__main__':
     main()
