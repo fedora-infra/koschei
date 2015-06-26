@@ -185,6 +185,7 @@ class AbstractResolverTask(object):
         for_arch = util.config['dependency']['for_arch']
         sack = dnf.sack.Sack(arch=for_arch)
         repos = self.repo_cache.get_repos(repo_id)
+        self.log.info("Loading repos into sack...")
         if repos:
             util.add_repos_to_sack(repo_id, repos, sack)
             self.sack = sack
@@ -260,6 +261,7 @@ class GenerateRepoTask(AbstractResolverTask):
         repo = Repo(repo_id=repo_id)
         self.db.add(repo)
         self.db.flush()
+        self.log.info("Polling latest real builds")
         self.backend.refresh_latest_builds()
         packages = self.get_packages(require_build=True)
         self.prepare_sack(repo_id)
@@ -283,7 +285,7 @@ class GenerateRepoTask(AbstractResolverTask):
                                           version=p.last_complete_build.version,
                                           release=p.last_complete_build.release,
                                           arch='src') for p in packages])
-        self.log.info("Resolving dependencies")
+        self.log.info("Resolving dependencies...")
         resolution_start = time.time()
         changes = self.generate_dependency_changes(packages, brs, repo_id)
         resolution_end = time.time()

@@ -37,6 +37,7 @@ class Polling(KojiService):
                                           koji_session=self.koji_session)
 
     def poll_builds(self):
+        self.log.debug('Polling running Koji tasks...')
         running_builds = self.db.query(Build)\
                                 .filter_by(state=Build.RUNNING)
 
@@ -53,6 +54,8 @@ class Polling(KojiService):
             self.backend.update_build_state(build, state)
 
     def poll_repo(self):
+        self.log.debug('Polling latest Koji repo for {tag}...'
+                       .format(tag=build_tag))
         curr_repo = self.koji_session.getRepo(build_tag, state=koji.REPO_READY)
         if curr_repo:
             if not self.db.query(exists()
@@ -65,4 +68,6 @@ class Polling(KojiService):
     def main(self):
         self.poll_builds()
         self.poll_repo()
+        self.log.debug('Polling latest real builds...')
         self.backend.refresh_latest_builds()
+        self.log.debug('Polling finished')
