@@ -4,7 +4,7 @@ After=syslog.target network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/share/koschei/bin/koschei-scheduler -m koschei.main scheduler
+ExecStart=/usr/libexec/koschei/koschei-scheduler -m koschei.main scheduler
 User=koschei
 Group=koschei
 

@@ -99,11 +99,11 @@ cp -pr static %{buildroot}%{_datadir}/%{name}/
 cp -p %{name}.wsgi %{buildroot}%{_datadir}/%{name}/
 cp -p httpd.conf %{buildroot}%{_sysconfdir}/httpd/conf.d/%{name}.conf
 
-install -dm 755 %{buildroot}%{_datadir}/%{name}/bin
-ln -s %{_bindir}/python %{buildroot}%{_datadir}/%{name}/bin/koschei-scheduler
-ln -s %{_bindir}/python %{buildroot}%{_datadir}/%{name}/bin/koschei-watcher
-ln -s %{_bindir}/python %{buildroot}%{_datadir}/%{name}/bin/koschei-polling
-ln -s %{_bindir}/python %{buildroot}%{_datadir}/%{name}/bin/koschei-resolver
+install -dm 755 %{buildroot}%{_libexecdir}/%{name}
+ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-scheduler
+ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-watcher
+ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-polling
+ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-resolver
 
 %if %{with tests}
 %check
@@ -145,6 +145,7 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %doc LICENSE.txt
 %{_bindir}/%{name}-admin
 %{_datadir}/%{name}
+%{_libexecdir}/%{name}
 %attr(755, %{name}, %{name}) %{_localstatedir}/cache/%{name}
 %attr(755, %{name}, %{name}) %{_sharedstatedir}/%{name}
 %{python2_sitelib}/*
