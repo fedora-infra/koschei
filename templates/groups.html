@@ -26,8 +26,8 @@
 <div>
     <div class="pageHeader">Your groups</div>
     {{ render_groups(g.user.groups) }}
-    {% endif %}
 </div>
+{% endif %}
 <form method="GET" action="{{ url_for('add_group') }}">
     <button type="submit" {{ require_login() }}>Create new group</button>
 </form>
