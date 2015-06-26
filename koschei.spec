@@ -50,6 +50,7 @@ Requires:       mod_wsgi
 Requires:       httpd
 Requires:       python-librepo
 Requires:       rpm-python
+Requires:       postgresql
 Requires(pre):  shadow-utils
 Requires(post): systemd
 Requires(preun): systemd
