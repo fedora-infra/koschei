@@ -99,6 +99,12 @@ cp -pr static %{buildroot}%{_datadir}/%{name}/
 cp -p %{name}.wsgi %{buildroot}%{_datadir}/%{name}/
 cp -p httpd.conf %{buildroot}%{_sysconfdir}/httpd/conf.d/%{name}.conf
 
+install -dm 755 %{buildroot}%{_datadir}/%{name}/bin
+ln -s %{_bindir}/python %{buildroot}%{_datadir}/%{name}/bin/koschei-scheduler
+ln -s %{_bindir}/python %{buildroot}%{_datadir}/%{name}/bin/koschei-watcher
+ln -s %{_bindir}/python %{buildroot}%{_datadir}/%{name}/bin/koschei-polling
+ln -s %{_bindir}/python %{buildroot}%{_datadir}/%{name}/bin/koschei-resolver
+
 %if %{with tests}
 %check
 %{__python2} setup.py test

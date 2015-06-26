@@ -4,7 +4,7 @@ After=syslog.target network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python -m koschei.main watcher
+ExecStart=/usr/share/koschei/bin/koschei-watcher -m koschei.main watcher
 User=koschei
 Group=koschei
 
