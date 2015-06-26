@@ -305,37 +305,37 @@ class GenerateRepoTask(AbstractResolverTask):
 class ProcessBuildsTask(AbstractResolverTask):
 
     def process_build(self, build, br):
-        if build.repo_id:
-            self.log.info("Processing build {}".format(build.id))
-            prev = self.get_prev_build_for_comparison(build)
-            curr_deps = self.resolve_dependencies(build.package, br)
-            self.store_deps(build.repo_id, build.package_id, curr_deps)
-            if curr_deps is not None:
-                build.deps_resolved = True
-            if prev and prev.repo_id:
-                prev_deps = self.get_deps_from_db(prev.package_id,
-                                                  prev.repo_id)
-                if prev_deps and curr_deps:
-                    changes = self.create_dependency_changes(
-                        prev_deps, curr_deps, package_id=build.package_id,
-                        apply_id=build.id)
-                    self.update_dependency_changes(changes, apply_id=build.id)
-                keep_builds = util.config['dependency']['keep_build_deps_for']
-                boundary_build = self.db.query(Build)\
-                                     .filter_by(package_id=build.package_id)\
-                                     .order_by(Build.id.desc())\
-                                     .offset(keep_builds).first()
-                if boundary_build and boundary_build.repo_id:
-                    self.db.query(Dependency)\
-                           .filter_by(package_id=build.package_id)\
-                           .filter(Dependency.repo_id <
-                                   boundary_build.repo_id)\
-                           .delete(synchronize_session=False)
+        self.log.info("Processing build {}".format(build.id))
+        prev = self.get_prev_build_for_comparison(build)
+        curr_deps = self.resolve_dependencies(build.package, br)
+        self.store_deps(build.repo_id, build.package_id, curr_deps)
+        if curr_deps is not None:
+            build.deps_resolved = True
+        if prev:
+            prev_deps = self.get_deps_from_db(prev.package_id,
+                                              prev.repo_id)
+            if prev_deps and curr_deps:
+                changes = self.create_dependency_changes(
+                    prev_deps, curr_deps, package_id=build.package_id,
+                    apply_id=build.id)
+                self.update_dependency_changes(changes, apply_id=build.id)
+            keep_builds = util.config['dependency']['keep_build_deps_for']
+            boundary_build = self.db.query(Build)\
+                                 .filter_by(package_id=build.package_id)\
+                                 .order_by(Build.id.desc())\
+                                 .offset(keep_builds).first()
+            if boundary_build and boundary_build.repo_id:
+                self.db.query(Dependency)\
+                       .filter_by(package_id=build.package_id)\
+                       .filter(Dependency.repo_id <
+                               boundary_build.repo_id)\
+                       .delete(synchronize_session=False)
 
     def run(self):
         # pylint: disable=E1101
         unprocessed = self.db.query(Build)\
                              .filter_by(deps_processed=False)\
+                             .filter(Build.repo_id != None)\
                              .options(joinedload(Build.package))\
                              .order_by(Build.repo_id).all()
         # TODO repo_id
@@ -344,16 +344,15 @@ class ProcessBuildsTask(AbstractResolverTask):
         for repo_id, builds in itertools.groupby(unprocessed,
                                                  lambda build: build.repo_id):
             builds = list(builds)
-            if repo_id is not None:
-                self.prepare_sack(repo_id)
-                if self.sack:
-                    brs = util.get_rpm_requires(self.koji_session,
-                                                [dict(name=b.package.name,
-                                                      version=b.version,
-                                                      release=b.release,
-                                                      arch='src') for b in builds])
-                    for build, br in zip(builds, brs):
-                        self.process_build(build, br)
+            self.prepare_sack(repo_id)
+            if self.sack:
+                brs = util.get_rpm_requires(self.koji_session,
+                                            [dict(name=b.package.name,
+                                                  version=b.version,
+                                                  release=b.release,
+                                                  arch='src') for b in builds])
+                for build, br in zip(builds, brs):
+                    self.process_build(build, br)
             self.db.query(Build).filter(Build.id.in_([b.id for b in builds]))\
                                 .update({'deps_processed': True},
                                         synchronize_session=False)
