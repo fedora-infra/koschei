@@ -95,5 +95,6 @@ class Watcher(KojiService, FedmsgService, WatchdogService):
         for _, _, topic, msg in self.fedmsg.tail_messages():
             if topic.startswith(self.topic_name + '.'):
                 self.consume(topic, msg)
+                self.db.rollback()
             if self.watchdog_interval:
                 alarm(self.watchdog_interval)
