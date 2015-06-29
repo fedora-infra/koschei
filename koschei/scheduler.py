@@ -136,7 +136,7 @@ class Scheduler(KojiService):
             return package
 
     def lock_package_table(self):
-        self.db.execute("LOCK TABLE package IN SHARE MODE;")
+        self.db.execute("LOCK TABLE package IN EXCLUSIVE MODE;")
 
     def main(self):
         package = self.get_scheduled_package()
