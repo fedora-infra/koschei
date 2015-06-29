@@ -53,16 +53,15 @@ class Watcher(KojiService, FedmsgService, WatchdogService):
 
     def consume(self, topic, msg):
         content = msg['msg']
-        if not content.get('instance') == self.instance:
-            return
-        self.log.info('consuming ' + topic)
-        if topic == self.get_topic('task.state.change'):
-            self.update_build_state(content)
-        elif topic == self.get_topic('repo.done'):
-            if content.get('tag') == self.tag:
-                self.repo_done(content['repo_id'])
-        elif topic == self.get_topic('build.tag'):
-            self.register_real_build(content)
+        if content.get('instance') == self.instance:
+            self.log.info('consuming ' + topic)
+            if topic == self.get_topic('task.state.change'):
+                self.update_build_state(content)
+            elif topic == self.get_topic('repo.done'):
+                if content.get('tag') == self.tag:
+                    self.repo_done(content['repo_id'])
+            elif topic == self.get_topic('build.tag'):
+                self.register_real_build(content)
         plugin.dispatch_event('fedmsg_event', topic, msg, db=self.db,
                               koji_session=self.koji_session)
 
