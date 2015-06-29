@@ -280,6 +280,7 @@ def user_packages(name):
                         user=user, untracked=untracked)
 
 @app.route('/user/<name>/resync')
+@auth.login_required()
 def resync_packages(name):
     user = get_or_create(db, User, name=name)
     user.packages_retrieved = False
@@ -492,6 +493,7 @@ def edit_package():
     return redirect(url_for('package_detail', name=form['package']))
 
 @app.route('/bugreport/<name>')
+@auth.login_required()
 def bugreport(name):
     session = util.create_koji_session(anonymous=True)
     srpm, _ = (util.get_last_srpm(session, name) or abort(404))
