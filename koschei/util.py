@@ -231,9 +231,9 @@ def get_rpm_requires(koji_session, nvras):
 
 def get_koji_load(koji_session):
     channel = koji_session.getChannel('default')
+    build_arches = koji_config.get('build_arches')
     hosts = koji_session.listHosts(build_arches, channel['id'], enabled=True)
     max_load = 0
-    build_arches = koji_config.get('build_arches')
     assert build_arches
     for arch in build_arches:
         arch_hosts = [host for host in hosts if arch in host['arches']]
