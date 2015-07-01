@@ -21,8 +21,7 @@ import requests
 import signal
 import sys
 import time
-import fedmsg.core
-import fedmsg.config
+import fedmsg
 
 from . import util
 from .models import Session
@@ -113,10 +112,6 @@ class KojiService(Service):
 
 class FedmsgService(Service):
     def __init__(self, fedmsg_context=None, fedmsg_config=None, **kwargs):
-        self.fedsmg_config = (fedmsg_config or
-                              fedmsg.config.load_config([], None))
-        self.fedmsg = (fedmsg_context or
-                       fedmsg.core.FedMsgContext(**self.fedsmg_config))
         super(FedmsgService, self).__init__(**kwargs)
 
     def get_handled_exceptions(self):
@@ -124,6 +119,5 @@ class FedmsgService(Service):
                 super(FedmsgService, self).get_handled_exceptions())
 
     def on_exception(self, exc):
-        self.fedmsg.destroy()
-        self.fedmsg = fedmsg.core.FedMsgContext(**self.fedsmg_config)
+        fedmsg.destroy()
         super(FedmsgService, self).on_exception(exc)

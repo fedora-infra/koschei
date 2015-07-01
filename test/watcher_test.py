@@ -1,7 +1,7 @@
 import time
 import signal
 
-from mock import Mock
+from mock import Mock, patch
 from common import DBTest
 
 from koschei.watcher import Watcher, WatchdogInterrupt
@@ -19,39 +19,37 @@ def generate_state_change(instance='primary', task_id=666, old='OPEN', new='CLOS
 
 class WatcherTest(DBTest):
     def test_ignored_topic(self):
-        class FedmsgMock(object):
-            def tail_messages(self):
-                yield ('', '', 'org.fedoraproject.prod.buildsys.task.state.change',
-                       generate_state_change())
-        Watcher(db=Mock(), koji_session=Mock(), fedmsg_context=FedmsgMock()).main()
+        def tail_messages_mock():
+            yield ('', '', 'org.fedoraproject.prod.buildsys.task.state.change',
+                   generate_state_change())
+        with patch('fedmsg.tail_messages', tail_messages_mock):
+            Watcher(db=Mock(), koji_session=Mock()).main()
 
     def test_ignored_instance(self):
-        class FedmsgMock(object):
-            def tail_messages(self):
-                yield ('', '', test_topic,
-                       generate_state_change(instance='ppc'))
-        Watcher(db=Mock(), koji_session=Mock(), fedmsg_context=FedmsgMock()).main()
+        def tail_messages_mock():
+            yield ('', '', test_topic,
+                   generate_state_change(instance='ppc'))
+        with patch('fedmsg.tail_messages', tail_messages_mock):
+            Watcher(db=Mock(), koji_session=Mock()).main()
 
     def test_task_completed(self):
-        class FedmsgMock(object):
-            def tail_messages(self):
-                yield ('', '', test_topic + '.task.state.change',
-                       generate_state_change())
+        def tail_messages_mock():
+            yield ('', '', test_topic + '.task.state.change',
+                   generate_state_change())
         _, build = self.prepare_basic_data()
         backend_mock = Mock()
-        watcher = Watcher(db=self.s, koji_session=Mock(), backend=backend_mock,
-                          fedmsg_context=FedmsgMock())
-        watcher.main()
-        backend_mock.update_build_state.assert_called_once_with(build, 'CLOSED')
+        with patch('fedmsg.tail_messages', tail_messages_mock):
+            watcher = Watcher(db=self.s, koji_session=Mock(), backend=backend_mock)
+            watcher.main()
+            backend_mock.update_build_state.assert_called_once_with(build, 'CLOSED')
 
     def test_watchdog(self):
-        class FedmsgMock(object):
-            def tail_messages(self):
-                time.sleep(5)
-                assert False
-        watcher = Watcher(db=Mock(), koji_session=Mock(),
-                          fedmsg_context=FedmsgMock())
-        try:
-            self.assertRaises(WatchdogInterrupt, watcher.main)
-        finally:
-            signal.alarm(0)
+        def tail_messages_mock():
+            time.sleep(5)
+            assert False
+        with patch('fedmsg.tail_messages', tail_messages_mock):
+            watcher = Watcher(db=Mock(), koji_session=Mock())
+            try:
+                self.assertRaises(WatchdogInterrupt, watcher.main)
+            finally:
+                signal.alarm(0)

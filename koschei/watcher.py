@@ -17,6 +17,8 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
+import fedmsg
+
 from signal import signal, alarm, SIGALRM
 
 from . import util, plugin
@@ -92,7 +94,7 @@ class Watcher(KojiService, FedmsgService, WatchdogService):
         signal(SIGALRM, handler)
         if self.watchdog_interval:
             alarm(self.watchdog_interval)
-        for _, _, topic, msg in self.fedmsg.tail_messages():
+        for _, _, topic, msg in fedmsg.tail_messages():
             if topic.startswith(self.topic_name + '.'):
                 self.consume(topic, msg)
                 self.db.rollback()
