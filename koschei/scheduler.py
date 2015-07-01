@@ -154,6 +154,9 @@ class Scheduler(KojiService):
                 self.backend.register_real_build(package, newer_build)
                 self.db.commit()
                 continue
+            repo_id = util.get_latest_repo(self.koji_session).get('id')
+            if repo_id and package.last_complete_build.repo_id >= repo_id:
+                continue
 
             # a package was chosen
             self.log.info('Scheduling build for {}, priority {}'
