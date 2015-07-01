@@ -209,7 +209,7 @@ class Backend(object):
         Checks Koji for latest builds of packages and registers possible
         new real builds and obtains srpms for them
         """
-        if not packages:
+        if packages is None:
             packages = self.db.query(Package).filter_by(ignored=False)\
                               .options(joinedload(Package.last_build)).all()
             for p in packages:
@@ -225,6 +225,7 @@ class Backend(object):
         if blocked:
             self.db.query(Package).filter(Package.name.in_(blocked))\
                    .update({'ignored': True}, synchronize_session=False)
+            self.db.expire_all()
             self.db.flush()
         self.register_real_builds(task_infos)
 
@@ -238,12 +239,14 @@ class Backend(object):
         if nonexistent:
             raise PackagesDontExist(nonexistent)
         pkgs = []
+        untracked = []
         for name in names:
             if name not in existing_names:
                 pkg = Package(name=name)
                 pkg.static_priority = static_priority or 0
                 self.db.add(pkg)
                 pkgs.append(pkg)
+                untracked.append(pkg)
         for pkg in existing:
             if pkg.ignored:
                 pkg.ignored = False
@@ -251,9 +254,17 @@ class Backend(object):
         self.db.flush()
         if group:
             self.add_group(group, pkgs)
-        self.refresh_latest_builds(packages=pkgs)
-        for name in names:
-            if name not in existing_names:
-                pkg.manual_priority = manual_priority or newly_added_prio
+        if pkgs:
+            self.refresh_latest_builds(packages=pkgs)
+            self.db.flush()
+            for pkg in pkgs:
+                if pkg.ignored:
+                    try:
+                        pkgs.remove(pkg)
+                        untracked.remove(pkg)
+                    except ValueError:
+                        pass
+        for pkg in untracked:
+            pkg.manual_priority = manual_priority or newly_added_prio
         self.db.flush()
         return pkgs
