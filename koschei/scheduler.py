@@ -146,6 +146,8 @@ class Scheduler(KojiService):
                 or util.get_koji_load(self.koji_session) > self.load_threshold):
             return
 
+        repo_id = util.get_latest_repo(self.koji_session).get('id')
+
         for package_id, priority in prioritized:
             if priority < self.priority_threshold:
                 return
@@ -155,7 +157,6 @@ class Scheduler(KojiService):
                 self.backend.register_real_build(package, newer_build)
                 self.db.commit()
                 continue
-            repo_id = util.get_latest_repo(self.koji_session).get('id')
             if repo_id and package.last_complete_build.repo_id >= repo_id:
                 continue
 
