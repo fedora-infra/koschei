@@ -18,31 +18,31 @@ class SchedulerTest(DBTest):
         pkg, build = self.prepare_basic_data()
         chngs = []
         # update, value 20
-        chngs.append(m.DependencyChange(package_id=pkg.id, dep_name='expat',
-                                        prev_version='2', curr_version='2',
-                                        prev_release='rc1', curr_release='rc2',
-                                        distance=1))
+        chngs.append(m.UnappliedChange(package_id=pkg.id, dep_name='expat',
+                                       prev_version='2', curr_version='2',
+                                       prev_release='rc1', curr_release='rc2',
+                                       distance=1))
         # update - applied
-        chngs.append(m.DependencyChange(package_id=pkg.id, dep_name='expat',
-                                        prev_version='1', curr_version='2',
-                                        prev_release='1', curr_release='rc1',
-                                        distance=1, applied_in_id=build.id))
+        chngs.append(m.AppliedChange(dep_name='expat',
+                                     prev_version='1', curr_version='2',
+                                     prev_release='1', curr_release='rc1',
+                                     distance=1, build_id=build.id))
         # downgrade, value 10
-        chngs.append(m.DependencyChange(package_id=pkg.id, dep_name='gcc',
-                                        prev_version='11', curr_version='9',
-                                        prev_release='19', curr_release='18',
-                                        distance=2))
+        chngs.append(m.UnappliedChange(package_id=pkg.id, dep_name='gcc',
+                                       prev_version='11', curr_version='9',
+                                       prev_release='19', curr_release='18',
+                                       distance=2))
         # appearance, value 5
-        chngs.append(m.DependencyChange(package_id=pkg.id, dep_name='python',
-                                        prev_version=None, curr_version='3.3',
-                                        prev_release=None, curr_release='11',
-                                        distance=4))
+        chngs.append(m.UnappliedChange(package_id=pkg.id, dep_name='python',
+                                       prev_version=None, curr_version='3.3',
+                                       prev_release=None, curr_release='11',
+                                       distance=4))
 
         # null distance, value 2
-        chngs.append(m.DependencyChange(package_id=pkg.id, dep_name='python-lxml',
-                                        prev_version=None, curr_version='3.3',
-                                        prev_release=None, curr_release='11',
-                                        distance=None))
+        chngs.append(m.UnappliedChange(package_id=pkg.id, dep_name='python-lxml',
+                                       prev_version=None, curr_version='3.3',
+                                       prev_release=None, curr_release='11',
+                                       distance=None))
 
         for chng in chngs:
             self.s.add(chng)

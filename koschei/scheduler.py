@@ -26,7 +26,7 @@ from sqlalchemy import (func, union_all, extract, cast, Integer, case, null,
 from sqlalchemy.sql.functions import coalesce
 
 from . import util
-from .models import Package, Build, DependencyChange, is_buildroot_broken
+from .models import Package, Build, UnappliedChange, is_buildroot_broken
 from .service import KojiService
 from .backend import Backend
 
@@ -55,11 +55,10 @@ class Scheduler(KojiService):
     def get_dependency_priority_query(self):
         update_weight = self.priority_conf['package_update']
         # pylint: disable=E1120
-        distance = coalesce(DependencyChange.distance, 8)
-        return self.db.query(DependencyChange.package_id.label('pkg_id'),
+        distance = coalesce(UnappliedChange.distance, 8)
+        return self.db.query(UnappliedChange.package_id.label('pkg_id'),
                              (update_weight / distance)
-                             .label('priority'))\
-                      .filter_by(applied_in_id=None)
+                             .label('priority'))
 
     def get_time_priority_query(self):
         t0 = self.priority_conf['t0']

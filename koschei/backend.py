@@ -24,7 +24,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import exists
 
 from koschei import util
-from koschei.models import (Build, DependencyChange, KojiTask, Package,
+from koschei.models import (Build, UnappliedChange, KojiTask, Package,
                             PackageGroup, PackageGroupRelation,
                             RepoGenerationRequest, get_or_create)
 from koschei.plugin import dispatch_event
@@ -73,10 +73,9 @@ class Backend(object):
             return build
 
     def flush_depchanges(self, build):
-        self.db.query(DependencyChange)\
+        self.db.query(UnappliedChange)\
                .filter_by(package_id=build.package_id)\
-               .filter_by(applied_in_id=None)\
-               .delete()
+               .delete(synchronize_session=False)
 
     def get_newer_build_if_exists(self, package):
         [info] = self.koji_session.listTagged(util.source_tag,

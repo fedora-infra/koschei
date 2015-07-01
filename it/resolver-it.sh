@@ -41,8 +41,7 @@ SELECT id, name, resolved
   ORDER BY id;
 SELECT package_id, dep_name, prev_epoch, prev_version, prev_release,
     curr_epoch, curr_version, curr_release, distance
-  FROM dependency_change
-  WHERE applied_in_id IS NULL
+  FROM unapplied_change
   ORDER BY package_id, dep_name;
 SELECT package_id, problem
   FROM resolution_problem

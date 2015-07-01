@@ -13,7 +13,7 @@ down_revision = '4c071375b510'
 from alembic import op
 import sqlalchemy as sa
 
-from koschei.models import *
+#from koschei.models import *
 
 def add_cascade(column, drop=True):
     src_table = column.class_.__tablename__

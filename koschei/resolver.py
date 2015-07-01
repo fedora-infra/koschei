@@ -26,9 +26,9 @@ import librepo
 
 from sqlalchemy.orm import joinedload
 
-from koschei.models import (Package, Dependency, DependencyChange, Repo,
-                            ResolutionProblem, RepoGenerationRequest, Build,
-                            CompactDependencyChange, BuildrootProblem)
+from koschei.models import (Package, Dependency, UnappliedChange,
+                            AppliedChange, Repo, ResolutionProblem,
+                            RepoGenerationRequest, Build, BuildrootProblem)
 from koschei import util
 from koschei.service import KojiService
 from koschei.repo_cache import RepoCache
@@ -184,8 +184,7 @@ class AbstractResolverTask(object):
                                  package_id=package_id)
         return deps.all()
 
-    def create_dependency_changes(self, deps1, deps2, package_id,
-                                  apply_id=None):
+    def create_dependency_changes(self, deps1, deps2, **rest):
         if not deps1 or not deps2:
             # TODO packages with no deps
             return []
@@ -193,37 +192,29 @@ class AbstractResolverTask(object):
         def key(dep):
             return (dep.name, dep.epoch, dep.version, dep.release)
 
+        def new_change(**values):
+            change = dict(prev_version=None, prev_epoch=None,
+                          prev_release=None, curr_version=None,
+                          curr_epoch=None, curr_release=None)
+            change.update(rest)
+            change.update(values)
+            return change
+
         old = util.set_difference(deps1, deps2, key)
         new = util.set_difference(deps2, deps1, key)
 
-        def create_change(name):
-            return CompactDependencyChange(
-                package_id=package_id, applied_in_id=apply_id, dep_name=name,
-                prev_epoch=None, prev_version=None, prev_release=None,
-                curr_epoch=None, curr_version=None, curr_release=None)
-
         changes = {}
         for dep in old:
-            change = create_change(dep.name)
-            change.update(prev_version=dep.version, prev_epoch=dep.epoch,
-                          prev_release=dep.release, distance=dep.distance)
+            change = new_change(dep_name=dep.name,
+                                prev_version=dep.version, prev_epoch=dep.epoch,
+                                prev_release=dep.release, distance=dep.distance)
             changes[dep.name] = change
         for dep in new:
-            change = changes.get(dep.name) or create_change(dep.name)
+            change = changes.get(dep.name) or new_change(dep_name=dep.name)
             change.update(curr_version=dep.version, curr_epoch=dep.epoch,
                           curr_release=dep.release, distance=dep.distance)
             changes[dep.name] = change
         return changes.values() if changes else []
-
-    def update_dependency_changes(self, changes, apply_id=None):
-        # pylint: disable=E1101
-        self.db.query(DependencyChange)\
-               .filter_by(applied_in_id=apply_id)\
-               .delete(synchronize_session=False)
-        if changes:
-            self.db.execute(DependencyChange.__table__.insert(),
-                            changes)
-        self.db.expire_all()
 
     def get_prev_build_for_comparison(self, build):
         return self.db.query(Build)\
@@ -303,10 +294,14 @@ class GenerateRepoTask(AbstractResolverTask):
                     prev_deps = self.get_deps_from_db(last_build.package_id,
                                                       last_build.repo_id)
                     if prev_deps is not None:
-                        changes += self.create_dependency_changes(prev_deps,
-                                                                  curr_deps,
-                                                                  package.id)
+                        changes += self.create_dependency_changes(
+                            prev_deps, curr_deps, package_id=package.id)
         return changes
+
+    def update_dependency_changes(self, changes):
+        self.db.query(UnappliedChange).delete(synchronize_session=False)
+        if changes:
+            self.db.execute(UnappliedChange.__table__.insert(), changes)
 
     def run(self, repo_id):
         start = time.time()
@@ -373,10 +368,10 @@ class ProcessBuildsTask(AbstractResolverTask):
             prev_deps = self.get_deps_from_db(prev.package_id,
                                               prev.repo_id)
             if prev_deps and curr_deps:
-                changes = self.create_dependency_changes(
-                    prev_deps, curr_deps, package_id=build.package_id,
-                    apply_id=build.id)
-                self.update_dependency_changes(changes, apply_id=build.id)
+                changes = self.create_dependency_changes(prev_deps, curr_deps,
+                                                         build_id=build.id)
+                if changes:
+                    self.db.execute(AppliedChange.__table__.insert(), changes)
             keep_builds = util.config['dependency']['keep_build_deps_for']
             boundary_build = self.db.query(Build)\
                                  .filter_by(package_id=build.package_id)\

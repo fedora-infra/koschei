@@ -24,7 +24,7 @@ import koji
 from common import DBTest, testdir, postgres_only
 from mock import Mock, patch
 from koschei import util
-from koschei.models import (Dependency, DependencyChange, Package,
+from koschei.models import (Dependency, UnappliedChange, AppliedChange, Package,
                             ResolutionProblem, Repo, BuildrootProblem)
 from koschei.resolver import Resolver, GenerateRepoTask, ProcessBuildsTask
 
@@ -127,23 +127,19 @@ class ResolverTest(DBTest):
         self.s.commit()
         return old_build
 
-    def verify_changes(self):
-        package_id = self.s.query(Package.id).filter_by(name='foo').scalar()
-        expected_changes = [(package_id, 'C', 1, 1, '2', '3', '1.fc22', '1.fc22', 2),
-                            (package_id, 'E', None, 0, None, '0.1', None, '1.fc22.1', 2)]
-        c = DependencyChange
-        actual_changes = self.s.query(c.package_id, c.dep_name, c.prev_epoch,
-                                      c.curr_epoch, c.prev_version, c.curr_version,
-                                      c.prev_release, c.curr_release, c.distance).all()
-        self.assertItemsEqual(expected_changes, actual_changes)
-
     def test_differences(self):
         self.prepare_old_build()
-        self.prepare_foo_build(repo_id=666, version='4')
+        build = self.prepare_foo_build(repo_id=666, version='4')
         with patch('koschei.util.get_build_group', return_value=['R']):
             with patch('koschei.util.get_rpm_requires', return_value=[['F', 'A']]):
                 self.resolver.create_task(ProcessBuildsTask).run()
-        self.verify_changes()
+        expected_changes = [(build.id, 'C', 1, 1, '2', '3', '1.fc22', '1.fc22', 2),
+                            (build.id, 'E', None, 0, None, '0.1', None, '1.fc22.1', 2)]
+        c = AppliedChange
+        actual_changes = self.s.query(c.build_id, c.dep_name, c.prev_epoch,
+                                      c.curr_epoch, c.prev_version, c.curr_version,
+                                      c.prev_release, c.curr_release, c.distance).all()
+        self.assertItemsEqual(expected_changes, actual_changes)
 
     @postgres_only
     def test_repo_generation(self):
@@ -157,8 +153,14 @@ class ResolverTest(DBTest):
         self.s.expire_all()
         foo = self.s.query(Package).filter_by(name='foo').first()
         self.repo_mock.get_repos.assert_called_once_with(666)
-        self.verify_changes()
         self.assertTrue(foo.resolved)
+        expected_changes = [(foo.id, 'C', 1, 1, '2', '3', '1.fc22', '1.fc22', 2),
+                            (foo.id, 'E', None, 0, None, '0.1', None, '1.fc22.1', 2)]
+        c = UnappliedChange
+        actual_changes = self.s.query(c.package_id, c.dep_name, c.prev_epoch,
+                                      c.curr_epoch, c.prev_version, c.curr_version,
+                                      c.prev_release, c.curr_release, c.distance).all()
+        self.assertItemsEqual(expected_changes, actual_changes)
         self.assertFalse(self.s.query(ResolutionProblem)
                          .filter_by(package_id=foo.id).count())
 

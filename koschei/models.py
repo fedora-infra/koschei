@@ -284,13 +284,9 @@ Index('ix_package_group_name', PackageGroup.namespace, PackageGroup.name,
       unique=True)
 
 
-class DependencyChange(Base):
-    __tablename__ = 'dependency_change'
+class DependencyChange(object):
+    # not an actual table
     id = Column(Integer, primary_key=True)
-    package_id = Column(ForeignKey('package.id', ondelete='CASCADE'),
-                        nullable=False)
-    applied_in_id = Column(ForeignKey('build.id', ondelete='CASCADE'),
-                           nullable=True, default=None, index=True)
     dep_name = Column(String, nullable=False)
     prev_epoch = Column(Integer)
     prev_version = Column(String)
@@ -307,6 +303,18 @@ class DependencyChange(Base):
     @property
     def curr_evr(self):
         return self.curr_epoch, self.curr_version, self.curr_release
+
+
+class AppliedChange(DependencyChange, Base):
+    __tablename__ = 'applied_change'
+    build_id = Column(ForeignKey('build.id', ondelete='CASCADE'), index=True,
+                      nullable=False)
+
+
+class UnappliedChange(DependencyChange, Base):
+    __tablename__ = 'unapplied_change'
+    package_id = Column(ForeignKey('package.id', ondelete='CASCADE'),
+                        index=True, nullable=False)
 
 
 class Repo(Base):
@@ -415,12 +423,10 @@ Package.all_builds = relationship(Build, order_by=Build.id.desc(),
                                   primaryjoin=(Build.package_id == Package.id),
                                   backref='package')
 Package.unapplied_changes = \
-    relationship(DependencyChange,
-                 primaryjoin=((DependencyChange.package_id == Package.id)
-                              & (DependencyChange.applied_in_id == None)),
-                 order_by=[DependencyChange.distance, DependencyChange.dep_name])
-Build.dependency_changes = relationship(DependencyChange, backref='applied_in',
-                                        order_by=DependencyChange.distance
+    relationship(UnappliedChange, backref='package',
+                 order_by=[UnappliedChange.distance, UnappliedChange.dep_name])
+Build.dependency_changes = relationship(AppliedChange, backref='build',
+                                        order_by=AppliedChange.distance
                                         .nullslast())
 
 PackageGroup.package_count = column_property(
@@ -437,34 +443,3 @@ User.packages = relationship(Package,
 User.groups = relationship(PackageGroup,
                            secondary=GroupACL.__table__,
                            order_by=[PackageGroup.namespace, PackageGroup.name])
-
-
-def compact_row(relation):
-    """
-    Memory efficient representation of a row for insert which expects
-    a dictionary
-    """
-
-    class CompactRow(object):
-
-        __slots__ = [c.name for c in relation.__table__.c if c.name != 'id']
-
-        def __init__(self, **kwargs):
-            self.update(**kwargs)
-
-        def keys(self):
-            return self.__slots__
-
-        def update(self, **kwargs):
-            for k, v in kwargs.items():
-                setattr(self, k, v)
-
-        def __getitem__(self, item):
-            return getattr(self, item)
-
-        def __iter__(self):
-            return iter(self.keys())
-
-    return CompactRow
-
-CompactDependencyChange = compact_row(DependencyChange)
