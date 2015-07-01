@@ -38,6 +38,7 @@ config = {
         "failed_build_priority": 200,
         "t0": 6,
         "t1": 7 * 24,
+        "calculation_interval": 300, # seconds
     },
     "services": {
         "watcher": {

@@ -19,6 +19,7 @@
 from __future__ import print_function
 
 import math
+import time
 
 from datetime import datetime
 from sqlalchemy import (func, union_all, extract, cast, Integer, case, null,
@@ -43,12 +44,14 @@ class Scheduler(KojiService):
     failed_priority = priority_conf['failed_build_priority']
     max_builds = util.config['koji_config']['max_builds']
     load_threshold = util.config['koji_config']['load_threshold']
+    calculation_interval = util.config['priorities']['calculation_interval']
 
     def __init__(self, backend=None, *args, **kwargs):
         super(Scheduler, self).__init__(*args, **kwargs)
         self.backend = backend or Backend(log=self.log,
                                           db=self.db,
                                           koji_session=self.koji_session)
+        self.calculation_timestamp = 0
 
     def get_dependency_priority_query(self):
         update_weight = self.priority_conf['package_update']
@@ -122,14 +125,17 @@ class Scheduler(KojiService):
             return None
 
         self.db.rollback()
-        self.lock_package_table()
-        # pylint: disable=E1101
-        self.db.execute(Package.__table__.update()
-                        .values(current_priority=case(prioritized,
-                                                      value=Package.id,
-                                                      else_=null())))
-        self.db.commit()
+        if time.time() - self.calculation_timestamp > self.calculation_interval:
+            self.lock_package_table()
+            # pylint: disable=E1101
+            self.db.execute(Package.__table__.update()
+                            .values(current_priority=case(prioritized,
+                                                          value=Package.id,
+                                                          else_=null())))
+            self.db.commit()
+            self.calculation_timestamp = time.time()
         package = self.db.query(Package).get(prioritized[0][0])
+        package.current_priority = prioritized[0][1]
         if (package.current_priority >= self.priority_threshold
                 and util.get_koji_load(self.koji_session)
                 < self.load_threshold):
