@@ -337,7 +337,7 @@ class ProcessBuildsTask(AbstractResolverTask):
         # pylint: disable=E1101
         unprocessed = self.db.query(Build)\
                              .filter_by(deps_processed=False)\
-                             .filter(Build.repo_id != None)\
+                             .filter(Build.state.in_(Build.FINISHED_STATES))\
                              .options(joinedload(Build.package))\
                              .order_by(Build.repo_id).all()
         # TODO repo_id
@@ -354,7 +354,8 @@ class ProcessBuildsTask(AbstractResolverTask):
                                                   release=b.release,
                                                   arch='src') for b in builds])
                 for build, br in zip(builds, brs):
-                    self.process_build(build, br)
+                    if build.repo_id:
+                        self.process_build(build, br)
             self.db.query(Build).filter(Build.id.in_([b.id for b in builds]))\
                                 .update({'deps_processed': True},
                                         synchronize_session=False)
