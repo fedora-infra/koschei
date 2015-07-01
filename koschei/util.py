@@ -276,3 +276,7 @@ def lock(lock_path):
     with open(lock_path, 'a+') as lock_file:
         fcntl.lockf(lock_file.fileno(), fcntl.LOCK_EX)
         yield
+
+def get_latest_repo(koji_session):
+    build_tag = koji_config['build_tag']
+    return koji_session.getRepo(build_tag, state=koji.REPO_READY)

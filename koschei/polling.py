@@ -27,8 +27,6 @@ from .models import Build, RepoGenerationRequest
 from .service import KojiService
 from .backend import Backend
 
-build_tag = util.koji_config['build_tag']
-
 
 class Polling(KojiService):
     def __init__(self, backend=None, *args, **kwargs):
@@ -54,9 +52,8 @@ class Polling(KojiService):
             self.backend.update_build_state(build, state)
 
     def poll_repo(self):
-        self.log.debug('Polling latest Koji repo for {tag}...'
-                       .format(tag=build_tag))
-        curr_repo = self.koji_session.getRepo(build_tag, state=koji.REPO_READY)
+        self.log.debug('Polling latest Koji repo')
+        curr_repo = util.get_latest_repo(self.koji_session)
         if curr_repo:
             if not self.db.query(exists()
                                  .where(RepoGenerationRequest.repo_id
