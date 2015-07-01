@@ -203,16 +203,17 @@ class Backend(object):
         for pkg, info in task_info_mapping.items():
             if self.is_build_newer(pkg.last_build, info):
                 self.register_real_build(pkg, info)
-                self.db.commit()
 
-    def refresh_latest_builds(self):
+    def refresh_latest_builds(self, packages=None):
         """
-        Checks Koji for latest builds of all packages and registers possible
+        Checks Koji for latest builds of packages and registers possible
         new real builds and obtains srpms for them
         """
-        packages = self.db.query(Package).filter_by(ignored=False)\
-                          .options(joinedload(Package.last_build)).all()
-        self.db.expunge_all()
+        if not packages:
+            packages = self.db.query(Package).filter_by(ignored=False)\
+                              .options(joinedload(Package.last_build)).all()
+            for p in packages:
+                self.db.expunge(p)
         source_tag = util.koji_config['source_tag']
         infos = util.itercall(self.koji_session, packages,
                               lambda k, p: k.listTagged(source_tag, latest=True,
@@ -224,7 +225,7 @@ class Backend(object):
         if blocked:
             self.db.query(Package).filter(Package.name.in_(blocked))\
                    .update({'ignored': True}, synchronize_session=False)
-            self.db.commit()
+            self.db.flush()
         self.register_real_builds(task_infos)
 
     def add_packages(self, names, group=None, static_priority=None,
@@ -241,7 +242,6 @@ class Backend(object):
             if name not in existing_names:
                 pkg = Package(name=name)
                 pkg.static_priority = static_priority or 0
-                pkg.manual_priority = manual_priority or newly_added_prio
                 self.db.add(pkg)
                 pkgs.append(pkg)
         for pkg in existing:
@@ -251,4 +251,9 @@ class Backend(object):
         self.db.flush()
         if group:
             self.add_group(group, pkgs)
+        self.refresh_latest_builds(packages=pkgs)
+        for name in names:
+            if name not in existing_names:
+                pkg.manual_priority = manual_priority or newly_added_prio
+        self.db.flush()
         return pkgs

@@ -258,12 +258,13 @@ class GenerateRepoTask(AbstractResolverTask):
     def run(self, repo_id):
         start = time.time()
         self.log.info("Generating new repo")
+        self.log.info("Polling latest real builds")
+        self.backend.refresh_latest_builds()
+        self.db.commit()
+        packages = self.get_packages(require_build=True)
         repo = Repo(repo_id=repo_id)
         self.db.add(repo)
         self.db.flush()
-        self.log.info("Polling latest real builds")
-        self.backend.refresh_latest_builds()
-        packages = self.get_packages(require_build=True)
         self.prepare_sack(repo_id)
         if not self.sack:
             self.log.error('Cannot generate repo: {}'.format(repo_id))
