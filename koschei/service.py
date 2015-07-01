@@ -120,4 +120,5 @@ class FedmsgService(Service):
 
     def on_exception(self, exc):
         fedmsg.destroy()
+        fedmsg.init()
         super(FedmsgService, self).on_exception(exc)
