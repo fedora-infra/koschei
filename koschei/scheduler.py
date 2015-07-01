@@ -55,6 +55,7 @@ class Scheduler(KojiService):
 
     def get_dependency_priority_query(self):
         update_weight = self.priority_conf['package_update']
+        # pylint: disable=E1120
         distance = coalesce(DependencyChange.distance, 8)
         return self.db.query(DependencyChange.package_id.label('pkg_id'),
                              (update_weight / distance)

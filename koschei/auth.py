@@ -19,7 +19,7 @@
 import logging
 import flask
 import functools
-from flask.ext.openid import OpenID
+from flask_openid import OpenID
 
 from koschei.util import config
 from koschei.models import User, get_or_create

@@ -44,7 +44,8 @@ def page_args(**kwargs):
     if 'order_by' in kwargs:
         kwargs['order_by'] = proc_order(kwargs['order_by'])
     # the supposedly unnecessary call to items() is needed
-    args = {k: v for k, v in dict(request.args.items(), **kwargs).items() if v is not None}
+    args = {k: v for k, v in dict(request.args.items(), **kwargs).items()
+            if v is not None}
     return urllib.urlencode(args)
 
 

@@ -1,6 +1,7 @@
 #!/usr/bin/python
 from __future__ import print_function
 
+#pylint: disable=W0221
 import os
 import sys
 import argparse
@@ -8,7 +9,9 @@ import logging
 
 # FIXME we should have some nicer solution to override configs
 if 'KOSCHEI_CONFIG' not in os.environ:
-    os.environ['KOSCHEI_CONFIG'] = '/usr/share/koschei/config.cfg:/etc/koschei/config.cfg:/etc/koschei/config-admin.cfg'
+    os.environ['KOSCHEI_CONFIG'] = ('/usr/share/koschei/config.cfg:'
+                                    '/etc/koschei/config.cfg:'
+                                    '/etc/koschei/config-admin.cfg')
 
 from koschei.models import (engine, Base, Package, PackageGroup, Session,
                             AdminNotice)
@@ -169,11 +172,12 @@ class SetArchOverride(Command):
 
     def setup_parser(self, parser):
         parser.add_argument('name',
-                help="Package name or group name if --group is specified")
+                            help="Package name or group name if --group is specified")
         parser.add_argument('arch_override',
-                help="arch_override passed as build option to koji when package is built")
+                            help="arch_override passed as build option "
+                                 "to koji when package is built")
         parser.add_argument('--group', action='store_true',
-                help="Apply on entire group instead of single package")
+                            help="Apply on entire group instead of single package")
 
     def execute(self, backend, name, arch_override, group):
         if group:

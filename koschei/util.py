@@ -223,7 +223,9 @@ def get_rpm_requires(koji_session, nvras):
             while flags:
                 old = flags
                 flags &= flags - 1
-                order += {RPMSENSE_LESS: '<', RPMSENSE_GREATER: '>', RPMSENSE_EQUAL: '='}[old ^ flags]
+                order += {RPMSENSE_LESS: '<',
+                          RPMSENSE_GREATER: '>',
+                          RPMSENSE_EQUAL: '='}[old ^ flags]
             requires.append(("%s %s %s" % (dep['name'], order, dep['version'])).rstrip())
         requires_list.append(requires)
     return requires_list
