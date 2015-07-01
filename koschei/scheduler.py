@@ -98,11 +98,13 @@ class Scheduler(KojiService):
         priorities['failed_build'] = self.get_failed_build_priority_query()
         return priorities
 
-    def get_scheduled_package(self):
+    def get_incomplete_builds_query(self):
+        return self.db.query(Build.package_id).filter(Build.state == Build.RUNNING)
+
+    def get_priorities(self):
         if is_buildroot_broken(self.db):
-            return
-        incomplete_builds = self.db.query(Build.package_id)\
-                                .filter(Build.state == Build.RUNNING)
+            return []
+        incomplete_builds = self.get_incomplete_builds_query()
         queries = self.get_priority_queries().values()
         union_query = union_all(*queries).alias('un')
         pkg_id = union_query.c.pkg_id
@@ -110,51 +112,52 @@ class Scheduler(KojiService):
                                 Integer).label('curr_priority')
         priorities = self.db.query(pkg_id, current_priority)\
                             .group_by(pkg_id).subquery()
-        prioritized = self.db.query(Package.id, priorities.c.curr_priority)\
-                             .join(priorities,
-                                   Package.id == priorities.c.pkg_id)\
-                             .filter((Package.resolved == True) |
-                                     (Package.resolved == None))\
-                             .filter(Package.id.notin_(
-                                 incomplete_builds.subquery()))\
-                             .filter(Package.ignored == False)\
-                             .order_by(priorities.c.curr_priority.desc())\
-                             .all()
+        return self.db.query(Package.id, priorities.c.curr_priority)\
+                      .join(priorities, Package.id == priorities.c.pkg_id)\
+                      .filter((Package.resolved == True) |
+                              (Package.resolved == None))\
+                      .filter(Package.id.notin_(incomplete_builds.subquery()))\
+                      .filter(Package.ignored == False)\
+                      .order_by(priorities.c.curr_priority.desc())\
+                      .all()
 
-        if not prioritized or incomplete_builds.count() >= self.max_builds:
-            return None
-
-        self.db.rollback()
-        if time.time() - self.calculation_timestamp > self.calculation_interval:
-            self.lock_package_table()
-            # pylint: disable=E1101
-            self.db.execute(Package.__table__.update()
-                            .values(current_priority=case(prioritized,
-                                                          value=Package.id,
-                                                          else_=null())))
-            self.db.commit()
-            self.calculation_timestamp = time.time()
-        package = self.db.query(Package).get(prioritized[0][0])
-        package.current_priority = prioritized[0][1]
-        if (package.current_priority >= self.priority_threshold
-                and util.get_koji_load(self.koji_session)
-                < self.load_threshold):
-            return package
+    def persist_priorities(self, prioritized):
+        if not prioritized:
+            return
+        self.lock_package_table()
+        # pylint: disable=E1101
+        self.db.execute(Package.__table__.update()
+                        .values(current_priority=case(prioritized,
+                                                      value=Package.id,
+                                                      else_=null())))
+        self.db.commit()
+        self.calculation_timestamp = time.time()
 
     def lock_package_table(self):
         self.db.execute("LOCK TABLE package IN EXCLUSIVE MODE;")
 
     def main(self):
-        package = self.get_scheduled_package()
-        if package:
+        prioritized = self.get_priorities()
+        self.db.rollback() # no-op, ends the transaction
+        if time.time() - self.calculation_timestamp > self.calculation_interval:
+            self.persist_priorities(prioritized)
+        if (self.get_incomplete_builds_query().count() >= self.max_builds
+                or util.get_koji_load(self.koji_session) > self.load_threshold):
+            return
+
+        for package_id, priority in prioritized:
+            if priority < self.priority_threshold:
+                return
+            package = self.db.query(Package).get(package_id)
             newer_build = self.backend.get_newer_build_if_exists(package)
             if newer_build:
-                self.db.rollback()
                 self.backend.register_real_build(package, newer_build)
                 self.db.commit()
-                self.main()
-            else:
-                self.log.info('Scheduling build for {}, priority {}'
-                              .format(package.name, package.current_priority))
-                self.backend.submit_build(package)
-                self.db.commit()
+                continue
+
+            # a package was chosen
+            self.log.info('Scheduling build for {}, priority {}'
+                          .format(package.name, priority))
+            self.backend.submit_build(package)
+            self.db.commit()
+            return
