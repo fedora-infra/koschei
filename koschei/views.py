@@ -271,6 +271,7 @@ def user_packages(name):
     if g.user and name == g.user.name:
         g.current_tab = 'my_packages'
     user = get_or_create(db, User, name=name)
+    db.commit()
     plugin.dispatch_event('refresh_user_packages', user=user)
     query = db.query(Package)\
               .outerjoin(UserPackageRelation)\
@@ -358,6 +359,11 @@ def process_group_form(group=None):
         return render_template('edit-group.html', group=group, form=form)
     be = create_backend()
     names = set(form.packages.data)
+    owners = set(form.owners.data)
+    if group.namespace:
+        owners.add(group.namespace)
+    user_ids = [get_or_create(db, User, name=name).id for name in owners]
+    db.commit()
     try:
         be.add_packages(names)
     except backend.PackagesDontExist as e:
@@ -379,12 +385,8 @@ def process_group_form(group=None):
         else:
             flash("You don't have permission to edit this group")
             redirect(url_for('group_detail', name=group.name))
-        owners = set(form.owners.data)
-        if group.namespace:
-            owners.add(group.namespace)
         rels = [dict(group_id=group.id, package_id=pkg.id) for pkg in packages]
-        acls = [dict(group_id=group.id, user_id=get_or_create(db, User, name=u).id)
-                for u in owners]
+        acls = [dict(group_id=group.id, user_id=user_id) for user_id in user_ids]
         db.execute(PackageGroupRelation.__table__.insert(), rels)
         if acls:
             db.execute(GroupACL.__table__.insert(), acls)
