@@ -227,17 +227,15 @@ def package_detail(name):
                            builds=page.items)
 
 
-@app.route('/package/<name>/<int:build_id>')
+@app.route('/build/<int:build_id>')
 @tab('Packages', slave=True)
-def build_detail(name, build_id):
+def build_detail(build_id):
     # pylint: disable=E1101
     build = db.query(Build)\
               .options(joinedload(Build.package),
                        subqueryload(Build.dependency_changes),
                        subqueryload(Build.build_arch_tasks))\
-              .filter_by(id=build_id).first()
-    if not build or build.package.name != name:
-        abort(404)
+              .filter_by(id=build_id).first_or_404()
     return render_template("build-detail.html", build=build)
 
 

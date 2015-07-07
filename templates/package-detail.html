@@ -133,7 +133,7 @@
             <td colspan="4">Dependencies for this build weren't processed yet</td>
             {% endif %}
             <td>
-                <a href="{{ url_for('build_detail', name=package.name, build_id=build.id) }}">details</a>
+                <a href="{{ url_for('build_detail', build_id=build.id) }}">details</a>
             </td>
         </tr>
         {% for subtask in build.build_arch_tasks %}
