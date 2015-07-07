@@ -236,7 +236,22 @@ def build_detail(build_id):
                        subqueryload(Build.dependency_changes),
                        subqueryload(Build.build_arch_tasks))\
               .filter_by(id=build_id).first_or_404()
-    return render_template("build-detail.html", build=build)
+    return render_template("build-detail.html", build=build,
+                           cancel_form=EmptyForm())
+
+
+@app.route('/build/<int:build_id>/cancel', methods=['POST'])
+@tab('Packages', slave=True)
+@auth.login_required()
+def cancel_build(build_id):
+    build = db.query(Build).filter_by(id=build_id).first_or_404()
+    if EmptyForm().validate_or_flash():
+        try:
+            util.create_koji_session(anonymous=False).cancelTask(build.task_id)
+            flash("Cancelation request sent.")
+        except Exception:
+            flash("Error in communication with Koji. Please try again later.")
+    return redirect(url_for('package_detail', name=build.package.name))
 
 
 @app.route('/groups')
@@ -328,13 +343,20 @@ class NonEmptyList(object):
         if not field.data:
             raise ValidationError(self.message)
 
-class GroupForm(Form):
+class EmptyForm(Form):
+    def validate_or_flash(self):
+        if self.validate_on_submit():
+            return True
+        flash(', '.join(x for i in self.errors.values() for x in i))
+        return False
+
+class GroupForm(EmptyForm):
     name = StrippedStringField('name', [Regexp(name_re, message="Invalid group name")])
     packages = ListAreaField('packages', [NonEmptyList("Empty group not allowed"),
                                           NameListValidator("Invalid package list")])
     owners = ListField('owners', [NameListValidator("Invalid owner list")])
 
-class AddPackagesForm(Form):
+class AddPackagesForm(EmptyForm):
     packages = ListAreaField('packages', [NonEmptyList("No packages given"),
                                           NameListValidator("Invalid package list")])
     group = StrippedStringField('group', [Regexp(group_re, message="Invalid group")])
@@ -352,8 +374,7 @@ def process_group_form(group=None):
     form = GroupForm()
     if request.method == 'GET':
         return render_template('edit-group.html', group=group, form=form)
-    if not form.validate_on_submit():
-        flash(', '.join(x for i in form.errors.values() for x in i))
+    if not form.validate_or_flash():
         return render_template('edit-group.html', group=group, form=form)
     be = create_backend()
     names = set(form.packages.data)
@@ -423,8 +444,7 @@ def add_packages():
     form = AddPackagesForm()
     if request.method == 'POST':
         be = create_backend()
-        if not form.validate_on_submit():
-            flash(', '.join(x for i in form.errors.values() for x in i))
+        if not form.validate_or_flash():
             return render_template("add-packages.html", form=form)
         names = set(form.packages.data)
         try:
@@ -473,6 +493,7 @@ def search():
         return package_view(query, "search-results.html")
     return redirect(url_for('frontpage'))
 
+
 @app.route('/edit_package', methods=['POST'])
 @auth.login_required()
 def edit_package():
@@ -492,6 +513,7 @@ def edit_package():
 
     db.commit()
     return redirect(url_for('package_detail', name=form['package']))
+
 
 @app.route('/bugreport/<name>')
 @auth.login_required()

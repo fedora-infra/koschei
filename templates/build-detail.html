@@ -2,6 +2,7 @@
 {% import "macros.html" as macros %}
 {% block title %}Koschei - {{ build.package.name }} - build {{ build.task_id }}{% endblock %}
 {% block content %}
+{% set editable = "" if g.user else 'disabled="disabled"' %}
 <div class="pageHeader">{{ build.package.name }} - {{ build.task_id }}</div>
 
 <table class="details">
@@ -12,6 +13,14 @@
             title="{{ build.state_string }}" alt="{{ build.state_string }}"/>
             {{ build.state_string }}
         </td>
+        {% if build.state == build.RUNNING %}
+        <td>
+            <form action="{{ url_for('cancel_build', build_id=build.id) }}" method="POST">
+                {{ cancel_form.csrf_token }}
+                <button {{ editable }} type="submit">Cancel build</button>
+            </form>
+        </td>
+        {% endif %}
     </tr>
     <tr>
         <th>Epoch</th>
