@@ -64,7 +64,7 @@ if pkgdb_config['enabled']:
                 existing = {p for [p] in db.query(Package.name).filter(Package.name.in_(names)).all()}
                 for name in names:
                     if name not in existing:
-                        pkg = Package(name=name, ignored=True)
+                        pkg = Package(name=name, tracked=False)
                         db.add(pkg)
                 db.flush()
                 packages = db.query(Package.id).filter(Package.name.in_(names)).all()

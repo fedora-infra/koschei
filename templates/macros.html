@@ -66,7 +66,7 @@
                     {{ package.current_priority or ""}}
                 </td>
                 <td>
-                    {% if package.ignored %}
+                    {% if not package.tracked %}
                     <button type="submit" name="names" value="{{ package.name }}">Add to Koschei</button>
                     {% endif %}
                 </td>

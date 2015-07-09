@@ -118,7 +118,8 @@ class Scheduler(KojiService):
                       .filter((Package.resolved == True) |
                               (Package.resolved == None))\
                       .filter(Package.id.notin_(incomplete_builds.subquery()))\
-                      .filter(Package.ignored == False)\
+                      .filter(Package.blocked == False)\
+                      .filter(Package.tracked == True)\
                       .order_by(priorities.c.curr_priority.desc())\
                       .all()
 
@@ -164,5 +165,6 @@ class Scheduler(KojiService):
             self.log.info('Scheduling build for {}, priority {}'
                           .format(package.name, priority))
             self.backend.submit_build(package)
+            # TODO check if srpm was found
             self.db.commit()
             return

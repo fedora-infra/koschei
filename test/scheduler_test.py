@@ -114,7 +114,7 @@ class SchedulerTest(DBTest):
             for name in priorities.keys():
                 pkg = self.s.query(m.Package).filter_by(name=name).first()
                 if not pkg:
-                    pkg = m.Package(name=name, ignored=states.get(name) == 'ignored')
+                    pkg = m.Package(name=name, tracked=states.get(name) != 'ignored')
                     self.s.add(pkg)
                     self.s.flush()
                     if states.get(name, True) is not None:

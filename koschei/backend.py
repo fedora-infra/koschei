@@ -69,8 +69,6 @@ class Backend(object):
             self.db.add(build)
             self.db.flush()
             self.flush_depchanges(build)
-        else:
-            package.ignored = True
 
     def flush_depchanges(self, build):
         self.db.query(DependencyChange)\
@@ -210,7 +208,7 @@ class Backend(object):
         new real builds and obtains srpms for them
         """
         if packages is None:
-            packages = self.db.query(Package).filter_by(ignored=False)\
+            packages = self.db.query(Package).filter_by(blocked=False, tracked=True)\
                               .options(joinedload(Package.last_build)).all()
             for p in packages:
                 self.db.expunge(p)
@@ -224,7 +222,7 @@ class Backend(object):
                    if p['blocked']]
         if blocked:
             self.db.query(Package).filter(Package.name.in_(blocked))\
-                   .update({'ignored': True}, synchronize_session=False)
+                   .update({'blocked': True}, synchronize_session=False)
             self.db.expire_all()
             self.db.flush()
         self.register_real_builds(task_infos)
@@ -248,8 +246,8 @@ class Backend(object):
                 pkgs.append(pkg)
                 untracked.append(pkg)
         for pkg in existing:
-            if pkg.ignored:
-                pkg.ignored = False
+            if not pkg.tracked:
+                pkg.tracked = True
                 pkgs.append(pkg)
         self.db.flush()
         if group:
@@ -258,7 +256,7 @@ class Backend(object):
             self.refresh_latest_builds(packages=pkgs)
             self.db.flush()
             for pkg in pkgs:
-                if pkg.ignored:
+                if pkg.blocked:
                     try:
                         pkgs.remove(pkg)
                         untracked.remove(pkg)

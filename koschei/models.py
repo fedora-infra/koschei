@@ -20,7 +20,7 @@ import koji
 
 from sqlalchemy import (create_engine, Table, Column, Integer, String, Boolean,
                         ForeignKey, DateTime, Index, DDL)
-from sqlalchemy.sql.expression import extract, func, select, false, join
+from sqlalchemy.sql.expression import extract, func, select, false, true, join
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, column_property, mapper
 from sqlalchemy.engine.url import URL
@@ -88,10 +88,12 @@ class Package(Base):
     resolved = Column(Boolean)
     resolution_problems = relationship('ResolutionProblem', backref='package')
 
-    ignored = Column(Boolean, nullable=False, server_default=false())
+    tracked = Column(Boolean, nullable=False, server_default=true())
+    blocked = Column(Boolean, nullable=False, server_default=false())
 
     def get_state(self):
-        if self.ignored:
+        # TODO distinguish without breaking fedmsg format
+        if self.blocked or not self.tracked:
             return 'ignored'
         if self.resolved is False:
             return 'unresolved'

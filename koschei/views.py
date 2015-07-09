@@ -130,7 +130,7 @@ def get_order(order_map, order_spec):
     return components, orders
 
 
-def package_view(package_query, template, keep_ignored=False, **template_args):
+def package_view(package_query, template, **template_args):
     order_name = request.args.get('order_by', 'name')
     # pylint: disable=E1101
     order_map = {'name': [Package.name],
@@ -139,8 +139,9 @@ def package_view(package_query, template, keep_ignored=False, **template_args):
                  'started': [Build.started],
                  'current_priority': [PriorityOrder(Package.current_priority)]}
     order_names, order = get_order(order_map, order_name)
-    pkgs = (package_query if keep_ignored
-            else package_query.filter(Package.ignored == False))\
+    pkgs = (package_query if template_args.get('untracked')
+            else package_query.filter(Package.tracked == True))\
+             .filter(Package.blocked == False)\
              .outerjoin(Package.last_complete_build)\
              .options(contains_eager(Package.last_complete_build))\
              .order_by(*order)
@@ -291,8 +292,7 @@ def user_packages(name):
               .filter(UserPackageRelation.user_id == user.id)
     untracked = request.args.get('untracked') == '1'
 
-    return package_view(query, "user-packages.html", keep_ignored=untracked,
-                        user=user, untracked=untracked)
+    return package_view(query, "user-packages.html", user=user, untracked=untracked)
 
 @app.route('/user/<name>/resync')
 @auth.login_required()

@@ -194,7 +194,8 @@ class AbstractResolverTask(object):
 class GenerateRepoTask(AbstractResolverTask):
 
     def get_packages(self, expunge=True, require_build=False):
-        query = self.db.query(Package).filter(Package.ignored == False)
+        query = self.db.query(Package).filter(Package.blocked == False)\
+                       .filter(Package.tracked == True)
         if require_build:
             query = query.filter(Package.last_complete_build_id != None)
         packages = query.options(joinedload(Package.last_build))\
