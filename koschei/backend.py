@@ -52,7 +52,6 @@ class Backend(object):
     def submit_build(self, package):
         build = Build(package_id=package.id, state=Build.RUNNING)
         name = package.name
-        build.state = Build.RUNNING
         build_opts = {}
         if package.arch_override:
             build_opts = {'arch_override': package.arch_override}
@@ -69,6 +68,7 @@ class Backend(object):
             self.db.add(build)
             self.db.flush()
             self.flush_depchanges(build)
+            return build
 
     def flush_depchanges(self, build):
         self.db.query(DependencyChange)\

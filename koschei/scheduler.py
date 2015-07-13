@@ -164,7 +164,9 @@ class Scheduler(KojiService):
             # a package was chosen
             self.log.info('Scheduling build for {}, priority {}'
                           .format(package.name, priority))
-            self.backend.submit_build(package)
-            # TODO check if srpm was found
+            build = self.backend.submit_build(package)
+            if not build:
+                self.log.debug("No SRPM found for {}".format(package.name))
+                continue
             self.db.commit()
-            return
+            break
