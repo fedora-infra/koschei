@@ -24,7 +24,7 @@ from signal import signal, alarm, SIGALRM
 from . import util, plugin
 from .backend import Backend
 from .service import KojiService, FedmsgService, Service
-from .models import Build, Package, RepoGenerationRequest
+from .models import Build, Package
 
 class WatchdogInterrupt(Exception):
     pass
@@ -66,9 +66,7 @@ class Watcher(KojiService, FedmsgService, WatchdogService):
                               koji_session=self.koji_session)
 
     def repo_done(self, repo_id):
-        request = RepoGenerationRequest(repo_id=repo_id)
-        self.db.add(request)
-        self.db.commit()
+        self.backend.poll_repo()
 
     def update_build_state(self, msg):
         assert msg['attribute'] == 'state'

@@ -21,10 +21,11 @@ import koji
 from datetime import datetime
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.sql import exists
 
 from koschei import util
 from koschei.models import (Build, DependencyChange, KojiTask, Package,
-                            PackageGroup, PackageGroupRelation)
+                            PackageGroup, PackageGroupRelation, RepoGenerationRequest)
 from koschei.plugin import dispatch_event
 
 
@@ -266,3 +267,13 @@ class Backend(object):
             pkg.manual_priority = manual_priority or newly_added_prio
         self.db.flush()
         return pkgs
+
+    def poll_repo(self):
+        curr_repo = util.get_latest_repo(self.koji_session)
+        if curr_repo:
+            if not self.db.query(exists()
+                                 .where(RepoGenerationRequest.repo_id
+                                        == curr_repo['id'])).scalar():
+                request = RepoGenerationRequest(repo_id=curr_repo['id'])
+                self.db.add(request)
+                self.db.commit()

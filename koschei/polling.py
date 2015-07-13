@@ -20,10 +20,8 @@ from __future__ import print_function
 
 import koji
 
-from sqlalchemy.sql import exists
-
 from . import util
-from .models import Build, RepoGenerationRequest
+from .models import Build
 from .service import KojiService
 from .backend import Backend
 
@@ -53,14 +51,7 @@ class Polling(KojiService):
 
     def poll_repo(self):
         self.log.debug('Polling latest Koji repo')
-        curr_repo = util.get_latest_repo(self.koji_session)
-        if curr_repo:
-            if not self.db.query(exists()
-                                 .where(RepoGenerationRequest.repo_id
-                                        == curr_repo['id'])).scalar():
-                request = RepoGenerationRequest(repo_id=curr_repo['id'])
-                self.db.add(request)
-                self.db.commit()
+        self.backend.poll_repo()
 
     def main(self):
         self.poll_builds()
