@@ -9,10 +9,10 @@
 href="{{ url_for('static', filename='koschei.css') }}"/>
 
 {% if fedmenu_url is defined %}
-<script src="{{fedmenu_url}}/js/jquery-1.11.2.min.js"></script>
-<script src="{{fedmenu_url}}/js/fedmenu.js"></script>
-<script src="{{fedmenu_url}}/js/fedora-libravatar.js"></script>
-<script>
+<script type="text/javascript" src="{{fedmenu_url}}/js/jquery-1.11.2.min.js"></script>
+<script type="text/javascript" src="{{fedmenu_url}}/js/fedmenu.js"></script>
+<script type="text/javascript" src="{{fedmenu_url}}/js/fedora-libravatar.js"></script>
+<script type="text/javascript">
   fedmenu({
       'url': '{{fedmenu_data_url}}',
       'mimeType': 'application/javascript',

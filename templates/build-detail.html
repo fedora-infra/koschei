@@ -15,7 +15,7 @@
         </td>
         {% if build.state == build.RUNNING %}
         <td>
-            <form action="{{ url_for('cancel_build', build_id=build.id) }}" method="POST">
+            <form action="{{ url_for('cancel_build', build_id=build.id) }}" method="post">
                 {{ cancel_form.csrf_token }}
                 <button {{ editable }} type="submit">Cancel build</button>
             </form>

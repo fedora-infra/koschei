@@ -5,7 +5,7 @@
                            {{ page.total }}</span>
     <form class="pageJump" action="">
         Page:
-        <select onchange="javascript: window.location = '?{{ page_args(page=None) }}&page=' + this.value;">
+        <select onchange="javascript: window.location = '?{{ page_args(page=None) }}&amp;page=' + this.value;">
             {% for i in range(1, page.page) %}
             <option value="{{ i }}">{{ i }}</option>
             {% endfor %}
@@ -21,7 +21,7 @@
 {% if page %}
 {{ pagination_row(page, 'Packages') }}
 {% endif %}
-<form action="{{ url_for('add_packages') }}" method="POST">
+<form action="{{ url_for('add_packages') }}" method="post">
     <input type="hidden" name="next" value="{{ request.url }}"/>
     <table class="data-list">
         <thead>

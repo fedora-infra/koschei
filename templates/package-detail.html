@@ -24,7 +24,7 @@
     <tr>
         <th>Manual priority</th>
         <td>
-            <form name="manual_priority" action="{{ url_for("edit_package") }}" method="POST">
+            <form name="manual_priority" action="{{ url_for("edit_package") }}" method="post">
                 <input type="hidden" name="package" value="{{ package.name }}"/>
                 <input type="text" name="manual_priority" class="change_input"
                 value="{{ package.manual_priority }}" {{ editable }}/>
@@ -41,7 +41,7 @@
     <tr>
         <th>Arch override</th>
         <td>
-            <form name="manual_priority" action="{{ url_for("edit_package") }}" method="POST">
+            <form name="manual_priority" action="{{ url_for("edit_package") }}" method="post">
                 <input type="hidden" name="package" value="{{ package.name }}"/>
                 <input type="text" name="arch_override" class="change_input"
                 value="{{ package.arch_override or "" }}" {{ editable }}/>
