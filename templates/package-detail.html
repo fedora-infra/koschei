@@ -6,7 +6,7 @@
 {% endmacro %}
 {% block content %}
 <div class="pageHeader">{{ package.name }}</div>
-{% set editable = "" if g.user else 'disabled="disabled"' %}
+{% set editable = "" if g.user else 'disabled="true"' %}
 <table class="details">
     <tr>
         <th>Package state</th>

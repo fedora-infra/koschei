@@ -84,7 +84,7 @@ def get_global_notices():
 
 
 def require_login():
-    return " " if g.user else ' disabled="disabled" '
+    return " " if g.user else ' disabled="true" '
 
 
 pathinfo = koji.PathInfo(topdir=util.koji_config['topurl'])

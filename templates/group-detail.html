@@ -12,7 +12,7 @@
     </tr>
     <tr>
         <td>
-            <form method="GET" action="{{ url_for('edit_group', name=group.name, namespace=group.namespace) }}">
+            <form method="get" action="{{ url_for('edit_group', name=group.name, namespace=group.namespace) }}">
                 <button type="submit">Edit group</button>
             </form>
         </td>

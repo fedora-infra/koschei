@@ -3,7 +3,7 @@
 {% block title %}Koschei - {{ user.name }}'s packages{% endblock %}
 {% block content %}
 <div class="pageHeader">{{ user.name }}'s packages</div>
-<form name="show-untracked" action="" method="GET">
+<form name="show-untracked" method="get">
     <input type="hidden" name="untracked" value="{{ "10"[untracked] }}"/>
     <button type="submit">{% if untracked %}Hide untracked{% else %}Show untracked{% endif %} packages</button>
 </form>

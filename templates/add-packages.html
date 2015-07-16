@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<form name="packages" action="" method="post">
+<form name="packages" method="post">
     {{ form.csrf_token }}
     <div>Names of packages to be added to Koschei:</div>
     <div><textarea name="packages" rows="20" cols="80"></textarea></div>

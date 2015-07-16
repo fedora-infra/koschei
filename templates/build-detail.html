@@ -2,7 +2,7 @@
 {% import "macros.html" as macros %}
 {% block title %}Koschei - {{ build.package.name }} - build {{ build.task_id }}{% endblock %}
 {% block content %}
-{% set editable = "" if g.user else 'disabled="disabled"' %}
+{% set editable = "" if g.user else 'disabled="true"' %}
 <div class="pageHeader">{{ build.package.name }} - {{ build.task_id }}</div>
 
 <table class="details">

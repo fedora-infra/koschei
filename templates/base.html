@@ -1,11 +1,9 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-<title>{% block title %}Koschei{% endblock %}</title>
-<link rel="stylesheet" type="text/css" media="screen" title="Koji Style"
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <title>{% block title %}Koschei{% endblock %}</title>
+<link rel="stylesheet" type="text/css" media="screen" title="Koschei Style"
 href="{{ url_for('static', filename='koschei.css') }}"/>
 
 {% if fedmenu_url is defined %}
@@ -91,7 +89,7 @@ href="{{ url_for('static', filename='koschei.css') }}"/>
             {% endblock %}
         </div>
         <p id="footer">
-            Copyright &copy; 2014 Red Hat.
+            Copyright &copy; 2014-2015 Red Hat.
             <a href="https://github.com/msimacek/koschei/issues">Reporting bugs.</a>
             You can find the source for Koschei <a href="https://github.com/msimacek/koschei">here on GitHub.</a>
             <a href="http://fedorahosted.org/koji/">
