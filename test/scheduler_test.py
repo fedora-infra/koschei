@@ -1,13 +1,12 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 from contextlib import contextmanager
-from common import DBTest, MockDatetime, postgres_only
+from common import DBTest, postgres_only
 from sqlalchemy import Table, Column, Integer, MetaData
 from mock import Mock, patch
 
-from koschei import models as m, scheduler
+from koschei import models as m
 from koschei.scheduler import Scheduler
 
-scheduler.datetime = MockDatetime
 
 class SchedulerTest(DBTest):
     def get_scheduler(self):
@@ -74,7 +73,7 @@ class SchedulerTest(DBTest):
             self.s.add(pkg)
             self.s.flush()
             build = m.Build(package_id=pkg.id,
-                            started=MockDatetime.now() - timedelta(days, hours=1))
+                            started=datetime.now() - timedelta(days, hours=1))
             self.s.add(build)
         self.s.commit()
         query = self.get_scheduler().get_time_priority_query()
@@ -84,7 +83,7 @@ class SchedulerTest(DBTest):
         expected_prios = [-30.0, 161.339324401, 230.787748579,
                           256.455946637, 297.675251883]
         for item, exp in zip(res, expected_prios):
-            self.assertAlmostEqual(exp, item.priority)
+            self.assertAlmostEqual(exp, item.priority, places=1)
 
     @postgres_only
     def test_failed_build_priority(self):

@@ -20,7 +20,7 @@ import koji
 
 from sqlalchemy import (create_engine, Table, Column, Integer, String, Boolean,
                         ForeignKey, DateTime, Index, DDL)
-from sqlalchemy.sql.expression import extract, func, select, false, true, join
+from sqlalchemy.sql.expression import func, select, false, true, join
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, column_property, mapper
 from sqlalchemy.engine.url import URL
@@ -35,10 +35,6 @@ db_url = URL(**config['database_config'])
 engine = create_engine(db_url, echo=False, pool_size=10)
 
 Session = sessionmaker(bind=engine, autocommit=False)
-
-
-def hours_since(since):
-    return extract('EPOCH', datetime.now() - since) / 3600
 
 
 def external_id():

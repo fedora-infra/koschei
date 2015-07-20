@@ -21,7 +21,6 @@ from __future__ import print_function
 import math
 import time
 
-from datetime import datetime
 from sqlalchemy import (func, union_all, extract, cast, Integer, case, null,
                         literal_column)
 from sqlalchemy.sql.functions import coalesce
@@ -33,7 +32,7 @@ from .backend import Backend
 
 
 def hours_since(what):
-    return extract('EPOCH', datetime.now() - what) / 3600
+    return extract('EPOCH', literal_column('clock_timestamp()') - what) / 3600
 
 
 class Scheduler(KojiService):
