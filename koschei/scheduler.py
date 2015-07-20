@@ -66,8 +66,8 @@ class Scheduler(KojiService):
         t1 = self.priority_conf['t1']
         a = self.priority_threshold / (math.log10(t1) - math.log10(t0))
         b = -a * math.log10(t0)
-        time_expr = func.greatest(a * func.log(
-            hours_since(func.max(Build.started)) + 0.00001) + b, -30)
+        log_arg = func.greatest(0.000001, hours_since(func.max(Build.started)))
+        time_expr = func.greatest(a * func.log(log_arg) + b, -30)
         return self.db.query(Build.package_id.label('pkg_id'),
                              time_expr.label('priority'))\
                       .group_by(Build.package_id)
