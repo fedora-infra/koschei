@@ -225,33 +225,9 @@ Koschei
 \end{frame}
 
 \begin{frame}
-  \frametitle{Watcher}
-  \begin{itemize}
-    \item \tt{buildsys.task.state.change}
-    \begin{itemize}
-      \item fedmsg
-      \item periodic polling as fallback
-    \end{itemize}
-    \item \tt{buildsys.repo.done}
-    \begin{itemize}
-      \item not builds, not tags
-      \item fedmsg
-      \item no polling
-    \end{itemize}
-    \item \tt{buildsys.build.tag}
-    \begin{itemize}
-      \item not builds, not tags
-      \item fedmsg
-      \item no polling
-    \end{itemize}
-    \item \tt{pkgdb.*}
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
   \frametitle{Scheduler}
   \begin{itemize}
-    \item Schedule builds for execution
+    \item Schedule package rebuilds
     \begin{itemize}
       \item priority scheduling
     \end{itemize}
@@ -263,11 +239,56 @@ Koschei
     \end{itemize}
     \item Conditions
     \begin{itemize}
-      \item package is not disabled
+      \item build group is installable
+      \item package monitoring is enabled
+      \item package is not blocked
       \item build dependencies are resolvable
       \item priority is high enough
       \item Koji load is low enough
-      \item buildroot is not broken
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Koji load}
+  \begin{itemize}
+    \item Task load
+    \begin{itemize}
+      \item default channel
+      \item handling of disabled hosts
+      \item handling of not ready hosts
+      \item per-architecture load
+      \item current threshold: 50 \%
+    \end{itemize}
+    \item Number of Koschei tasks
+    \begin{itemize}
+      \item current threshold: 30 tasks
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Watcher}
+  \begin{itemize}
+    \item \tt{buildsys.task.state.change}
+    \item \tt{buildsys.repo.done}
+    \item \tt{buildsys.build.tag}
+    \item \tt{pkgdb.*}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Polling}
+  \begin{itemize}
+    \item Koji
+    \begin{itemize}
+      \item scratch build statuses
+      \item real builds
+      \item check blocked packages
+    \end{itemize}
+    \item pkgdb2
+    \begin{itemize}
+      \item user ACLs
     \end{itemize}
   \end{itemize}
 \end{frame}
@@ -277,8 +298,10 @@ Koschei
   \begin{itemize}
     \item Analyze dependency changes
     \begin{itemize}
+      \item download latest repodata from kojipkgs
+      \item resolve build group
+      \item resolve package build-dependencies
       \item hawkey
-      \item download SRPM headers
     \end{itemize}
     \item Update priorities
     \begin{itemize}
@@ -289,16 +312,9 @@ Koschei
 \end{frame}
 
 \begin{frame}
-  \frametitle{Frontend}
+  \frametitle{Web frontend}
   \begin{itemize}
-    \item Generate HTML reports
-    \item Per group, not per maintainer
-    \item Failures separately
-    \item Dependency problems
-    \item Detailed package history
-    \item Add and disable packages
-    \item Adjust package importance
-    \item Force build
+    \item TODO
   \end{itemize}
 \end{frame}
 
@@ -310,6 +326,7 @@ Koschei
     \item PostgreSQL
     \item SQLAlchemy, Alembic
     \item Modularity
+    \item hawkey
     \item systemd
   \end{itemize}
 \end{frame}
@@ -323,69 +340,25 @@ Koschei
   \end{itemize}
 \end{frame}
 
-\small
-\begin{frame}[fragile]
-\begin{block}{Creating SRPM metadata}
-\begin{verbatim}
-$ curl http://koji.fp.o/.../eclipse-4.4.0-5.fc21.src.rpm \
-| tee package.src.rpm \
-| rpm -qp /dev/stdin >/dev/null
-curl: (23) Failed writing body (2332 != 4096)
-
-$ ls -go
-total 20
--rw-rw-r--. 1 20480 Jul 11 09:10 package.src.rpm
-
-$ createrepo .
-Spawning worker 0 with 1 pkgs
-Workers Finished
-Saving Primary metadata
-Saving file lists metadata
-Saving other metadata
-Generating sqlite DBs
-Sqlite DBs complete
-\end{verbatim}
-\end{block}
-\end{frame}
-
 \section{Future}
 \begin{frame}
   \frametitle{TODO}
-  \begin{itemize}
-    \item Move to Fedora
-    \begin{itemize}
-      \item within of scope of Env and Stacks WG
-      \item already announced
-      \item cloud machine
-      \item Koji certificate
-      \item extra Koji hardware?
-      \item storage?
-    \end{itemize}
-    \item Improve reporting
-    \begin{itemize}
-      \item feedback and new ideas needed!
-    \end{itemize}
-    \item Generate SRPM metadata
-    \begin{itemize}
-      \item compose is too late
-    \end{itemize}
-  \end{itemize}
 \end{frame}
 
 \begin{frame}
   \frametitle{Links}
   \begin{itemize}
+    \item Production instance
+    \begin{itemize}
+      \item \url{https://apps.fedoraproject.org/koschei}
+    \end{itemize}
+    \item Documentation
+    \begin{itemize}
+      \item \url{https://fedoraproject.org/wiki/Koschei}
+    \end{itemize}
     \item Code repository
     \begin{itemize}
       \item \url{https://github.com/msimacek/koschei}
-    \end{itemize}
-    \item Development instance
-    \begin{itemize}
-      \item \url{http://koschei.cloud.fedoraproject.org/}
-    \end{itemize}
-    \item Staging instance
-    \begin{itemize}
-      \item \url{https://apps.stg.fedoraproject.org/koschei}
     \end{itemize}
   \end{itemize}
 \end{frame}
