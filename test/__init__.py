@@ -1,12 +1,16 @@
+from __future__ import print_function
+
 import os
 import sys
 import logging
 import sqlalchemy
+import requests
 
 faitout_url = 'http://faitout.cloud.fedoraproject.org/faitout/'
 
 testdir = os.path.dirname(os.path.realpath(__file__))
 
+use_faitout = os.environ.get('TEST_WITH_FAITOUT')
 use_postgres = os.environ.get('TEST_WITH_POSTGRES')
 
 os.chdir(testdir)
@@ -14,7 +18,14 @@ os.environ['KOSCHEI_CONFIG'] = '{0}/../config.cfg.template:{0}/test_config.cfg'\
                                .format(testdir)
 from koschei import util
 assert util.config.get('is_test') is True
-if use_postgres:
+if use_faitout:
+    req = requests.get(faitout_url + 'new')
+    if req.status_code != 200:
+        print("Cannot obtain new faitout connection (code={code}): {text}"
+              .format(code=req.status_code, text=req.text), file=sys.stderr)
+        sys.exit(1)
+    util.config['database_url'] = req.text
+elif use_postgres:
     testdb = 'koschei_testdb'
     util.config['database_config']['drivername'] = 'postgres'
     util.config['database_config']['username'] = 'postgres'
@@ -42,4 +53,6 @@ sql_log_file = 'sql.log'
 sql_log.addHandler(logging.FileHandler(sql_log_file))
 
 def teardown():
-    pass
+    if use_faitout:
+        requests.get(faitout_url + 'drop/' +
+                     util.config['database_url'].rsplit('/', 1)[1])

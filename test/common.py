@@ -3,13 +3,14 @@ import unittest
 import shutil
 import json
 
-from test import use_postgres, testdir
+from test import use_postgres, use_faitout, testdir
 from koschei import models as m
 
 workdir = '.workdir'
 
 def postgres_only(fn):
-    return unittest.skipIf(not use_postgres, "Requires postgres")(fn)
+    return unittest.skipIf(not use_postgres and not use_faitout,
+                           "Requires postgres")(fn)
 
 class AbstractTest(unittest.TestCase):
 

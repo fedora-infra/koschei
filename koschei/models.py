@@ -31,7 +31,7 @@ from .util import config
 
 Base = declarative_base()
 
-db_url = URL(**config['database_config'])
+db_url = config.get('database_url') or URL(**config['database_config'])
 engine = create_engine(db_url, echo=False, pool_size=10)
 
 Session = sessionmaker(bind=engine, autocommit=False)
