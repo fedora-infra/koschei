@@ -17,13 +17,12 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
+import re
 import os
 import time
 import hawkey
 import itertools
 import librepo
-import dnf.subject
-import dnf.sack
 
 from sqlalchemy.orm import joinedload
 
@@ -34,6 +33,59 @@ from koschei import util
 from koschei.service import KojiService
 from koschei.repo_cache import RepoCache
 from koschei.backend import check_package_state, Backend
+
+
+def get_best_selector(sack, dep):
+    # Based on get_best_selector in dnf's subject.py
+
+    def is_glob_pattern(pattern):
+        return set(pattern) & set("*[?")
+
+    def first(iterable):
+        it = iter(iterable)
+        try:
+            return next(it)
+        except StopIteration:
+            return None
+
+    def _nevra_to_selector(sltr, nevra):
+        if nevra.name is not None:
+            if is_glob_pattern(nevra.name):
+                sltr.set(name__glob=nevra.name)
+            else:
+                sltr.set(name=nevra.name)
+        if nevra.version is not None:
+            evr = nevra.version
+            if nevra.epoch is not None and nevra.epoch > 0:
+                evr = "%d:%s" % (nevra.epoch, evr)
+            if nevra.release is None:
+                sltr.set(version=evr)
+            else:
+                evr = "%s-%s" % (evr, nevra.release)
+                sltr.set(evr=evr)
+        if nevra.arch is not None:
+            sltr.set(arch=nevra.arch)
+        return sltr
+
+    subj = hawkey.Subject(dep)
+    sltr = hawkey.Selector(sack)
+    kwargs = {'allow_globs': True}
+    if re.search(r'^\*?/', dep):
+        key = "file__glob" if is_glob_pattern(dep) else "file"
+        return sltr.set(**{key: dep})
+    nevra = first(subj.nevra_possibilities_real(sack, **kwargs))
+    if nevra:
+        return _nevra_to_selector(sltr, nevra)
+
+    if is_glob_pattern(dep):
+        return sltr.set(provides__glob=dep)
+
+    # pylint: disable=E1101
+    reldep = first(subj.reldep_possibilities_real(sack))
+    if reldep:
+        dep = str(reldep)
+        return sltr.set(provides=dep)
+    return sltr
 
 
 class AbstractResolverTask(object):
@@ -59,10 +111,9 @@ class AbstractResolverTask(object):
                 problems.append("Package in base build group not found: {}".format(name))
             goal.install(select=sltr)
         for r in br:
-            subj = dnf.subject.Subject(r)
-            sltr = subj.get_best_selector(self.sack)
+            sltr = get_best_selector(self.sack, r)
             # pylint: disable=E1103
-            if sltr is None or not sltr.matches():
+            if not sltr.matches():
                 problems.append("No package found for: {}".format(r))
             else:
                 goal.install(select=sltr)
@@ -97,7 +148,7 @@ class AbstractResolverTask(object):
         level = 1
         # pylint:disable=E1103
         pkgs_on_level = {x for r in br for x in
-                         dnf.subject.Subject(r).get_best_selector(self.sack).matches()}
+                         get_best_selector(self.sack, r).matches()}
         while pkgs_on_level:
             for pkg in pkgs_on_level:
                 dep = dep_map.get(pkg.name)
@@ -183,7 +234,7 @@ class AbstractResolverTask(object):
 
     def prepare_sack(self, repo_id):
         for_arch = util.config['dependency']['for_arch']
-        sack = dnf.sack.Sack(arch=for_arch)
+        sack = hawkey.Sack(arch=for_arch)
         repos = self.repo_cache.get_repos(repo_id)
         self.log.info("Loading repos into sack...")
         if repos:
