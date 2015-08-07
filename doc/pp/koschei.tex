@@ -22,7 +22,7 @@
 \author{Author: \\
   \em{Mikolaj Izdebski}
   \tt{mizdebsk@redhat.com}}
-\date{Date: \em{11 July 2014}}
+\date{Date: \em{12 August 2015}}
 
 
 \fancySectionOpens
@@ -56,6 +56,7 @@ evolution possibilities.
     \end{itemize}
   \item Constantly growing number of packages
     \begin{itemize}
+      \item Copr
       \item software collections
     \end{itemize}
   \item People are unaware of FTBFS
@@ -92,7 +93,36 @@ evolution possibilities.
   Continuous integration
   \begin{itemize}
     \item continuous monitoring of package buildability
-    \item helping maintainers to reason on FTBFS
+    \item informing interested parties about FTBFS
+    \item helping to reason on FTBFS
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Where?}
+  \begin{itemize}
+  \item Options considered
+    \begin{itemize}
+      \item dedicated hardware
+      \item maintainers' machines
+      \item Fedora Koji
+      \item Copr
+      \item Fedora cloud
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Where?}
+  \begin{itemize}
+  \item The choice -- Fedora Koji
+    \begin{itemize}
+      \item existing, stable platform
+      \item spare resources
+      \item canonical build environment
+      \item maintained by Fedora infrastructure
+      \item no networking problems
+    \end{itemize}
   \end{itemize}
 \end{frame}
 
@@ -109,32 +139,11 @@ evolution possibilities.
       \item nightly?
       \item only a few packages can be rebuilt
     \end{itemize}
-  \item Rebuild all rev deps after each update
+  \item Rebuild after dependency changeh
     \begin{itemize}
       \item way too much resources needed
     \end{itemize}
   \item Middle ground solution?
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Where?}
-  \begin{itemize}
-  \item Options considered
-    \begin{itemize}
-      \item maintainers' machines
-      \item Fedora Koji
-      \item Copr
-      \item cloud
-    \end{itemize}
-  \item The choice -- Fedora Koji
-    \begin{itemize}
-      \item existing, stable platform
-      \item spare resources
-      \item maintained by Fedora infrastructure
-      \item no networking problems
-      \item canonical build environment
-    \end{itemize}
   \end{itemize}
 \end{frame}
 
@@ -153,7 +162,7 @@ evolution possibilities.
 \vspace{30 pt}
 \begin{block}{Where did the name came from}
 \begin{verbatim}
-$ grep -xi ko*c*i /usr/share/dict/words
+$ grep -xi ko.*c.*i /usr/share/dict/words
 Koschei
 \end{verbatim}
 \end{block}
@@ -163,8 +172,9 @@ Koschei
 \begin{frame}
   \frametitle{The concept}
   \begin{itemize}
-  \item A set of packages
-  \item Reporting buildability
+  \item Set of packages
+  \item Buildability reporting
+  \item State change notifications
   \item Resource monitoring
   \item Rebuild prioritizing
   \end{itemize}
@@ -176,20 +186,14 @@ Koschei
     \item Time since last rebuild
     \item Dependency changes
     \begin{itemize}
-      \item consider distances
+      \item take distances into account
     \end{itemize}
     \item Previous state
     \begin{itemize}
       \item prioritize failures
     \end{itemize}
-    \item Importance
-    \begin{itemize}
-      \item aka static priority
-    \end{itemize}
+    \item Package importance
     \item Manual trigger
-    \begin{itemize}
-      \item aka dynamic priority
-    \end{itemize}
     \item Plugins
   \end{itemize}
 \end{frame}
@@ -198,22 +202,14 @@ Koschei
   \frametitle{Database}
   \begin{itemize}
     \item Packages
-    \begin{itemize}
-      \item name
-      \item priorities
-    \end{itemize}
-    \item Builds
-    \begin{itemize}
-      \item status
-      \item Koji task ID
-      \item time stamps
-      \item logs
-    \end{itemize}
-    \item Repositories
-    \begin{itemize}
-      \item dependencies
-    \end{itemize}
     \item Package groups
+    \item Scratch bulids
+    \item Real builds
+    \item Dependencies
+    \item Dependency changes
+    \item Dependency resolution problems
+    \item Koji repositories
+    \item Users
   \end{itemize}
 \end{frame}
 
@@ -362,6 +358,42 @@ Koschei
     \item running at Fedora infrastructure
   \end{itemize}
 \end{frame}
+
+\begin{frame}
+  \frametitle{Statistics}
+  \begin{itemize}
+    \item Monitored packages
+    \begin{itemize}
+% count of all packages:
+%   select count(*) from package where ignored = false;
+      \item 3715 packages
+% count of all rawhide packages:
+%   koji -q list-pkgs --tag f24 | wc -l
+      \item 22 \% of all packages
+% count of all packages in state OK:
+%   select count(*) from package inner join build
+%      on package.last_complete_build_id = build.id
+%      where package.ignored = false and package.resolved = true and build.state = 3;
+      \item 3644 OK (98.09 \%)
+% count of all packages in state FAILING:
+%   select count(*) from package inner join build
+%      on package.last_complete_build_id = build.id
+%      where package.ignored = false and package.resolved = true and build.state = 5;
+      \item 58 failing (1.56 \%)
+% count of all packages in state UNRESOLVED:
+%   select count(*) from package where ignored = false and resolved = false;
+      \item 13 unresolved (0.35 \%)
+    \end{itemize}
+    \item Scratch build rate
+    \begin{itemize}
+      \item 1 bulid every 36 s
+      \item 100 builds/hour
+      \item 2400 builds/day
+      \item 876000 builds/year
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
 
 \section{Future}
 \begin{frame}
