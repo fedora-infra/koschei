@@ -11,9 +11,9 @@ config = {
         "cert": "~/.fedora.cert",
         "ca": "~/.fedora-server-ca.cert",
         "server_ca": "~/.fedora-server-ca.cert",
-        "source_tag": "f23",
-        "target_tag": "f23",
-        "build_tag": "f23-build",
+        "source_tag": "f24",
+        "target_tag": "f24",
+        "build_tag": "f24-build",
         "max_builds": 30,
         "build_arches": ['i386', 'x86_64', 'armhfp'],
         "build_opts": {
@@ -29,7 +29,7 @@ config = {
         "keep_build_deps_for": 5,
         "local": False,
         "arches": ['x86_64', 'i386'],
-        "remote_repo": "http://kojipkgs.fedoraproject.org/repos/f23-build/{repo_id}/{arch}",
+        "remote_repo": "http://kojipkgs.fedoraproject.org/repos/f24-build/{repo_id}/{arch}",
     },
     "priorities": {
         "newly_added": 3000, # should be higher than the threshold
