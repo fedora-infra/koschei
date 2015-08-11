@@ -199,16 +199,18 @@ class PSQL(Command):
 
     needs_backend = False
 
-    def execute(self):
-        conf = util.config['database_config']
-        cmd = ['psql', conf["database"]]
-        if 'username' in conf:
-            cmd += ['-U', conf['username']]
-        if 'host' in conf:
-            cmd += ['-h', conf['host']]
+    def setup_parser(self, parser):
+        parser.add_argument('args', nargs='*',
+                            help="Arguments passed to psql")
+    def execute(self, args):
+        cmd = ['psql', '-d', engine.url.database] + args
+        if engine.url.username:
+            cmd += ['-U', engine.url.username]
+        if engine.url.host:
+            cmd += ['-h', engine.url.host]
         env = os.environ.copy()
-        if 'password' in conf:
-            env['PGPASSWORD'] = conf['password']
+        if engine.url.password:
+            env['PGPASSWORD'] = engine.url.password
         os.execve('/usr/bin/psql', cmd, env)
 
 if __name__ == '__main__':
