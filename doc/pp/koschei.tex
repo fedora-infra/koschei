@@ -51,19 +51,8 @@ evolution possibilities.
   \frametitle{Where is the problem?}
   \begin{itemize}
   \item Buildability as a measure of software quality
-    \begin{itemize}
-      \item tests ran during build
-    \end{itemize}
   \item Constantly growing number of packages
-    \begin{itemize}
-      \item Copr
-      \item software collections
-    \end{itemize}
-  \item People are unaware of FTBFS
-    \begin{itemize}
-      \item bugs are not seen until mass rebuild
-      \item or worse, until there is critical bug to fix
-    \end{itemize}
+  \item Unawareness of FTBFS
   \end{itemize}
 \end{frame}
 
@@ -74,13 +63,8 @@ evolution possibilities.
   \item People forget what they were working on
   \item More bugs appear
     \begin{itemize}
-      \item Harder to discover where the real problem is
-      \item Fixing means working in recursive, parallel mode
-      \begin{itemize}
-        \item to fix A you need to fix B first
-        \item Koji repo regeneration
-        \item ARM builders
-      \end{itemize}
+      \item increased difficutly of solving bug
+      \item bug dependendency
     \end{itemize}
   \end{itemize}
 \end{frame}
