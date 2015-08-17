@@ -173,11 +173,17 @@ class Backend(object):
                 build.repo_id = task['request'][4]['repo_id']
             except KeyError:
                 pass
+            started = finished = None
+            try:
+                started = datetime.fromtimestamp(task['create_ts'])
+                finished = datetime.fromtimestamp(task['completion_ts'])
+            except (KeyError, TypeError, ValueError):
+                pass
             db_task = KojiTask(build_id=build.id,
                                task_id=task['id'],
                                state=task['state'],
-                               started=datetime.fromtimestamp(task['create_ts']),
-                               finished=datetime.fromtimestamp(task['completion_ts']),
+                               started=started,
+                               finished=finished,
                                arch=task['arch'])
             self.db.add(db_task)
         self.db.flush()
