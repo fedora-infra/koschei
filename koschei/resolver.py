@@ -420,7 +420,7 @@ class Resolver(KojiService):
                  repo_cache=None, backend=None):
         super(Resolver, self).__init__(log=log, db=db,
                                        koji_session=koji_session)
-        self.repo_cache = repo_cache or RepoCache()
+        self.repo_cache = repo_cache or RepoCache(self.koji_session)
         self.backend = backend or Backend(db=self.db,
                                           koji_session=self.koji_session,
                                           log=self.log)

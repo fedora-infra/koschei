@@ -47,7 +47,7 @@ class RepoCacheTest(AbstractTest):
 
     def test_read_from_disk(self):
         with librepo_mock() as mock:
-            repo_cache.RepoCache()
+            repo_cache.RepoCache(None)
             repos = 7, 123, 666, 1024
             mock.mock_local.assert_has_calls([call(True)] * 4)
             mock.mock_repotype.assert_has_calls([call(librepo.LR_YUMREPO)] * 4)
@@ -57,12 +57,12 @@ class RepoCacheTest(AbstractTest):
 
     def test_lru_init(self):
         with librepo_mock():
-            repo_cache.RepoCache()
+            repo_cache.RepoCache(None)
             self.assertEqual({'123', '666', '1024', 'not-repo'}, set(os.listdir('.')))
 
     def test_get_cached(self):
         with librepo_mock() as mock:
-            cache = repo_cache.RepoCache()
+            cache = repo_cache.RepoCache(None)
             mock.reset_mock()
             self.assertEqual({'x86_64': MockRepo, 'i386': MockRepo},
                              cache.get_repos(666))
@@ -70,7 +70,7 @@ class RepoCacheTest(AbstractTest):
 
     def test_local(self):
         with librepo_mock() as mock:
-            cache = repo_cache.RepoCache(local=True, max_repos=3)
+            cache = repo_cache.RepoCache(None, local=True, max_repos=3)
             for repo in [7, 123, 666, 1024]:
                 cache.get_repo(repo, 'x86_64')
             mock.mock_local.assert_called_with(True)

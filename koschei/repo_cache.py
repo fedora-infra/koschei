@@ -30,11 +30,13 @@ REPO_404 = 19
 
 class RepoCache(object):
 
-    def __init__(self, repo_dir=util.config['directories']['repodata'],
+    def __init__(self, koji_session,
+                 repo_dir=util.config['directories']['repodata'],
                  max_repos=util.config['dependency']['repo_cache_items'],
                  remote_repo=util.config['dependency']['remote_repo'],
                  arches=util.config['dependency']['arches'],
                  local=util.config['dependency']['local']):
+        self.koji_session = koji_session
         self._repo_dir = repo_dir
         assert max_repos > 2
         self._max_repos = max_repos
@@ -66,6 +68,9 @@ class RepoCache(object):
         if self._local:
             return
         repos = {}
+        build_tag = None
+        if '{build_tag}' in self._remote_repo:
+            build_tag = self.koji_session.repoInfo(repo_id)['tag_name']
         try:
             for arch in self._arches:
                 h = librepo.Handle()
@@ -75,7 +80,8 @@ class RepoCache(object):
                 os.makedirs(destdir)
                 h.destdir = destdir
                 h.repotype = librepo.LR_YUMREPO
-                url = self._remote_repo.format(repo_id=repo_id, arch=arch)
+                url = self._remote_repo.format(repo_id=repo_id, arch=arch,
+                                               build_tag=build_tag)
                 h.urls = [url]
                 h.yumdlist = ['primary', 'filelists', 'group']
                 log.info("Downloading {arch} repo from {url}".format(arch=arch,

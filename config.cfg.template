@@ -29,7 +29,7 @@ config = {
         "keep_build_deps_for": 5,
         "local": False,
         "arches": ['x86_64', 'i386'],
-        "remote_repo": "http://kojipkgs.fedoraproject.org/repos/f24-build/{repo_id}/{arch}",
+        "remote_repo": "http://kojipkgs.fedoraproject.org/repos/{build_tag}/{repo_id}/{arch}",
     },
     "priorities": {
         "newly_added": 3000, # should be higher than the threshold
