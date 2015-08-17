@@ -6,7 +6,7 @@ import logging
 import sqlalchemy
 import requests
 
-faitout_url = 'http://faitout.cloud.fedoraproject.org/faitout/'
+faitout_url = 'http://faitout.fedorainfracloud.org/'
 
 testdir = os.path.dirname(os.path.realpath(__file__))
 
