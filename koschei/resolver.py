@@ -328,10 +328,11 @@ class GenerateRepoTask(AbstractResolverTask):
         if not base_installable:
             self.log.info("Build group not resolvable")
             repo.base_resolved = False
+            self.db.add(repo)
+            self.db.flush()
             self.db.execute(BuildrootProblem.__table__.insert(),
                             [{'repo_id': repo.repo_id, 'problem': problem}
                              for problem in base_problems])
-            self.db.add(repo)
             self.db.commit()
             return
         brs = util.get_rpm_requires(self.koji_session,
