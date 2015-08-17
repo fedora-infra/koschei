@@ -315,8 +315,6 @@ class GenerateRepoTask(AbstractResolverTask):
         self.db.commit()
         packages = self.get_packages(require_build=True)
         repo = Repo(repo_id=repo_id)
-        self.db.add(repo)
-        self.db.flush()
         self.prepare_sack(repo_id)
         if not self.sack:
             self.log.error('Cannot generate repo: {}'.format(repo_id))
@@ -332,6 +330,7 @@ class GenerateRepoTask(AbstractResolverTask):
             self.db.execute(BuildrootProblem.__table__.insert(),
                             [{'repo_id': repo.repo_id, 'problem': problem}
                              for problem in base_problems])
+            self.db.add(repo)
             self.db.commit()
             return
         brs = util.get_rpm_requires(self.koji_session,
@@ -350,6 +349,7 @@ class GenerateRepoTask(AbstractResolverTask):
         self.synchronize_resolution_state()
         self.update_dependency_changes(changes)
         repo.base_resolved = True
+        self.db.add(repo)
         self.db.commit()
         end = time.time()
 

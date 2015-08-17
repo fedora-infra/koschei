@@ -301,7 +301,7 @@ class DependencyChange(Base):
 class Repo(Base):
     __tablename__ = 'repo'
     repo_id = Column(Integer, primary_key=True, default=external_id)
-    base_resolved = Column(Boolean)
+    base_resolved = Column(Boolean, nullable=False)
 
 
 class BuildrootProblem(Base):
