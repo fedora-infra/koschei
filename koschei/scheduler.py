@@ -102,8 +102,6 @@ class Scheduler(KojiService):
         return self.db.query(Build.package_id).filter(Build.state == Build.RUNNING)
 
     def get_priorities(self):
-        if is_buildroot_broken(self.db):
-            return []
         incomplete_builds = self.get_incomplete_builds_query()
         queries = self.get_priority_queries().values()
         union_query = union_all(*queries).alias('un')
@@ -138,6 +136,8 @@ class Scheduler(KojiService):
         self.db.execute("LOCK TABLE package IN EXCLUSIVE MODE;")
 
     def main(self):
+        if is_buildroot_broken(self.db):
+            return
         prioritized = self.get_priorities()
         self.db.rollback() # no-op, ends the transaction
         if time.time() - self.calculation_timestamp > self.calculation_interval:
