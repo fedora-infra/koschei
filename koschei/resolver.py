@@ -255,7 +255,8 @@ class GenerateRepoTask(AbstractResolverTask):
         # detaches objects from ORM, prevents spurious queries that hinder
         # performance
         if expunge:
-            self.db.expunge_all()
+            for p in packages:
+                self.db.expunge(p)
         return packages
 
     def update_repo_index(self, repo_id):
