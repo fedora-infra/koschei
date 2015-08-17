@@ -320,6 +320,7 @@ class GenerateRepoTask(AbstractResolverTask):
         self.prepare_sack(repo_id)
         if not self.sack:
             self.log.error('Cannot generate repo: {}'.format(repo_id))
+            self.db.rollback()
             return
         self.update_repo_index(repo_id)
         # TODO repo_id
