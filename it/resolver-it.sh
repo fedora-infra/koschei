@@ -21,6 +21,7 @@ fi
 drop
 createdb koschei_it
 xzcat koschei-it-dump.sql.xz | sed 's/DATABASE koschei/&_it/;s/\\connect koschei/&_it/;' | psql koschei_it
+psql koschei_it <<< "UPDATE repo SET base_resolved = TRUE;"
 cd ..
 export KOSCHEI_CONFIG='config.cfg.template:it/config.cfg'
 alembic upgrade head
