@@ -11,7 +11,6 @@ Dependencies
 
 Python code dependencies:
 - alembic
-- dnf
 - fedmsg
 - flask
 - flask-openid
