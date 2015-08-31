@@ -224,11 +224,12 @@ class Backend(object):
                               lambda k, p: k.listTagged(source_tag, latest=True,
                                                         package=p.name, inherit=True))
         task_infos = {pkg: i[0] for pkg, i in zip(packages, infos) if i}
-        blocked = [p['package_name'] for p in
-                   self.koji_session.listPackages(tagID=source_tag)
-                   if p['blocked']]
-        if blocked:
-            self.db.query(Package).filter(Package.name.in_(blocked))\
+        blocked = {p['package_name'] for p in
+                   self.koji_session.listPackages(tagID=source_tag, inherited=True)
+                   if p['blocked']}
+        to_block = [p.id for p in packages if p.name in blocked]
+        if to_block:
+            self.db.query(Package).filter(Package.id.in_(to_block))\
                    .update({'blocked': True}, synchronize_session=False)
             self.db.expire_all()
             self.db.flush()
