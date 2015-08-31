@@ -154,7 +154,9 @@ def package_view(package_query, template, **template_args):
 def state_icon(package):
     icon = {'ok': 'complete',
             'failing': 'failed',
-            'unresolved': 'cross'}.get(package.state_string, 'unknown')
+            'unresolved': 'cross',
+            'blocked': 'unknown',
+            'untracked': 'unknown'}.get(package.state_string, 'unknown')
     return url_for('static', filename='images/{name}.png'.format(name=icon))
 Package.state_icon = state_icon
 

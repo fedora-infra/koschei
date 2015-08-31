@@ -88,9 +88,10 @@ class Package(Base):
     blocked = Column(Boolean, nullable=False, server_default=false())
 
     def get_state(self):
-        # TODO distinguish without breaking fedmsg format
-        if self.blocked or not self.tracked:
-            return 'ignored'
+        if self.blocked:
+            return 'blocked'
+        if not self.tracked:
+            return 'untracked'
         if self.resolved is False:
             return 'unresolved'
         build = self.last_complete_build
@@ -106,7 +107,8 @@ class Package(Base):
     @property
     def msg_state_string(self):
         """String representation of state used when publishing messages"""
-        return self.get_state() or 'ignored'
+        # TODO distinguish between blocked and untracked without breaking fedmsg format
+        return not self.blocked and self.tracked and self.get_state() or 'ignored'
 
     def __repr__(self):
         return '{0.id} (name={0.name})'.format(self)
