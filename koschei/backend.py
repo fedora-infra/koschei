@@ -209,6 +209,22 @@ class Backend(object):
             if self.is_build_newer(pkg.last_build, info):
                 self.register_real_build(pkg, info)
 
+    def refresh_blocked(self):
+        """
+        Checks Koji for blocked and unblocked packages
+        """
+        source_tag = util.koji_config['source_tag']
+        whitelisted = {p['package_name'] for p in
+                       self.koji_session.listPackages(tagID=source_tag, inherited=True)
+                       if not p['blocked']}
+        packages = self.db.query(Package).all()
+        to_update = [p for p in packages if p.blocked == (p.name in whitelisted)]
+        if to_update:
+            self.db.query(Package).filter(Package.id.in_(to_update))\
+                   .update({'blocked': ~Package.blocked}, synchronize_session=False)
+            self.db.expire_all()
+            self.db.flush()
+
     def refresh_latest_builds(self, packages=None):
         """
         Checks Koji for latest builds of packages and registers possible
@@ -224,15 +240,6 @@ class Backend(object):
                               lambda k, p: k.listTagged(source_tag, latest=True,
                                                         package=p.name, inherit=True))
         task_infos = {pkg: i[0] for pkg, i in zip(packages, infos) if i}
-        blocked = {p['package_name'] for p in
-                   self.koji_session.listPackages(tagID=source_tag, inherited=True)
-                   if p['blocked']}
-        to_block = [p.id for p in packages if p.name in blocked]
-        if to_block:
-            self.db.query(Package).filter(Package.id.in_(to_block))\
-                   .update({'blocked': True}, synchronize_session=False)
-            self.db.expire_all()
-            self.db.flush()
         self.register_real_builds(task_infos)
 
     def add_packages(self, names, group=None, static_priority=None,
