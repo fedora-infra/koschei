@@ -60,6 +60,7 @@ config = {
         "enabled": True,
         "pkgdb_url": 'https://admin.fedoraproject.org/pkgdb/api',
         "topic_re": r'\.prod\.pkgdb\.',
+        "sync_tracked": False,
     },
     "directories": {
         "repodata": "@CACHEDIR@/repodata",

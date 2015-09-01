@@ -48,6 +48,12 @@ def query_users_packages(username):
         packages = packages['point of contact'] + packages['co-maintained'] + packages['watch']
         return {p['name'] for p in packages}
 
+def query_monitored_packages():
+    log.debug("Requesting list of monitored packages from pkgdb")
+    packages = query_pkgdb('koschei?format=json')
+    if packages:
+        return packages['packages']
+
 
 if pkgdb_config['enabled']:
 
@@ -83,3 +89,12 @@ if pkgdb_config['enabled']:
                     user.packages_retrieved = False
                     db.commit()
                     refresh_user_packages(user)
+
+
+    @listen_event('polling_event')
+    def refresh_monitored_packages(backend):
+        if pkgdb_config['sync_tracked']:
+            self.log.debug('Polling monitored packages...')
+            packages = query_monitored_packages()
+            if packages is not None:
+                backend.sync_tracked(packages)

@@ -282,6 +282,21 @@ class Backend(object):
         self.db.flush()
         return pkgs
 
+    def sync_tracked(self, tracked):
+        """
+        Synchronize package tracked status.  End result is that all
+        specified packages are present in Koschei and are set to be
+        tracked, and all other packages are not tracked.
+        """
+        packages = self.db.query(Package).all()
+        to_update = [p for p in packages if p.tracked != (p.name in tracked)]
+        if to_update:
+            self.db.query(Package).filter(Package.id.in_(to_update))\
+                   .update({'tracked': ~Package.tracked}, synchronize_session=False)
+            self.db.expire_all()
+            self.db.flush()
+        self.add_packages(set(tracked) - {p.name for p in packages})
+
     def poll_repo(self):
         curr_repo = util.get_latest_repo(self.koji_session)
         if curr_repo:

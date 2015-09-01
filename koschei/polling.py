@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import koji
 
-from . import util
+from . import util, plugin
 from .models import Build
 from .service import KojiService
 from .backend import Backend
@@ -59,5 +59,6 @@ class Polling(KojiService):
         self.log.debug('Polling latest real builds...')
         self.backend.refresh_blocked()
         self.backend.refresh_latest_builds()
+        plugin.dispatch_event('polling_event', self.backend)
         self.db.commit()
         self.log.debug('Polling finished')
