@@ -12,5 +12,5 @@ pip install --upgrade coverage
 
 TEST_WITH_FAITOUT=1 koscheienv/bin/nosetests --with-xunit --cover-erase --cover-package=koschei --with-xcoverage
 
-pylint -f parseable koschei | tee pylint.out
+pylint -f parseable --rcfile aux/pylintrc `find koschei/ admin.py -name '*.py'`
 pep8 koschei/*.py koschei/*/*.py | tee pep8.out
