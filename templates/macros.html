@@ -21,7 +21,9 @@
 {% if page %}
 {{ pagination_row(page, 'Packages') }}
 {% endif %}
+{% if allow_add_packages %}
 <form action="{{ url_for('add_packages') }}" method="post">
+{% endif %}
     <input type="hidden" name="next" value="{{ request.url }}"/>
     <table class="data-list">
         <thead>
@@ -65,16 +67,20 @@
                 <td>
                     {{ package.current_priority or ""}}
                 </td>
+                {% if allow_add_packages %}
                 <td>
                     {% if not package.tracked %}
                     <button type="submit" name="names" value="{{ package.name }}">Add to Koschei</button>
                     {% endif %}
                 </td>
+                {% endif %}
             </tr>
             {% endfor %}
         </tbody>
     </table>
+{% if allow_add_packages %}
 </form>
+{% endif %}
 {% if page %}
 {{ pagination_row(page, 'Packages') }}
 {% endif %}

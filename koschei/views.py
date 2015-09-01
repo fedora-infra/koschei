@@ -205,6 +205,9 @@ def inject_fedmenu():
     else:
         return {}
 
+@app.context_processor
+def inject_allow_add_packages():
+    return {'allow_add_packages': frontend_config['allow_add_packages']}
 
 @app.route('/')
 @tab('Packages')
@@ -439,44 +442,45 @@ def edit_group(name, namespace=None):
     return process_group_form(group=group)
 
 
-@app.route('/add_packages', methods=['GET', 'POST'])
-@tab('Add packages')
-@auth.login_required()
-def add_packages():
-    form = AddPackagesForm()
-    if request.method == 'POST':
-        be = create_backend()
-        if not form.validate_or_flash():
-            return render_template("add-packages.html", form=form)
-        names = set(form.packages.data)
-        try:
-            added = be.add_packages(names)
-        except backend.PackagesDontExist as e:
-            flash("Packages don't exist: " + ','.join(e.names))
-            return render_template("add-packages.html", form=form)
-        if form.group.data:
-            name, _, namespace = reversed(form.group.data.partition('/'))
-            group = db.query(PackageGroup)\
-                      .filter_by(namespace=namespace or None, name=name)\
-                      .first() or abort(400)
-            if not group.editable:
-                abort(400)
-            subq = db.query(PackageGroupRelation.package_id)\
-                     .filter_by(group_id=group.id).subquery()
-            packages = db.query(Package)\
-                         .filter(Package.name.in_(names))\
-                         .filter(Package.id.notin_(subq)).all()
-            rels = [dict(group_id=group.id, package_id=pkg.id) for pkg in packages]
-            if rels:
-                db.execute(PackageGroupRelation.__table__.insert(), rels)
-        if added:
-            added = ' '.join(x.name for x in added)
-            log.info("{user} added\n{added}".format(user=g.user.name,
-                                                    added=added))
-            flash("Packages added: {added}".format(added=added))
-        db.commit()
-        return redirect(request.form.get('next') or url_for('frontpage'))
-    return render_template("add-packages.html", form=form)
+if frontend_config['allow_add_packages']:
+    @app.route('/add_packages', methods=['GET', 'POST'])
+    @tab('Add packages')
+    @auth.login_required()
+    def add_packages():
+        form = AddPackagesForm()
+        if request.method == 'POST':
+            be = create_backend()
+            if not form.validate_or_flash():
+                return render_template("add-packages.html", form=form)
+            names = set(form.packages.data)
+            try:
+                added = be.add_packages(names)
+            except backend.PackagesDontExist as e:
+                flash("Packages don't exist: " + ','.join(e.names))
+                return render_template("add-packages.html", form=form)
+            if form.group.data:
+                name, _, namespace = reversed(form.group.data.partition('/'))
+                group = db.query(PackageGroup)\
+                          .filter_by(namespace=namespace or None, name=name)\
+                          .first() or abort(400)
+                if not group.editable:
+                    abort(400)
+                subq = db.query(PackageGroupRelation.package_id)\
+                         .filter_by(group_id=group.id).subquery()
+                packages = db.query(Package)\
+                             .filter(Package.name.in_(names))\
+                             .filter(Package.id.notin_(subq)).all()
+                rels = [dict(group_id=group.id, package_id=pkg.id) for pkg in packages]
+                if rels:
+                    db.execute(PackageGroupRelation.__table__.insert(), rels)
+            if added:
+                added = ' '.join(x.name for x in added)
+                log.info("{user} added\n{added}".format(user=g.user.name,
+                                                        added=added))
+                flash("Packages added: {added}".format(added=added))
+            db.commit()
+            return redirect(request.form.get('next') or url_for('frontpage'))
+        return render_template("add-packages.html", form=form)
 
 
 @app.route('/documentation')

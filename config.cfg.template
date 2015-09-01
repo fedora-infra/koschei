@@ -74,6 +74,7 @@ config = {
     "frontend": {
         "packages_per_page": 100,
         "builds_per_page": 15,
+        "allow_add_packages": True,
 
         # Production copies for fedmenu
         #"fedmenu_url": "https://apps.fedoraproject.org/fedmenu",
