@@ -1,3 +1,5 @@
+#!/bin/bash
+
 virtualenv koscheienv --system-site-packages
 source koscheienv/bin/activate
 
