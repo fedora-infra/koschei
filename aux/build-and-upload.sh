@@ -12,7 +12,7 @@ mkdir -p build
 cd build
 sed "s/^Release:[^%]*/&.$RELNO/" ../koschei.spec > koschei.spec
 rpmbuild -bs -D"_sourcedir $PWD/.." -D"_srcrpmdir $PWD" koschei.spec
-mock -r $MOCK_CONFIG -n --rebuild koschei-${VERSION}-*.$RELNO.*.src.rpm --resultdir .
+mock --yum -r $MOCK_CONFIG -n --rebuild koschei-${VERSION}-*.$RELNO.*.src.rpm --resultdir .
 createrepo_c .
 RPM=`echo koschei-${VERSION}-*.$RELNO.*.noarch.rpm`
 scp -r repodata "$RPM" "$USERNAME@fedorapeople.org:public_html/koschei/repo/"
