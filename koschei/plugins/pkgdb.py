@@ -83,6 +83,15 @@ if pkgdb_config['enabled']:
     @listen_event('fedmsg_event')
     def consume_fedmsg(topic, msg, db, **kwargs):
         if topic_re.search(topic):
+            if topic.endswith('.pkgdb.package.koschei.update'):
+                package = msg['msg']['package']
+                name = package['name']
+                tracked = package['koschei_monitor']
+                log.debug('Setting tracking flag for package %s to %r' % (name, tracked))
+                db.query(Package).filter_by(name=name).update({'tracked': tracked},
+                                                              synchronize_session=False)
+                db.expire_all()
+                db.flush()
             for username in fedmsg.meta.msg2usernames(msg):
                 user = db.query(User).filter_by(name=username).first()
                 if user:
