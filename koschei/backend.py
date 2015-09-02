@@ -278,7 +278,6 @@ class Backend(object):
                    .update({'tracked': ~Package.tracked}, synchronize_session=False)
             self.db.expire_all()
             self.db.flush()
-        self.add_packages(set(tracked) - {p.name for p in packages})
 
     def poll_repo(self):
         curr_repo = util.get_latest_repo(self.koji_session)
