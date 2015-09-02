@@ -253,43 +253,17 @@ class Backend(object):
 
     def add_packages(self, names, group=None, static_priority=None,
                      manual_priority=None):
-        newly_added_prio = util.config['priorities']['newly_added']
-        existing = self.db.query(Package).filter(Package.name.in_(names))
-        existing_names = [x.name for x in existing]
-        koji_pkgs = util.get_koji_packages(names)
-        nonexistent = [name for name, pkg in zip(names, koji_pkgs) if not pkg]
+        packages = self.db.query(Package).filter(Package.name.in_(names))
+        nonexistent = set(names) - {p.name for p in packages}
         if nonexistent:
             raise PackagesDontExist(nonexistent)
-        pkgs = []
-        untracked = []
-        for name in names:
-            if name not in existing_names:
-                pkg = Package(name=name)
-                pkg.static_priority = static_priority or 0
-                self.db.add(pkg)
-                pkgs.append(pkg)
-                untracked.append(pkg)
-        for pkg in existing:
-            if not pkg.tracked:
-                pkg.tracked = True
-                pkgs.append(pkg)
-        self.db.flush()
+        newly_added = [p for p in packages if not pkg.tracked]
+        for pkg in newly_added:
+            pkg.tracked = True
         if group:
-            self.add_group(group, pkgs)
-        if pkgs:
-            self.refresh_latest_builds(packages=pkgs)
-            self.db.flush()
-            for pkg in pkgs:
-                if pkg.blocked:
-                    try:
-                        pkgs.remove(pkg)
-                        untracked.remove(pkg)
-                    except ValueError:
-                        pass
-        for pkg in untracked:
-            pkg.manual_priority = manual_priority or newly_added_prio
+            self.add_group(group, packages)
         self.db.flush()
-        return pkgs
+        return newly_added
 
     def sync_tracked(self, tracked):
         """

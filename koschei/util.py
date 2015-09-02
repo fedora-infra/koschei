@@ -200,15 +200,6 @@ def get_build_group(koji_session):
             if not package['blocked'] and package['type'] == 'default']
 
 
-def get_koji_packages(package_names):
-    session = create_koji_session(anonymous=True)
-    session.multicall = True
-    for name in package_names:
-        session.getPackage(name)
-    pkgs = session.multiCall()
-    return [pkg for [pkg] in pkgs]
-
-
 def get_rpm_requires(koji_session, nvras):
     deps_list = itercall(koji_session, nvras,
                          lambda k, nvra: k.getRPMDeps(nvra, koji.DEP_REQUIRE))
