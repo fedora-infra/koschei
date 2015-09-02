@@ -234,22 +234,18 @@ class Backend(object):
                 self.db.add(pkg)
             self.db.flush()
 
-    def refresh_latest_builds(self, packages=None):
+    def refresh_latest_builds(self):
         """
         Checks Koji for latest builds of packages and registers possible
-        new real builds and obtains srpms for them
+        new real builds.
         """
-        if packages is None:
-            packages = self.db.query(Package).filter_by(blocked=False, tracked=True)\
-                              .options(joinedload(Package.last_build)).all()
-            for p in packages:
-                self.db.expunge(p)
+        packages = self.db.query(Package).options(joinedload(Package.last_build)).all()
+        for p in packages:
+            self.db.expunge(p)
         source_tag = util.koji_config['source_tag']
-        infos = util.itercall(self.koji_session, packages,
-                              lambda k, p: k.listTagged(source_tag, latest=True,
-                                                        package=p.name, inherit=True))
-        task_infos = {pkg: i[0] for pkg, i in zip(packages, infos) if i}
-        self.register_real_builds(task_infos)
+        infos = self.koji_session.listTagged(source_tag, latest=True, inherit=True)
+        packages = {p.name: p for p in packages}
+        self.register_real_builds({packages[i['package_name']]: i for i in infos})
 
     def add_packages(self, names, group=None, static_priority=None,
                      manual_priority=None):
