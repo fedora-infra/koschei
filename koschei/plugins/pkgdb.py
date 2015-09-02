@@ -94,7 +94,7 @@ if pkgdb_config['enabled']:
     @listen_event('polling_event')
     def refresh_monitored_packages(backend):
         if pkgdb_config['sync_tracked']:
-            self.log.debug('Polling monitored packages...')
+            log.debug('Polling monitored packages...')
             packages = query_monitored_packages()
             if packages is not None:
                 backend.sync_tracked(packages)
