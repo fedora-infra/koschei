@@ -209,20 +209,29 @@ class Backend(object):
             if self.is_build_newer(pkg.last_build, info):
                 self.register_real_build(pkg, info)
 
-    def refresh_blocked(self):
+    def refresh_packages(self):
         """
-        Checks Koji for blocked and unblocked packages
+        Refresh packages from Koji: add packages not yet known by Koschei
+        and update blocked flag.
         """
         source_tag = util.koji_config['source_tag']
-        whitelisted = {p['package_name'] for p in
-                       self.koji_session.listPackages(tagID=source_tag, inherited=True)
-                       if not p['blocked']}
+        koji_packages = self.koji_session.listPackages(tagID=source_tag, inherited=True)
+        whitelisted = {p['package_name'] for p in koji_packages if not p['blocked']}
         packages = self.db.query(Package).all()
         to_update = [p.id for p in packages if p.blocked == (p.name in whitelisted)]
         if to_update:
             self.db.query(Package).filter(Package.id.in_(to_update))\
                    .update({'blocked': ~Package.blocked}, synchronize_session=False)
             self.db.expire_all()
+            self.db.flush()
+        existing_names = {p.name for p in packages}
+        to_add = [p for p in koji_packages if p['package_name'] not in existing_names]
+        if to_add:
+            for p in to_add:
+                pkg = Package(name=p['package_name'])
+                pkg.blocked = p['blocked']
+                pkg.tracked = False
+                self.db.add(pkg)
             self.db.flush()
 
     def refresh_latest_builds(self, packages=None):

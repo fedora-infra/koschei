@@ -56,8 +56,9 @@ class Polling(KojiService):
     def main(self):
         self.poll_builds()
         self.poll_repo()
+        self.log.debug('Polling Koji packages...')
+        self.backend.refresh_packages()
         self.log.debug('Polling latest real builds...')
-        self.backend.refresh_blocked()
         self.backend.refresh_latest_builds()
         plugin.dispatch_event('polling_event', self.backend)
         self.db.commit()
