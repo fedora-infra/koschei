@@ -62,8 +62,6 @@ class Watcher(KojiService, FedmsgService, WatchdogService):
                     self.repo_done(content['repo_id'])
             elif topic == self.get_topic('build.tag'):
                 self.register_real_build(content)
-        plugin.dispatch_event('fedmsg_event', topic, msg, db=self.db,
-                              koji_session=self.koji_session)
 
     def repo_done(self, repo_id):
         self.backend.poll_repo()
@@ -94,6 +92,8 @@ class Watcher(KojiService, FedmsgService, WatchdogService):
         for _, _, topic, msg in fedmsg.tail_messages():
             if topic.startswith(self.topic_name + '.'):
                 self.consume(topic, msg)
-                self.db.rollback()
+            plugin.dispatch_event('fedmsg_event', topic, msg, db=self.db,
+                                  koji_session=self.koji_session)
+            self.db.rollback()
             if self.watchdog_interval:
                 alarm(self.watchdog_interval)
