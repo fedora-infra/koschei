@@ -218,7 +218,7 @@ class Backend(object):
                        self.koji_session.listPackages(tagID=source_tag, inherited=True)
                        if not p['blocked']}
         packages = self.db.query(Package).all()
-        to_update = [p for p in packages if p.blocked == (p.name in whitelisted)]
+        to_update = [p.id for p in packages if p.blocked == (p.name in whitelisted)]
         if to_update:
             self.db.query(Package).filter(Package.id.in_(to_update))\
                    .update({'blocked': ~Package.blocked}, synchronize_session=False)
@@ -289,7 +289,7 @@ class Backend(object):
         tracked, and all other packages are not tracked.
         """
         packages = self.db.query(Package).all()
-        to_update = [p for p in packages if p.tracked != (p.name in tracked)]
+        to_update = [p.id for p in packages if p.tracked != (p.name in tracked)]
         if to_update:
             self.db.query(Package).filter(Package.id.in_(to_update))\
                    .update({'tracked': ~Package.tracked}, synchronize_session=False)
