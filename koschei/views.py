@@ -389,10 +389,8 @@ def process_group_form(group=None):
     be = create_backend()
     names = set(form.packages.data)
     owners = set(form.owners.data)
-    if not group:
-        owners.add(g.user.name)
-    elif group.namespace:
-        owners.add(group.namespace)
+    # don't let the user remove himself
+    owners.add(g.user.name)
     user_ids = [get_or_create(db, User, name=name).id for name in owners]
     db.commit()
     try:
@@ -416,8 +414,7 @@ def process_group_form(group=None):
         rels = [dict(group_id=group.id, package_id=pkg.id) for pkg in packages]
         acls = [dict(group_id=group.id, user_id=user_id) for user_id in user_ids]
         db.execute(PackageGroupRelation.__table__.insert(), rels)
-        if acls:
-            db.execute(GroupACL.__table__.insert(), acls)
+        db.execute(GroupACL.__table__.insert(), acls)
         db.commit()
         flash("Group created" if created else "Group modified")
         return redirect(url_for('group_detail', name=group.name,
