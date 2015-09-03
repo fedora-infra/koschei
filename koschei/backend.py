@@ -253,7 +253,7 @@ class Backend(object):
         nonexistent = set(names) - {p.name for p in packages}
         if nonexistent:
             raise PackagesDontExist(nonexistent)
-        newly_added = [p for p in packages if not pkg.tracked]
+        newly_added = [p for p in packages if not p.tracked]
         for pkg in newly_added:
             pkg.tracked = True
         if group:
