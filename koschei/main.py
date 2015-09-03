@@ -51,5 +51,5 @@ if __name__ == '__main__':
     try:
         service().run_service()
     except Exception:
-        log.exception("Service {} crashed.".format(name))
+        log.exception("Service %s crashed.", name)
         raise

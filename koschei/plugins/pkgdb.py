@@ -36,8 +36,8 @@ def query_pkgdb(url):
     baseurl = pkgdb_config['pkgdb_url']
     req = requests.get(baseurl + '/' + url)
     if req.status_code != 200:
-        log.info("pkgdb query failed {}, status={}"
-                 .format(url, req.status_code))
+        log.info("pkgdb query failed %s, status=%d",
+                 url, req.status_code)
         return None
     return req.json()
 
@@ -45,7 +45,9 @@ def query_users_packages(username):
     log.debug("Requesting pkgdb packages for " + username)
     packages = query_pkgdb('packager/package/' + username)
     if packages:
-        packages = packages['point of contact'] + packages['co-maintained'] + packages['watch']
+        packages = (packages['point of contact']
+                    + packages['co-maintained']
+                    + packages['watch'])
         return {p['name'] for p in packages}
 
 def query_monitored_packages():
@@ -67,16 +69,22 @@ if pkgdb_config['enabled']:
             names = query_users_packages(user.name)
             if names is not None:
                 user.packages_retrieved = True
-                existing = {p for [p] in db.query(Package.name).filter(Package.name.in_(names)).all()}
+                existing = {p for [p] in
+                            db.query(Package.name)
+                            .filter(Package.name.in_(names))}
                 for name in names:
                     if name not in existing:
                         pkg = Package(name=name, tracked=False)
                         db.add(pkg)
                 db.flush()
-                packages = db.query(Package.id).filter(Package.name.in_(names)).all()
-                entries = [{'user_id': user.id, 'package_id': pkg.id} for pkg in packages]
-                db.execute(delete(UserPackageRelation, UserPackageRelation.user_id == user.id))
-                db.execute(insert(UserPackageRelation, entries))
+                packages = db.query(Package.id)\
+                             .filter(Package.name.in_(names)).all()
+                entries = [{'user_id': user.id,
+                            'package_id': pkg.id} for pkg in packages]
+                db.execute(delete(UserPackageRelation,
+                                  UserPackageRelation.user_id == user.id))
+                db.execute(insert(UserPackageRelation,
+                                  entries))
             db.commit()
 
 
@@ -87,9 +95,11 @@ if pkgdb_config['enabled']:
                 package = msg['msg']['package']
                 name = package['name']
                 tracked = package['koschei_monitor']
-                log.debug('Setting tracking flag for package %s to %r' % (name, tracked))
-                db.query(Package).filter_by(name=name).update({'tracked': tracked},
-                                                              synchronize_session=False)
+                log.debug('Setting tracking flag for package %s to %r',
+                          name, tracked)
+                db.query(Package)\
+                  .filter_by(name=name)\
+                  .update({'tracked': tracked}, synchronize_session=False)
                 db.expire_all()
                 db.flush()
             for username in fedmsg.meta.msg2usernames(msg):

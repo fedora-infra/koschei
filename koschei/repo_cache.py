@@ -84,15 +84,14 @@ class RepoCache(object):
                                                build_tag=build_tag)
                 h.urls = [url]
                 h.yumdlist = ['primary', 'filelists', 'group']
-                log.info("Downloading {arch} repo from {url}".format(arch=arch,
-                                                                     url=url))
+                log.info("Downloading %s repo from %s", arch, url)
                 result = h.perform(librepo.Result())
                 repos[arch] = result
             self._add_repo(repo_id, repos)
             return repos
         except librepo.LibrepoException as e:
             if e.args[0] == REPO_404:
-                log.info("Repo id={} not available, skipping".format(repo_id))
+                log.info("Repo id=%d not available, skipping", repo_id)
                 return None
             raise
 

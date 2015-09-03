@@ -18,7 +18,7 @@ def load_plugins(only=None):
                 name = path[:-3]
                 if (only is None or name in only) and not name.startswith('_'):
                     descriptor = imp.find_module(name, [plugin_dir])
-                    log.info('Loading {} plugin'.format(name))
+                    log.info('Loading %s plugin', name)
                     loaded[name] = imp.load_module(name, *descriptor)
 
 def listen_event(name):

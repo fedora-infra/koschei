@@ -475,9 +475,8 @@ if frontend_config['allow_add_packages']:
                     db.execute(PackageGroupRelation.__table__.insert(), rels)
             if added:
                 added = ' '.join(x.name for x in added)
-                log.info("{user} added\n{added}".format(user=g.user.name,
-                                                        added=added))
-                flash("Packages added: {added}".format(added=added))
+                log.info("%s added %s", g.user.name, added)
+                flash("Packages added: %s", added)
             db.commit()
             return redirect(request.form.get('next') or url_for('frontpage'))
         return render_template("add-packages.html", form=form)
