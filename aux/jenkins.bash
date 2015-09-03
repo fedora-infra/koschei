@@ -3,15 +3,15 @@
 virtualenv koscheienv --system-site-packages
 source koscheienv/bin/activate
 
-pip install sqlalchemy==0.9.7
-pip install fedmsg==0.14
+pip install sqlalchemy==0.9.8
+pip install fedmsg==0.15.0
 pip install mock==1.0.1
-pip install wtforms=2.0
-pip install jinja2=2.7.2
-pip install flask=0.10.1
-pip install flask-sqlalchemy=2.0
-pip install flask-wtf=0.8
-pip install flask-openid=1.2.3
+pip install wtforms==2.0
+pip install jinja2==2.7.2
+pip install flask==0.10.1
+pip install flask-sqlalchemy==2.0
+pip install flask-wtf==0.8
+pip install flask-openid==1.2.3
 pip install --upgrade nose
 pip install --upgrade nosexcover
 pip install --upgrade coverage
