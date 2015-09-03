@@ -50,6 +50,6 @@ if __name__ == '__main__':
         sys.exit(2)
     try:
         service().run_service()
-    except:
+    except Exception:
         log.exception("Service {} crashed.".format(name))
         raise
