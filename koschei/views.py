@@ -379,6 +379,11 @@ def process_group_form(group=None):
     form = GroupForm()
     if request.method == 'GET':
         return render_template('edit-group.html', group=group, form=form)
+    # check permissions
+    if group and not group.editable:
+        flash("You don't have permission to edit this group")
+        redirect(url_for('group_detail', name=group.name))
+    # check form validity
     if not form.validate_or_flash():
         return render_template('edit-group.html', group=group, form=form)
     be = create_backend()
@@ -402,15 +407,12 @@ def process_group_form(group=None):
             group = PackageGroup(name=form.name.data, namespace=g.user.name)
             db.add(group)
             db.flush()
-        elif group.editable:
+        else:
             group.name = form.name.data
             db.query(PackageGroupRelation)\
               .filter_by(group_id=group.id).delete()
             db.query(GroupACL)\
               .filter_by(group_id=group.id).delete()
-        else:
-            flash("You don't have permission to edit this group")
-            redirect(url_for('group_detail', name=group.name))
         rels = [dict(group_id=group.id, package_id=pkg.id) for pkg in packages]
         acls = [dict(group_id=group.id, user_id=user_id) for user_id in user_ids]
         db.execute(PackageGroupRelation.__table__.insert(), rels)
