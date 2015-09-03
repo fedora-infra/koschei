@@ -33,7 +33,9 @@
                 {{ ordered_column('task_id', 'Task ID', order) }}
                 {{ ordered_column('started', 'Last build started', order) }}
                 {{ ordered_column('current_priority', 'Current priority', order) }}
+                {% if allow_add_packages %}
                 <th></th>
+                {% endif %}
             </tr>
         </thead>
         <tbody>
