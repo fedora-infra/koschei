@@ -22,7 +22,8 @@ hash -r
 
 TEST_WITH_FAITOUT=1 nosetests --with-xunit --cover-erase --cover-package=koschei --with-xcoverage
 
-pylint -f parseable --rcfile aux/pylintrc `find koschei/ admin.py -name '*.py'`
+pylint --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" \
+    --rcfile aux/pylintrc `find koschei/ admin.py -name '*.py'` | tee pylint.out
 pep8 koschei/*.py koschei/*/*.py | tee pep8.out
 
 VERSION="$(python setup.py -V)"
