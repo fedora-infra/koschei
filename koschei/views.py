@@ -384,7 +384,9 @@ def process_group_form(group=None):
     be = create_backend()
     names = set(form.packages.data)
     owners = set(form.owners.data)
-    if group.namespace:
+    if not group:
+        owners.add(g.user.name)
+    elif group.namespace:
         owners.add(group.namespace)
     user_ids = [get_or_create(db, User, name=name).id for name in owners]
     db.commit()
