@@ -9,8 +9,12 @@ pip install mock==1.0.1
 pip install --upgrade nose
 pip install --upgrade nosexcover
 pip install --upgrade coverage
+pip install --upgrade pylint
+pip install --upgrade pep8
 
-TEST_WITH_FAITOUT=1 koscheienv/bin/nosetests --with-xunit --cover-erase --cover-package=koschei --with-xcoverage
+hash -r
+
+TEST_WITH_FAITOUT=1 nosetests --with-xunit --cover-erase --cover-package=koschei --with-xcoverage
 
 pylint -f parseable --rcfile aux/pylintrc `find koschei/ admin.py -name '*.py'`
 pep8 koschei/*.py koschei/*/*.py | tee pep8.out
