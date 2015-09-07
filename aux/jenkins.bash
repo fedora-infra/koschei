@@ -23,9 +23,10 @@ hash -r
 
 TEST_WITH_FAITOUT=1 nosetests --with-xunit --cover-erase --cover-package=koschei --with-xcoverage
 
+checked_files=`find koschei/ admin.py -name '*.py'`
 pylint --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" \
-    --rcfile aux/pylintrc `find koschei/ admin.py -name '*.py'` | tee pylint.out
-pep8 --config=aux/pep8.cfg koschei/*.py koschei/*/*.py | tee pep8.out
+    --rcfile aux/pylintrc "$checked_files" | tee pylint.out
+pep8 --config=aux/pep8.cfg "$checked_files" | tee pep8.out
 
 VERSION="$(python setup.py -V)"
 git archive HEAD --prefix="koschei-$VERSION/"| gzip >"koschei-${VERSION}".tar.gz
