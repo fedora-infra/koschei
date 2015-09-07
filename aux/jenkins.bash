@@ -25,7 +25,7 @@ TEST_WITH_FAITOUT=1 nosetests --with-xunit --cover-erase --cover-package=koschei
 
 pylint --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" \
     --rcfile aux/pylintrc `find koschei/ admin.py -name '*.py'` | tee pylint.out
-pep8 koschei/*.py koschei/*/*.py | tee pep8.out
+pep8 --config=aux/pep8.cfg koschei/*.py koschei/*/*.py | tee pep8.out
 
 VERSION="$(python setup.py -V)"
 git archive HEAD --prefix="koschei-$VERSION/"| gzip >"koschei-${VERSION}".tar.gz
