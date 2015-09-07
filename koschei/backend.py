@@ -25,7 +25,8 @@ from sqlalchemy.sql import exists
 
 from koschei import util
 from koschei.models import (Build, DependencyChange, KojiTask, Package,
-                            PackageGroup, PackageGroupRelation, RepoGenerationRequest)
+                            PackageGroup, PackageGroupRelation,
+                            RepoGenerationRequest, get_or_create)
 from koschei.plugin import dispatch_event
 
 
@@ -108,7 +109,7 @@ class Backend(object):
                           state=state_map[build_info['state']])
             self.db.add(build)
             self.db.flush()
-            self._build_completed(build)
+            self.sync_tasks(build)
             self.flush_depchanges(build)
             self.log.info('Registering real build for {}, task_id {}.'
                           .format(package, build.task_id))
@@ -118,6 +119,12 @@ class Backend(object):
             self.db.rollback()
 
     def update_build_state(self, build, state):
+        """
+        Updates state of the build in db to new state (Koji state name).
+        Deletes canceled builds.
+        Sends fedmsg when the build is complete.
+        Commits the transaction.
+        """
         if state in Build.KOJI_STATE_MAP:
             state = Build.KOJI_STATE_MAP[state]
             build_id = build.id
@@ -139,7 +146,7 @@ class Backend(object):
             self.log.info('Setting build {build} state to {state}'
                           .format(build=build,
                                   state=Build.REV_STATE_MAP[state]))
-            self._build_completed(build)
+            self.sync_tasks(build, complete=True)
             self.db.expire(build.package)
             # lock package so there are no concurrent state changes
             package = self.db.query(Package).filter_by(id=build.package_id)\
@@ -153,14 +160,23 @@ class Backend(object):
                 dispatch_event('package_state_change', package=package,
                                prev_state=prev_state,
                                new_state=new_state)
-
-    def _build_completed(self, build):
-        task_info = self.koji_session.getTaskInfo(build.task_id)
-        if task_info['create_time']:
-            build.started = datetime.fromtimestamp(task_info['create_ts'])
-        if task_info['completion_time']:
-            build.finished = datetime.fromtimestamp(task_info['completion_ts'])
         else:
+            self.sync_tasks(build)
+            self.db.commit()
+
+    def sync_tasks(self, build, complete=False):
+        """
+        Synchronizes task and subtask info from Koji.
+        If the row already exists in the db, caller needs to lock it to prevent
+        concurrent insertion of subtask rows.
+        """
+        task_info = self.koji_session.getTaskInfo(build.task_id)
+        try:
+            build.started = datetime.fromtimestamp(task_info['create_ts'])
+            build.finished = datetime.fromtimestamp(task_info['completion_ts'])
+        except (KeyError, TypeError, ValueError):
+            pass
+        if not build.finished and complete:
             # When fedmsg delivery is fast, the time is not set yet
             build.finished = datetime.now()
         subtasks = self.koji_session.getTaskChildren(build.task_id,
@@ -173,20 +189,15 @@ class Backend(object):
                 build.repo_id = task['request'][4]['repo_id']
             except KeyError:
                 pass
-            started = finished = None
+            db_task = get_or_create(self.db, KojiTask, task_id=task['id'])
+            db_task.build_id = build.id
+            db_task.state = task['state']
+            db_task.arch = task['arch']
             try:
-                started = datetime.fromtimestamp(task['create_ts'])
-                finished = datetime.fromtimestamp(task['completion_ts'])
+                db_task.started = datetime.fromtimestamp(task['create_ts'])
+                db_task.finished = datetime.fromtimestamp(task['completion_ts'])
             except (KeyError, TypeError, ValueError):
                 pass
-            db_task = KojiTask(build_id=build.id,
-                               task_id=task['id'],
-                               state=task['state'],
-                               started=started,
-                               finished=finished,
-                               arch=task['arch'])
-            self.db.add(db_task)
-        self.db.flush()
 
     def add_group(self, group, pkgs):
         group_obj = self.db.query(PackageGroup)\

@@ -42,6 +42,10 @@ def external_id():
 
 
 def get_or_create(db, table, **cond):
+    """
+    Returns a row from table that satisfies cond or a new row if no such row
+    exists yet. Can still cause IntegrityError in concurrent environment.
+    """
     item = db.query(table).filter_by(**cond).first()
     if not item:
         item = table(**cond)
