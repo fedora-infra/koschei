@@ -393,7 +393,8 @@ class ProcessBuildsTask(AbstractResolverTask):
         # pylint: disable=E1101
         unprocessed = self.db.query(Build)\
                              .filter_by(deps_processed=False)\
-                             .filter(Build.state.in_(Build.FINISHED_STATES))\
+                             .filter((Build.state.in_(Build.FINISHED_STATES)) |
+                                     (Build.repo_id != None))\
                              .options(joinedload(Build.package))\
                              .order_by(Build.repo_id).all()
         # TODO repo_id
