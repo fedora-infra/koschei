@@ -265,7 +265,8 @@ class GenerateRepoTask(AbstractResolverTask):
                 check_package_state(pkg, prev_state)
 
         for state in True, False:
-            ids = [id for id, resolved in self.resolved_packages.iteritems()
+            ids = [pkg_id for pkg_id, resolved
+                   in self.resolved_packages.iteritems()
                    if resolved is state]
             if ids:
                 self.db.query(Package).filter(Package.id.in_(ids))\
