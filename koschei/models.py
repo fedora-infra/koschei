@@ -20,9 +20,9 @@ import koji
 
 from sqlalchemy import (create_engine, Table, Column, Integer, String, Boolean,
                         ForeignKey, DateTime, Index, DDL)
-from sqlalchemy.sql.expression import func, select, false, true, join
+from sqlalchemy.sql.expression import func, select, false, true
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship, column_property, mapper
+from sqlalchemy.orm import sessionmaker, relationship, column_property
 from sqlalchemy.engine.url import URL
 from sqlalchemy.event import listen
 from datetime import datetime
