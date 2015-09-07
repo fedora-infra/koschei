@@ -21,12 +21,14 @@ def load_plugins(only=None):
                     log.info('Loading %s plugin', name)
                     loaded[name] = imp.load_module(name, *descriptor)
 
+
 def listen_event(name):
     def decorator(fn):
         if fn not in listeners[name]:
             listeners[name].append(fn)
         return fn
     return decorator
+
 
 def dispatch_event(name, *args, **kwargs):
     for listener in listeners[name]:

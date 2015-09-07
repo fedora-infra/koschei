@@ -1,7 +1,7 @@
 #!/usr/bin/python
 from __future__ import print_function
 
-#pylint: disable=W0221
+# pylint: disable=W0221
 import os
 import sys
 import argparse
@@ -18,9 +18,11 @@ from koschei.models import (engine, Base, Package, PackageGroup, Session,
 from koschei.backend import Backend, PackagesDontExist
 from koschei import util
 
+
 def fail(msg):
     print(msg, file=sys.stderr)
     sys.exit(1)
+
 
 class Command(object):
     needs_backend = True
@@ -30,6 +32,7 @@ class Command(object):
 
     def execute(self, **kwargs):
         raise NotImplementedError()
+
 
 def main():
     main_parser = argparse.ArgumentParser()
@@ -53,6 +56,7 @@ def main():
         backend.db.commit()
         backend.db.close()
 
+
 class CreateDb(Command):
     """ Creates database tables """
 
@@ -64,6 +68,7 @@ class CreateDb(Command):
         Base.metadata.create_all(engine)
         alembic_cfg = Config(util.config['alembic']['alembic_ini'])
         command.stamp(alembic_cfg, "head")
+
 
 class Cleanup(Command):
     """ Cleans old builds from the database """
@@ -117,6 +122,7 @@ class Notice(Command):
             notice.content = content
             db.add(notice)
 
+
 class AddPkg(Command):
     """ Adds given packages to database """
 
@@ -133,6 +139,7 @@ class AddPkg(Command):
         except PackagesDontExist as e:
             fail("Packages don't exist: " + ','.join(e.names))
 
+
 class AddGrp(Command):
 
     def setup_parser(self, parser):
@@ -141,11 +148,12 @@ class AddGrp(Command):
 
     def execute(self, backend, group, pkgs):
         pkg_objs = backend.db.query(Package)\
-                                     .filter(Package.name.in_(pkgs)).all()
+                             .filter(Package.name.in_(pkgs)).all()
         names = {pkg.name for pkg in pkg_objs}
         if names != set(pkgs):
             fail("Packages not found: " + ','.join(set(pkgs).difference(names)))
         backend.add_group(group, pkg_objs)
+
 
 class SetPrio(Command):
     """ Sets package's priority to given value """
@@ -157,7 +165,7 @@ class SetPrio(Command):
 
     def execute(self, backend, names, value, static):
         pkgs = backend.db.query(Package)\
-                                 .filter(Package.name.in_(names)).all()
+                         .filter(Package.name.in_(names)).all()
         if len(names) != len(pkgs):
             not_found = set(names).difference(pkg.name for pkg in pkgs)
             fail('Packages not found: {}'.format(','.join(not_found)))
@@ -166,6 +174,7 @@ class SetPrio(Command):
                 pkg.static_priority = value
             else:
                 pkg.manual_priority = value
+
 
 class SetArchOverride(Command):
     """ Sets per package build options """
@@ -182,7 +191,7 @@ class SetArchOverride(Command):
     def execute(self, backend, name, arch_override, group):
         if group:
             group_obj = backend.db.query(PackageGroup)\
-                                          .filter_by(name=name).first()
+                                  .filter_by(name=name).first()
             if not group_obj:
                 fail("Group {} not found".format(name))
             for pkg in group_obj.packages:
@@ -202,6 +211,7 @@ class PSQL(Command):
     def setup_parser(self, parser):
         parser.add_argument('args', nargs='*',
                             help="Arguments passed to psql")
+
     def execute(self, args):
         cmd = ['psql', '-d', engine.url.database] + args
         if engine.url.username:
@@ -212,6 +222,7 @@ class PSQL(Command):
         if engine.url.password:
             env['PGPASSWORD'] = engine.url.password
         os.execve('/usr/bin/psql', cmd, env)
+
 
 if __name__ == '__main__':
     main()

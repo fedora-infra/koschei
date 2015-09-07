@@ -357,6 +357,7 @@ class GenerateRepoTask(AbstractResolverTask):
                       .format((resolution_end - resolution_start) / 60,
                               (end - start) / 60))
 
+
 class ProcessBuildsTask(AbstractResolverTask):
 
     def process_build(self, build, br):
@@ -415,6 +416,7 @@ class ProcessBuildsTask(AbstractResolverTask):
                                 .update({'deps_processed': True},
                                         synchronize_session=False)
             self.db.commit()
+
 
 class Resolver(KojiService):
 

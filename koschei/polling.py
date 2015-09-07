@@ -37,7 +37,6 @@ class Polling(KojiService):
         running_builds = self.db.query(Build)\
                                 .filter_by(state=Build.RUNNING)
 
-
         infos = util.itercall(self.koji_session, running_builds,
                               lambda k, b: k.getTaskInfo(b.task_id))
 

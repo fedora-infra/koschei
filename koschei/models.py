@@ -156,6 +156,7 @@ class PackageGroupRelation(Base):
     package_id = Column(Integer, ForeignKey('package.id', ondelete='CASCADE'),
                         primary_key=True)
 
+
 class GroupACL(Base):
     __tablename__ = 'group_acl'
 
@@ -313,6 +314,7 @@ class AppliedChange(DependencyChange, Base):
     prev_build_id = Column(ForeignKey('build.id', ondelete='SET NULL'),
                            index=True)
 
+
 class UnappliedChange(DependencyChange, Base):
     __tablename__ = 'unapplied_change'
     package_id = Column(ForeignKey('package.id', ondelete='CASCADE'),
@@ -333,8 +335,10 @@ class BuildrootProblem(Base):
     repo_id = Column(ForeignKey(Repo.repo_id), index=True)
     problem = Column(String, nullable=False)
 
+
 def get_last_repo(db):
     return db.query(Repo).order_by(Repo.repo_id.desc()).first()
+
 
 def is_buildroot_broken(db):
     repo = get_last_repo(db)

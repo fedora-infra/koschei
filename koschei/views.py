@@ -28,6 +28,7 @@ builds_per_page = frontend_config['builds_per_page']
 
 main.load_globals()
 
+
 def create_backend():
     return backend.Backend(db=db, log=log,
                            koji_session=util.create_koji_session(anonymous=True))
@@ -73,6 +74,7 @@ def columnize(what, css_class=None):
     return Markup('\n'.join('<td{}>{}</td>'.format(attrs, escape(item))
                             for item in what))
 
+
 def get_global_notices():
     notices = db.query(AdminNotice).filter_by(key="global_notice").all()
     repo = get_last_repo(db)
@@ -96,7 +98,6 @@ app.jinja_env.globals.update(koji_weburl=util.config['koji_config']['weburl'],
 
 app.jinja_env.filters.update(columnize=columnize,
                              format_depchange=format_depchange)
-
 
 
 class Reversed(object):
@@ -139,12 +140,13 @@ def package_view(package_query, template, **template_args):
                  'started': [Build.started],
                  'current_priority': [PriorityOrder(Package.current_priority)]}
     order_names, order = get_order(order_map, order_name)
-    pkgs = (package_query if template_args.get('untracked')
-            else package_query.filter(Package.tracked == True))\
-             .filter(Package.blocked == False)\
-             .outerjoin(Package.last_complete_build)\
-             .options(contains_eager(Package.last_complete_build))\
-             .order_by(*order)
+
+    if not template_args.get('untracked'):
+        package_query = package_query.filter(Package.tracked == True)
+    pkgs = package_query.filter(Package.blocked == False)\
+                        .outerjoin(Package.last_complete_build)\
+                        .options(contains_eager(Package.last_complete_build))\
+                        .order_by(*order)
     page = pkgs.paginate(packages_per_page)
     return render_template(template, packages=page.items, page=page,
                            order=order_names, **template_args)
@@ -191,9 +193,11 @@ def date_filter(date):
 def inject_times():
     return {'since': datetime.min, 'until': datetime.now()}
 
+
 @app.context_processor
 def inject_links():
     return {'links': util.config['links']}
+
 
 @app.context_processor
 def inject_fedmenu():
@@ -205,9 +209,11 @@ def inject_fedmenu():
     else:
         return {}
 
+
 @app.context_processor
 def inject_allow_add_packages():
     return {'allow_add_packages': frontend_config['allow_add_packages']}
+
 
 @app.route('/')
 @tab('Packages')
@@ -299,6 +305,7 @@ def user_packages(name):
 
     return package_view(query, "user-packages.html", user=user, untracked=untracked)
 
+
 @app.route('/user/<name>/resync')
 @auth.login_required()
 def resync_packages(name):
@@ -325,12 +332,14 @@ class ListField(StringField):
         values = values and values[0]
         self.data = filter(None, self.split_re.split(values or ''))
 
+
 class ListAreaField(ListField):
     def _value(self):
         return '\n'.join(self.data or ())
 
 name_re = re.compile(r'^[a-zA-Z0-9.+_-]+$')
 group_re = re.compile(r'^([a-zA-Z0-9.+_-]+(/[a-zA-Z0-9.+_-]+)?)?$')
+
 
 class NameListValidator(object):
     def __init__(self, message):
@@ -340,6 +349,7 @@ class NameListValidator(object):
         if not all(map(name_re.match, field.data)):
             raise ValidationError(self.message)
 
+
 class NonEmptyList(object):
     def __init__(self, message):
         self.message = message
@@ -348,6 +358,7 @@ class NonEmptyList(object):
         if not field.data:
             raise ValidationError(self.message)
 
+
 class EmptyForm(Form):
     def validate_or_flash(self):
         if self.validate_on_submit():
@@ -355,16 +366,19 @@ class EmptyForm(Form):
         flash(', '.join(x for i in self.errors.values() for x in i))
         return False
 
+
 class GroupForm(EmptyForm):
     name = StrippedStringField('name', [Regexp(name_re, message="Invalid group name")])
     packages = ListAreaField('packages', [NonEmptyList("Empty group not allowed"),
                                           NameListValidator("Invalid package list")])
     owners = ListField('owners', [NameListValidator("Invalid owner list")])
 
+
 class AddPackagesForm(EmptyForm):
     packages = ListAreaField('packages', [NonEmptyList("No packages given"),
                                           NameListValidator("Invalid package list")])
     group = StrippedStringField('group', [Regexp(group_re, message="Invalid group")])
+
 
 def can_edit_group(group):
     return g.user and (g.user.admin or
@@ -372,8 +386,8 @@ def can_edit_group(group):
                                 .where((GroupACL.user_id == g.user.id) &
                                        (GroupACL.group_id == group.id)))
                        .scalar())
-
 PackageGroup.editable = property(can_edit_group)
+
 
 def process_group_form(group=None):
     form = GroupForm()

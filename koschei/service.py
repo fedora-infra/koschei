@@ -109,6 +109,7 @@ class KojiService(Service):
         self.koji_session.proxied = self.create_koji_session()
         super(KojiService, self).on_exception(exc)
 
+
 class FedmsgService(Service):
     def __init__(self, fedmsg_context=None, fedmsg_config=None, **kwargs):
         super(FedmsgService, self).__init__(**kwargs)

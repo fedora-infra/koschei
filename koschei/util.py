@@ -83,11 +83,13 @@ repodata_dir = config['directories']['repodata']
 
 dep_config = config['dependency']
 
+
 class KojiException(Exception):
     def __init__(self, cause):
         self.cause = cause
         message = '{}: {}'.format(type(cause), cause)
         super(KojiException, self).__init__(message)
+
 
 def koji_exception_rewrap_decorator(fn):
     def decorated(*args, **kwargs):
@@ -96,6 +98,7 @@ def koji_exception_rewrap_decorator(fn):
         except Exception as e:
             raise KojiException(e)
     return decorated
+
 
 class KojiSessionProxy(object):
     def __init__(self, proxied):
@@ -125,6 +128,7 @@ def itercall(koji_session, args, koji_call):
         for [info] in koji_session.multiCall():
             yield info
         args = args[chunk_size:]
+
 
 def create_koji_session(anonymous=False):
     try:
@@ -263,11 +267,13 @@ def set_difference(s1, s2, key):
     compset = {key(x) for x in s2}
     return {x for x in s1 if key(x) not in compset}
 
+
 @contextmanager
 def lock(lock_path):
     with open(lock_path, 'a+') as lock_file:
         fcntl.lockf(lock_file.fileno(), fcntl.LOCK_EX)
         yield
+
 
 def get_latest_repo(koji_session):
     build_tag = koji_config['build_tag']

@@ -23,6 +23,7 @@ import fedmsg
 import fedmsg.config
 import fedmsg.meta
 
+
 def load_globals():
     from . import plugin
     plugin.load_plugins()

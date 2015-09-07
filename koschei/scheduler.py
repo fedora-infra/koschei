@@ -138,7 +138,7 @@ class Scheduler(KojiService):
         if is_buildroot_broken(self.db):
             return
         prioritized = self.get_priorities()
-        self.db.rollback() # no-op, ends the transaction
+        self.db.rollback()  # no-op, ends the transaction
         if time.time() - self.calculation_timestamp > self.calculation_interval:
             self.persist_priorities(prioritized)
         if (self.get_incomplete_builds_query().count() >= self.max_builds

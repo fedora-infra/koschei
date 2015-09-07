@@ -26,13 +26,16 @@ from .backend import Backend
 from .service import KojiService, FedmsgService, Service
 from .models import Build, Package
 
+
 class WatchdogInterrupt(Exception):
     pass
+
 
 class WatchdogService(Service):
     def get_handled_exceptions(self):
         return (list([WatchdogInterrupt]) +
                 super(WatchdogService, self).get_handled_exceptions())
+
 
 class Watcher(KojiService, FedmsgService, WatchdogService):
 

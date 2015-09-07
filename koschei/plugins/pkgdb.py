@@ -41,6 +41,7 @@ def query_pkgdb(url):
         return None
     return req.json()
 
+
 def query_users_packages(username):
     log.debug("Requesting pkgdb packages for " + username)
     packages = query_pkgdb('packager/package/' + username)
@@ -49,6 +50,7 @@ def query_users_packages(username):
                     + packages['co-maintained']
                     + packages['watch'])
         return {p['name'] for p in packages}
+
 
 def query_monitored_packages():
     log.debug("Requesting list of monitored packages from pkgdb")
@@ -60,7 +62,6 @@ def query_monitored_packages():
 if pkgdb_config['enabled']:
 
     topic_re = re.compile(pkgdb_config['topic_re'])
-
 
     @listen_event('refresh_user_packages')
     def refresh_user_packages(user):
@@ -87,7 +88,6 @@ if pkgdb_config['enabled']:
                                   entries))
             db.commit()
 
-
     @listen_event('fedmsg_event')
     def consume_fedmsg(topic, msg, db, **kwargs):
         if topic_re.search(topic):
@@ -108,7 +108,6 @@ if pkgdb_config['enabled']:
                     user.packages_retrieved = False
                     db.commit()
                     refresh_user_packages(user)
-
 
     @listen_event('polling_event')
     def refresh_monitored_packages(backend):

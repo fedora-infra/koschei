@@ -25,14 +25,18 @@ from koschei.util import config
 from koschei.models import User, get_or_create
 from koschei.frontend import app, db
 
+
 provider = config['openid']['openid_provider']
 openid = OpenID(app, config['openid']['openid_store'], safe_roots=[])
+
 
 class TypeURIMismatchFilter(logging.Filter):
     def filter(self, record):
         return 'TypeURIMismatch' not in record.getMessage()
 
+
 logging.getLogger().addFilter(TypeURIMismatchFilter())
+
 
 def username_to_openid(name):
     return "http://{}.{}/".format(name, provider)
