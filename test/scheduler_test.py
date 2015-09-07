@@ -21,6 +21,7 @@ class SchedulerTest(DBTest):
         chngs.append(m.UnappliedChange(package_id=pkg.id, dep_name='expat',
                                        prev_version='2', curr_version='2',
                                        prev_release='rc1', curr_release='rc2',
+                                       prev_build_id=build.id,
                                        distance=1))
         # update - applied
         chngs.append(m.AppliedChange(dep_name='expat',
@@ -31,17 +32,20 @@ class SchedulerTest(DBTest):
         chngs.append(m.UnappliedChange(package_id=pkg.id, dep_name='gcc',
                                        prev_version='11', curr_version='9',
                                        prev_release='19', curr_release='18',
+                                       prev_build_id=build.id,
                                        distance=2))
         # appearance, value 5
         chngs.append(m.UnappliedChange(package_id=pkg.id, dep_name='python',
                                        prev_version=None, curr_version='3.3',
                                        prev_release=None, curr_release='11',
+                                       prev_build_id=build.id,
                                        distance=4))
 
         # null distance, value 2
         chngs.append(m.UnappliedChange(package_id=pkg.id, dep_name='python-lxml',
                                        prev_version=None, curr_version='3.3',
                                        prev_release=None, curr_release='11',
+                                       prev_build_id=build.id,
                                        distance=None))
 
         for chng in chngs:

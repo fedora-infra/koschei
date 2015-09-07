@@ -309,12 +309,16 @@ class AppliedChange(DependencyChange, Base):
     __tablename__ = 'applied_change'
     build_id = Column(ForeignKey('build.id', ondelete='CASCADE'), index=True,
                       nullable=False)
-
+    # needs to be nullable because we delete old builds
+    prev_build_id = Column(ForeignKey('build.id', ondelete='SET NULL'),
+                           index=True)
 
 class UnappliedChange(DependencyChange, Base):
     __tablename__ = 'unapplied_change'
     package_id = Column(ForeignKey('package.id', ondelete='CASCADE'),
                         index=True, nullable=False)
+    prev_build_id = Column(ForeignKey('build.id', ondelete='CASCADE'),
+                           index=True, nullable=False)
 
 
 class Repo(Base):
@@ -426,6 +430,7 @@ Package.unapplied_changes = \
     relationship(UnappliedChange, backref='package',
                  order_by=[UnappliedChange.distance, UnappliedChange.dep_name])
 Build.dependency_changes = relationship(AppliedChange, backref='build',
+                                        primaryjoin=(Build.id == AppliedChange.build_id),
                                         order_by=AppliedChange.distance
                                         .nullslast())
 

@@ -295,7 +295,8 @@ class GenerateRepoTask(AbstractResolverTask):
                                                       last_build.repo_id)
                     if prev_deps is not None:
                         changes += self.create_dependency_changes(
-                            prev_deps, curr_deps, package_id=package.id)
+                            prev_deps, curr_deps, package_id=package.id,
+                            prev_build_id=last_build.id)
         return changes
 
     def update_dependency_changes(self, changes):
@@ -369,7 +370,8 @@ class ProcessBuildsTask(AbstractResolverTask):
                                               prev.repo_id)
             if prev_deps and curr_deps:
                 changes = self.create_dependency_changes(prev_deps, curr_deps,
-                                                         build_id=build.id)
+                                                         build_id=build.id,
+                                                         prev_build_id=prev.id)
                 if changes:
                     self.db.execute(AppliedChange.__table__.insert(), changes)
             keep_builds = util.config['dependency']['keep_build_deps_for']
