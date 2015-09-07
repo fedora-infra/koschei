@@ -80,12 +80,17 @@ class Package(Base):
     # cached value, populated by scheduler
     current_priority = Column(Integer)
 
-    # denormalized field, updated by trigger on inser/update (no delete)
+    # denormalized fields, updated by trigger on inser/update (no delete)
     last_complete_build_id = \
+        Column(Integer, ForeignKey('build.id', use_alter=True,
+                                   name='fkey_package_last_complete_build_id'),
+               nullable=True)
+    last_build_id = \
         Column(Integer, ForeignKey('build.id', use_alter=True,
                                    name='fkey_package_last_build_id'),
                nullable=True)
     resolved = Column(Boolean)
+
     resolution_problems = relationship('ResolutionProblem', backref='package')
 
     tracked = Column(Boolean, nullable=False, server_default=true())
@@ -346,13 +351,31 @@ trigger = DDL("""
                   WHERE package.id = NEW.package_id;
                   RETURN NEW;
               END $$ LANGUAGE plpgsql;
+              CREATE OR REPLACE FUNCTION update_last_build()
+                  RETURNS TRIGGER AS $$
+              BEGIN
+                  UPDATE package
+                  SET last_build_id = lb.id
+                  FROM (SELECT id, state, started
+                        FROM build
+                        WHERE package_id = NEW.package_id
+                        ORDER BY id DESC
+                        LIMIT 1) AS lb
+                  WHERE package.id = NEW.package_id;
+                  RETURN NEW;
+              END $$ LANGUAGE plpgsql;
 
               DROP TRIGGER IF EXISTS update_last_complete_build_trigger
+                    ON build;
+              DROP TRIGGER IF EXISTS update_last_build_trigger
                     ON build;
               CREATE TRIGGER update_last_complete_build_trigger
                   AFTER INSERT ON build FOR EACH ROW
                   WHEN (NEW.state = 3 OR NEW.state = 5)
                   EXECUTE PROCEDURE update_last_complete_build();
+              CREATE TRIGGER update_last_build_trigger
+                  AFTER INSERT ON build FOR EACH ROW
+                  EXECUTE PROCEDURE update_last_build();
               DROP TRIGGER IF EXISTS update_last_complete_build_trigger_up
                     ON build;
               CREATE TRIGGER update_last_complete_build_trigger_up
@@ -383,6 +406,10 @@ Package.last_complete_build = \
     relationship(Build,
                  primaryjoin=(Build.id == Package.last_complete_build_id),
                  uselist=False)
+Package.last_build = \
+    relationship(Build,
+                 primaryjoin=(Build.id == Package.last_build_id),
+                 uselist=False)
 
 Package.all_builds = relationship(Build, order_by=Build.id.desc(),
                                   primaryjoin=(Build.package_id == Package.id),
@@ -410,16 +437,6 @@ User.packages = relationship(Package,
 User.groups = relationship(PackageGroup,
                            secondary=GroupACL.__table__,
                            order_by=[PackageGroup.namespace, PackageGroup.name])
-
-def _last_build():
-    max_expr = select([func.max(Build.id).label('mx')])\
-               .group_by(Build.package_id).alias()
-    joined = select([Build]).select_from(join(Build, max_expr,
-                                              Build.id == max_expr.c.mx))\
-             .alias()
-    return relationship(mapper(Build, joined, non_primary=True), uselist=False,
-                        primaryjoin=(Package.id == joined.c.package_id))
-Package.last_build = _last_build()
 
 
 def compact_row(relation):
