@@ -56,9 +56,12 @@ class Scheduler(KojiService):
         update_weight = self.priority_conf['package_update']
         # pylint: disable=E1120
         distance = coalesce(UnappliedChange.distance, 8)
+        # inner join with package last build to get rid of outdated dependency changes
         return self.db.query(UnappliedChange.package_id.label('pkg_id'),
                              (update_weight / distance)
-                             .label('priority'))
+                             .label('priority'))\
+                      .join(Package,
+                            Package.last_build_id == UnappliedChange.prev_build_id)
 
     def get_time_priority_query(self):
         t0 = self.priority_conf['t0']
