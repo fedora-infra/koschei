@@ -76,6 +76,7 @@ class ResolverTest(DBTest):
         self.prepare_builds(foo=None, repo_id=None)
         self.assertIsNone(self.resolver.create_task(GenerateRepoTask).get_build_for_comparison(foo))
 
+    @postgres_only
     def test_skip_unresolved_failed_build(self):
         foo = self.prepare_packages(['foo'])[0]
         b1 = self.prepare_builds(foo=False, repo_id=2)[0]

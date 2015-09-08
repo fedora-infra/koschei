@@ -59,6 +59,7 @@ class SchedulerTest(DBTest):
         self.assertIn('priority', columns)
         self.assertEqual(2, len(columns))
 
+    @postgres_only
     def test_dependency_priority(self):
         pkg, _ = self.prepare_depchanges()
         query = self.get_scheduler().get_dependency_priority_query()
