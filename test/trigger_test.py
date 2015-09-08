@@ -24,16 +24,20 @@ class TriggerTest(DBTest):
     @postgres_only
     def test_new(self):
         [p, e] = self.prepare_packages(['rnv', 'eclipse'])
-        self.prepare_builds(123, rnv=None)
+        [b] = self.prepare_builds(123, rnv=None)
         self.assertIsNone(p.last_complete_build_id)
         self.assertIsNone(e.last_complete_build_id)
+        self.assertEqual(b.id, p.last_build_id)
+        self.assertIsNone(e.last_build_id)
 
     @postgres_only
     def test_update(self):
         [p, _] = self.prepare_packages(['rnv', 'eclipse'])
         [b] = self.prepare_builds(123, rnv=None)
+        self.assertEqual(b.id, p.last_build_id)
         b.state = Build.FAILED
         self.s.commit()
+        self.assertEqual(b.id, p.last_build_id)
         self.assertEqual(b.id, p.last_complete_build_id)
 
     @postgres_only
@@ -41,7 +45,9 @@ class TriggerTest(DBTest):
         [p, e] = self.prepare_packages(['rnv', 'eclipse'])
         [b] = self.prepare_builds(123, rnv=True)
         self.assertEqual(b.id, p.last_complete_build_id)
+        self.assertEqual(b.id, p.last_build_id)
         self.assertIsNone(e.last_complete_build_id)
+        self.assertIsNone(e.last_build_id)
 
     @postgres_only
     def test_failed(self):
@@ -57,4 +63,21 @@ class TriggerTest(DBTest):
         [b3] = self.prepare_builds(126, eclipse=None)
 
         self.assertEqual(br.id, p.last_complete_build_id)
+        self.assertEqual(br.id, p.last_build_id)
         self.assertEqual(be.id, e.last_complete_build_id)
+        self.assertEqual(b3.id, e.last_build_id)
+
+    @postgres_only
+    def test_delete_new(self):
+        [e] = self.prepare_packages(['eclipse'])
+        [b1] = self.prepare_builds(123, eclipse=False)
+        [b2] = self.prepare_builds(126, eclipse=True)
+        [b3] = self.prepare_builds(127, eclipse=None)
+        self.assertEqual(b3.id, e.last_build_id)
+        self.s.delete(b1)
+        self.s.commit()
+        self.assertEqual(b3.id, e.last_build_id)
+        self.s.delete(b3)
+        self.s.commit()
+        self.assertEqual(b2.id, e.last_build_id)
+        self.s.delete(b2)
