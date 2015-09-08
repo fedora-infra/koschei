@@ -15,43 +15,49 @@ class SchedulerTest(DBTest):
         return sched
 
     def prepare_depchanges(self):
-        pkg, build = self.prepare_basic_data()
+        pkg, build1 = self.prepare_basic_data()
+        build2 = self.prepare_builds(1, rnv=None)[0]
         chngs = []
         # update, value 20
         chngs.append(m.UnappliedChange(package_id=pkg.id, dep_name='expat',
                                        prev_version='2', curr_version='2',
                                        prev_release='rc1', curr_release='rc2',
-                                       prev_build_id=build.id,
+                                       prev_build_id=build2.id,
                                        distance=1))
         # update - applied
         chngs.append(m.AppliedChange(dep_name='expat',
                                      prev_version='1', curr_version='2',
                                      prev_release='1', curr_release='rc1',
-                                     distance=1, build_id=build.id))
+                                     distance=1, build_id=build2.id))
         # downgrade, value 10
         chngs.append(m.UnappliedChange(package_id=pkg.id, dep_name='gcc',
                                        prev_version='11', curr_version='9',
                                        prev_release='19', curr_release='18',
-                                       prev_build_id=build.id,
+                                       prev_build_id=build2.id,
                                        distance=2))
         # appearance, value 5
         chngs.append(m.UnappliedChange(package_id=pkg.id, dep_name='python',
                                        prev_version=None, curr_version='3.3',
                                        prev_release=None, curr_release='11',
-                                       prev_build_id=build.id,
+                                       prev_build_id=build2.id,
                                        distance=4))
-
         # null distance, value 2
         chngs.append(m.UnappliedChange(package_id=pkg.id, dep_name='python-lxml',
                                        prev_version=None, curr_version='3.3',
                                        prev_release=None, curr_release='11',
-                                       prev_build_id=build.id,
+                                       prev_build_id=build2.id,
                                        distance=None))
+        # not from current build
+        chngs.append(m.UnappliedChange(package_id=pkg.id, dep_name='expat',
+                                       prev_version='2', curr_version='2',
+                                       prev_release='rc1', curr_release='rc2',
+                                       prev_build_id=build1.id,
+                                       distance=1))
 
         for chng in chngs:
             self.s.add(chng)
         self.s.commit()
-        return pkg, build
+        return pkg
 
     def assert_priority_query(self, query):
         columns = query.subquery().c
@@ -61,7 +67,7 @@ class SchedulerTest(DBTest):
 
     @postgres_only
     def test_dependency_priority(self):
-        pkg, _ = self.prepare_depchanges()
+        pkg = self.prepare_depchanges()
         query = self.get_scheduler().get_dependency_priority_query()
         self.assert_priority_query(query)
         res = query.all()
