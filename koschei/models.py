@@ -380,6 +380,20 @@ trigger = DDL("""
                   WHERE package.id = NEW.package_id;
                   RETURN NEW;
               END $$ LANGUAGE plpgsql;
+              CREATE OR REPLACE FUNCTION update_last_build_del()
+                  RETURNS TRIGGER AS $$
+              BEGIN
+                  UPDATE package
+                  SET last_build_id = lb.id
+                  FROM (SELECT id, state, started
+                        FROM build
+                        WHERE package_id = OLD.package_id
+                              AND build.id != OLD.id
+                        ORDER BY id DESC
+                        LIMIT 1) AS lb
+                  WHERE package.id = OLD.package_id;
+                  RETURN OLD;
+              END $$ LANGUAGE plpgsql;
 
               DROP TRIGGER IF EXISTS update_last_complete_build_trigger
                     ON build;
@@ -398,6 +412,11 @@ trigger = DDL("""
                   AFTER UPDATE ON build FOR EACH ROW
                   WHEN (OLD.state != NEW.state)
                   EXECUTE PROCEDURE update_last_complete_build();
+              DROP TRIGGER IF EXISTS update_last_build_trigger_del
+                    ON build;
+              CREATE TRIGGER update_last_build_trigger_del
+                  BEFORE DELETE ON build FOR EACH ROW
+                  EXECUTE PROCEDURE update_last_build_del();
               """)
 
 listen(Base.metadata, 'after_create', trigger.execute_if(dialect='postgresql'))
