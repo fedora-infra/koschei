@@ -308,9 +308,6 @@ class GenerateRepoTask(AbstractResolverTask):
     def run(self, repo_id):
         start = time.time()
         self.log.info("Generating new repo")
-        self.log.info("Polling latest real builds")
-        self.backend.refresh_latest_builds()
-        self.db.commit()
         packages = self.get_packages(require_build=True)
         repo = Repo(repo_id=repo_id)
         self.prepare_sack(repo_id)
