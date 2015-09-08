@@ -227,7 +227,6 @@ class AbstractResolverTask(object):
         for_arch = util.config['dependency']['for_arch']
         sack = hawkey.Sack(arch=for_arch)
         repos = self.repo_cache.get_repos(repo_id)
-        self.log.info("Loading repos into sack...")
         if repos:
             util.add_repos_to_sack(repo_id, repos, sack)
             self.sack = sack
