@@ -40,9 +40,9 @@ class WatchdogService(Service):
 class Watcher(KojiService, FedmsgService, WatchdogService):
 
     topic_name = util.config['fedmsg']['topic']
-    tag = util.koji_config['build_tag']
+    build_tag = util.koji_config['build_tag']
     instance = util.config['fedmsg']['instance']
-    build_tag = util.koji_config['target_tag']
+    target_tag = util.koji_config['target_tag']
     watchdog_interval = util.config['services']['watcher']['watchdog_interval']
 
     def __init__(self, backend=None, *args, **kwargs):
@@ -61,9 +61,9 @@ class Watcher(KojiService, FedmsgService, WatchdogService):
             if topic == self.get_topic('task.state.change'):
                 self.update_build_state(content)
             elif topic == self.get_topic('repo.done'):
-                if content.get('tag') == self.tag:
+                if content.get('tag') == self.build_tag:
                     self.repo_done(content['repo_id'])
-            elif topic == self.get_topic('build.tag'):
+            elif topic == self.get_topic('tag'):
                 self.register_real_build(content)
 
     def repo_done(self, repo_id):
@@ -78,7 +78,7 @@ class Watcher(KojiService, FedmsgService, WatchdogService):
             self.backend.update_build_state(build, state)
 
     def register_real_build(self, msg):
-        if msg['tag'] == self.tag:
+        if msg['tag'] == self.target_tag:
             pkg = self.db.query(Package).filter_by(name=msg['name']).first()
             if pkg:
                 newer_build = self.backend.get_newer_build_if_exists(pkg)
