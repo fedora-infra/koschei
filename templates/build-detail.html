@@ -13,7 +13,7 @@
             title="{{ build.state_string }}" alt="{{ build.state_string }}"/>
             {{ build.state_string }}
         </td>
-        {% if build.state == build.RUNNING %}
+        {% if build.state == build.RUNNING and g.user.admin %}
         <td>
             <form action="{{ url_for('cancel_build', build_id=build.id) }}" method="post">
                 {{ cancel_form.csrf_token }}

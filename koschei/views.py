@@ -256,6 +256,8 @@ def build_detail(build_id):
 @tab('Packages', slave=True)
 @auth.login_required()
 def cancel_build(build_id):
+    if not g.user.admin:
+        abort(400)
     build = db.query(Build).filter_by(id=build_id).first_or_404()
     if EmptyForm().validate_or_flash():
         try:
