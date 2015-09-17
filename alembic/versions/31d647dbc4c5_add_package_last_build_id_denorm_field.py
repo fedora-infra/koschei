@@ -19,7 +19,7 @@ def upgrade():
     # There was mismatch between code and db about the naming, let's redo it
     op.execute("""
                ALTER TABLE package DROP CONSTRAINT IF EXISTS fkey_package_last_complete_build_id;
-               ALTER TABLE package DROP CONSTRAINT IF EXISTS fkey_package_build_id;
+               ALTER TABLE package DROP CONSTRAINT IF EXISTS fkey_package_last_build_id;
                """)
     op.create_foreign_key('fkey_package_last_build_id', 'package', 'build',
                           ['last_build_id'], ['id'])
