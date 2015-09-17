@@ -101,7 +101,7 @@ if pkgdb_config['enabled']:
                   .filter_by(name=name)\
                   .update({'tracked': tracked}, synchronize_session=False)
                 db.expire_all()
-                db.flush()
+                db.commit()
             for username in fedmsg.meta.msg2usernames(msg):
                 user = db.query(User).filter_by(name=username).first()
                 if user:
