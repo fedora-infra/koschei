@@ -211,8 +211,8 @@ def inject_fedmenu():
 
 
 @app.context_processor
-def inject_allow_add_packages():
-    return {'allow_add_packages': frontend_config['allow_add_packages']}
+def inject_auto_tracking():
+    return {'auto_tracking': frontend_config['auto_tracking']}
 
 
 @app.route('/')
@@ -458,7 +458,7 @@ def edit_group(name, namespace=None):
     return process_group_form(group=group)
 
 
-if frontend_config['allow_add_packages']:
+if not frontend_config['auto_tracking']:
     @app.route('/add_packages', methods=['GET', 'POST'])
     @tab('Add packages')
     @auth.login_required()

@@ -21,7 +21,7 @@
 {% if page %}
 {{ pagination_row(page, 'Packages') }}
 {% endif %}
-{% if allow_add_packages %}
+{% if not auto_tracking %}
 <form action="{{ url_for('add_packages') }}" method="post">
 {% endif %}
     <input type="hidden" name="next" value="{{ request.url }}"/>
@@ -33,7 +33,7 @@
                 {{ ordered_column('task_id', 'Task ID', order) }}
                 {{ ordered_column('started', 'Last build started', order) }}
                 {{ ordered_column('current_priority', 'Current priority', order) }}
-                {% if allow_add_packages %}
+                {% if not auto_tracking %}
                 <th></th>
                 {% endif %}
             </tr>
@@ -69,7 +69,7 @@
                 <td>
                     {{ package.current_priority or ""}}
                 </td>
-                {% if allow_add_packages %}
+                {% if not auto_tracking %}
                 <td>
                     {% if not package.tracked %}
                     <button type="submit" name="names" value="{{ package.name }}">Add to Koschei</button>
@@ -80,7 +80,7 @@
             {% endfor %}
         </tbody>
     </table>
-{% if allow_add_packages %}
+{% if not auto_tracking %}
 </form>
 {% endif %}
 {% if page %}
