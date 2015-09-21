@@ -234,7 +234,7 @@ def get_koji_load(koji_session):
     for arch in build_arches:
         arch_hosts = [host for host in hosts if arch in host['arches']]
         capacity = sum(host['capacity'] for host in arch_hosts)
-        load = sum(host['task_load'] if host['ready']
+        load = sum(min(host['task_load'], host['capacity']) if host['ready']
                    else host['capacity'] for host in arch_hosts)
         max_load = max(max_load, load / capacity if capacity else 1.0)
     return max_load

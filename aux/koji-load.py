@@ -28,7 +28,7 @@ def gather_data(env):
     for arch in arches:
         arch_hosts = [host for host in hosts if arch in host['arches']]
         capacity = sum(host['capacity'] for host in arch_hosts)
-        load = sum(host['task_load'] if host['ready']
+        load = sum(min(host['task_load'], host['capacity']) if host['ready']
                    else host['capacity'] for host in arch_hosts)
         relative_load = "%3.2f %%" % (100 * load / capacity) if capacity else "N/A"
         max_load = max(max_load, 100 * load / capacity) if capacity else max_load
