@@ -17,7 +17,14 @@
     </form>
 </div>
 {% endmacro %}
-{% macro package_table(packages, page, order) %}
+{% macro package_table(packages, page, order, untracked_toggle=True) %}
+{% if untracked_toggle %}
+{% set untracked = request.args.get('untracked') == '1' %}
+<form name="show-untracked" method="get">
+    <input type="hidden" name="untracked" value="{{ "10"[untracked] }}"/>
+    <button type="submit">{% if untracked %}Hide untracked{% else %}Show untracked{% endif %} packages</button>
+</form>
+{% endif %}
 {% if page %}
 {{ pagination_row(page, 'Packages') }}
 {% endif %}
