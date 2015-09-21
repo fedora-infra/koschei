@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="pageHeader">Confirm group deletion</div>
+<strong>This action will delete group {{ group.name }}. Are you sure?</strong>
+<div>
+    <form method="post" action="{{ url_for('delete_group', name=group.name, namespace=group.namespace) }}">
+        {{ form.csrf_token }}
+        <button type="submit"/>Yes</button>
+    </form>
+    <form action="{{ url_for('edit_group', name=group.name, namespace=group.namespace) }}">
+        <button type="submit"/>No</button>
+    </form>
+</div>
+{% endblock %}

@@ -24,5 +24,8 @@
     </div>
     <div><button type="submit"/>{% if group %}Update{% else %}Create{% endif %}</button></div>
 </form>
+<form action="{{ url_for('delete_group', name=group.name, namespace=group.namespace) }}">
+    <div><button type="submit"/>Delete group</button></div>
+</form>
 
 {% endblock %}

@@ -454,6 +454,21 @@ def edit_group(name, namespace=None):
     return process_group_form(group=group)
 
 
+@app.route('/groups/<name>/delete', methods=['GET', 'POST'])
+@app.route('/groups/<namespace>/<name>/delete', methods=['GET', 'POST'])
+@auth.login_required()
+def delete_group(name, namespace=None):
+    group = db.query(PackageGroup)\
+              .options(joinedload(PackageGroup.packages))\
+              .filter_by(name=name, namespace=namespace).first_or_404()
+    if request.method == 'POST':
+        if EmptyForm().validate_or_flash() and group.editable:
+            db.delete(group)
+            db.commit()
+            return redirect(url_for('groups_overview'))
+        return render_template('edit_group.html', group=group)
+    return render_template('delete-group.html', form=EmptyForm(), group=group)
+
 if not frontend_config['auto_tracking']:
     @app.route('/add_packages', methods=['GET', 'POST'])
     @tab('Add packages')
