@@ -22,6 +22,9 @@
 {% set untracked = request.args.get('untracked') == '1' %}
 <form name="show-untracked" method="get">
     <input type="hidden" name="untracked" value="{{ "10"[untracked] }}"/>
+    {% for k, v in request.args.items() if k != 'untracked' %}
+    <input type="hidden" name="{{ k }}" value="{{ v }}"/>
+    {% endfor %}
     <button type="submit">{% if untracked %}Hide untracked{% else %}Show untracked{% endif %} packages</button>
 </form>
 {% endif %}
