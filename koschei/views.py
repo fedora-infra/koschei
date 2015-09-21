@@ -94,7 +94,8 @@ app.jinja_env.globals.update(koji_weburl=util.config['koji_config']['weburl'],
                              koji_pathinfo=pathinfo, inext=next, iter=iter,
                              min=min, max=max, page_args=page_args,
                              get_global_notices=get_global_notices,
-                             require_login=require_login)
+                             require_login=require_login,
+                             auto_tracking=frontend_config['auto_tracking'])
 
 app.jinja_env.filters.update(columnize=columnize,
                              format_depchange=format_depchange)
@@ -208,11 +209,6 @@ def inject_fedmenu():
         }
     else:
         return {}
-
-
-@app.context_processor
-def inject_auto_tracking():
-    return {'auto_tracking': frontend_config['auto_tracking']}
 
 
 @app.route('/')
