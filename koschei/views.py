@@ -409,12 +409,11 @@ def process_group_form(group=None):
     owners.add(g.user.name)
     user_ids = [get_or_create(db, User, name=name).id for name in owners]
     db.commit()
-    try:
-        be.add_packages(names)
-    except backend.PackagesDontExist as e:
-        flash("Packages don't exist: " + ', '.join(e.names))
-        return render_template('edit-group.html', group=group, form=form)
     packages = db.query(Package).filter(Package.name.in_(names))
+    found_names = {p.name for p in packages}
+    if len(found_names) != len(names):
+        flash("Packages don't exist: " + ', '.join(names - found_names))
+        return render_template('edit-group.html', group=group, form=form)
     created = not group
     try:
         if not group:
