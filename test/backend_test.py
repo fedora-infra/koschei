@@ -102,6 +102,26 @@ rnv_subtasks = [{'arch': 'armhfp',
                  'waiting': None,
                  'weight': 1.64134472187}]
 
+inconsistent_subtask = [{'arch': 'armhfp',
+                         'awaited': False,
+                         'channel_id': 1,
+                         'completion_time': None,
+                         'completion_ts': None,
+                         'create_time': '2015-03-01 13:39:39.263872',
+                         'create_ts': 1425217179.26387,
+                         'host_id': 126,
+                         'id': 9107739,
+                         'label': 'armv7hl',
+                         'method': 'buildArch',
+                         'owner': 2645,
+                         'parent': 9107738,
+                         'priority': 49,
+                         'start_time': '2015-03-01 13:39:41.486608',
+                         'start_ts': 1425217181.48661,
+                         'state': koji.TASK_STATES['OPEN'],
+                         'waiting': None,
+                         'weight': 1.64134472187}]
+
 class BackendTest(DBTest):
     def setUp(self):
         super(BackendTest, self).setUp()
@@ -116,6 +136,26 @@ class BackendTest(DBTest):
     def test_update_state(self):
         self.koji_session.getTaskInfo = Mock(return_value=rnv_task)
         self.koji_session.getTaskChildren = Mock(return_value=rnv_subtasks)
+        package = self.prepare_packages(['rnv'])[0]
+        self.prepare_builds(rnv=False)
+        running_build = self.prepare_builds(rnv=None)[0]
+        running_build.task_id = rnv_task['id']
+        self.s.commit()
+        self.assertEqual('failing', package.state_string)
+        with patch('koschei.backend.dispatch_event') as event:
+            self.backend.update_build_state(running_build, 'CLOSED')
+            self.koji_session.getTaskInfo.assert_called_once_with(rnv_task['id'])
+            self.koji_session.getTaskChildren.assert_called_once_with(rnv_task['id'],
+                                                                      request=True)
+            self.assertEqual('ok', package.state_string)
+            event.assert_called_once_with('package_state_change', package=package,
+                                          prev_state='failing', new_state='ok')
+
+    # Regression test for https://github.com/msimacek/koschei/issues/27
+    @postgres_only
+    def test_update_state_inconsistent(self):
+        self.koji_session.getTaskInfo = Mock(return_value=rnv_task)
+        self.koji_session.getTaskChildren = Mock(return_value=inconsistent_subtask)
         package = self.prepare_packages(['rnv'])[0]
         self.prepare_builds(rnv=False)
         running_build = self.prepare_builds(rnv=None)[0]
