@@ -16,6 +16,7 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+import koji
 import logging
 
 from common import DBTest, postgres_only
@@ -39,7 +40,7 @@ rnv_task = {'arch': 'noarch',
             'priority': 50,
             'start_time': '2015-03-01 13:39:38.191753',
             'start_ts': 1425217178.19175,
-            'state': 2,
+            'state': koji.TASK_STATES['CLOSED'],
             'waiting': False,
             'weight': 0.2}
 
@@ -59,7 +60,7 @@ rnv_subtasks = [{'arch': 'armhfp',
                  'priority': 49,
                  'start_time': '2015-03-01 13:39:41.486608',
                  'start_ts': 1425217181.48661,
-                 'state': 2,
+                 'state': koji.TASK_STATES['CLOSED'],
                  'waiting': None,
                  'weight': 1.64134472187},
                 {'arch': 'i386',
@@ -78,7 +79,7 @@ rnv_subtasks = [{'arch': 'armhfp',
                  'priority': 49,
                  'start_time': '2015-03-01 13:39:46.519139',
                  'start_ts': 1425217186.51914,
-                 'state': 2,
+                 'state': koji.TASK_STATES['CLOSED'],
                  'waiting': None,
                  'weight': 1.64134472187},
                 {'arch': 'x86_64',
@@ -97,7 +98,7 @@ rnv_subtasks = [{'arch': 'armhfp',
                  'priority': 49,
                  'start_time': '2015-03-01 13:39:41.574641',
                  'start_ts': 1425217181.57464,
-                 'state': 2,
+                 'state': koji.TASK_STATES['CLOSED'],
                  'waiting': None,
                  'weight': 1.64134472187}]
 
