@@ -394,7 +394,8 @@ def process_group_form(group=None):
     # check permissions
     if group and not group.editable:
         flash("You don't have permission to edit this group")
-        redirect(url_for('group_detail', name=group.name))
+        return redirect(url_for('group_detail', name=group.name,
+                                namespace=group.namespace))
     # check form validity
     if not form.validate_or_flash():
         return render_template('edit-group.html', group=group, form=form)
