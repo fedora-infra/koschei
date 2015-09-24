@@ -399,7 +399,6 @@ def process_group_form(group=None):
     # check form validity
     if not form.validate_or_flash():
         return render_template('edit-group.html', group=group, form=form)
-    be = create_backend()
     names = set(form.packages.data)
     owners = set(form.owners.data)
     # don't let the user remove himself
