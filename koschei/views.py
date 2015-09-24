@@ -466,8 +466,8 @@ def delete_group(name, namespace=None):
             db.delete(group)
             db.commit()
             return redirect(url_for('groups_overview'))
-        return render_template('edit_group.html', group=group)
-    return render_template('delete-group.html', form=EmptyForm(), group=group)
+        return render_template('edit-group.html', group=group)
+    return redirect(url_for('groups_overview'))
 
 if not frontend_config['auto_tracking']:
     @app.route('/add_packages', methods=['GET', 'POST'])
