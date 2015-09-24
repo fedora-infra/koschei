@@ -64,7 +64,7 @@
             <a href="{{ links['bugzilla'] }}/buglist.cgi?product=Fedora&component={{ package.name }}">Bugzilla</a>,
             <a href="{{ links['dist-git'] }}/cgit/{{ package.name }}.git">Dist-git</a>,
             <a href="{{ links['pkgdb'] }}/package/{{ package.name }}">PkgDB</a>,
-            <a href="{{ links['bodhi'] }}/{{ package.name }}">Bodhi</a>,
+            <a href="{{ links['bodhi'] }}?packages={{ package.name }}">Bodhi</a>,
             <a href="{{ links['packages'] }}/{{ package.name }}">Packages</a>
         </td>
     </tr>
