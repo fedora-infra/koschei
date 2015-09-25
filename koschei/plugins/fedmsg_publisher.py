@@ -31,7 +31,7 @@ if fedmsg_config['enabled']:
     def emit_package_state_update(package, prev_state, new_state):
         if prev_state == new_state:
             return
-        group_names = [group.name for group in package.groups]
+        group_names = [group.full_name for group in package.groups]
         message = dict(topic='package.state.change',
                        modname=fedmsg_config['modname'],
                        msg={'name': package.name,

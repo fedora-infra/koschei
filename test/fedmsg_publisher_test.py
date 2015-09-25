@@ -10,7 +10,7 @@ class FedmsgSenderTest(DBTest):
 
     def prepare_package(self):
         pkg = self.prepare_basic_data()[0]
-        groups = PackageGroup(name='c'), PackageGroup(name='xml')
+        groups = PackageGroup(name='c'), PackageGroup(name='xml', namespace='foo')
         for group in groups:
             self.s.add(group)
             self.s.flush()
@@ -31,7 +31,7 @@ class FedmsgSenderTest(DBTest):
                                                  'new': 'ok',
                                                  'repo': 'f22',
                                                  'koji_instance': 'primary',
-                                                 'groups': ['c', 'xml']})
+                                                 'groups': ['c', 'foo/xml']})
 
     def test_same_state(self):
         package = self.prepare_package()
