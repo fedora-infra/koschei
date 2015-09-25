@@ -112,6 +112,7 @@ class Backend(object):
             self.flush_depchanges(build)
             self.log.info('Registering real build for {}, task_id {}.'
                           .format(package, build.task_id))
+            self.db.commit()
             return build
         except IntegrityError:
             # other daemon adds the same concurrently

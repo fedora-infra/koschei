@@ -84,7 +84,6 @@ class Watcher(KojiService, FedmsgService, WatchdogService):
                 newer_build = self.backend.get_newer_build_if_exists(pkg)
                 if newer_build:
                     self.backend.register_real_build(pkg, newer_build)
-                    self.db.commit()
 
     def main(self):
         def handler(n, s):
