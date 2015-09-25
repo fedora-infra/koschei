@@ -80,8 +80,10 @@ def get_global_notices():
     repo = get_last_repo(db)
     if repo and repo.base_resolved is False:
         problems = db.query(BuildrootProblem).filter_by(repo_id=repo.repo_id).all()
-        notices.append("Base buildroot is not installable. Operation suspended. "
-                       "Dependency problems: " + ', '.join((p.problem for p in problems)))
+        notices.append("Base buildroot is not installable. Operation suspended.<br/>"
+                       "Dependency problems:<br/>" +
+                       '<br/>'.join((p.problem for p in problems)))
+    notices = map(Markup, notices)
     return notices
 
 
