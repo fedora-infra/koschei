@@ -147,23 +147,3 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %{_unitdir}/*
 
 %changelog
-* Tue Sep 22 2015 Mikolaj Izdebski <mizdebsk@redhat.com> - 1.2-1
-- Release version 1.2
-
-* Tue Jun 02 2015 Michael Simacek <msimacek@redhat.com> - 1.1-1
-- Release version 1.1
-
-* Wed May 20 2015 Mikolaj Izdebski <mizdebsk@redhat.com> - 1.0-1
-- Release version 1.0
-
-* Thu Mar 12 2015 Michael Simacek <msimacek@redhat.com> - 0.2-1
-- Update to version 0.2
-
-* Mon Sep 01 2014 Michael Simacek <msimacek@redhat.com> - 0.1-2
-- Fixed BR python-devel -> python2-devel
-- Fixed changelog format
-- Added noreplace to httpd config
-- Replaced name occurences with macro
-
-* Fri Jun 13 2014 Michael Simacek <msimacek@redhat.com> - 0.1-1
-- Initial version
