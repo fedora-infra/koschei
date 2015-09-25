@@ -144,8 +144,8 @@ class Scheduler(KojiService):
         self.db.rollback()  # no-op, ends the transaction
         if time.time() - self.calculation_timestamp > self.calculation_interval:
             self.persist_priorities(prioritized)
-        if (self.get_incomplete_builds_query().count() >= self.max_builds
-                or util.get_koji_load(self.koji_session) > self.load_threshold):
+        if (self.get_incomplete_builds_query().count() >= self.max_builds or
+                util.get_koji_load(self.koji_session) > self.load_threshold):
             return
 
         repo_id = util.get_latest_repo(self.koji_session).get('id')

@@ -94,8 +94,8 @@ class KojiService(Service):
 
     def __init__(self, koji_session=None, **kwargs):
         super(KojiService, self).__init__(**kwargs)
-        self.koji_session = util.KojiSessionProxy(koji_session
-                                                  or self.create_koji_session())
+        self.koji_session = util.KojiSessionProxy(koji_session or
+                                                  self.create_koji_session())
 
     @classmethod
     def create_koji_session(cls):

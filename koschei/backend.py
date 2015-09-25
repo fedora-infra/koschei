@@ -57,8 +57,8 @@ class Backend(object):
         build_opts = {}
         if package.arch_override:
             build_opts = {'arch_override': package.arch_override}
-        srpm, srpm_url = (util.get_last_srpm(self.koji_session, name)
-                          or (None, None))
+        srpm, srpm_url = (util.get_last_srpm(self.koji_session, name) or
+                          (None, None))
         if srpm_url:
             package.manual_priority = 0
             build.task_id = util.koji_scratch_build(self.koji_session, name,
@@ -92,8 +92,8 @@ class Backend(object):
                                                  current_build.release),
                                                 (task_info['epoch'],
                                                  task_info['version'],
-                                                 task_info['release'])) < 0)
-                and self.db.query(Build)
+                                                 task_info['release'])) < 0) and
+                self.db.query(Build)
                 .filter_by(task_id=task_info['task_id'])
                 .count() == 0)
 
@@ -290,8 +290,8 @@ class Backend(object):
         curr_repo = util.get_latest_repo(self.koji_session)
         if curr_repo:
             if not self.db.query(exists()
-                                 .where(RepoGenerationRequest.repo_id
-                                        == curr_repo['id'])).scalar():
+                                 .where(RepoGenerationRequest.repo_id ==
+                                        curr_repo['id'])).scalar():
                 request = RepoGenerationRequest(repo_id=curr_repo['id'])
                 self.db.add(request)
                 self.db.commit()
