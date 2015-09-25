@@ -225,6 +225,21 @@ def package_detail(name):
                 .filter_by(name=name)\
                 .options(subqueryload(Package.unapplied_changes))\
                 .first_or_404()
+    package.user_groups = []
+    group_query = db.query(PackageGroup)\
+        .join(PackageGroupRelation,
+              PackageGroup.id == PackageGroupRelation.group_id)\
+        .filter(PackageGroupRelation.package_id == package.id)
+    if g.user:
+        package.user_groups = group_query\
+            .join(GroupACL, PackageGroup.id == GroupACL.group_id)\
+            .filter(PackageGroup.namespace != None)\
+            .filter(GroupACL.user_id == g.user.id)\
+            .all()
+    package.global_groups = group_query\
+        .filter(PackageGroupRelation.package_id == package.id)\
+        .filter(PackageGroup.namespace == None)\
+        .all()
     page = db.query(Build)\
              .filter_by(package_id=package.id)\
              .options(subqueryload(Build.dependency_changes),

@@ -50,10 +50,18 @@
         </td>
     </tr>
     <tr>
-        <th>Package groups</th>
+        <th>Global package groups</th>
         <td>
-            {% for group in package.groups %}
+            {% for group in package.global_groups %}
             <a href="{{ url_for('group_detail', name=group.name) }}">{{ group.name }}</a>
+            {% endfor %}
+        </td>
+    </tr>
+    <tr>
+        <th>Your package groups</th>
+        <td>
+            {% for group in package.user_groups %}
+            <a href="{{ url_for('group_detail', name=group.name, namespace=group.namespace) }}">{{ group.full_name }}</a>
             {% endfor %}
         </td>
     </tr>
