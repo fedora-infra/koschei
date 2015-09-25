@@ -53,6 +53,12 @@
         </td>
     </tr>
     <tr>
+        <th>Repo ID</th>
+        <td>
+            {{ build.repo_id }}
+        </td>
+    </tr>
+    <tr>
         <th>Koji tasks</th>
         <td>
             <a href="{{ koji_weburl }}/taskinfo?taskID={{ build.task_id }}">
