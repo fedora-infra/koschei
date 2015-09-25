@@ -203,6 +203,37 @@ class SetArchOverride(Command):
             pkg.arch_override = arch_override
 
 
+class ModifyGroup(Command):
+    """ Sets package group attributes """
+
+    def setup_parser(self, parser):
+        parser.add_argument('current_name',
+                            help="Current group full name - ns/name")
+        parser.add_argument('--new-name',
+                            help="New group name")
+        parser.add_argument('--new-namespace',
+                            help="New group namespace")
+        parser.add_argument('--make-global',
+                            action='store_true',
+                            help="Sets group as global (unsets namespace)")
+
+    def execute(self, backend, current_name, new_name, new_namespace, make_global):
+        ns, _, name = current_name.partition('/')
+        if not name:
+            ns, name = name, ns
+        group = backend.db.query(PackageGroup)\
+            .filter_by(name=name, namespace=ns or None).first()
+        if not group:
+            fail("Group {} not found".format(current_name))
+        if new_name:
+            group.name = new_name
+        if new_namespace:
+            group.namespace = new_namespace
+        if make_global:
+            group.namespace = None
+        backend.db.commit()
+
+
 class PSQL(Command):
     """ Convenience to get psql shell connected to koschei DB. """
 
