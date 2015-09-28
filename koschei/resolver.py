@@ -295,16 +295,15 @@ class ProcessBuildsTask(AbstractResolverTask):
         for repo_id, builds in itertools.groupby(unprocessed,
                                                  lambda build: build.repo_id):
             builds = list(builds)
-            if repo_id:
-                sack = util.prepare_sack(self.repo_cache, repo_id)
-                if sack:
-                    brs = util.get_rpm_requires(self.koji_session,
-                                                [dict(name=b.package.name,
-                                                      version=b.version,
-                                                      release=b.release,
-                                                      arch='src') for b in builds])
-                    for build, br in zip(builds, brs):
-                        self.process_build(sack, build, br)
+            sack = util.prepare_sack(self.repo_cache, repo_id)
+            if sack:
+                brs = util.get_rpm_requires(self.koji_session,
+                                            [dict(name=b.package.name,
+                                                  version=b.version,
+                                                  release=b.release,
+                                                  arch='src') for b in builds])
+                for build, br in zip(builds, brs):
+                    self.process_build(sack, build, br)
             self.db.query(Build).filter(Build.id.in_([b.id for b in builds]))\
                                 .update({'deps_processed': True},
                                         synchronize_session=False)
