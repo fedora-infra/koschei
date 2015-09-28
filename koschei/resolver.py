@@ -44,7 +44,6 @@ class AbstractResolverTask(object):
         self.repo_cache = repo_cache
         self.backend = backend
         self.problems = []
-        self.sack = None
         self.group = None
         self.resolved_packages = {}
 
@@ -68,15 +67,15 @@ class AbstractResolverTask(object):
             self.db.connection().execute(table.insert(), dicts)
             self.db.expire_all()
 
-    def resolve_dependencies(self, package, br):
-        resolved, problems, installs = util.run_goal(self.sack, self.group, br)
+    def resolve_dependencies(self, sack, package, br):
+        resolved, problems, installs = util.run_goal(sack, self.group, br)
         self.resolved_packages[package.id] = resolved
         if resolved:
             deps = [Dependency(name=pkg.name, epoch=pkg.epoch,
                                version=pkg.version, release=pkg.release,
                                arch=pkg.arch)
                     for pkg in installs if pkg.arch != 'src']
-            util.compute_dependency_distances(self.sack, br, deps)
+            util.compute_dependency_distances(sack, br, deps)
             return deps
         else:
             for problem in sorted(set(problems)):
@@ -182,10 +181,10 @@ class GenerateRepoTask(AbstractResolverTask):
                 # unresolved build, skip it
                 return self.get_prev_build_for_comparison(last_build)
 
-    def generate_dependency_changes(self, packages, brs, repo_id):
+    def generate_dependency_changes(self, sack, packages, brs, repo_id):
         changes = []
         for package, br in zip(packages, brs):
-            curr_deps = self.resolve_dependencies(package, br)
+            curr_deps = self.resolve_dependencies(sack, package, br)
             if curr_deps is not None:
                 last_build = self.get_build_for_comparison(package)
                 if last_build:
@@ -207,15 +206,15 @@ class GenerateRepoTask(AbstractResolverTask):
         self.log.info("Generating new repo")
         packages = self.get_packages(require_build=True)
         repo = Repo(repo_id=repo_id)
-        self.sack = util.prepare_sack(self.repo_cache, repo_id)
-        if not self.sack:
+        sack = util.prepare_sack(self.repo_cache, repo_id)
+        if not sack:
             self.log.error('Cannot generate repo: {}'.format(repo_id))
             self.db.rollback()
             return
         self.update_repo_index(repo_id)
         # TODO repo_id
         self.group = util.get_build_group(self.koji_session)
-        base_installable, base_problems, _ = util.run_goal(self.sack, self.group)
+        base_installable, base_problems, _ = util.run_goal(sack, self.group)
         if not base_installable:
             self.log.info("Build group not resolvable")
             repo.base_resolved = False
@@ -233,7 +232,7 @@ class GenerateRepoTask(AbstractResolverTask):
                                           arch='src') for p in packages])
         self.log.info("Resolving dependencies...")
         resolution_start = time.time()
-        changes = self.generate_dependency_changes(packages, brs, repo_id)
+        changes = self.generate_dependency_changes(sack, packages, brs, repo_id)
         resolution_end = time.time()
         self.db.query(ResolutionProblem).delete(synchronize_session=False)
         # pylint: disable=E1101
@@ -254,10 +253,10 @@ class GenerateRepoTask(AbstractResolverTask):
 
 class ProcessBuildsTask(AbstractResolverTask):
 
-    def process_build(self, build, br):
+    def process_build(self, sack, build, br):
         self.log.info("Processing build {}".format(build.id))
         prev = self.get_prev_build_for_comparison(build)
-        curr_deps = self.resolve_dependencies(build.package, br)
+        curr_deps = self.resolve_dependencies(sack, build.package, br)
         self.store_deps(build.repo_id, build.package_id, curr_deps)
         if curr_deps is not None:
             build.deps_resolved = True
@@ -297,15 +296,15 @@ class ProcessBuildsTask(AbstractResolverTask):
                                                  lambda build: build.repo_id):
             builds = list(builds)
             if repo_id:
-                self.sack = util.prepare_sack(self.repo_cache, repo_id)
-                if self.sack:
+                sack = util.prepare_sack(self.repo_cache, repo_id)
+                if sack:
                     brs = util.get_rpm_requires(self.koji_session,
                                                 [dict(name=b.package.name,
                                                       version=b.version,
                                                       release=b.release,
                                                       arch='src') for b in builds])
                     for build, br in zip(builds, brs):
-                        self.process_build(build, br)
+                        self.process_build(sack, build, br)
             self.db.query(Build).filter(Build.id.in_([b.id for b in builds]))\
                                 .update({'deps_processed': True},
                                         synchronize_session=False)
