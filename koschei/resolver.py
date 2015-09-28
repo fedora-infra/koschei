@@ -17,10 +17,8 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-import re
 import os
 import time
-import hawkey
 import itertools
 import librepo
 
@@ -35,57 +33,6 @@ from koschei.repo_cache import RepoCache
 from koschei.backend import check_package_state, Backend
 
 
-def get_best_selector(sack, dep):
-    # Based on get_best_selector in dnf's subject.py
-
-    def is_glob_pattern(pattern):
-        return set(pattern) & set("*[?")
-
-    def first(iterable):
-        it = iter(iterable)
-        try:
-            return next(it)
-        except StopIteration:
-            return None
-
-    def _nevra_to_selector(sltr, nevra):
-        if nevra.name is not None:
-            if is_glob_pattern(nevra.name):
-                sltr.set(name__glob=nevra.name)
-            else:
-                sltr.set(name=nevra.name)
-        if nevra.version is not None:
-            evr = nevra.version
-            if nevra.epoch is not None and nevra.epoch > 0:
-                evr = "%d:%s" % (nevra.epoch, evr)
-            if nevra.release is None:
-                sltr.set(version=evr)
-            else:
-                evr = "%s-%s" % (evr, nevra.release)
-                sltr.set(evr=evr)
-        if nevra.arch is not None:
-            sltr.set(arch=nevra.arch)
-        return sltr
-
-    subj = hawkey.Subject(dep)
-    sltr = hawkey.Selector(sack)
-    kwargs = {'allow_globs': True}
-    if re.search(r'^\*?/', dep):
-        key = "file__glob" if is_glob_pattern(dep) else "file"
-        return sltr.set(**{key: dep})
-    nevra = first(subj.nevra_possibilities_real(sack, **kwargs))
-    if nevra:
-        return _nevra_to_selector(sltr, nevra)
-
-    if is_glob_pattern(dep):
-        return sltr.set(provides__glob=dep)
-
-    # pylint: disable=E1101
-    reldep = first(subj.reldep_possibilities_real(sack))
-    if reldep:
-        dep = str(reldep)
-        return sltr.set(provides=dep)
-    return sltr
 
 
 class AbstractResolverTask(object):
@@ -100,27 +47,6 @@ class AbstractResolverTask(object):
         self.sack = None
         self.group = None
         self.resolved_packages = {}
-
-    def run_goal(self, br=()):
-        # pylint:disable=E1101
-        goal = hawkey.Goal(self.sack)
-        problems = []
-        for name in self.group:
-            sltr = hawkey.Selector(self.sack).set(name=name)
-            if not sltr.matches():
-                problems.append("Package in base build group not found: {}".format(name))
-            goal.install(select=sltr)
-        for r in br:
-            sltr = get_best_selector(self.sack, r)
-            # pylint: disable=E1103
-            if not sltr.matches():
-                problems.append("No package found for: {}".format(r))
-            else:
-                goal.install(select=sltr)
-        if not problems:
-            resolved = goal.run()
-            return resolved, goal.problems, goal.list_installs() if resolved else None
-        return False, problems, None
 
     def store_deps(self, repo_id, package_id, installs):
         new_deps = []
@@ -142,35 +68,15 @@ class AbstractResolverTask(object):
             self.db.connection().execute(table.insert(), dicts)
             self.db.expire_all()
 
-    def compute_dependency_distances(self, br, deps):
-        dep_map = {dep.name: dep for dep in deps}
-        visited = set()
-        level = 1
-        # pylint:disable=E1103
-        pkgs_on_level = {x for r in br for x in
-                         get_best_selector(self.sack, r).matches()}
-        while pkgs_on_level:
-            for pkg in pkgs_on_level:
-                dep = dep_map.get(pkg.name)
-                if dep and dep.distance is None:
-                    dep.distance = level
-            level += 1
-            if level >= 5:
-                break
-            reldeps = {req for pkg in pkgs_on_level if pkg not in visited
-                       for req in pkg.requires}
-            visited.update(pkgs_on_level)
-            pkgs_on_level = set(hawkey.Query(self.sack).filter(provides=reldeps))
-
     def resolve_dependencies(self, package, br):
-        resolved, problems, installs = self.run_goal(br)
+        resolved, problems, installs = util.run_goal(self.sack, self.group, br)
         self.resolved_packages[package.id] = resolved
         if resolved:
             deps = [Dependency(name=pkg.name, epoch=pkg.epoch,
                                version=pkg.version, release=pkg.release,
                                arch=pkg.arch)
                     for pkg in installs if pkg.arch != 'src']
-            self.compute_dependency_distances(br, deps)
+            util.compute_dependency_distances(self.sack, br, deps)
             return deps
         else:
             for problem in sorted(set(problems)):
@@ -222,14 +128,6 @@ class AbstractResolverTask(object):
                       .filter(Build.id < build.id)\
                       .filter(Build.deps_resolved == True)\
                       .order_by(Build.id.desc()).first()
-
-    def prepare_sack(self, repo_id):
-        for_arch = util.config['dependency']['for_arch']
-        sack = hawkey.Sack(arch=for_arch)
-        repos = self.repo_cache.get_repos(repo_id)
-        if repos:
-            util.add_repos_to_sack(repo_id, repos, sack)
-            self.sack = sack
 
 
 class GenerateRepoTask(AbstractResolverTask):
@@ -309,7 +207,7 @@ class GenerateRepoTask(AbstractResolverTask):
         self.log.info("Generating new repo")
         packages = self.get_packages(require_build=True)
         repo = Repo(repo_id=repo_id)
-        self.prepare_sack(repo_id)
+        self.sack = util.prepare_sack(self.repo_cache, repo_id)
         if not self.sack:
             self.log.error('Cannot generate repo: {}'.format(repo_id))
             self.db.rollback()
@@ -317,7 +215,7 @@ class GenerateRepoTask(AbstractResolverTask):
         self.update_repo_index(repo_id)
         # TODO repo_id
         self.group = util.get_build_group(self.koji_session)
-        base_installable, base_problems, _ = self.run_goal()
+        base_installable, base_problems, _ = util.run_goal(self.sack, self.group)
         if not base_installable:
             self.log.info("Build group not resolvable")
             repo.base_resolved = False
@@ -399,7 +297,7 @@ class ProcessBuildsTask(AbstractResolverTask):
                                                  lambda build: build.repo_id):
             builds = list(builds)
             if repo_id:
-                self.prepare_sack(repo_id)
+                self.sack = util.prepare_sack(self.repo_cache, repo_id)
                 if self.sack:
                     brs = util.get_rpm_requires(self.koji_session,
                                                 [dict(name=b.package.name,
