@@ -160,7 +160,7 @@ class CacheManager(object):
                 item._wait = False
                 item._value = value
                 bank._access(item)
-            while bank._count_soft() > 0:
+            while bank._count_soft() > capacity:
                 bank._discard_lru()
 
 
