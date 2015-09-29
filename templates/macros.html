@@ -62,6 +62,10 @@
                     {% if package.state_string %}
                     <img src="{{ package.state_icon }}"
                     title="{{ package.state_string }}" alt="{{ package.state_string }}"/>
+                    {% if package.has_running_build %}
+                    <img src="{{ url_for('static', filename='images/running.png') }}"
+                    title="running" alt="running"/>
+                    {% endif %}
                     {% endif %}
                 </td>
                 {% if last_complete_build %}

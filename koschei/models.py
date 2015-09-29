@@ -119,6 +119,10 @@ class Package(Base):
         # TODO distinguish between blocked and untracked without breaking fedmsg format
         return not self.blocked and self.tracked and self.get_state() or 'ignored'
 
+    @property
+    def has_running_build(self):
+        return self.last_build_id != self.last_complete_build_id
+
     def __repr__(self):
         return '{0.id} (name={0.name})'.format(self)
 
