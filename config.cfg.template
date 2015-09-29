@@ -27,7 +27,6 @@ config = {
         "for_arch": "x86_64",
         "repo_cache_items": 10,
         "keep_build_deps_for": 5,
-        "local": False,
         "arches": ['x86_64', 'i386'],
         "remote_repo": "http://kojipkgs.fedoraproject.org/repos/{build_tag}/{repo_id}/{arch}",
     },

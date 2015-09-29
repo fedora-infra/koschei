@@ -67,11 +67,3 @@ class RepoCacheTest(AbstractTest):
             self.assertEqual({'x86_64': MockRepo, 'i386': MockRepo},
                              cache.get_repos(666))
             self.assertFalse(mock.perform.called)
-
-    def test_local(self):
-        with librepo_mock() as mock:
-            cache = repo_cache.RepoCache(None, local=True, max_repos=3)
-            for repo in [7, 123, 666, 1024]:
-                cache.get_repo(repo, 'x86_64')
-            mock.mock_local.assert_called_with(True)
-            self.assertEqual({'7', '123', '666', '1024', 'not-repo'}, set(os.listdir('.')))

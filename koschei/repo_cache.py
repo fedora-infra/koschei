@@ -34,30 +34,26 @@ class RepoCache(object):
                  repo_dir=util.config['directories']['repodata'],
                  max_repos=util.config['dependency']['repo_cache_items'],
                  remote_repo=util.config['dependency']['remote_repo'],
-                 arches=util.config['dependency']['arches'],
-                 local=util.config['dependency']['local']):
+                 arches=util.config['dependency']['arches']:
         self.koji_session = koji_session
         self._repo_dir = repo_dir
         assert max_repos > 2
         self._max_repos = max_repos
-        if not local:
-            assert '{repo_id}' in remote_repo and '{arch}' in remote_repo
+        assert '{repo_id}' in remote_repo and '{arch}' in remote_repo
         self._remote_repo = remote_repo
         self._arches = arches
-        self._local = local
         self._lru = {}
         self._index = 0
         self._cache = {}
 
-        if not local:
-            # registers old repos so they can be deleted when chosen as victims
-            existing_repos = []
-            for repo in os.listdir(self._repo_dir):
-                if repo.isdigit():
-                    existing_repos.append(int(repo))
-            existing_repos.sort()
-            for repo in existing_repos:
-                self._load_from_disk(repo)
+        # registers old repos so they can be deleted when chosen as victims
+        existing_repos = []
+        for repo in os.listdir(self._repo_dir):
+            if repo.isdigit():
+                existing_repos.append(int(repo))
+        existing_repos.sort()
+        for repo in existing_repos:
+            self._load_from_disk(repo)
 
     def _get_repo_dir(self, repo_id, arch=None):
         if arch:
@@ -65,8 +61,6 @@ class RepoCache(object):
         return os.path.join(self._repo_dir, str(repo_id))
 
     def _download_repo(self, repo_id):
-        if self._local:
-            return
         repos = {}
         build_tag = None
         if '{build_tag}' in self._remote_repo:
@@ -115,8 +109,7 @@ class RepoCache(object):
             victim = sorted(self._lru.items(), key=lambda (k, v): (v, k))[0][0]
             del self._cache[victim]
             del self._lru[victim]
-            if not self._local:
-                shutil.rmtree(self._get_repo_dir(victim))
+            shutil.rmtree(self._get_repo_dir(victim))
         self._cache[repo_id] = repos
         self._lru[repo_id] = self._index
 
