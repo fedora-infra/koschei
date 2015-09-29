@@ -181,21 +181,6 @@ def mkdir_if_absent(path):
             raise
 
 
-def prepare_sack(repo_cache, repo_id):
-    for_arch = config['dependency']['for_arch']
-    sack = hawkey.Sack(arch=for_arch)
-    repos = repo_cache.get_repos(repo_id)
-    if repos:
-        for arch, repo_result in repos.items():
-            repodata = repo_result.yum_repo
-            repo = hawkey.Repo('{}-{}'.format(repo_id, arch))
-            repo.repomd_fn = repodata['repomd']
-            repo.primary_fn = repodata['primary']
-            repo.filelists_fn = repodata['filelists']
-            sack.load_yum_repo(repo, load_filelists=True)
-        return sack
-
-
 def _get_best_selector(sack, dep):
     # Based on get_best_selector in dnf's subject.py
 

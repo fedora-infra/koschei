@@ -204,20 +204,28 @@ class GenerateRepoTask(AbstractResolverTask):
     def run(self, repo_id):
         start = time.time()
         self.log.info("Generating new repo")
+        self.repo_cache.prefetch_repo(repo_id)
         packages = self.get_packages(require_build=True)
         repo = Repo(repo_id=repo_id)
-        sack = util.prepare_sack(self.repo_cache, repo_id)
+        # TODO repo_id
+        self.group = util.get_build_group(self.koji_session)
+        brs = util.get_rpm_requires(self.koji_session,
+                                    [dict(name=p.name,
+                                          version=p.last_complete_build.version,
+                                          release=p.last_complete_build.release,
+                                          arch='src') for p in packages])
+        sack = self.repo_cache.get_sack(repo_id)
         if not sack:
             self.log.error('Cannot generate repo: {}'.format(repo_id))
+            self.repo_cache.release_sack(repo_id)
             self.db.rollback()
             return
         self.update_repo_index(repo_id)
-        # TODO repo_id
-        self.group = util.get_build_group(self.koji_session)
         base_installable, base_problems, _ = util.run_goal(sack, self.group)
         if not base_installable:
             self.log.info("Build group not resolvable")
             repo.base_resolved = False
+            self.repo_cache.release_sack(repo_id)
             self.db.add(repo)
             self.db.flush()
             self.db.execute(BuildrootProblem.__table__.insert(),
@@ -225,15 +233,11 @@ class GenerateRepoTask(AbstractResolverTask):
                              for problem in base_problems])
             self.db.commit()
             return
-        brs = util.get_rpm_requires(self.koji_session,
-                                    [dict(name=p.name,
-                                          version=p.last_complete_build.version,
-                                          release=p.last_complete_build.release,
-                                          arch='src') for p in packages])
         self.log.info("Resolving dependencies...")
         resolution_start = time.time()
         changes = self.generate_dependency_changes(sack, packages, brs, repo_id)
         resolution_end = time.time()
+        self.repo_cache.release_sack(repo_id)
         self.db.query(ResolutionProblem).delete(synchronize_session=False)
         # pylint: disable=E1101
         if self.problems:
@@ -292,10 +296,13 @@ class ProcessBuildsTask(AbstractResolverTask):
         # TODO repo_id
         self.group = util.get_build_group(self.koji_session)
 
+        for repo_id, _ in itertools.groupby(unprocessed,
+                                            lambda build: build.repo_id):
+            self.repo_cache.prefetch_repo(repo_id)
         for repo_id, builds in itertools.groupby(unprocessed,
                                                  lambda build: build.repo_id):
             builds = list(builds)
-            sack = util.prepare_sack(self.repo_cache, repo_id)
+            sack = self.repo_cache.get_sack(repo_id)
             if sack:
                 brs = util.get_rpm_requires(self.koji_session,
                                             [dict(name=b.package.name,
@@ -304,6 +311,9 @@ class ProcessBuildsTask(AbstractResolverTask):
                                                   arch='src') for b in builds])
                 for build, br in zip(builds, brs):
                     self.process_build(sack, build, br)
+            else:
+                self.log.info("Repo id=%d not available, skipping", repo_id)
+            self.repo_cache.release_sack(repo_id)
             self.db.query(Build).filter(Build.id.in_([b.id for b in builds]))\
                                 .update({'deps_processed': True},
                                         synchronize_session=False)
