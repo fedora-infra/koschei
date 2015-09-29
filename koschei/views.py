@@ -136,7 +136,7 @@ def get_order(order_map, order_spec):
 
 def package_view(package_query, template, **template_args):
     untracked = request.args.get('untracked') == '1'
-    order_name = request.args.get('order_by', 'name')
+    order_name = request.args.get('order_by', 'running,state,name')
     # pylint: disable=E1101
     order_map = {'name': [Package.name],
                  'state': [Package.resolved, Reversed(Build.state)],
