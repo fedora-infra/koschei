@@ -128,7 +128,11 @@ class Backend(object):
         if state in Build.KOJI_STATE_MAP:
             state = Build.KOJI_STATE_MAP[state]
             build_id = build.id
+            package_id = build.package_id
             self.db.expire_all()
+            # lock package so there are no concurrent state changes
+            package = self.db.query(Package).filter_by(id=package_id)\
+                             .with_lockmode('update').one()
             # lock build
             build = self.db.query(Build).filter_by(id=build_id)\
                            .with_lockmode('update').first()
@@ -148,9 +152,6 @@ class Backend(object):
                                   state=Build.REV_STATE_MAP[state]))
             self.sync_tasks(build, complete=True)
             self.db.expire(build.package)
-            # lock package so there are no concurrent state changes
-            package = self.db.query(Package).filter_by(id=build.package_id)\
-                             .with_lockmode('update').one()
             prev_state = package.msg_state_string
             build.state = state
             # unlock
