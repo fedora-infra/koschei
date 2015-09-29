@@ -140,6 +140,7 @@ def package_view(package_query, template, **template_args):
     # pylint: disable=E1101
     order_map = {'name': [Package.name],
                  'state': [Package.resolved, Reversed(Build.state)],
+                 'running': [Package.last_complete_build_id == Package.last_build_id],
                  'task_id': [Build.task_id],
                  'started': [Build.started],
                  'current_priority': [PriorityOrder(Package.current_priority)]}

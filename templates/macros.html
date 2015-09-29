@@ -40,6 +40,7 @@
             <tr class="list-header">
                 {{ ordered_column('name', 'Name', order) }}
                 {{ ordered_column('state', 'State', order) }}
+                {{ ordered_column('running', 'Running', order) }}
                 {{ ordered_column('task_id', 'Task ID', order) }}
                 {{ ordered_column('started', 'Last build started', order) }}
                 {{ ordered_column('current_priority', 'Current priority', order) }}
@@ -62,10 +63,12 @@
                     {% if package.state_string %}
                     <img src="{{ package.state_icon }}"
                     title="{{ package.state_string }}" alt="{{ package.state_string }}"/>
+                    {% endif %}
+                </td>
+                <td>
                     {% if package.has_running_build %}
                     <img src="{{ url_for('static', filename='images/running.png') }}"
                     title="running" alt="running"/>
-                    {% endif %}
                     {% endif %}
                 </td>
                 {% if last_complete_build %}
