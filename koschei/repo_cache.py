@@ -55,6 +55,8 @@ class RepoManager(object):
             shutil.rmtree(temp_dir)
         try:
             for arch in self._arches:
+                log.debug('Downloading repo {} for arch {} from Koji to disk'.
+                          format(repo_id, arch))
                 h = librepo.Handle()
                 arch_repo_dir = os.path.join(temp_dir, arch)
                 os.makedirs(arch_repo_dir)
@@ -66,9 +68,11 @@ class RepoManager(object):
                 h.yumdlist = ['primary', 'filelists', 'group']
                 h.perform(librepo.Result())
             os.rename(temp_dir, repo_dir)
+            log.debug('Repo {} successfully downloaded to disk'.format(repo_id))
             return repo_dir
         except librepo.LibrepoException as e:
             if e.args[0] == REPO_404:
+                log.debug('Repo {} was not found'.format(repo_id))
                 return None
             raise
 
@@ -79,6 +83,7 @@ class RepoManager(object):
     # Read list of repo_id's cached on disk
     def populate_cache(self):
         repos = []
+        log.debug('Reading cached repos from disk...')
         for repo in os.listdir(self._repo_dir):
             repo_path = self._get_repo_dir(repo)
             if repo.isdigit():
@@ -108,6 +113,8 @@ class SackManager(object):
         try:
             sack = hawkey.Sack(arch=self._for_arch)
             for arch in self._arches:
+                log.debug('Loading repo {} for arch {} from disk into memory'.
+                          format(repo_id, arch))
                 arch_repo_dir = os.path.join(repo_dir, arch)
                 h = librepo.Handle()
                 h.local = True
@@ -120,8 +127,10 @@ class SackManager(object):
                 repo.primary_fn = repodata['primary']
                 repo.filelists_fn = repodata['filelists']
                 sack.load_yum_repo(repo, load_filelists=True)
+            log.debug('Repo {} successfully loaded into memory'.format(repo_id))
             return sack
         except (librepo.LibrepoException, IOError):
+            log.debug('Repo {} could not be loaded'.format(repo_id))
             return None
 
     # Release sack
