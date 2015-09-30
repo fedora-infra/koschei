@@ -242,6 +242,8 @@ class CacheManager(object):
                     prev_item = item
                     self._work_avail.notify()
                 else:
+                    if prev_item:
+                        prev_item._next = item
                     # transition from state RELEASED to PREPARED
                     item._free = False
                     bank._access(item)
