@@ -185,6 +185,7 @@ class CacheManager(object):
     def _thread_proc(self):
         try:
             self._lock.acquire()
+            locked = True
             _log.debug("Worker started")
             while not self._terminate:
                 item = self._get_item_to_process()
@@ -201,8 +202,10 @@ class CacheManager(object):
                     item._next._wait = True
                 _log.debug("Processing %s..." % str(item._key))
                 self._lock.release()
+                locked = False
                 item._prepare()
                 self._lock.acquire()
+                locked = True
                 # transition from state PREPARING to PREPARED
                 item._work = False
                 item._wait = False
@@ -219,7 +222,8 @@ class CacheManager(object):
             _log.debug("Worker terminated")
         finally:
             _log.debug("Worker exited")
-            self._lock.release()
+            if locked:
+                self._lock.release()
 
     # Request item with specified key to be prefetched into L1 cache
     # by background thread
