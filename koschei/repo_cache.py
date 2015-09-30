@@ -111,6 +111,8 @@ class SackManager(object):
 
     # Load repo from disk into memory as sack
     def create(self, repo_id, repo_dir):
+        if not repo_dir:
+            return None
         try:
             sack = hawkey.Sack(arch=self._for_arch)
             for arch in self._arches:
