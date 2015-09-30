@@ -110,8 +110,9 @@ class Backend(object):
             self.db.flush()
             self.sync_tasks(build)
             self.flush_depchanges(build)
-            self.log.info('Registering real build for {}, task_id {}.'
-                          .format(package, build.task_id))
+            self.log.info('Registering real build {}-{}-{} (task_id {})'
+                          .format(package.name, build.version, build.release,
+                                  build.task_id))
             self.db.commit()
             return build
         except IntegrityError:
