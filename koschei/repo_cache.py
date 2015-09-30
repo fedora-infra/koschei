@@ -21,6 +21,7 @@ import os
 import librepo
 import shutil
 import logging
+import hawkey
 
 from koschei.cache_manager import CacheManager
 
