@@ -80,10 +80,21 @@ class RepoManager(object):
     def populate_cache(self):
         repos = []
         for repo in os.listdir(self._repo_dir):
+            repo_path = self._get_repo_dir(repo)
             if repo.isdigit():
                 repo_id = int(repo)
-                repo_path = self._get_repo_dir(repo)
                 repos.append((repo_id, repo_path))
+            else:
+                # Try to remove files that don't look like valid
+                # repos, such as incomplete downloads.
+                try:
+                    if (os.path.isdir(repo_path)):
+                        shutil.rmtree(repo_path)
+                    else:
+                        os.remove(repo_path)
+                    log.debug('Removed bogus file from cache: {}'.format(repo_path))
+                except:
+                    log.debug('Unable to remove bogus file from cache: {}'.format(repo_path))
         return repos
 
 
