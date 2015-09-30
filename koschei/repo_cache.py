@@ -78,7 +78,7 @@ class RepoManager(object):
         for repo in os.listdir(self._repo_dir):
             if repo.isdigit():
                 repo_id = int(repo)
-                repo_path = self._get_repo_dir(repo_dir)
+                repo_path = self._get_repo_dir(repo)
                 repos.append((repo_id, repo_path))
         return repos
 
