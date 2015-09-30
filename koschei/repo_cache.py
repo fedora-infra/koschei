@@ -50,10 +50,13 @@ class RepoManager(object):
     def create(self, repo_id, ignored):
         self._clean_repo_dir(repo_id)
         repo_dir = self._get_repo_dir(repo_id)
+        temp_dir = repo_dir + ".tmp"
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
         try:
             for arch in self._arches:
                 h = librepo.Handle()
-                arch_repo_dir = os.path.join(repo_dir, arch)
+                arch_repo_dir = os.path.join(temp_dir, arch)
                 os.makedirs(arch_repo_dir)
                 h.destdir = arch_repo_dir
                 h.repotype = librepo.LR_YUMREPO
@@ -62,6 +65,7 @@ class RepoManager(object):
                 h.urls = [url]
                 h.yumdlist = ['primary', 'filelists', 'group']
                 h.perform(librepo.Result())
+            os.rename(temp_dir, repo_dir)
             return repo_dir
         except librepo.LibrepoException as e:
             if e.args[0] == REPO_404:
