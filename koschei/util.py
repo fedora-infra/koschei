@@ -28,6 +28,7 @@ import logging.config
 import hawkey
 import errno
 import fcntl
+import time
 
 from contextlib import contextmanager
 from rpm import RPMSENSE_LESS, RPMSENSE_GREATER, RPMSENSE_EQUAL
@@ -361,3 +362,56 @@ def lock(lock_path):
 def get_latest_repo(koji_session):
     build_tag = koji_config['build_tag']
     return koji_session.getRepo(build_tag, state=koji.REPO_READY)
+
+
+# Utility class for time measurement
+class Stopwatch(object):
+    def __init__(self, name, parent=None, start=False):
+        self._time = 0
+        self._name = name
+        self._started = False
+        self._childreen = []
+        self._parent = parent
+        if parent:
+            parent._childreen.append(self)
+        if start:
+            self.start()
+
+    def start(self):
+        assert not self._started
+        if self._parent and not self._parent._started:
+            self._parent.start()
+        self._time = self._time - time.time()
+        self._started = True
+
+    def stop(self):
+        assert self._started
+        for child in self._childreen:
+            if child._started:
+                child.stop()
+        self._time = self._time + time.time()
+        self._started = False
+
+    def reset(self):
+        self._started = False
+        for child in self._childreen:
+            child.reset()
+        self._time = 0
+
+    def display(self):
+        assert not self._started
+
+        def human_readable_time(t):
+            s = str(t % 60) + " s"
+            t = int(t / 60)
+            if t:
+                s = str(t % 60) + " min " + s
+            t = int(t / 60)
+            if t:
+                s = str(t % 60) + " h " + s
+            return s
+
+        log.debug('{} time: {}'.format(self._name, human_readable_time(self._time)))
+
+        for child in self._childreen:
+            child.display()

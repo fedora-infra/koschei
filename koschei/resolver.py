@@ -18,7 +18,6 @@
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 import os
-import time
 import itertools
 import librepo
 
@@ -28,11 +27,21 @@ from koschei.models import (Package, Dependency, UnappliedChange,
                             AppliedChange, Repo, ResolutionProblem,
                             RepoGenerationRequest, Build, BuildrootProblem)
 from koschei import util
+from koschei.util import Stopwatch
 from koschei.service import KojiService
 from koschei.repo_cache import RepoCache
 from koschei.backend import check_package_state, Backend
 
 
+
+
+total_time = Stopwatch("Total repo generation")
+koji_time = Stopwatch("Querying Koji", total_time)
+get_build_group_time = Stopwatch("get_build_group", koji_time)
+get_rpm_requires_time = Stopwatch("get_rpm_requires", koji_time)
+resolution_time = Stopwatch("Dependency resolution", total_time)
+resolve_dependencies_time = Stopwatch("resolve_dependencies", resolution_time)
+create_dependency_changes_time = Stopwatch("create_dependency_changes", resolution_time)
 
 
 class AbstractResolverTask(object):
@@ -184,16 +193,20 @@ class GenerateRepoTask(AbstractResolverTask):
     def generate_dependency_changes(self, sack, packages, brs, repo_id):
         changes = []
         for package, br in zip(packages, brs):
+            resolve_dependencies_time.start()
             curr_deps = self.resolve_dependencies(sack, package, br)
+            resolve_dependencies_time.stop()
             if curr_deps is not None:
                 last_build = self.get_build_for_comparison(package)
                 if last_build:
                     prev_deps = self.get_deps_from_db(last_build.package_id,
                                                       last_build.repo_id)
                     if prev_deps is not None:
+                        create_dependency_changes_time.start()
                         changes += self.create_dependency_changes(
                             prev_deps, curr_deps, package_id=package.id,
                             prev_build_id=last_build.id)
+                        create_dependency_changes_time.stop()
         return changes
 
     def update_dependency_changes(self, changes):
@@ -202,19 +215,24 @@ class GenerateRepoTask(AbstractResolverTask):
             self.db.execute(UnappliedChange.__table__.insert(), changes)
 
     def run(self, repo_id):
-        start = time.time()
+        total_time.reset()
+        total_time.start()
         self.log.info("Generating new repo")
         build_tag = self.koji_session.repoInfo(repo_id)['tag_name']
         self.repo_cache.prefetch_repo(repo_id, build_tag)
         packages = self.get_packages(require_build=True)
         repo = Repo(repo_id=repo_id)
         # TODO repo_id
+        get_build_group_time.start()
         self.group = util.get_build_group(self.koji_session)
+        get_build_group_time.stop()
+        get_rpm_requires_time.start()
         brs = util.get_rpm_requires(self.koji_session,
                                     [dict(name=p.name,
                                           version=p.last_complete_build.version,
                                           release=p.last_complete_build.release,
                                           arch='src') for p in packages])
+        koji_time.stop()
         with self.repo_cache.get_sack(repo_id) as sack:
             if not sack:
                 self.log.error('Cannot generate repo: {}'.format(repo_id))
@@ -233,9 +251,9 @@ class GenerateRepoTask(AbstractResolverTask):
                 self.db.commit()
                 return
             self.log.info("Resolving dependencies...")
-            resolution_start = time.time()
+            resolution_time.start()
             changes = self.generate_dependency_changes(sack, packages, brs, repo_id)
-            resolution_end = time.time()
+            resolution_time.stop()
             self.db.query(ResolutionProblem).delete(synchronize_session=False)
             # pylint: disable=E1101
             if self.problems:
@@ -245,12 +263,8 @@ class GenerateRepoTask(AbstractResolverTask):
             repo.base_resolved = True
             self.db.add(repo)
             self.db.commit()
-            end = time.time()
-
-            self.log.info(("New repo done. Resolution time: {} minutes\n"
-                           "Overall time: {} minutes.")
-                          .format((resolution_end - resolution_start) / 60,
-                                  (end - start) / 60))
+            total_time.stop()
+            total_time.display()
 
 
 class ProcessBuildsTask(AbstractResolverTask):
