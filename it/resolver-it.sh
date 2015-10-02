@@ -27,7 +27,17 @@ alembic upgrade head
 time python -c "
 import mock, json
 from koschei import resolver, util
-task = resolver.Resolver(koji_session=mock.Mock()).create_task(resolver.GenerateRepoTask)
+from test.common import KojiMock
+koji_mock = KojiMock()
+koji_mock.repoInfo.return_value = {
+    'create_event': 11870447,
+    'create_ts': 1438936330.7918,
+    'creation_time': '2015-08-07 08:32:10.791796',
+    'id': 509557,
+    'state': 3,
+    'tag_id': 315,
+    'tag_name': 'f24-build'}
+task = resolver.Resolver(koji_session=koji_mock).create_task(resolver.GenerateRepoTask)
 brs = json.load(open('it/get_rpm_requires.json'))
 util.get_rpm_requires = lambda _, ps: [brs[p['name']] for p in ps]
 group = json.load(open('it/get_build_group.json'))
