@@ -20,6 +20,7 @@
 from __future__ import print_function
 
 import os
+import re
 import rpm
 import koji
 import logging
@@ -27,6 +28,7 @@ import logging.config
 import hawkey
 import errno
 import fcntl
+import time
 
 from contextlib import contextmanager
 from rpm import RPMSENSE_LESS, RPMSENSE_GREATER, RPMSENSE_EQUAL
@@ -180,18 +182,100 @@ def mkdir_if_absent(path):
             raise
 
 
-def add_repo_to_sack(repoid, repo_result, sack):
-    repodata = repo_result.yum_repo
-    repo = hawkey.Repo(repoid)
-    repo.repomd_fn = repodata['repomd']
-    repo.primary_fn = repodata['primary']
-    repo.filelists_fn = repodata['filelists']
-    sack.load_yum_repo(repo, load_filelists=True)
+def _get_best_selector(sack, dep):
+    # Based on get_best_selector in dnf's subject.py
+
+    def is_glob_pattern(pattern):
+        return set(pattern) & set("*[?")
+
+    def first(iterable):
+        it = iter(iterable)
+        try:
+            return next(it)
+        except StopIteration:
+            return None
+
+    def _nevra_to_selector(sltr, nevra):
+        if nevra.name is not None:
+            if is_glob_pattern(nevra.name):
+                sltr.set(name__glob=nevra.name)
+            else:
+                sltr.set(name=nevra.name)
+        if nevra.version is not None:
+            evr = nevra.version
+            if nevra.epoch is not None and nevra.epoch > 0:
+                evr = "%d:%s" % (nevra.epoch, evr)
+            if nevra.release is None:
+                sltr.set(version=evr)
+            else:
+                evr = "%s-%s" % (evr, nevra.release)
+                sltr.set(evr=evr)
+        if nevra.arch is not None:
+            sltr.set(arch=nevra.arch)
+        return sltr
+
+    subj = hawkey.Subject(dep)
+    sltr = hawkey.Selector(sack)
+    kwargs = {'allow_globs': True}
+    if re.search(r'^\*?/', dep):
+        key = "file__glob" if is_glob_pattern(dep) else "file"
+        return sltr.set(**{key: dep})
+    nevra = first(subj.nevra_possibilities_real(sack, **kwargs))
+    if nevra:
+        return _nevra_to_selector(sltr, nevra)
+
+    if is_glob_pattern(dep):
+        return sltr.set(provides__glob=dep)
+
+    # pylint: disable=E1101
+    reldep = first(subj.reldep_possibilities_real(sack))
+    if reldep:
+        dep = str(reldep)
+        return sltr.set(provides=dep)
+    return sltr
 
 
-def add_repos_to_sack(repo_id, repo_results, sack):
-    for arch, repo_result in repo_results.items():
-        add_repo_to_sack('{}-{}'.format(repo_id, arch), repo_result, sack)
+def run_goal(sack, group, br=()):
+    # pylint:disable=E1101
+    goal = hawkey.Goal(sack)
+    problems = []
+    for name in group:
+        sltr = hawkey.Selector(sack).set(name=name)
+        if not sltr.matches():
+            problems.append("Package in base build group not found: {}".format(name))
+        goal.install(select=sltr)
+    for r in br:
+        sltr = _get_best_selector(sack, r)
+        # pylint: disable=E1103
+        if not sltr.matches():
+            problems.append("No package found for: {}".format(r))
+        else:
+            goal.install(select=sltr)
+    if not problems:
+        resolved = goal.run()
+        return resolved, goal.problems, goal.list_installs() if resolved else None
+    return False, problems, None
+
+
+def compute_dependency_distances(sack, br, deps):
+    dep_map = {dep.name: dep for dep in deps}
+    visited = set()
+    level = 1
+    # pylint:disable=E1103
+    pkgs_on_level = {x for r in br for x in
+                     _get_best_selector(sack, r).matches()}
+    while pkgs_on_level:
+        for pkg in pkgs_on_level:
+            dep = dep_map.get(pkg.name)
+            if dep and dep.distance is None:
+                dep.distance = level
+        level += 1
+        if level >= 5:
+            break
+        reldeps = {req for pkg in pkgs_on_level if pkg not in visited
+                   for req in pkg.requires}
+        visited.update(pkgs_on_level)
+        pkgs_on_level = set(hawkey.Query(sack).filter(provides=reldeps))
 
 
 def get_build_group(koji_session):
@@ -278,3 +362,56 @@ def lock(lock_path):
 def get_latest_repo(koji_session):
     build_tag = koji_config['build_tag']
     return koji_session.getRepo(build_tag, state=koji.REPO_READY)
+
+
+# Utility class for time measurement
+class Stopwatch(object):
+    def __init__(self, name, parent=None, start=False):
+        self._time = 0
+        self._name = name
+        self._started = False
+        self._childreen = []
+        self._parent = parent
+        if parent:
+            parent._childreen.append(self)
+        if start:
+            self.start()
+
+    def start(self):
+        assert not self._started
+        if self._parent and not self._parent._started:
+            self._parent.start()
+        self._time = self._time - time.time()
+        self._started = True
+
+    def stop(self):
+        assert self._started
+        for child in self._childreen:
+            if child._started:
+                child.stop()
+        self._time = self._time + time.time()
+        self._started = False
+
+    def reset(self):
+        self._started = False
+        for child in self._childreen:
+            child.reset()
+        self._time = 0
+
+    def display(self):
+        assert not self._started
+
+        def human_readable_time(t):
+            s = str(t % 60) + " s"
+            t = int(t / 60)
+            if t:
+                s = str(t % 60) + " min " + s
+            t = int(t / 60)
+            if t:
+                s = str(t % 60) + " h " + s
+            return s
+
+        log.debug('{} time: {}'.format(self._name, human_readable_time(self._time)))
+
+        for child in self._childreen:
+            child.display()

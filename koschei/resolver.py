@@ -17,10 +17,7 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-import re
 import os
-import time
-import hawkey
 import itertools
 import librepo
 
@@ -30,62 +27,21 @@ from koschei.models import (Package, Dependency, UnappliedChange,
                             AppliedChange, Repo, ResolutionProblem,
                             RepoGenerationRequest, Build, BuildrootProblem)
 from koschei import util
+from koschei.util import Stopwatch
 from koschei.service import KojiService
 from koschei.repo_cache import RepoCache
 from koschei.backend import check_package_state, Backend
 
 
-def get_best_selector(sack, dep):
-    # Based on get_best_selector in dnf's subject.py
 
-    def is_glob_pattern(pattern):
-        return set(pattern) & set("*[?")
 
-    def first(iterable):
-        it = iter(iterable)
-        try:
-            return next(it)
-        except StopIteration:
-            return None
-
-    def _nevra_to_selector(sltr, nevra):
-        if nevra.name is not None:
-            if is_glob_pattern(nevra.name):
-                sltr.set(name__glob=nevra.name)
-            else:
-                sltr.set(name=nevra.name)
-        if nevra.version is not None:
-            evr = nevra.version
-            if nevra.epoch is not None and nevra.epoch > 0:
-                evr = "%d:%s" % (nevra.epoch, evr)
-            if nevra.release is None:
-                sltr.set(version=evr)
-            else:
-                evr = "%s-%s" % (evr, nevra.release)
-                sltr.set(evr=evr)
-        if nevra.arch is not None:
-            sltr.set(arch=nevra.arch)
-        return sltr
-
-    subj = hawkey.Subject(dep)
-    sltr = hawkey.Selector(sack)
-    kwargs = {'allow_globs': True}
-    if re.search(r'^\*?/', dep):
-        key = "file__glob" if is_glob_pattern(dep) else "file"
-        return sltr.set(**{key: dep})
-    nevra = first(subj.nevra_possibilities_real(sack, **kwargs))
-    if nevra:
-        return _nevra_to_selector(sltr, nevra)
-
-    if is_glob_pattern(dep):
-        return sltr.set(provides__glob=dep)
-
-    # pylint: disable=E1101
-    reldep = first(subj.reldep_possibilities_real(sack))
-    if reldep:
-        dep = str(reldep)
-        return sltr.set(provides=dep)
-    return sltr
+total_time = Stopwatch("Total repo generation")
+koji_time = Stopwatch("Querying Koji", total_time)
+get_build_group_time = Stopwatch("get_build_group", koji_time)
+get_rpm_requires_time = Stopwatch("get_rpm_requires", koji_time)
+resolution_time = Stopwatch("Dependency resolution", total_time)
+resolve_dependencies_time = Stopwatch("resolve_dependencies", resolution_time)
+create_dependency_changes_time = Stopwatch("create_dependency_changes", resolution_time)
 
 
 class AbstractResolverTask(object):
@@ -97,30 +53,8 @@ class AbstractResolverTask(object):
         self.repo_cache = repo_cache
         self.backend = backend
         self.problems = []
-        self.sack = None
         self.group = None
         self.resolved_packages = {}
-
-    def run_goal(self, br=()):
-        # pylint:disable=E1101
-        goal = hawkey.Goal(self.sack)
-        problems = []
-        for name in self.group:
-            sltr = hawkey.Selector(self.sack).set(name=name)
-            if not sltr.matches():
-                problems.append("Package in base build group not found: {}".format(name))
-            goal.install(select=sltr)
-        for r in br:
-            sltr = get_best_selector(self.sack, r)
-            # pylint: disable=E1103
-            if not sltr.matches():
-                problems.append("No package found for: {}".format(r))
-            else:
-                goal.install(select=sltr)
-        if not problems:
-            resolved = goal.run()
-            return resolved, goal.problems, goal.list_installs() if resolved else None
-        return False, problems, None
 
     def store_deps(self, repo_id, package_id, installs):
         new_deps = []
@@ -142,35 +76,15 @@ class AbstractResolverTask(object):
             self.db.connection().execute(table.insert(), dicts)
             self.db.expire_all()
 
-    def compute_dependency_distances(self, br, deps):
-        dep_map = {dep.name: dep for dep in deps}
-        visited = set()
-        level = 1
-        # pylint:disable=E1103
-        pkgs_on_level = {x for r in br for x in
-                         get_best_selector(self.sack, r).matches()}
-        while pkgs_on_level:
-            for pkg in pkgs_on_level:
-                dep = dep_map.get(pkg.name)
-                if dep and dep.distance is None:
-                    dep.distance = level
-            level += 1
-            if level >= 5:
-                break
-            reldeps = {req for pkg in pkgs_on_level if pkg not in visited
-                       for req in pkg.requires}
-            visited.update(pkgs_on_level)
-            pkgs_on_level = set(hawkey.Query(self.sack).filter(provides=reldeps))
-
-    def resolve_dependencies(self, package, br):
-        resolved, problems, installs = self.run_goal(br)
+    def resolve_dependencies(self, sack, package, br):
+        resolved, problems, installs = util.run_goal(sack, self.group, br)
         self.resolved_packages[package.id] = resolved
         if resolved:
             deps = [Dependency(name=pkg.name, epoch=pkg.epoch,
                                version=pkg.version, release=pkg.release,
                                arch=pkg.arch)
                     for pkg in installs if pkg.arch != 'src']
-            self.compute_dependency_distances(br, deps)
+            util.compute_dependency_distances(sack, br, deps)
             return deps
         else:
             for problem in sorted(set(problems)):
@@ -222,14 +136,6 @@ class AbstractResolverTask(object):
                       .filter(Build.id < build.id)\
                       .filter(Build.deps_resolved == True)\
                       .order_by(Build.id.desc()).first()
-
-    def prepare_sack(self, repo_id):
-        for_arch = util.config['dependency']['for_arch']
-        sack = hawkey.Sack(arch=for_arch)
-        repos = self.repo_cache.get_repos(repo_id)
-        if repos:
-            util.add_repos_to_sack(repo_id, repos, sack)
-            self.sack = sack
 
 
 class GenerateRepoTask(AbstractResolverTask):
@@ -284,19 +190,23 @@ class GenerateRepoTask(AbstractResolverTask):
                 # unresolved build, skip it
                 return self.get_prev_build_for_comparison(last_build)
 
-    def generate_dependency_changes(self, packages, brs, repo_id):
+    def generate_dependency_changes(self, sack, packages, brs, repo_id):
         changes = []
         for package, br in zip(packages, brs):
-            curr_deps = self.resolve_dependencies(package, br)
+            resolve_dependencies_time.start()
+            curr_deps = self.resolve_dependencies(sack, package, br)
+            resolve_dependencies_time.stop()
             if curr_deps is not None:
                 last_build = self.get_build_for_comparison(package)
                 if last_build:
                     prev_deps = self.get_deps_from_db(last_build.package_id,
                                                       last_build.repo_id)
                     if prev_deps is not None:
+                        create_dependency_changes_time.start()
                         changes += self.create_dependency_changes(
                             prev_deps, curr_deps, package_id=package.id,
                             prev_build_id=last_build.id)
+                        create_dependency_changes_time.stop()
         return changes
 
     def update_dependency_changes(self, changes):
@@ -305,61 +215,64 @@ class GenerateRepoTask(AbstractResolverTask):
             self.db.execute(UnappliedChange.__table__.insert(), changes)
 
     def run(self, repo_id):
-        start = time.time()
+        total_time.reset()
+        total_time.start()
         self.log.info("Generating new repo")
+        build_tag = self.koji_session.repoInfo(repo_id)['tag_name']
+        self.repo_cache.prefetch_repo(repo_id, build_tag)
         packages = self.get_packages(require_build=True)
         repo = Repo(repo_id=repo_id)
-        self.prepare_sack(repo_id)
-        if not self.sack:
-            self.log.error('Cannot generate repo: {}'.format(repo_id))
-            self.db.rollback()
-            return
-        self.update_repo_index(repo_id)
         # TODO repo_id
+        get_build_group_time.start()
         self.group = util.get_build_group(self.koji_session)
-        base_installable, base_problems, _ = self.run_goal()
-        if not base_installable:
-            self.log.info("Build group not resolvable")
-            repo.base_resolved = False
-            self.db.add(repo)
-            self.db.flush()
-            self.db.execute(BuildrootProblem.__table__.insert(),
-                            [{'repo_id': repo.repo_id, 'problem': problem}
-                             for problem in base_problems])
-            self.db.commit()
-            return
+        get_build_group_time.stop()
+        get_rpm_requires_time.start()
         brs = util.get_rpm_requires(self.koji_session,
                                     [dict(name=p.name,
                                           version=p.last_complete_build.version,
                                           release=p.last_complete_build.release,
                                           arch='src') for p in packages])
-        self.log.info("Resolving dependencies...")
-        resolution_start = time.time()
-        changes = self.generate_dependency_changes(packages, brs, repo_id)
-        resolution_end = time.time()
-        self.db.query(ResolutionProblem).delete(synchronize_session=False)
-        # pylint: disable=E1101
-        if self.problems:
-            self.db.execute(ResolutionProblem.__table__.insert(), self.problems)
-        self.synchronize_resolution_state()
-        self.update_dependency_changes(changes)
-        repo.base_resolved = True
-        self.db.add(repo)
-        self.db.commit()
-        end = time.time()
-
-        self.log.info(("New repo done. Resolution time: {} minutes\n"
-                       "Overall time: {} minutes.")
-                      .format((resolution_end - resolution_start) / 60,
-                              (end - start) / 60))
+        koji_time.stop()
+        with self.repo_cache.get_sack(repo_id) as sack:
+            if not sack:
+                self.log.error('Cannot generate repo: {}'.format(repo_id))
+                self.db.rollback()
+                return
+            self.update_repo_index(repo_id)
+            base_installable, base_problems, _ = util.run_goal(sack, self.group)
+            if not base_installable:
+                self.log.info("Build group not resolvable")
+                repo.base_resolved = False
+                self.db.add(repo)
+                self.db.flush()
+                self.db.execute(BuildrootProblem.__table__.insert(),
+                                [{'repo_id': repo.repo_id, 'problem': problem}
+                                 for problem in base_problems])
+                self.db.commit()
+                return
+            self.log.info("Resolving dependencies...")
+            resolution_time.start()
+            changes = self.generate_dependency_changes(sack, packages, brs, repo_id)
+            resolution_time.stop()
+            self.db.query(ResolutionProblem).delete(synchronize_session=False)
+            # pylint: disable=E1101
+            if self.problems:
+                self.db.execute(ResolutionProblem.__table__.insert(), self.problems)
+            self.synchronize_resolution_state()
+            self.update_dependency_changes(changes)
+            repo.base_resolved = True
+            self.db.add(repo)
+            self.db.commit()
+            total_time.stop()
+            total_time.display()
 
 
 class ProcessBuildsTask(AbstractResolverTask):
 
-    def process_build(self, build, br):
+    def process_build(self, sack, build, br):
         self.log.info("Processing build {}".format(build.id))
         prev = self.get_prev_build_for_comparison(build)
-        curr_deps = self.resolve_dependencies(build.package, br)
+        curr_deps = self.resolve_dependencies(sack, build.package, br)
         self.store_deps(build.repo_id, build.package_id, curr_deps)
         if curr_deps is not None:
             build.deps_resolved = True
@@ -395,19 +308,25 @@ class ProcessBuildsTask(AbstractResolverTask):
         # TODO repo_id
         self.group = util.get_build_group(self.koji_session)
 
+        repo_ids = [repo_id for repo_id, _ in
+                    itertools.groupby(unprocessed, lambda build: build.repo_id)]
+        for repo_info in util.itercall(self.koji_session, repo_ids,
+                                       lambda k, repo_id: k.repoInfo(repo_id)):
+            self.repo_cache.prefetch_repo(repo_info['id'], repo_info['tag_name'])
         for repo_id, builds in itertools.groupby(unprocessed,
                                                  lambda build: build.repo_id):
             builds = list(builds)
-            if repo_id:
-                self.prepare_sack(repo_id)
-                if self.sack:
+            with self.repo_cache.get_sack(repo_id) as sack:
+                if sack:
                     brs = util.get_rpm_requires(self.koji_session,
                                                 [dict(name=b.package.name,
                                                       version=b.version,
                                                       release=b.release,
                                                       arch='src') for b in builds])
                     for build, br in zip(builds, brs):
-                        self.process_build(build, br)
+                        self.process_build(sack, build, br)
+                else:
+                    self.log.info("Repo id=%d not available, skipping", repo_id)
             self.db.query(Build).filter(Build.id.in_([b.id for b in builds]))\
                                 .update({'deps_processed': True},
                                         synchronize_session=False)
@@ -420,7 +339,7 @@ class Resolver(KojiService):
                  repo_cache=None, backend=None):
         super(Resolver, self).__init__(log=log, db=db,
                                        koji_session=koji_session)
-        self.repo_cache = repo_cache or RepoCache(self.koji_session)
+        self.repo_cache = repo_cache or RepoCache()
         self.backend = backend or Backend(db=self.db,
                                           koji_session=self.koji_session,
                                           log=self.log)
