@@ -103,3 +103,25 @@ class DBTest(AbstractTest):
         name, version, release = string.rsplit('-', 2)
         return dict(epoch=epoch, name=name, version=version, release=release,
                     arch='x86_64')
+
+class KojiMock(Mock):
+    def __init__(self, *args, **kwargs):
+        Mock.__init__(self, *args, **kwargs)
+        self.multicall = False
+        self._mcall_list = []
+
+    def __getattribute__(self, key):
+        if (key.lower() != 'multicall' and
+                not key.startswith('_') and
+                object.__getattribute__(self, 'multicall')):
+            def mcall_method(*args, **kwargs):
+                object.__getattribute__(self, '_mcall_list').append((key, args, kwargs))
+            return mcall_method
+        return Mock.__getattribute__(self, key)
+
+    def multiCall(self):
+        self.multicall = False
+        ret = [[getattr(self, key)(*args, **kwargs)]
+               for key, args, kwargs in self._mcall_list]
+        self._mcall_list = []
+        return ret
