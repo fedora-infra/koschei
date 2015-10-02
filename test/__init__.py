@@ -13,7 +13,6 @@ testdir = os.path.dirname(os.path.realpath(__file__))
 use_faitout = os.environ.get('TEST_WITH_FAITOUT')
 use_postgres = os.environ.get('TEST_WITH_POSTGRES')
 
-os.chdir(testdir)
 os.environ['KOSCHEI_CONFIG'] = '{0}/../config.cfg.template:{0}/test_config.cfg'\
                                .format(testdir)
 from koschei import util
