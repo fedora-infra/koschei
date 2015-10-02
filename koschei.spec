@@ -22,11 +22,13 @@ BuildRequires:       python-hawkey
 BuildRequires:       python-librepo
 BuildRequires:       rpm-python
 BuildRequires:       fedmsg
+BuildRequires:       python-futures
 %endif
 
 Requires:       python-sqlalchemy
 Requires:       koji
 Requires:       fedmsg
+Requires:       python-futures
 Requires:       python-fedmsg-meta-fedora-infrastructure
 Requires:       python-psycopg2
 Requires:       python-jinja2
