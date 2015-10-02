@@ -21,6 +21,7 @@ import os
 import itertools
 import librepo
 
+from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy.orm import joinedload
 
 from koschei.models import (Package, Dependency, UnappliedChange,
@@ -76,21 +77,22 @@ class AbstractResolverTask(object):
             self.db.connection().execute(table.insert(), dicts)
             self.db.expire_all()
 
-    def resolve_dependencies(self, sack, package, br):
+    def resolve_dependencies(self, sack, package_id, br):
+        resolve_dependencies_time.start()
+        deps = None
         resolved, problems, installs = util.run_goal(sack, self.group, br)
-        self.resolved_packages[package.id] = resolved
         if resolved:
+            problems = []
             deps = [Dependency(name=pkg.name, epoch=pkg.epoch,
                                version=pkg.version, release=pkg.release,
                                arch=pkg.arch)
                     for pkg in installs if pkg.arch != 'src']
             util.compute_dependency_distances(sack, br, deps)
-            return deps
         else:
-            for problem in sorted(set(problems)):
-                entry = dict(package_id=package.id,
-                             problem=problem)
-                self.problems.append(entry)
+            problems = [dict(package_id=package_id, problem=problem)
+                        for problem in sorted(set(problems))]
+        resolve_dependencies_time.stop()
+        return (resolved, problems, deps)
 
     def get_deps_from_db(self, package_id, repo_id):
         deps = self.db.query(Dependency)\
@@ -190,12 +192,14 @@ class GenerateRepoTask(AbstractResolverTask):
                 # unresolved build, skip it
                 return self.get_prev_build_for_comparison(last_build)
 
-    def generate_dependency_changes(self, sack, packages, brs, repo_id):
+    def generate_dependency_changes(self, executor, sack, packages, brs, repo_id):
         changes = []
-        for package, br in zip(packages, brs):
-            resolve_dependencies_time.start()
-            curr_deps = self.resolve_dependencies(sack, package, br)
-            resolve_dependencies_time.stop()
+        futures = [executor.submit(self.resolve_dependencies, sack, package.id, br)
+                   for package, br in zip(packages, brs)]
+        for package, future in zip(packages, futures):
+            resolved, problems, curr_deps = future.result()
+            self.resolved_packages[package.id] = resolved
+            self.problems.extend(problems)
             if curr_deps is not None:
                 last_build = self.get_build_for_comparison(package)
                 if last_build:
@@ -251,9 +255,10 @@ class GenerateRepoTask(AbstractResolverTask):
                 self.db.commit()
                 return
             self.log.info("Resolving dependencies...")
-            resolution_time.start()
-            changes = self.generate_dependency_changes(sack, packages, brs, repo_id)
-            resolution_time.stop()
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                resolution_time.start()
+                changes = self.generate_dependency_changes(executor, sack, packages, brs, repo_id)
+                resolution_time.stop()
             self.db.query(ResolutionProblem).delete(synchronize_session=False)
             # pylint: disable=E1101
             if self.problems:
@@ -272,7 +277,7 @@ class ProcessBuildsTask(AbstractResolverTask):
     def process_build(self, sack, build, br):
         self.log.info("Processing build {}".format(build.id))
         prev = self.get_prev_build_for_comparison(build)
-        curr_deps = self.resolve_dependencies(sack, build.package, br)
+        _, _, curr_deps = self.resolve_dependencies(sack, build.package.id, br)
         self.store_deps(build.repo_id, build.package_id, curr_deps)
         if curr_deps is not None:
             build.deps_resolved = True
