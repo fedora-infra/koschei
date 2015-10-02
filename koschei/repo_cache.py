@@ -23,6 +23,7 @@ import shutil
 import logging
 import hawkey
 
+from contextlib import contextmanager
 from koschei.cache_manager import CacheManager
 
 from koschei import util
@@ -167,12 +168,10 @@ class RepoCache(object):
     def prefetch_repo(self, repo_id, build_tag):
         self.mgr.prefetch(repo_id, build_tag)
 
+    @contextmanager
     def get_sack(self, repo_id):
-        sack = self.mgr.acquire(repo_id)
-        return sack
-
-    def release_sack(self, repo_id):
-        return self.mgr.release(repo_id)
+        yield self.mgr.acquire(repo_id)
+        self.mgr.release(repo_id)
 
     def cleanup(self):
         return self.mgr.terminate()
