@@ -37,15 +37,17 @@ else:
     _log = _BitBucketLogger()
 
 
-# Possible cache item states:
-#    state      free  wait  work  description
-#    REQUESTED   1     1     0    requested for prefetching
-#    PREPARING   0     1     1    being prefetched by worker thread
-#    PREPARED    0     0     0    prefetched, waiting to be acquired
-#    ACQUIRED    0     1     0    used by caller, must be kept
-#    RELEASED    1     0     0    released, but kept in MRU cache
-
 class _CacheItem(object):
+    """
+    Possible cache item states:
+       state      free  wait  work  description
+       REQUESTED   1     1     0    requested for prefetching
+       PREPARING   0     1     1    being prefetched by worker thread
+       PREPARED    0     0     0    prefetched, waiting to be acquired
+       ACQUIRED    0     1     0    used by caller, must be kept
+       RELEASED    1     0     0    released, but kept in MRU cache
+   """
+
     def __init__(self, key, bank):
         self._key = key
         self._value = None
@@ -67,47 +69,49 @@ class _CacheItem(object):
 
 
 class _CacheBank(object):
-    # Create cache bank.  Params:
-    #   factory     - object supplied by caller, used to create and
-    #                 destroy item data
-    #   capacity    - max number of items that can be kept in this bank
-    #   max_threads - max number of threads that can be working on
-    #                 producing items for this bank
     def __init__(self, factory, capacity, max_threads):
+        """
+        Create cache bank.  Params:
+          factory     - object supplied by caller, used to create and
+                        destroy item data
+          capacity    - max number of items that can be kept in this bank
+          max_threads - max number of threads that can be working on
+                        producing items for this bank
+        """
         self._factory = factory
         self._capacity = capacity
         self._max_threads = max_threads
         self._items = []
 
-    # Find and return item with given key, or None
     def _lookup(self, key):
+        """ Find and return item with given key, or None """
         items = [item for item in self._items if item._key == key]
         return items[0] if items else None
 
-    # Mark specified item as MRU (most recently used)
     def _access(self, mru):
+        """ Mark specified item as MRU (most recently used) """
         for item in self._items:
             item._index = item._index + 1
         mru._index = 0
 
-    # Count requested items (state: REQUESTED)
     def _count_requested(self):
+        """ Count requested items (state: REQUESTED) """
         return sum(1 for item in self._items if item._free and item._wait)
 
-    # Count hard items (states: PREPARING, PREPARED, ACQUIRED)
     def _count_hard(self):
+        """ Count hard items (states: PREPARING, PREPARED, ACQUIRED) """
         return sum(1 for item in self._items if not item._free)
 
-    # Count items being worked on (state: PREPARING)
     def _count_work(self):
+        """ Count items being worked on (state: PREPARING) """
         return sum(1 for item in self._items if item._work)
 
-    # Count soft items (states: PREPARING, PREPARED, ACQUIRED, RELEASED)
     def _count_soft(self):
+        """ Count soft items (states: PREPARING, PREPARED, ACQUIRED, RELEASED) """
         return len(self._items) - self._count_requested()
 
-    # Find least-recently used item (either REQUESTED or RELEASED)
     def _lru(self, wait):
+        """ Find least-recently used item (either REQUESTED or RELEASED) """
         max_idx = 0
         lru = None
         for item in self._items:
@@ -116,23 +120,26 @@ class _CacheBank(object):
                 lru = item
         return lru
 
-    # Remove least-recently used item with state RELEASED
     def _discard_lru(self):
+        """ Remove least-recently used item with state RELEASED """
         lru = self._lru(False)
         assert lru
         lru._release()
         self._items = [item for item in self._items if item._key != lru._key]
 
-    # Add new REQUESTED item
     def _add(self, key):
+        """ Add new REQUESTED item """
         item = _CacheItem(key, self)
         self._items.append(item)
         return item
 
 
-# A fairly generic, reusable, multi-threaded, multi-level cache
-# manager, which doesn't depend on any other Koshei code.
 class CacheManager(object):
+    """
+    A fairly generic, reusable, multi-threaded, multi-level cache
+    manager, which doesn't depend on any other Koshei code.
+    """
+
     def __init__(self, max_threads):
         self._lock = RLock()
         self._work_avail = Condition(self._lock)
@@ -163,7 +170,6 @@ class CacheManager(object):
                 bank._access(item)
             while bank._count_soft() > capacity:
                 bank._discard_lru()
-
 
     def _get_item_to_process(self):
         for bank in self._banks:
@@ -226,9 +232,11 @@ class CacheManager(object):
             if locked:
                 self._lock.release()
 
-    # Request item with specified key to be prefetched into L1 cache
-    # by background thread
     def prefetch(self, key, next_value=None):
+        """
+        Request item with specified key to be prefetched into L1 cache
+        by background thread
+        """
         try:
             self._lock.acquire()
             _log.debug("prefetch(%s)" % str(key))
@@ -254,11 +262,12 @@ class CacheManager(object):
             _log.debug("return prefetch(%s)" % str(key))
             self._lock.release()
 
-    # Get item with specified key from cache.  Blokcs until item is
-    # available in the cache.  Deadlock will occur if item is not
-    # present and was not explicitly prefetched.  Item will be kept in
-    # cache until released.
     def acquire(self, key):
+        """
+        Get item with specified key from cache. Blocks until item is available
+        in the cache. Deadlock will occur if item is not present and was not
+        explicitly prefetched. Item will be kept in cache until released.
+        """
         try:
             self._lock.acquire()
             _log.debug("acquire(%s)" % str(key))
@@ -275,10 +284,11 @@ class CacheManager(object):
             _log.debug("return acquire(%s)" % str(key))
             self._lock.release()
 
-    # Release item so that it can be removed from cache.  Most
-    # recently used items will be kept in cache until space is needed
-    # for new items.
     def release(self, key):
+        """
+        Release item so that it can be removed from cache. Most recently used
+        items will be kept in cache until space is needed for new items.
+        """
         try:
             self._lock.acquire()
             _log.debug("release(%s)" % str(key))
@@ -291,9 +301,11 @@ class CacheManager(object):
             _log.debug("return release(%s)" % str(key))
             self._lock.release()
 
-    # Clean up: terminate all background threads and free all cached
-    # items (state: RELEASED).
     def terminate(self):
+        """
+        Clean up: terminate all background threads and free all cached items
+        (state: RELEASED).
+        """
         try:
             self._lock.acquire()
             self._terminate = True

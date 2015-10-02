@@ -109,8 +109,8 @@ class SackManager(object):
         self._arches = arches
         self._for_arch = for_arch
 
-    # Load repo from disk into memory as sack
     def create(self, repo_id, repo_dir):
+        """ Load repo from disk into memory as sack """
         if not repo_dir:
             return None
         try:
