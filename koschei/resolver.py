@@ -204,7 +204,8 @@ class GenerateRepoTask(AbstractResolverTask):
     def run(self, repo_id):
         start = time.time()
         self.log.info("Generating new repo")
-        self.repo_cache.prefetch_repo(repo_id)
+        build_tag = self.koji_session.repoInfo(repo_id)['tag_name']
+        self.repo_cache.prefetch_repo(repo_id, build_tag)
         packages = self.get_packages(require_build=True)
         repo = Repo(repo_id=repo_id)
         # TODO repo_id
@@ -296,9 +297,11 @@ class ProcessBuildsTask(AbstractResolverTask):
         # TODO repo_id
         self.group = util.get_build_group(self.koji_session)
 
-        for repo_id, _ in itertools.groupby(unprocessed,
-                                            lambda build: build.repo_id):
-            self.repo_cache.prefetch_repo(repo_id)
+        repo_ids = [repo_id for repo_id, _ in
+                    itertools.groupby(unprocessed, lambda build: build.repo_id)]
+        for repo_info in util.itercall(self.koji_session, repo_ids,
+                                       lambda k, repo_id: k.repoInfo(repo_id)):
+            self.repo_cache.prefetch_repo(repo_info['id'], repo_info['tag_name'])
         for repo_id, builds in itertools.groupby(unprocessed,
                                                  lambda build: build.repo_id):
             builds = list(builds)
@@ -326,7 +329,7 @@ class Resolver(KojiService):
                  repo_cache=None, backend=None):
         super(Resolver, self).__init__(log=log, db=db,
                                        koji_session=koji_session)
-        self.repo_cache = repo_cache or RepoCache(self.koji_session)
+        self.repo_cache = repo_cache or RepoCache()
         self.backend = backend or Backend(db=self.db,
                                           koji_session=self.koji_session,
                                           log=self.log)

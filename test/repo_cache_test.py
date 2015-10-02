@@ -49,7 +49,7 @@ class RepoCacheTest(AbstractTest):
     @unittest.skip("FIXME reimplement for new RepoCache")
     def test_read_from_disk(self):
         with librepo_mock() as mock:
-            repo_cache.RepoCache(None)
+            repo_cache.RepoCache()
             repos = 7, 123, 666, 1024
             mock.mock_local.assert_has_calls([call(True)] * 4)
             mock.mock_repotype.assert_has_calls([call(librepo.LR_YUMREPO)] * 4)
@@ -60,13 +60,13 @@ class RepoCacheTest(AbstractTest):
     @unittest.skip("FIXME reimplement for new RepoCache")
     def test_lru_init(self):
         with librepo_mock():
-            repo_cache.RepoCache(None)
+            repo_cache.RepoCache()
             self.assertEqual({'123', '666', '1024', 'not-repo'}, set(os.listdir('.')))
 
     @unittest.skip("FIXME reimplement for new RepoCache")
     def test_get_cached(self):
         with librepo_mock() as mock:
-            cache = repo_cache.RepoCache(None)
+            cache = repo_cache.RepoCache()
             mock.reset_mock()
             self.assertEqual({'x86_64': MockRepo, 'i386': MockRepo},
                              cache.get_repos(666))

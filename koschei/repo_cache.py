@@ -33,8 +33,7 @@ REPO_404 = 19
 
 
 class RepoManager(object):
-    def __init__(self, build_tag, arches, remote_repo, repo_dir):
-        self._build_tag = build_tag
+    def __init__(self, arches, remote_repo, repo_dir):
         self._arches = arches
         self._remote_repo = remote_repo
         self._repo_dir = repo_dir
@@ -48,7 +47,7 @@ class RepoManager(object):
             shutil.rmtree(repo_dir)
 
     # Download given repo_id from Koji to disk
-    def create(self, repo_id, ignored):
+    def create(self, repo_id, build_tag):
         self._clean_repo_dir(repo_id)
         repo_dir = self._get_repo_dir(repo_id)
         temp_dir = repo_dir + ".tmp"
@@ -56,15 +55,15 @@ class RepoManager(object):
             shutil.rmtree(temp_dir)
         try:
             for arch in self._arches:
-                log.debug('Downloading repo {} for arch {} from Koji to disk'.
-                          format(repo_id, arch))
+                log.debug('Downloading {} repo {} for arch {} from Koji to disk'.
+                          format(build_tag, repo_id, arch))
                 h = librepo.Handle()
                 arch_repo_dir = os.path.join(temp_dir, arch)
                 os.makedirs(arch_repo_dir)
                 h.destdir = arch_repo_dir
                 h.repotype = librepo.LR_YUMREPO
                 url = self._remote_repo.format(repo_id=repo_id, arch=arch,
-                                               build_tag=self._build_tag)
+                                               build_tag=build_tag)
                 h.urls = [url]
                 h.yumdlist = ['primary', 'filelists', 'group']
                 h.perform(librepo.Result())
@@ -147,7 +146,7 @@ class SackManager(object):
 
 
 class RepoCache(object):
-    def __init__(self, koji_session,
+    def __init__(self,
                  repo_dir=util.config['directories']['repodata'],
                  remote_repo=util.config['dependency']['remote_repo'],
                  arches=util.config['dependency']['arches'],
@@ -158,19 +157,15 @@ class RepoCache(object):
                  cache_l2_threads=util.config['dependency']['cache_l2_threads'],
                  cache_threads_max=util.config['dependency']['cache_threads_max']):
 
-        build_tag = None
-        if '{build_tag}' in remote_repo:
-            build_tag = koji_session.repoInfo(repo_id)['tag_name']
-
         sack_manager = SackManager(arches, for_arch)
-        repo_manager = RepoManager(build_tag, arches, remote_repo, repo_dir)
+        repo_manager = RepoManager(arches, remote_repo, repo_dir)
 
         self.mgr = CacheManager(cache_threads_max)
         self.mgr.add_bank(sack_manager, cache_l1_capacity, cache_l1_threads)
         self.mgr.add_bank(repo_manager, cache_l2_capacity, cache_l2_threads)
 
-    def prefetch_repo(self, repo_id):
-        self.mgr.prefetch(repo_id)
+    def prefetch_repo(self, repo_id, build_tag):
+        self.mgr.prefetch(repo_id, build_tag)
 
     def get_sack(self, repo_id):
         sack = self.mgr.acquire(repo_id)
