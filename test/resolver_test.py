@@ -22,7 +22,9 @@ import shutil
 import librepo
 import koji
 import unittest
-from common import DBTest, testdir, postgres_only
+import hawkey
+from contextlib import contextmanager
+from common import DBTest, testdir, postgres_only, KojiMock
 from mock import Mock, patch
 from koschei import util
 from koschei.models import (Dependency, UnappliedChange, AppliedChange, Package,
@@ -39,15 +41,22 @@ FOO_DEPS = [
     ('R', 0, '3.3', '2.fc22', 'x86_64'), # in build group
 ]
 
-def get_repo(name):
+@contextmanager
+def get_sack(name):
     # hawkey sacks cannot be easily populated from within python and mocking
     # hawkey queries would be too complicated, therefore using real repos
     h = librepo.Handle()
     h.local = True
     h.repotype = librepo.LR_YUMREPO
     h.urls = [os.path.join('repo', name)]
-    h.yumdlist = ['primary', 'filelists', 'group']
-    return h.perform(librepo.Result())
+    h.yumdlist = ['primary']
+    repodata = h.perform(librepo.Result()).yum_repo
+    repo = hawkey.Repo('test')
+    repo.repomd_fn = repodata['repomd']
+    repo.primary_fn = repodata['primary']
+    sack = hawkey.Sack()
+    sack.load_yum_repo(repo)
+    yield sack
 
 class ResolverTest(DBTest):
     def __init__(self, *args, **kwargs):
@@ -58,8 +67,10 @@ class ResolverTest(DBTest):
         super(ResolverTest, self).setUp()
         shutil.copytree(os.path.join(testdir, 'test_repo'), 'repo')
         self.repo_mock = Mock()
-        self.repo_mock.get_repos.return_value = {'x86_64': get_repo('x86_64')}
-        self.resolver = Resolver(db=self.s, koji_session=Mock(),
+        self.repo_mock.get_sack.return_value = get_sack('x86_64')
+        self.koji_mock = KojiMock()
+        self.koji_mock.repoInfo.return_value = {'id': 123, 'tag_name': 'f24-build'}
+        self.resolver = Resolver(db=self.s, koji_session=self.koji_mock,
                                  repo_cache=self.repo_mock)
 
     def prepare_foo_build(self, repo_id=666, version='4'):
@@ -87,14 +98,13 @@ class ResolverTest(DBTest):
         self.s.commit()
         self.assertEqual(b1, self.resolver.create_task(GenerateRepoTask).get_build_for_comparison(foo))
 
-    @unittest.skip("FIXME this test needs to be fixed for new RepoCache")
     def test_resolve_build(self):
         foo_build = self.prepare_foo_build()
         package_id = foo_build.package_id
         with patch('koschei.util.get_build_group', return_value=['R']):
             with patch('koschei.util.get_rpm_requires', return_value=[['F', 'A']]):
                 self.resolver.create_task(ProcessBuildsTask).run()
-        self.repo_mock.get_repos.assert_called_once_with(666)
+        self.repo_mock.get_sack.assert_called_once_with(666)
         expected_deps = [tuple([package_id, 666] + list(nevr)) for nevr in FOO_DEPS]
         actual_deps = self.s.query(Dependency.package_id, Dependency.repo_id,
                                    Dependency.name, Dependency.epoch,
@@ -113,7 +123,7 @@ class ResolverTest(DBTest):
     #     with patch('koschei.util.get_build_group', return_value=['R']):
     #         with patch('koschei.util.get_rpm_requires', return_value=[['nonexistent']]):
     #             self.resolver.create_task(ProcessBuildsTask).run()
-    #     self.repo_mock.get_repos.assert_called_once_with(666)
+    #     self.repo_mock.get_sack.assert_called_once_with(666)
     #     self.assertTrue(self.s.query(Package).filter_by(id=b.package_id).first().resolved is False)
     #     self.assertFalse(self.s.query(ResolutionProblem).count())
 
@@ -130,7 +140,6 @@ class ResolverTest(DBTest):
         self.s.commit()
         return old_build
 
-    @unittest.skip("FIXME this test needs to be fixed for new RepoCache")
     def test_differences(self):
         self.prepare_old_build()
         build = self.prepare_foo_build(repo_id=666, version='4')
@@ -149,14 +158,13 @@ class ResolverTest(DBTest):
     def test_repo_generation(self):
         self.prepare_old_build()
         task = self.resolver.create_task(GenerateRepoTask)
-        task.backend.refresh_latest_builds = lambda: None
         with patch('koschei.util.get_build_group', return_value=['R']):
             with patch('koschei.util.get_rpm_requires',
                        return_value=[['F', 'A'], ['nonexistent']]):
                 task.run(666)
         self.s.expire_all()
         foo = self.s.query(Package).filter_by(name='foo').first()
-        self.repo_mock.get_repos.assert_called_once_with(666)
+        self.repo_mock.get_sack.assert_called_once_with(666)
         self.assertTrue(foo.resolved)
         expected_changes = [(foo.id, 'C', 1, 1, '2', '3', '1.fc22', '1.fc22', 2),
                             (foo.id, 'E', None, 0, None, '0.1', None, '1.fc22.1', 2)]
@@ -173,7 +181,6 @@ class ResolverTest(DBTest):
         self.prepare_old_build()
         self.prepare_packages(['bar'])
         task = self.resolver.create_task(GenerateRepoTask)
-        task.backend.refresh_latest_builds = lambda: None
         with patch('koschei.util.get_build_group', return_value=['bar']):
             with patch('koschei.util.get_rpm_requires', return_value=[['nonexistent']]):
                 with patch('fedmsg.publish') as fedmsg_mock:

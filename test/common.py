@@ -3,6 +3,8 @@ import unittest
 import shutil
 import json
 
+from mock import Mock
+
 from test import use_postgres, use_faitout, testdir
 from koschei import models as m
 
