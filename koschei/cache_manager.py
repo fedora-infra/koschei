@@ -49,6 +49,7 @@ class _CacheItem(object):
     def __init__(self, key, bank):
         self._key = key
         self._value = None
+        self._next_value = None
         self._index = 0
         self._next = None
         self._bank = bank
@@ -58,7 +59,7 @@ class _CacheItem(object):
         self._work = False
 
     def _prepare(self):
-        self._value = self._bank._factory.create(self._key, self._next._value if self._next else None)
+        self._value = self._bank._factory.create(self._key, self._next._value if self._next else self._next_value)
 
     def _release(self):
         self._bank._factory.destroy(self._key, self._value)
@@ -227,7 +228,7 @@ class CacheManager(object):
 
     # Request item with specified key to be prefetched into L1 cache
     # by background thread
-    def prefetch(self, key):
+    def prefetch(self, key, next_value=None):
         try:
             self._lock.acquire()
             _log.debug("prefetch(%s)" % str(key))
@@ -236,6 +237,7 @@ class CacheManager(object):
                 item = bank._lookup(key)
                 if not item:
                     item = bank._add(key)
+                    item._next_value = next_value
                     if prev_item:
                         prev_item._next = item
                     bank._access(item)
