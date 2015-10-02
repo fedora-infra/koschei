@@ -373,10 +373,10 @@ class Stopwatch(object):
         self._time = 0
         self._name = name
         self._started = False
-        self._childreen = []
+        self._children = []
         self._parent = parent
         if parent:
-            parent._childreen.append(self)
+            parent._children.append(self)
         if start:
             self.start()
 
@@ -389,7 +389,7 @@ class Stopwatch(object):
 
     def stop(self):
         assert self._started
-        for child in self._childreen:
+        for child in self._children:
             if child._started:
                 child.stop()
         self._time = self._time + time.time()
@@ -397,7 +397,7 @@ class Stopwatch(object):
 
     def reset(self):
         self._started = False
-        for child in self._childreen:
+        for child in self._children:
             child.reset()
         self._time = 0
 
@@ -416,5 +416,5 @@ class Stopwatch(object):
 
         log.debug('{} time: {}'.format(self._name, human_readable_time(self._time)))
 
-        for child in self._childreen:
+        for child in self._children:
             child.display()
