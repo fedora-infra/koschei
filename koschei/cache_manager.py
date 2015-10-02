@@ -101,7 +101,7 @@ class _CacheBank(object):
     def _count_work(self):
         return sum(1 for item in self._items if item._work)
 
-    # Count hard items (states: PREPARING, PREPARED, ACQUIRED, RELEASED)
+    # Count soft items (states: PREPARING, PREPARED, ACQUIRED, RELEASED)
     def _count_soft(self):
         return len(self._items) - self._count_requested()
 
@@ -254,7 +254,7 @@ class CacheManager(object):
 
     # Get item with specified key from cache.  Blokcs until item is
     # available in the cache.  Deadlock will occur if item is not
-    # presest and was not explicitly prefetched.  Item will be kept in
+    # present and was not explicitly prefetched.  Item will be kept in
     # cache until released.
     def acquire(self, key):
         try:
