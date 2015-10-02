@@ -149,7 +149,6 @@ class SackManager(object):
 class RepoCache(object):
     def __init__(self, koji_session,
                  repo_dir=util.config['directories']['repodata'],
-                 max_repos=util.config['dependency']['repo_cache_items'],
                  remote_repo=util.config['dependency']['remote_repo'],
                  arches=util.config['dependency']['arches'],
                  for_arch=util.config['dependency']['for_arch'],
