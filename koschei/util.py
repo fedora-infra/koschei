@@ -252,7 +252,10 @@ def run_goal(sack, group, br=()):
         else:
             goal.install(select=sltr)
     if not problems:
-        resolved = goal.run()
+        kwargs = {}
+        if util.config['dependency']['ignore_weak_deps']:
+            kwargs = {'ignore_weak_deps': True}
+        resolved = goal.run(**kwargs)
         return resolved, goal.problems, goal.list_installs() if resolved else None
     return False, problems, None
 
