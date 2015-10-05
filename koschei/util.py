@@ -86,39 +86,72 @@ repodata_dir = config['directories']['repodata']
 dep_config = config['dependency']
 
 
-class KojiException(Exception):
-    def __init__(self, cause):
-        self.cause = cause
-        message = '{}: {}'.format(type(cause), cause)
-        super(KojiException, self).__init__(message)
+class SessionProxy(object):
+    def __init__(self, session_name, constructor):
+        self.__constructor = constructor
+        self.__proxied = constructor()
+        self.__session_name = session_name
 
+    def reset_session(self):
+        self.__proxied = self.__constructor()
 
-def koji_exception_rewrap_decorator(fn):
-    def decorated(*args, **kwargs):
-        try:
-            return fn(*args, **kwargs)
-        except Exception as e:
-            raise KojiException(e)
-    return decorated
-
-
-class KojiSessionProxy(object):
-    def __init__(self, proxied):
-        self.proxied = proxied
-
-    def __getattribute__(self, name):
-        proxied = object.__getattribute__(self, 'proxied')
-        if name == 'proxied':
-            return proxied
-        result = getattr(proxied, name)
+    def __getattr__(self, name):
+        result = getattr(self.__proxied, name)
         if callable(result):
-            return koji_exception_rewrap_decorator(result)
+            def decorated(*args, **kwargs):
+                retry_in = config.get('base_retry_interval', 10)
+                while True:
+                    if not self.__proxied:
+                        self.reset_session()
+                    method = getattr(self.__proxied, name)
+                    try:
+                        return method(*args, **kwargs)
+                    except Exception:
+                        log.exception("%s exception. Retrying in %s.",
+                                      self.__session_name.capitalize(),
+                                      retry_in)
+                        self.__proxied = None
+                        time.sleep(retry_in)
+                        retry_in *= 2
+            return decorated
         return result
 
     def __setattr__(self, name, value):
-        if name == 'proxied':
+        if name.startswith('_'):
             object.__setattr__(self, name, value)
-        setattr(self.proxied, name, value)
+        else:
+            object.__setattr__(self.__proxied, name, value)
+
+
+class KojiSession(SessionProxy):
+    def __init__(self, anonymous=True):
+        def constructor():
+            koji_session = koji.ClientSession(server, {'timeout': 3600})
+            if not anonymous:
+                koji_session.ssl_login(cert, ca_cert, ca_cert)
+            return koji_session
+        super(KojiSession, self).__init__('koji', constructor)
+        self.__mcall_list = []
+
+
+    def __multi_call(self):
+        sup = super(KojiSession, self)
+        assert self.multicall
+        for name, args, kwargs in self.__mcall_list:
+            sup.__getattr__(name)(*args, **kwargs)
+        self.__mcall_list = []
+        return sup.__getattr__('multiCall')()
+
+    def __getattr__(self, name):
+        sup = super(KojiSession, self)
+        if name == 'multiCall':
+            return self.__multi_call
+        result = sup.__getattr__(name)
+        if sup.__getattr__('multicall') and callable(result):
+            def wrapper(*args, **kwargs):
+                self.__mcall_list.append((name, args, kwargs))
+            return wrapper
+        return result
 
 
 def itercall(koji_session, args, koji_call):
@@ -130,16 +163,6 @@ def itercall(koji_session, args, koji_call):
         for [info] in koji_session.multiCall():
             yield info
         args = args[chunk_size:]
-
-
-def create_koji_session(anonymous=False):
-    try:
-        koji_session = koji.ClientSession(server, {'timeout': 3600})
-        if not anonymous:
-            koji_session.ssl_login(cert, ca_cert, ca_cert)
-        return koji_session
-    except Exception as e:
-        raise KojiException(e)
 
 
 def prepare_build_opts(opts=None):
