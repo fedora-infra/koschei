@@ -82,7 +82,11 @@ class Watcher(KojiService):
 
     def main(self):
         def handler(n, s):
-            raise WatchdogInterrupt("Watchdog timeout")
+            for frame in inspect.getouterframes(inspect.currentframe()):
+                if frame[3] == 'tail_messages':
+                    raise WatchdogInterrupt("Watchdog timeout")
+            if self.watchdog_interval:
+                alarm(self.watchdog_interval)
         signal(SIGALRM, handler)
         if self.watchdog_interval:
             alarm(self.watchdog_interval)
