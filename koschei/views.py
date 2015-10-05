@@ -31,7 +31,7 @@ main.load_globals()
 
 def create_backend():
     return backend.Backend(db=db, log=log,
-                           koji_session=util.create_koji_session(anonymous=True))
+                           koji_session=util.KojiSession(anonymous=True))
 
 
 def page_args(**kwargs):
@@ -276,7 +276,7 @@ def cancel_build(build_id):
     build = db.query(Build).filter_by(id=build_id).first_or_404()
     if EmptyForm().validate_or_flash():
         try:
-            util.create_koji_session(anonymous=False).cancelTask(build.task_id)
+            util.KojiSession(anonymous=False).cancelTask(build.task_id)
             flash("Cancelation request sent.")
         except Exception:
             flash("Error in communication with Koji. Please try again later.")
@@ -568,7 +568,7 @@ def edit_package():
 @app.route('/bugreport/<name>')
 @auth.login_required()
 def bugreport(name):
-    session = util.create_koji_session(anonymous=True)
+    session = util.KojiSession(anonymous=True)
     srpm, _ = (util.get_last_srpm(session, name) or abort(404))
     template = util.config['bugreport']['template']
     bug = {key: template[key].format(**srpm) for key in template.keys()}
