@@ -44,10 +44,10 @@ class WatcherTest(DBTest):
             backend_mock.update_build_state.assert_called_once_with(build, 'CLOSED')
 
     def test_watchdog(self):
-        def tail_messages_mock():
+        def tail_messages():
             time.sleep(5)
             assert False
-        with patch('fedmsg.tail_messages', tail_messages_mock):
+        with patch('fedmsg.tail_messages', tail_messages):
             watcher = Watcher(db=Mock(), koji_session=Mock())
             try:
                 self.assertRaises(WatchdogInterrupt, watcher.main)
