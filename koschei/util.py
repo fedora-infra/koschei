@@ -29,6 +29,7 @@ import hawkey
 import errno
 import fcntl
 import time
+import socket
 
 from contextlib import contextmanager
 from rpm import RPMSENSE_LESS, RPMSENSE_GREATER, RPMSENSE_EQUAL
@@ -441,3 +442,13 @@ class Stopwatch(object):
 
         for child in self._children:
             child.display()
+
+def sd_notify(msg):
+    sock_path = os.environ.get('NOTIFY_SOCKET', None)
+    if not sock_path:
+        raise RuntimeError("NOTIFY_SOCKET not set")
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    try:
+        sock.sendto(msg, sock_path)
+    finally:
+        sock.close()

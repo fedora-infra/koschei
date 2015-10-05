@@ -7,6 +7,8 @@ Type=simple
 ExecStart=/usr/libexec/koschei/koschei-watcher -m koschei.main watcher
 User=koschei
 Group=koschei
+WatchdogSec=600
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target

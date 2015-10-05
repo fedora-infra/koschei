@@ -18,18 +18,12 @@
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 import fedmsg
-import inspect
 import requests
-from signal import signal, alarm, SIGALRM
 
 from . import util, plugin
 from .backend import Backend
 from .service import KojiService
 from .models import Build, Package
-
-
-class WatchdogInterrupt(Exception):
-    pass
 
 
 class Watcher(KojiService):
@@ -38,7 +32,7 @@ class Watcher(KojiService):
     build_tag = util.koji_config['build_tag']
     instance = util.config['fedmsg']['instance']
     target_tag = util.koji_config['target_tag']
-    watchdog_interval = util.config['services']['watcher']['watchdog_interval']
+    watchdog = util.config['services']['watcher']['watchdog']
 
     def __init__(self, backend=None, *args, **kwargs):
         super(Watcher, self).__init__(*args, **kwargs)
@@ -80,27 +74,23 @@ class Watcher(KojiService):
                 if newer_build:
                     self.backend.register_real_build(pkg, newer_build)
 
+    def notify_watchdog(self):
+        if not self.watchdog:
+            return
+        util.sd_notify("WATCHDOG=1")
+
     def main(self):
-        def handler(n, s):
-            for frame in inspect.getouterframes(inspect.currentframe()):
-                if frame[3] == 'tail_messages':
-                    raise WatchdogInterrupt("Watchdog timeout")
-            if self.watchdog_interval:
-                alarm(self.watchdog_interval)
-        signal(SIGALRM, handler)
-        if self.watchdog_interval:
-            alarm(self.watchdog_interval)
-        for _, _, topic, msg in fedmsg.tail_messages():
-            try:
-                if topic.startswith(self.topic_name + '.'):
-                    self.consume(topic, msg)
-                plugin.dispatch_event('fedmsg_event', topic, msg, db=self.db,
-                                      koji_session=self.koji_session)
-            except (WatchdogInterrupt, requests.exceptions.ConnectionError):
-                self.log.exception("Fedmsg watcher exception.")
-                fedmsg.destroy()
-                fedmsg.init()
-            finally:
-                self.db.rollback()
-            if self.watchdog_interval:
-                alarm(self.watchdog_interval)
+        try:
+            for _, _, topic, msg in fedmsg.tail_messages():
+                self.notify_watchdog()
+                try:
+                    if topic.startswith(self.topic_name + '.'):
+                        self.consume(topic, msg)
+                    plugin.dispatch_event('fedmsg_event', topic, msg, db=self.db,
+                                          koji_session=self.koji_session)
+                finally:
+                    self.db.rollback()
+        except requests.exceptions.ConnectionError:
+            self.log.exception("Fedmsg watcher exception.")
+            fedmsg.destroy()
+            fedmsg.init()

@@ -65,7 +65,7 @@ config = {
     },
     "services": {
         "watcher": {
-            "watchdog_interval": 600, # in seconds
+            "watchdog": True,
         },
         "polling": {
             "interval": 20 * 60,
