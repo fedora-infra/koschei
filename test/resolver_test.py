@@ -112,6 +112,16 @@ class ResolverTest(DBTest):
                                    Dependency.arch).all()
         self.assertItemsEqual(expected_deps, actual_deps)
 
+    def test_none_repo_id(self):
+        foo_build = self.prepare_foo_build()
+        foo_build.repo_id = None
+        self.s.commit()
+        with patch('koschei.util.get_build_group', return_value=['R']):
+            with patch('koschei.util.get_rpm_requires', return_value=[['F', 'A']]):
+                self.resolver.create_task(ProcessBuildsTask).run()
+        self.assertEquals(0, self.s.query(AppliedChange).count())
+        self.assertTrue(foo_build.deps_processed)
+
     # def test_resolution_fail(self):
     #     self.prepare_packages(['bar'])
     #     b = self.prepare_builds(bar=True, repo_id=None)[0]
