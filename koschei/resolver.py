@@ -306,8 +306,7 @@ class ProcessBuildsTask(AbstractResolverTask):
         # pylint: disable=E1101
         unprocessed = self.db.query(Build)\
                              .filter_by(deps_processed=False)\
-                             .filter((Build.state.in_(Build.FINISHED_STATES)) |
-                                     (Build.repo_id != None))\
+                             .filter(Build.repo_id != None)\
                              .options(joinedload(Build.package))\
                              .order_by(Build.repo_id).all()
         # TODO repo_id
@@ -336,6 +335,10 @@ class ProcessBuildsTask(AbstractResolverTask):
                                 .update({'deps_processed': True},
                                         synchronize_session=False)
             self.db.commit()
+        self.db.query(Build)\
+            .filter_by(repo_id=None)\
+            .filter(Build.state.in_(Build.FINISHED_STATES))\
+            .update({'deps_processed': True}, synchronize_session=False)
 
 
 class Resolver(KojiService):
