@@ -447,6 +447,8 @@ def sd_notify(msg):
     sock_path = os.environ.get('NOTIFY_SOCKET', None)
     if not sock_path:
         raise RuntimeError("NOTIFY_SOCKET not set")
+    if sock_path[0] == '@':
+        sock_path = '\0' + sock_path[1:]
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
     try:
         sock.sendto(msg, sock_path)
