@@ -18,12 +18,13 @@
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 import fedmsg
-
+import inspect
+import requests
 from signal import signal, alarm, SIGALRM
 
 from . import util, plugin
 from .backend import Backend
-from .service import KojiService, FedmsgService, Service
+from .service import KojiService
 from .models import Build, Package
 
 
@@ -31,13 +32,7 @@ class WatchdogInterrupt(Exception):
     pass
 
 
-class WatchdogService(Service):
-    def get_handled_exceptions(self):
-        return (list([WatchdogInterrupt]) +
-                super(WatchdogService, self).get_handled_exceptions())
-
-
-class Watcher(KojiService, FedmsgService, WatchdogService):
+class Watcher(KojiService):
 
     topic_name = util.config['fedmsg']['topic']
     build_tag = util.koji_config['build_tag']
@@ -92,10 +87,16 @@ class Watcher(KojiService, FedmsgService, WatchdogService):
         if self.watchdog_interval:
             alarm(self.watchdog_interval)
         for _, _, topic, msg in fedmsg.tail_messages():
-            if topic.startswith(self.topic_name + '.'):
-                self.consume(topic, msg)
-            plugin.dispatch_event('fedmsg_event', topic, msg, db=self.db,
-                                  koji_session=self.koji_session)
-            self.db.rollback()
+            try:
+                if topic.startswith(self.topic_name + '.'):
+                    self.consume(topic, msg)
+                plugin.dispatch_event('fedmsg_event', topic, msg, db=self.db,
+                                      koji_session=self.koji_session)
+            except (WatchdogInterrupt, requests.exceptions.ConnectionError):
+                self.log.exception("Fedmsg watcher exception.")
+                fedmsg.destroy()
+                fedmsg.init()
+            finally:
+                self.db.rollback()
             if self.watchdog_interval:
                 alarm(self.watchdog_interval)
