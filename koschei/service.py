@@ -17,18 +17,15 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 import logging
-import requests
 import signal
 import sys
 import time
-import fedmsg
 
 from . import util
 from .models import Session
 
 
 class Service(object):
-    retry_on = ()
 
     def __init__(self, log=None, db=None):
         signal.signal(signal.SIGTERM, lambda x, y: sys.exit(0))
@@ -39,41 +36,18 @@ class Service(object):
     def main(self):
         raise NotImplementedError()
 
-    def get_handled_exceptions(self):
-        return list()
-
-    def on_exception(self, exc):
-        pass
-
     def run_service(self):
         name = self.__class__.__name__.lower()
         service_config = util.config.get('services', {})\
                                     .get(name, {})
         interval = service_config.get('interval', 3)
-        retry_in = service_config.get('base_retry_interval', 10)
-        retry_attempts = 0
         self.log.info("{name} started".format(name=name))
-        handled_exceptions = tuple(self.get_handled_exceptions())
         while True:
             try:
                 self.main()
-                retry_attempts = 0
                 time.sleep(interval)
             except KeyboardInterrupt:
                 sys.exit(0)
-            except handled_exceptions as exc:
-                while True:
-                    try:
-                        retry_attempts += 1
-                        sleep = retry_in * retry_attempts
-                        self.log.exception("Service {name} error. "
-                                           "Retrying in {sleep} seconds"
-                                           .format(name=name, sleep=sleep))
-                        time.sleep(sleep)
-                        self.on_exception(exc)
-                        break
-                    except handled_exceptions as exc:
-                        pass
             finally:
                 self.db.rollback()
 
@@ -90,35 +64,8 @@ class Service(object):
 
 class KojiService(Service):
     koji_anonymous = True
-    __retry_on = (util.KojiException,)
 
     def __init__(self, koji_session=None, **kwargs):
         super(KojiService, self).__init__(**kwargs)
-        self.koji_session = util.KojiSessionProxy(koji_session or
-                                                  self.create_koji_session())
-
-    @classmethod
-    def create_koji_session(cls):
-        return util.create_koji_session(anonymous=cls.koji_anonymous)
-
-    def get_handled_exceptions(self):
-        return (list(self.__retry_on) +
-                super(KojiService, self).get_handled_exceptions())
-
-    def on_exception(self, exc):
-        self.koji_session.proxied = self.create_koji_session()
-        super(KojiService, self).on_exception(exc)
-
-
-class FedmsgService(Service):
-    def __init__(self, fedmsg_context=None, fedmsg_config=None, **kwargs):
-        super(FedmsgService, self).__init__(**kwargs)
-
-    def get_handled_exceptions(self):
-        return ([requests.exceptions.ConnectionError] +
-                super(FedmsgService, self).get_handled_exceptions())
-
-    def on_exception(self, exc):
-        fedmsg.destroy()
-        fedmsg.init()
-        super(FedmsgService, self).on_exception(exc)
+        self.koji_session = (koji_session or
+                             util.KojiSession(anonymous=self.koji_anonymous))
