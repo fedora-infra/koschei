@@ -26,7 +26,8 @@ from sqlalchemy.orm import joinedload
 
 from koschei.models import (Package, Dependency, UnappliedChange,
                             AppliedChange, Repo, ResolutionProblem,
-                            RepoGenerationRequest, Build, BuildrootProblem)
+                            RepoGenerationRequest, Build, BuildrootProblem,
+                            get_last_repo)
 from koschei import util
 from koschei.util import Stopwatch
 from koschei.service import KojiService
@@ -272,23 +273,24 @@ class GenerateRepoTask(AbstractResolverTask):
                 return
             self.update_repo_index(repo_id)
             repo.base_resolved, base_problems, _ = util.run_goal(sack, self.group)
-            self.db.add(repo)
             if not repo.base_resolved:
                 self.log.info("Build group not resolvable")
+                self.db.add(repo)
                 self.db.flush()
                 self.db.execute(BuildrootProblem.__table__.insert(),
                                 [{'repo_id': repo.repo_id, 'problem': problem}
                                  for problem in base_problems])
                 self.db.commit()
                 return
-            self.db.commit()
             self.log.info("Resolving dependencies...")
             with ThreadPoolExecutor(max_workers=1) as executor:
                 resolution_time.start()
                 self.generate_dependency_changes(executor, sack, packages, brs, repo_id)
                 resolution_time.stop()
-            total_time.stop()
-            total_time.display()
+        self.db.add(repo)
+        self.db.commit()
+        total_time.stop()
+        total_time.display()
 
 
 class ProcessBuildsTask(AbstractResolverTask):
@@ -383,10 +385,8 @@ class Resolver(KojiService):
                                 .first()
         if latest_request:
             repo_id = latest_request.repo_id
-            [last_repo] = (self.db.query(Repo.repo_id)
-                           .order_by(Repo.repo_id.desc())
-                           .first() or [0])
-            if repo_id > last_repo:
+            last_repo = get_last_repo(self.db)
+            if not last_repo or repo_id > last_repo.repo_id:
                 self.create_task(GenerateRepoTask).run(repo_id)
             self.db.query(RepoGenerationRequest)\
                    .filter(RepoGenerationRequest.repo_id <= repo_id)\
