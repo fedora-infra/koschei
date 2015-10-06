@@ -41,9 +41,8 @@ task = resolver.Resolver(koji_session=koji_mock).create_task(resolver.GenerateRe
 brs = json.load(open('it/get_rpm_requires.json'))
 util.get_rpm_requires = lambda _, ps: [brs[p['name']] for p in ps]
 group = json.load(open('it/get_build_group.json'))
-with mock.patch.object(task.backend, 'refresh_latest_builds'):
-    with mock.patch('koschei.util.get_build_group', return_value=group):
-        task.run($repo_id)
+with mock.patch('koschei.util.get_build_group', return_value=group):
+    task.run($repo_id)
 "
 psql koschei_it > it/actual.out <<EOF
 SELECT id, name, resolved
