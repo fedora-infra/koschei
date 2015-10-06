@@ -162,7 +162,8 @@ class GenerateRepoTask(AbstractResolverTask):
         """
         packages = self.db.query(Package)\
             .filter(Package.id.in_(resolved_map.iterkeys()))\
-            .options(joinedload(Package.last_complete_build))
+            .options(joinedload(Package.last_complete_build))\
+            .options(joinedload(Package.groups))
         for pkg in packages:
             self.db.expunge(pkg) # don't propagate the write, we'll do it manually later
             prev_state = pkg.msg_state_string
