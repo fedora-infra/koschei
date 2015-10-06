@@ -17,7 +17,6 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-import os
 import itertools
 import librepo
 
@@ -154,11 +153,6 @@ class GenerateRepoTask(AbstractResolverTask):
                 self.db.expunge(p)
         return packages
 
-    def update_repo_index(self, repo_id):
-        index_path = os.path.join(util.config['directories']['repodata'], 'index')
-        with open(index_path, 'w') as index:
-            index.write('{}\n'.format(repo_id))
-
     def check_package_state_changes(self, resolved_map):
         """
         Emits package state change events for packages that changed.
@@ -271,7 +265,6 @@ class GenerateRepoTask(AbstractResolverTask):
                 self.log.error('Cannot generate repo: {}'.format(repo_id))
                 self.db.rollback()
                 return
-            self.update_repo_index(repo_id)
             repo.base_resolved, base_problems, _ = util.run_goal(sack, self.group)
             if not repo.base_resolved:
                 self.log.info("Build group not resolvable")
