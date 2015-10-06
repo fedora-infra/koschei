@@ -31,7 +31,7 @@ from koschei import util
 from koschei.util import Stopwatch
 from koschei.service import KojiService
 from koschei.repo_cache import RepoCache
-from koschei.backend import check_package_state, Backend
+from koschei.backend import check_package_state
 
 
 
@@ -46,13 +46,11 @@ create_dependency_changes_time = Stopwatch("create_dependency_changes", resoluti
 
 
 class AbstractResolverTask(object):
-    def __init__(self, log, db, koji_session,
-                 repo_cache, backend):
+    def __init__(self, log, db, koji_session, repo_cache):
         self.log = log
         self.db = db
         self.koji_session = koji_session
         self.repo_cache = repo_cache
-        self.backend = backend
         self.problems = []
         self.group = None
         self.resolved_packages = {}
@@ -344,13 +342,10 @@ class ProcessBuildsTask(AbstractResolverTask):
 class Resolver(KojiService):
 
     def __init__(self, log=None, db=None, koji_session=None,
-                 repo_cache=None, backend=None):
+                 repo_cache=None):
         super(Resolver, self).__init__(log=log, db=db,
                                        koji_session=koji_session)
         self.repo_cache = repo_cache or RepoCache()
-        self.backend = backend or Backend(db=self.db,
-                                          koji_session=self.koji_session,
-                                          log=self.log)
 
     def get_handled_exceptions(self):
         return ([librepo.LibrepoException] +
@@ -358,7 +353,7 @@ class Resolver(KojiService):
 
     def create_task(self, cls):
         return cls(log=self.log, db=self.db, koji_session=self.koji_session,
-                   repo_cache=self.repo_cache, backend=self.backend)
+                   repo_cache=self.repo_cache)
 
     def process_repo_generation_requests(self):
         latest_request = self.db.query(RepoGenerationRequest)\
