@@ -51,9 +51,7 @@ class AbstractResolverTask(object):
         self.db = db
         self.koji_session = koji_session
         self.repo_cache = repo_cache
-        self.problems = []
         self.group = None
-        self.resolved_packages = {}
 
     def store_deps(self, repo_id, package_id, installs):
         new_deps = []
@@ -160,22 +158,21 @@ class GenerateRepoTask(AbstractResolverTask):
         with open(index_path, 'w') as index:
             index.write('{}\n'.format(repo_id))
 
-    def synchronize_resolution_state(self):
-        packages = self.get_packages(expunge=False)
-        for pkg in packages:
-            curr_state = self.resolved_packages.get(pkg.id)
-            if curr_state is not None:
-                prev_state = pkg.msg_state_string
-                pkg.resolved = curr_state
-                check_package_state(pkg, prev_state)
+    def check_package_state_changes(self, resolved_map):
+        """
+        Emits package state change events for packages that changed.
+        Needs to be called before the change is persisted.
 
-        for state in True, False:
-            ids = [pkg_id for pkg_id, resolved
-                   in self.resolved_packages.iteritems()
-                   if resolved is state]
-            if ids:
-                self.db.query(Package).filter(Package.id.in_(ids))\
-                    .update({'resolved': state}, synchronize_session=False)
+        :param resolved_map: dict from package ids to their new resolution state
+        """
+        packages = self.db.query(Package)\
+            .filter(Package.id.in_(resolved_map.iterkeys()))\
+            .options(joinedload(Package.last_complete_build))
+        for pkg in packages:
+            self.db.expunge(pkg) # don't propagate the write, we'll do it manually later
+            prev_state = pkg.msg_state_string
+            pkg.resolved = resolved_map[pkg.id]
+            check_package_state(pkg, prev_state)
 
     def get_build_for_comparison(self, package):
         """
@@ -190,14 +187,47 @@ class GenerateRepoTask(AbstractResolverTask):
                 # unresolved build, skip it
                 return self.get_prev_build_for_comparison(last_build)
 
+    def persist_results(self, resolved_map, problems, changes):
+        """
+        Persists resolution results into DB.
+
+        :param resolved_map: dict from package ids to their new resolution state
+        :param problems: list of dependency problems as dicts
+        :param changes: list of dependency changes as dicts
+        """
+        if not resolved_map:
+            return
+        for val in True, False:
+            pkg_ids = [pkg_id for pkg_id, resolved
+                       in resolved_map.iteritems() if resolved is val]
+            if pkg_ids:
+                self.db.query(Package)\
+                    .filter(Package.id.in_(pkg_ids))\
+                    .update({'resolved': val}, synchronize_session=False)
+        for rel, vals in (ResolutionProblem, problems), (UnappliedChange, changes):
+            self.db.query(rel)\
+                .filter(rel.package_id.in_(resolved_map.iterkeys()))\
+                .delete(synchronize_session=False)
+            if vals:
+                self.db.execute(rel.__table__.insert(), vals)
+
     def generate_dependency_changes(self, executor, sack, packages, brs, repo_id):
+        """
+        Generates and persists dependency changes for given list of packages.
+        Emits package state change events.
+        """
+        resolved_map = {}
+        problems = []
         changes = []
+        def persist():
+            self.check_package_state_changes(resolved_map)
+            self.persist_results(resolved_map, problems, changes)
+            self.db.commit()
         futures = [executor.submit(self.resolve_dependencies, sack, package.id, br)
                    for package, br in zip(packages, brs)]
         for package, future in zip(packages, futures):
-            resolved, problems, curr_deps = future.result()
-            self.resolved_packages[package.id] = resolved
-            self.problems.extend(problems)
+            resolved_map[package.id], curr_problems, curr_deps = future.result()
+            problems += curr_problems
             if curr_deps is not None:
                 last_build = self.get_build_for_comparison(package)
                 if last_build:
@@ -209,12 +239,12 @@ class GenerateRepoTask(AbstractResolverTask):
                             prev_deps, curr_deps, package_id=package.id,
                             prev_build_id=last_build.id)
                         create_dependency_changes_time.stop()
-        return changes
-
-    def update_dependency_changes(self, changes):
-        self.db.query(UnappliedChange).delete(synchronize_session=False)
-        if changes:
-            self.db.execute(UnappliedChange.__table__.insert(), changes)
+            if len(resolved_map) > util.config['dependency']['persist_chunk_size']:
+                persist()
+                resolved_map = {}
+                problems = []
+                changes = []
+        persist()
 
     def run(self, repo_id):
         total_time.reset()
@@ -224,8 +254,8 @@ class GenerateRepoTask(AbstractResolverTask):
         self.repo_cache.prefetch_repo(repo_id, build_tag)
         packages = self.get_packages(require_build=True)
         repo = Repo(repo_id=repo_id)
-        # TODO repo_id
         get_build_group_time.start()
+        # TODO repo_id
         self.group = util.get_build_group(self.koji_session)
         get_build_group_time.stop()
         get_rpm_requires_time.start()
@@ -241,31 +271,22 @@ class GenerateRepoTask(AbstractResolverTask):
                 self.db.rollback()
                 return
             self.update_repo_index(repo_id)
-            base_installable, base_problems, _ = util.run_goal(sack, self.group)
-            if not base_installable:
+            repo.base_resolved, base_problems, _ = util.run_goal(sack, self.group)
+            self.db.add(repo)
+            if not repo.base_resolved:
                 self.log.info("Build group not resolvable")
-                repo.base_resolved = False
-                self.db.add(repo)
                 self.db.flush()
                 self.db.execute(BuildrootProblem.__table__.insert(),
                                 [{'repo_id': repo.repo_id, 'problem': problem}
                                  for problem in base_problems])
                 self.db.commit()
                 return
+            self.db.commit()
             self.log.info("Resolving dependencies...")
             with ThreadPoolExecutor(max_workers=1) as executor:
                 resolution_time.start()
-                changes = self.generate_dependency_changes(executor, sack, packages, brs, repo_id)
+                self.generate_dependency_changes(executor, sack, packages, brs, repo_id)
                 resolution_time.stop()
-            self.db.query(ResolutionProblem).delete(synchronize_session=False)
-            # pylint: disable=E1101
-            if self.problems:
-                self.db.execute(ResolutionProblem.__table__.insert(), self.problems)
-            self.synchronize_resolution_state()
-            self.update_dependency_changes(changes)
-            repo.base_resolved = True
-            self.db.add(repo)
-            self.db.commit()
             total_time.stop()
             total_time.display()
 
