@@ -218,9 +218,9 @@ class GenerateRepoTask(AbstractResolverTask):
             self.check_package_state_changes(resolved_map)
             self.persist_results(resolved_map, problems, changes)
             self.db.commit()
-        futures = [executor.submit(self.resolve_dependencies, sack, package.id, br)
-                   for package, br in zip(packages, brs)]
-        for package, future in zip(packages, futures):
+        futures = (executor.submit(self.resolve_dependencies, sack, package.id, br)
+                   for package, br in zip(packages, brs))
+        for package, future in itertools.izip(packages, futures):
             resolved_map[package.id], curr_problems, curr_deps = future.result()
             problems += curr_problems
             if curr_deps is not None:
