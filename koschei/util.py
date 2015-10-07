@@ -31,6 +31,8 @@ import fcntl
 import time
 import socket
 
+from Queue import Queue
+from threading import Thread
 from contextlib import contextmanager
 from rpm import RPMSENSE_LESS, RPMSENSE_GREATER, RPMSENSE_EQUAL
 
@@ -164,6 +166,24 @@ def itercall(koji_session, args, koji_call):
         for [info] in koji_session.multiCall():
             yield info
         args = args[chunk_size:]
+
+
+def parallel_generator(generator, queue_size=1000):
+    queue = Queue(maxsize=queue_size)
+    sentinel = object()
+    def worker():
+        for item in generator:
+            queue.put(item)
+        queue.put(sentinel)
+    thread = Thread(target=worker)
+    thread.daemon = True
+    thread.start()
+    while True:
+        item = queue.get()
+        if item is sentinel:
+            return
+        yield item
+    thread.join()
 
 
 def prepare_build_opts(opts=None):
