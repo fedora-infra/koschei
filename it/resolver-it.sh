@@ -37,12 +37,12 @@ koji_mock.repoInfo.return_value = {
     'state': 3,
     'tag_id': 315,
     'tag_name': 'f24-build'}
-task = resolver.Resolver(koji_session=koji_mock).create_task(resolver.GenerateRepoTask)
 brs = json.load(open('it/get_rpm_requires.json'))
 util.get_rpm_requires = lambda _, ps: [brs[p['name']] for p in ps]
 group = json.load(open('it/get_build_group.json'))
 with mock.patch('koschei.util.get_build_group', return_value=group):
     with mock.patch('fedmsg.publish'):
+        task = resolver.Resolver(koji_session=koji_mock).create_task(resolver.GenerateRepoTask)
         task.run($repo_id)
 "
 psql koschei_it > it/actual.out <<EOF
