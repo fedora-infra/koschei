@@ -253,10 +253,7 @@ class GenerateRepoTask(AbstractResolverTask):
         repo = Repo(repo_id=repo_id)
         get_rpm_requires_time.start()
         brs = util.get_rpm_requires(self.koji_session,
-                                    [dict(name=p.name,
-                                          version=p.last_complete_build.version,
-                                          release=p.last_complete_build.release,
-                                          arch='src') for p in packages])
+                                    [p.srpm_nvra for p in packages])
         koji_time.stop()
         with self.repo_cache.get_sack(repo_id) as sack:
             if not sack:
@@ -332,10 +329,7 @@ class ProcessBuildsTask(AbstractResolverTask):
             with self.repo_cache.get_sack(repo_id) as sack:
                 if sack:
                     brs = util.get_rpm_requires(self.koji_session,
-                                                [dict(name=b.package.name,
-                                                      version=b.version,
-                                                      release=b.release,
-                                                      arch='src') for b in builds])
+                                                [b.srpm_nvra for b in builds])
                     for build, br in zip(builds, brs):
                         self.process_build(sack, build, br)
                 else:

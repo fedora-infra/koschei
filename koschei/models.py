@@ -123,6 +123,13 @@ class Package(Base):
     def has_running_build(self):
         return self.last_build_id != self.last_complete_build_id
 
+    @property
+    def srpm_nvra(self):
+        return dict(name=self.name,
+                    version=self.last_complete_build.version,
+                    release=self.last_complete_build.release,
+                    arch='src')
+
     def __repr__(self):
         return '{0.id} (name={0.name})'.format(self)
 
@@ -243,6 +250,13 @@ class Build(Base):
     @property
     def triggers(self):
         return [change.get_trigger() for change in self.dependency_changes]
+
+    @property
+    def srpm_nvra(self):
+        return dict(name=self.package.name,
+                    version=self.version,
+                    release=self.release,
+                    arch='src')
 
     def __repr__(self):
         # pylint: disable=W1306
