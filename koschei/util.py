@@ -171,19 +171,23 @@ def itercall(koji_session, args, koji_call):
 def parallel_generator(generator, queue_size=1000):
     queue = Queue(maxsize=queue_size)
     sentinel = object()
+    worker_exception = [StopIteration]
     def worker():
-        for item in generator:
-            queue.put(item)
-        queue.put(sentinel)
+        try:
+            for item in generator:
+                queue.put(item)
+        except Exception as e:
+            worker_exception[0] = e
+        finally:
+            queue.put(sentinel)
     thread = Thread(target=worker)
     thread.daemon = True
     thread.start()
     while True:
         item = queue.get()
         if item is sentinel:
-            return
+            raise worker_exception[0]
         yield item
-    thread.join()
 
 
 def prepare_build_opts(opts=None):
