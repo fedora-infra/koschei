@@ -97,7 +97,8 @@ class ResolverTest(DBTest):
         b2 = self.prepare_builds(foo=False, repo_id=None)[0]
         b2.deps_processed = True
         self.s.commit()
-        self.assertEqual(b1, self.resolver.create_task(GenerateRepoTask).get_build_for_comparison(foo))
+        with patch('koschei.util.get_build_group', return_value=['gcc','bash']):
+            self.assertEqual(b1, self.resolver.create_task(GenerateRepoTask).get_build_for_comparison(foo))
 
     def test_resolve_build(self):
         foo_build = self.prepare_foo_build()
@@ -168,8 +169,8 @@ class ResolverTest(DBTest):
     @postgres_only
     def test_repo_generation(self):
         self.prepare_old_build()
-        task = self.resolver.create_task(GenerateRepoTask)
         with patch('koschei.util.get_build_group', return_value=['R']):
+            task = self.resolver.create_task(GenerateRepoTask)
             with patch('koschei.util.get_rpm_requires',
                        return_value=[['F', 'A'], ['nonexistent']]):
                 task.run(666)
@@ -191,8 +192,8 @@ class ResolverTest(DBTest):
     def test_broken_buildroot(self):
         self.prepare_old_build()
         self.prepare_packages(['bar'])
-        task = self.resolver.create_task(GenerateRepoTask)
         with patch('koschei.util.get_build_group', return_value=['bar']):
+            task = self.resolver.create_task(GenerateRepoTask)
             with patch('koschei.util.get_rpm_requires', return_value=[['nonexistent']]):
                 with patch('fedmsg.publish') as fedmsg_mock:
                     task.run(666)
