@@ -69,7 +69,8 @@ class ResolverTest(DBTest):
         self.repo_mock = Mock()
         self.repo_mock.get_sack.return_value = get_sack('x86_64')
         self.koji_mock = KojiMock()
-        self.koji_mock.repoInfo.return_value = {'id': 123, 'tag_name': 'f24-build'}
+        self.koji_mock.repoInfo.return_value = {'id': 123, 'tag_name': 'f24-build',
+                                                'state': koji.REPO_STATES['READY']}
         self.resolver = Resolver(db=self.s, koji_session=self.koji_mock,
                                  repo_cache=self.repo_mock)
 

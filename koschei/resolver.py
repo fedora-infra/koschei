@@ -18,6 +18,7 @@
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 import itertools
+import koji
 
 from sqlalchemy.orm import joinedload
 
