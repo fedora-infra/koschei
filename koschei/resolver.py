@@ -264,6 +264,7 @@ class GenerateRepoTask(AbstractResolverTask):
                 self.db.rollback()
                 return
             repo.base_resolved, base_problems, _ = self.resolve_dependencies(sack, [])
+            resolution_time.stop()
             if not repo.base_resolved:
                 self.log.info("Build group not resolvable")
                 self.db.add(repo)
