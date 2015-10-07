@@ -259,7 +259,7 @@ def _get_best_selector(sack, dep):
     return sltr
 
 
-def run_goal(sack, group, br=()):
+def run_goal(sack, group, br):
     # pylint:disable=E1101
     goal = hawkey.Goal(sack)
     problems = []

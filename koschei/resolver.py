@@ -73,7 +73,7 @@ class AbstractResolverTask(object):
             self.db.connection().execute(table.insert(), dicts)
             self.db.expire_all()
 
-    def resolve_dependencies(self, sack, package_id, br):
+    def resolve_dependencies(self, sack, br):
         resolve_dependencies_time.start()
         deps = None
         resolved, problems, installs = util.run_goal(sack, self.group, br)
@@ -84,9 +84,6 @@ class AbstractResolverTask(object):
                                arch=pkg.arch)
                     for pkg in installs if pkg.arch != 'src']
             util.compute_dependency_distances(sack, br, deps)
-        else:
-            problems = [dict(package_id=package_id, problem=problem)
-                        for problem in sorted(set(problems))]
         resolve_dependencies_time.stop()
         return (resolved, problems, deps)
 
@@ -223,11 +220,12 @@ class GenerateRepoTask(AbstractResolverTask):
             self.check_package_state_changes(resolved_map)
             self.persist_results(resolved_map, problems, changes)
             self.db.commit()
-        futures = (executor.submit(self.resolve_dependencies, sack, package.id, br)
-                   for package, br in zip(packages, brs))
+        futures = (executor.submit(self.resolve_dependencies, sack, br)
+                   for br in brs)
         for package, future in itertools.izip(packages, futures):
             resolved_map[package.id], curr_problems, curr_deps = future.result()
-            problems += curr_problems
+            problems += [dict(package_id=package_id, problem=problem)
+                         for problem in sorted(set(curr_problems))]
             if curr_deps is not None:
                 last_build = self.get_build_for_comparison(package)
                 if last_build:
@@ -265,7 +263,7 @@ class GenerateRepoTask(AbstractResolverTask):
                 self.log.error('Cannot generate repo: {}'.format(repo_id))
                 self.db.rollback()
                 return
-            repo.base_resolved, base_problems, _ = util.run_goal(sack, self.group)
+            repo.base_resolved, base_problems, _ = self.resolve_dependencies(sack, [])
             if not repo.base_resolved:
                 self.log.info("Build group not resolvable")
                 self.db.add(repo)
@@ -291,7 +289,7 @@ class ProcessBuildsTask(AbstractResolverTask):
     def process_build(self, sack, build, br):
         self.log.info("Processing build {}".format(build.id))
         prev = self.get_prev_build_for_comparison(build)
-        _, _, curr_deps = self.resolve_dependencies(sack, build.package.id, br)
+        _, _, curr_deps = self.resolve_dependencies(sack, br)
         self.store_deps(build.repo_id, build.package_id, curr_deps)
         if curr_deps is not None:
             build.deps_resolved = True
