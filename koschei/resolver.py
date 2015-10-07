@@ -279,10 +279,9 @@ class GenerateRepoTask(AbstractResolverTask):
 
 class ProcessBuildsTask(AbstractResolverTask):
 
-    def process_build(self, sack, build, br):
+    def process_build(self, sack, build, curr_deps):
         self.log.info("Processing build {}".format(build.id))
         prev = self.get_prev_build_for_comparison(build)
-        _, _, curr_deps = self.resolve_dependencies(sack, br)
         self.store_deps(build.repo_id, build.package_id, curr_deps)
         if curr_deps is not None:
             build.deps_resolved = True
@@ -325,8 +324,15 @@ class ProcessBuildsTask(AbstractResolverTask):
                 if sack:
                     brs = util.get_rpm_requires(self.koji_session,
                                                 [b.srpm_nvra for b in builds])
-                    for build, br in zip(builds, brs):
-                        self.process_build(sack, build, br)
+                    if len(builds) > 100:
+                        brs = util.parallel_generator(brs, queue_size=None)
+                    gen = ((build, self.resolve_dependencies(sack, br))
+                           for build, br in itertools.izip(builds, brs))
+                    if len(builds) > 2:
+                        gen = util.parallel_generator(gen, queue_size=10)
+                    for build, result in gen:
+                        _, _, curr_deps = result
+                        self.process_build(sack, build, curr_deps)
                 else:
                     self.log.info("Repo id=%d not available, skipping", repo_id)
             self.db.query(Build).filter(Build.id.in_([b.id for b in builds]))\
