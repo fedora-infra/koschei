@@ -49,6 +49,9 @@ class RepoManager(object):
 
     # Download given repo_id from Koji to disk
     def create(self, repo_id, build_tag):
+        if not build_tag:
+            log.debug('Repo {} is dead, skipping'.format(repo_id))
+            return None
         self._clean_repo_dir(repo_id)
         repo_dir = self._get_repo_dir(repo_id)
         temp_dir = repo_dir + ".tmp"

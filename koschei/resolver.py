@@ -131,7 +131,9 @@ class AbstractResolverTask(object):
     def prefetch_repos(self, repo_ids):
         for repo_info in util.itercall(self.koji_session, repo_ids,
                                        lambda k, repo_id: k.repoInfo(repo_id)):
-            self.repo_cache.prefetch_repo(repo_info['id'], repo_info['tag_name'])
+            self.repo_cache.prefetch_repo(repo_info['id'], repo_info['tag_name']
+                                          if repo_info['state'] == koji.REPO_STATES['READY']
+                                          else None)
 
 class GenerateRepoTask(AbstractResolverTask):
 
