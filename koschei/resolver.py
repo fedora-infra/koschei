@@ -18,9 +18,7 @@
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 import itertools
-import librepo
 
-from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy.orm import joinedload
 
 from koschei.models import (Package, Dependency, UnappliedChange,
@@ -208,7 +206,7 @@ class GenerateRepoTask(AbstractResolverTask):
             if vals:
                 self.db.execute(rel.__table__.insert(), vals)
 
-    def generate_dependency_changes(self, executor, sack, packages, brs, repo_id):
+    def generate_dependency_changes(self, sack, packages, brs, repo_id):
         """
         Generates and persists dependency changes for given list of packages.
         Emits package state change events.
@@ -220,11 +218,12 @@ class GenerateRepoTask(AbstractResolverTask):
             self.check_package_state_changes(resolved_map)
             self.persist_results(resolved_map, problems, changes)
             self.db.commit()
-        futures = (executor.submit(self.resolve_dependencies, sack, br)
-                   for br in brs)
-        for package, future in itertools.izip(packages, futures):
-            resolved_map[package.id], curr_problems, curr_deps = future.result()
-            problems += [dict(package_id=package_id, problem=problem)
+        gen = ((package, self.resolve_dependencies(sack, br))
+               for package, br in itertools.izip(packages, brs))
+        gen = util.parallel_generator(gen, queue_size=10)
+        for package, result in gen:
+            resolved_map[package.id], curr_problems, curr_deps = result
+            problems += [dict(package_id=package.id, problem=problem)
                          for problem in sorted(set(curr_problems))]
             if curr_deps is not None:
                 last_build = self.get_build_for_comparison(package)
@@ -272,10 +271,9 @@ class GenerateRepoTask(AbstractResolverTask):
                 self.db.commit()
                 return
             self.log.info("Resolving dependencies...")
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                resolution_time.start()
-                self.generate_dependency_changes(executor, sack, packages, brs, repo_id)
-                resolution_time.stop()
+            resolution_time.start()
+            self.generate_dependency_changes(sack, packages, brs, repo_id)
+            resolution_time.stop()
         self.db.add(repo)
         self.db.commit()
         total_time.stop()
