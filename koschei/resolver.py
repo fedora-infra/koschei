@@ -135,6 +135,10 @@ class AbstractResolverTask(object):
                       .filter(Build.deps_resolved == True)\
                       .order_by(Build.id.desc()).first()
 
+    def prefetch_repos(self, repo_ids):
+        for repo_info in util.itercall(self.koji_session, repo_ids,
+                                       lambda k, repo_id: k.repoInfo(repo_id)):
+            self.repo_cache.prefetch_repo(repo_info['id'], repo_info['tag_name'])
 
 class GenerateRepoTask(AbstractResolverTask):
 
@@ -246,8 +250,7 @@ class GenerateRepoTask(AbstractResolverTask):
         total_time.reset()
         total_time.start()
         self.log.info("Generating new repo")
-        build_tag = self.koji_session.repoInfo(repo_id)['tag_name']
-        self.repo_cache.prefetch_repo(repo_id, build_tag)
+        self.prefetch_repos([repo_id])
         packages = self.get_packages(require_build=True)
         repo = Repo(repo_id=repo_id)
         get_build_group_time.start()
@@ -329,9 +332,7 @@ class ProcessBuildsTask(AbstractResolverTask):
 
         repo_ids = [repo_id for repo_id, _ in
                     itertools.groupby(unprocessed, lambda build: build.repo_id)]
-        for repo_info in util.itercall(self.koji_session, repo_ids,
-                                       lambda k, repo_id: k.repoInfo(repo_id)):
-            self.repo_cache.prefetch_repo(repo_info['id'], repo_info['tag_name'])
+        self.prefetch_repos(repo_ids)
         for repo_id, builds in itertools.groupby(unprocessed,
                                                  lambda build: build.repo_id):
             builds = list(builds)
