@@ -38,7 +38,6 @@ from koschei.backend import check_package_state
 
 total_time = Stopwatch("Total repo generation")
 koji_time = Stopwatch("Querying Koji", total_time)
-get_build_group_time = Stopwatch("get_build_group", koji_time)
 get_rpm_requires_time = Stopwatch("get_rpm_requires", koji_time)
 resolution_time = Stopwatch("Dependency resolution", total_time)
 resolve_dependencies_time = Stopwatch("resolve_dependencies", resolution_time)
@@ -51,7 +50,8 @@ class AbstractResolverTask(object):
         self.db = db
         self.koji_session = koji_session
         self.repo_cache = repo_cache
-        self.group = None
+        # TODO repo_id
+        self.group = util.get_build_group(koji_session)
 
     def store_deps(self, repo_id, package_id, installs):
         new_deps = []
@@ -253,10 +253,6 @@ class GenerateRepoTask(AbstractResolverTask):
         self.prefetch_repos([repo_id])
         packages = self.get_packages(require_build=True)
         repo = Repo(repo_id=repo_id)
-        get_build_group_time.start()
-        # TODO repo_id
-        self.group = util.get_build_group(self.koji_session)
-        get_build_group_time.stop()
         get_rpm_requires_time.start()
         brs = util.get_rpm_requires(self.koji_session,
                                     [dict(name=p.name,
@@ -327,8 +323,6 @@ class ProcessBuildsTask(AbstractResolverTask):
                              .filter(Build.repo_id != None)\
                              .options(joinedload(Build.package))\
                              .order_by(Build.repo_id).all()
-        # TODO repo_id
-        self.group = util.get_build_group(self.koji_session)
 
         repo_ids = [repo_id for repo_id, _ in
                     itertools.groupby(unprocessed, lambda build: build.repo_id)]

@@ -86,7 +86,8 @@ class ResolverTest(DBTest):
         build = self.prepare_builds(foo=False, repo_id=2)[0]
         build.deps_processed = build.deps_resolved = True
         self.prepare_builds(foo=None, repo_id=None)
-        self.assertIsNone(self.resolver.create_task(GenerateRepoTask).get_build_for_comparison(foo))
+        with patch('koschei.util.get_build_group', return_value=['gcc','bash']):
+            self.assertIsNone(self.resolver.create_task(GenerateRepoTask).get_build_for_comparison(foo))
 
     @postgres_only
     def test_skip_unresolved_failed_build(self):
