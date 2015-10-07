@@ -35,8 +35,6 @@ from koschei.backend import check_package_state
 
 
 total_time = Stopwatch("Total repo generation")
-koji_time = Stopwatch("Querying Koji", total_time)
-get_rpm_requires_time = Stopwatch("get_rpm_requires", koji_time)
 resolution_time = Stopwatch("Dependency resolution", total_time)
 resolve_dependencies_time = Stopwatch("resolve_dependencies", resolution_time)
 create_dependency_changes_time = Stopwatch("create_dependency_changes", resolution_time)
