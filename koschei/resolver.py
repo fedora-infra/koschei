@@ -130,11 +130,15 @@ class AbstractResolverTask(object):
                       .order_by(Build.id.desc()).first()
 
     def prefetch_repos(self, repo_ids):
+        dead_repos = set()
         for repo_info in util.itercall(self.koji_session, repo_ids,
                                        lambda k, repo_id: k.repoInfo(repo_id)):
-            self.repo_cache.prefetch_repo(repo_info['id'], repo_info['tag_name']
-                                          if repo_info['state'] == koji.REPO_STATES['READY']
-                                          else None)
+            if repo_info['state'] == koji.REPO_STATES['READY']:
+                self.repo_cache.prefetch_repo(repo_info['id'], repo_info['tag_name'])
+            else:
+                dead_repos.add(repo_info['id'])
+                log.debug('Repo {} is dead, skipping'.format(repo_info['id']))
+        return dead_repos
 
 class GenerateRepoTask(AbstractResolverTask):
 
@@ -248,7 +252,9 @@ class GenerateRepoTask(AbstractResolverTask):
         total_time.reset()
         total_time.start()
         self.log.info("Generating new repo")
-        self.prefetch_repos([repo_id])
+        if self.prefetch_repos([repo_id]):
+            self.db.rollback()
+            return
         packages = self.get_packages(require_build=True)
         repo = Repo(repo_id=repo_id)
         brs = util.get_rpm_requires(self.koji_session,
@@ -319,25 +325,26 @@ class ProcessBuildsTask(AbstractResolverTask):
 
         repo_ids = [repo_id for repo_id, _ in
                     itertools.groupby(unprocessed, lambda build: build.repo_id)]
-        self.prefetch_repos(repo_ids)
+        dead_repos = self.prefetch_repos(repo_ids)
         for repo_id, builds in itertools.groupby(unprocessed,
                                                  lambda build: build.repo_id):
             builds = list(builds)
-            with self.repo_cache.get_sack(repo_id) as sack:
-                if sack:
-                    brs = util.get_rpm_requires(self.koji_session,
-                                                [b.srpm_nvra for b in builds])
-                    if len(builds) > 100:
-                        brs = util.parallel_generator(brs, queue_size=None)
-                    gen = ((build, self.resolve_dependencies(sack, br))
-                           for build, br in itertools.izip(builds, brs))
-                    if len(builds) > 2:
-                        gen = util.parallel_generator(gen, queue_size=10)
-                    for build, result in gen:
-                        _, _, curr_deps = result
-                        self.process_build(sack, build, curr_deps)
-                else:
-                    self.log.info("Repo id=%d not available, skipping", repo_id)
+            if repo_id not in dead_repos:
+                with self.repo_cache.get_sack(repo_id) as sack:
+                    if sack:
+                        brs = util.get_rpm_requires(self.koji_session,
+                                                    [b.srpm_nvra for b in builds])
+                        if len(builds) > 100:
+                            brs = util.parallel_generator(brs, queue_size=None)
+                        gen = ((build, self.resolve_dependencies(sack, br))
+                               for build, br in itertools.izip(builds, brs))
+                        if len(builds) > 2:
+                            gen = util.parallel_generator(gen, queue_size=10)
+                        for build, result in gen:
+                            _, _, curr_deps = result
+                            self.process_build(sack, build, curr_deps)
+                    else:
+                        self.log.info("Repo id=%d not available, skipping", repo_id)
             self.db.query(Build).filter(Build.id.in_([b.id for b in builds]))\
                                 .update({'deps_processed': True},
                                         synchronize_session=False)
