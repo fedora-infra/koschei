@@ -214,6 +214,6 @@ class ResolverTest(DBTest):
         koji_mock = Mock()
         koji_mock.multiCall = Mock(return_value=[[call_result]])
         inp = dict(name='jetty-schemas', version='3.1', release='3.fc21', arch='src')
-        res = util.get_rpm_requires(koji_mock, [inp])
+        res = [req for req in util.get_rpm_requires(koji_mock, [inp])]
         koji_mock.getRPMDeps.assert_called_once_with(inp, koji.DEP_REQUIRE)
         self.assertEqual(res, [['maven-local', 'jetty-toolchain']])

@@ -317,7 +317,6 @@ def get_build_group(koji_session):
 def get_rpm_requires(koji_session, nvras):
     deps_list = itercall(koji_session, nvras,
                          lambda k, nvra: k.getRPMDeps(nvra, koji.DEP_REQUIRE))
-    requires_list = []
     for deps in deps_list:
         requires = []
         for dep in deps:
@@ -332,8 +331,7 @@ def get_rpm_requires(koji_session, nvras):
                           RPMSENSE_GREATER: '>',
                           RPMSENSE_EQUAL: '='}[old ^ flags]
             requires.append(("%s %s %s" % (dep['name'], order, dep['version'])).rstrip())
-        requires_list.append(requires)
-    return requires_list
+        yield requires
 
 
 def get_koji_load(koji_session):
