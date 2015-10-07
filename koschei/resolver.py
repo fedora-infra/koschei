@@ -352,10 +352,6 @@ class Resolver(KojiService):
                                        koji_session=koji_session)
         self.repo_cache = repo_cache or RepoCache()
 
-    def get_handled_exceptions(self):
-        return ([librepo.LibrepoException] +
-                super(Resolver, self).get_handled_exceptions())
-
     def create_task(self, cls):
         return cls(log=self.log, db=self.db, koji_session=self.koji_session,
                    repo_cache=self.repo_cache)
