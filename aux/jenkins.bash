@@ -8,7 +8,6 @@ pip install fedmsg==0.15.0
 pip install mock==1.0.1
 pip install wtforms==2.0
 pip install jinja2==2.7.2
-pip install futures==3.0.3
 pip install flask==0.10.1
 pip install flask-sqlalchemy==2.0
 pip install flask-wtf==0.8
