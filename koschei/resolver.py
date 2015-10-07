@@ -250,10 +250,9 @@ class GenerateRepoTask(AbstractResolverTask):
         self.prefetch_repos([repo_id])
         packages = self.get_packages(require_build=True)
         repo = Repo(repo_id=repo_id)
-        get_rpm_requires_time.start()
         brs = util.get_rpm_requires(self.koji_session,
                                     [p.srpm_nvra for p in packages])
-        koji_time.stop()
+        brs = util.parallel_generator(brs, queue_size=None)
         with self.repo_cache.get_sack(repo_id) as sack:
             if not sack:
                 self.log.error('Cannot generate repo: {}'.format(repo_id))
