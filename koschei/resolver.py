@@ -137,7 +137,7 @@ class AbstractResolverTask(object):
                 self.repo_cache.prefetch_repo(repo_info['id'], repo_info['tag_name'])
             else:
                 dead_repos.add(repo_info['id'])
-                log.debug('Repo {} is dead, skipping'.format(repo_info['id']))
+                self.log.debug('Repo {} is dead, skipping'.format(repo_info['id']))
         return dead_repos
 
 class GenerateRepoTask(AbstractResolverTask):
