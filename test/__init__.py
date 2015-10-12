@@ -45,11 +45,6 @@ else:
 from koschei import models
 models.Base.metadata.create_all(models.engine)
 
-sql_log = logging.getLogger('sqlalchemy.engine')
-sql_log.propagate = False
-sql_log.setLevel(logging.INFO)
-sql_log_file = 'sql.log'
-sql_log.addHandler(logging.FileHandler(sql_log_file))
 
 def teardown():
     if use_faitout:
