@@ -34,7 +34,7 @@ koji_mock.repoInfo.return_value = {
     'create_ts': 1438936330.7918,
     'creation_time': '2015-08-07 08:32:10.791796',
     'id': 509557,
-    'state': 3,
+    'state': 1,
     'tag_id': 315,
     'tag_name': 'f24-build'}
 brs = json.load(open('it/get_rpm_requires.json'))
