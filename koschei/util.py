@@ -168,26 +168,40 @@ def itercall(koji_session, args, koji_call):
         args = args[chunk_size:]
 
 
-def parallel_generator(generator, queue_size=1000):
-    queue = Queue(maxsize=queue_size)
+class parallel_generator(object):
     sentinel = object()
-    worker_exception = [StopIteration]
-    def worker():
+
+    def __init__(self, generator, queue_size=1000):
+        self.generator = generator
+        self.queue = Queue(maxsize=queue_size)
+        self.worker_exception = StopIteration
+        self.stop_thread = False
+        self.thread = Thread(target=self.worker_fn)
+        self.thread.daemon = True
+        self.thread.start()
+
+    def worker_fn(self):
         try:
-            for item in generator:
-                queue.put(item)
+            for item in self.generator:
+                self.queue.put(item)
+                if self.stop_thread:
+                    return
         except Exception as e:
-            worker_exception[0] = e
+            self.worker_exception = e
         finally:
-            queue.put(sentinel)
-    thread = Thread(target=worker)
-    thread.daemon = True
-    thread.start()
-    while True:
-        item = queue.get()
-        if item is sentinel:
-            raise worker_exception[0]
-        yield item
+            self.queue.put(self.sentinel)
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        item = self.queue.get()
+        if item is self.sentinel:
+            raise self.worker_exception # StopIteration in case of success
+        return item
+
+    def stop(self):
+        self.stop_thread = True
 
 
 def prepare_build_opts(opts=None):

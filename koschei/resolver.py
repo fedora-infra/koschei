@@ -260,26 +260,29 @@ class GenerateRepoTask(AbstractResolverTask):
         brs = util.get_rpm_requires(self.koji_session,
                                     [p.srpm_nvra for p in packages])
         brs = util.parallel_generator(brs, queue_size=None)
-        with self.repo_cache.get_sack(repo_id) as sack:
-            if not sack:
-                self.log.error('Cannot generate repo: {}'.format(repo_id))
-                self.db.rollback()
-                return
-            repo.base_resolved, base_problems, _ = self.resolve_dependencies(sack, [])
-            resolution_time.stop()
-            if not repo.base_resolved:
-                self.log.info("Build group not resolvable")
-                self.db.add(repo)
-                self.db.flush()
-                self.db.execute(BuildrootProblem.__table__.insert(),
-                                [{'repo_id': repo.repo_id, 'problem': problem}
-                                 for problem in base_problems])
-                self.db.commit()
-                return
-            self.log.info("Resolving dependencies...")
-            resolution_time.start()
-            self.generate_dependency_changes(sack, packages, brs, repo_id)
-            resolution_time.stop()
+        try:
+            with self.repo_cache.get_sack(repo_id) as sack:
+                if not sack:
+                    self.log.error('Cannot generate repo: {}'.format(repo_id))
+                    self.db.rollback()
+                    return
+                repo.base_resolved, base_problems, _ = self.resolve_dependencies(sack, [])
+                resolution_time.stop()
+                if not repo.base_resolved:
+                    self.log.info("Build group not resolvable")
+                    self.db.add(repo)
+                    self.db.flush()
+                    self.db.execute(BuildrootProblem.__table__.insert(),
+                                    [{'repo_id': repo.repo_id, 'problem': problem}
+                                     for problem in base_problems])
+                    self.db.commit()
+                    return
+                self.log.info("Resolving dependencies...")
+                resolution_time.start()
+                self.generate_dependency_changes(sack, packages, brs, repo_id)
+                resolution_time.stop()
+        finally:
+            brs.stop()
         self.db.add(repo)
         self.db.commit()
         total_time.stop()
