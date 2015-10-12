@@ -18,6 +18,7 @@ class AbstractTest(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         super(AbstractTest, self).__init__(*args, **kwargs)
+        self.oldpwd = os.getcwd()
 
     def _rm_workdir(self):
         try:
@@ -31,6 +32,7 @@ class AbstractTest(unittest.TestCase):
         os.chdir(workdir)
 
     def tearDown(self):
+        os.chdir(self.oldpwd)
         self._rm_workdir()
 
     @staticmethod
