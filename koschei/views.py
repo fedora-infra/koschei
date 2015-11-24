@@ -429,29 +429,29 @@ def process_group_form(group=None):
         flash("Packages don't exist: " + ', '.join(names - found_names))
         return render_template('edit-group.html', group=group, form=form)
     created = not group
+    if created:
+        group = PackageGroup(namespace=g.user.name)
+        db.add(group)
+    group.name = form.name.data
     try:
-        if not group:
-            group = PackageGroup(name=form.name.data, namespace=g.user.name)
-            db.add(group)
-            db.flush()
-        else:
-            group.name = form.name.data
-            db.query(PackageGroupRelation)\
-              .filter_by(group_id=group.id).delete()
-            db.query(GroupACL)\
-              .filter_by(group_id=group.id).delete()
-        rels = [dict(group_id=group.id, package_id=pkg.id) for pkg in packages]
-        acls = [dict(group_id=group.id, user_id=user_id) for user_id in user_ids]
-        db.execute(PackageGroupRelation.__table__.insert(), rels)
-        db.execute(GroupACL.__table__.insert(), acls)
-        db.commit()
-        flash("Group created" if created else "Group modified")
-        return redirect(url_for('group_detail', name=group.name,
-                                namespace=group.namespace))
+        db.flush()
     except IntegrityError:
         db.rollback()
         flash("Group already exists")
         return render_template('edit-group.html', group=group, form=form)
+    if not created:
+        db.query(PackageGroupRelation)\
+          .filter_by(group_id=group.id).delete()
+        db.query(GroupACL)\
+          .filter_by(group_id=group.id).delete()
+    rels = [dict(group_id=group.id, package_id=pkg.id) for pkg in packages]
+    acls = [dict(group_id=group.id, user_id=user_id) for user_id in user_ids]
+    db.execute(PackageGroupRelation.__table__.insert(), rels)
+    db.execute(GroupACL.__table__.insert(), acls)
+    db.commit()
+    flash("Group created" if created else "Group modified")
+    return redirect(url_for('group_detail', name=group.name,
+                            namespace=group.namespace))
 
 
 @app.route('/add_group', methods=['GET', 'POST'])
