@@ -10,23 +10,22 @@
     <table>
         <tr>
             <td><label for="name">Name: </label></td>
-            <td><input type="text" name="name"{% if group %} value="{{ group.name }}"{% endif %}/></td>
+            <td>{{ form.name }}</td>
         </tr>
         <tr>
             <td><label for="name">Group maintainers: </label></td>
-            <td><input type="text" name="owners"{% if group %} value="{{ group.owners_list }}"{% endif %}/></td>
+            <td>{{ form.owners }}</td>
         </tr>
     </table>
     <div>Packages in group:</div>
     <div>
-        {# Has to be on one line to not add whitespace #}
-        <textarea name="packages" rows="20" cols="80">{% if group %}{% for pkg in group.packages %}{{ pkg.name }}{{ '\n' }}{% endfor %}{% endif %}</textarea>
+        {{ form.packages(rows=20, cols=80) }}
     </div>
     <div><button type="submit"/>{% if group %}Update{% else %}Create{% endif %}</button></div>
 </form>
 {% if group %}
 <form action="{{ url_for('delete_group', name=group.name, namespace=group.namespace) }}">
-    <div><button type="submit"/>Delete group</button></div>
+    <div><button type="submit">Delete group</button></div>
 </form>
 {% endif %}
 

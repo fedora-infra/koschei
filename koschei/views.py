@@ -12,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from jinja2 import Markup, escape
 from textwrap import dedent
 from flask_wtf import Form
-from wtforms import StringField
+from wtforms import StringField, TextAreaField
 from wtforms.validators import Regexp, ValidationError
 
 from .models import (Package, Build, PackageGroup, PackageGroupRelation,
@@ -337,11 +337,8 @@ class StrippedStringField(StringField):
         self.data = values and values[0].strip()
 
 
-class ListField(StringField):
+class ListFieldMixin(object):
     split_re = re.compile(r'[ \t\n\r,]+')
-
-    def _value(self):
-        return ', '.join(self.data or ())
 
     def process_formdata(self, values):
         # pylint:disable=W0201
@@ -349,9 +346,15 @@ class ListField(StringField):
         self.data = filter(None, self.split_re.split(values or ''))
 
 
-class ListAreaField(ListField):
+class ListField(ListFieldMixin, StringField):
+    def _value(self):
+        return ', '.join(self.data or ())
+
+
+class ListAreaField(ListFieldMixin, TextAreaField):
     def _value(self):
         return '\n'.join(self.data or ())
+
 
 name_re = re.compile(r'^[a-zA-Z0-9.+_-]+$')
 group_re = re.compile(r'^([a-zA-Z0-9.+_-]+(/[a-zA-Z0-9.+_-]+)?)?$')
@@ -407,9 +410,15 @@ PackageGroup.editable = property(can_edit_group)
 
 
 def process_group_form(group=None):
-    form = GroupForm()
     if request.method == 'GET':
+        if group:
+            obj = dict(name=group.name, owners=[u.name for u in group.owners],
+                       packages=[p.name for p in group.packages])
+            form = GroupForm(**obj)
+        else:
+            form = GroupForm(owners=[g.user.name])
         return render_template('edit-group.html', group=group, form=form)
+    form = GroupForm()
     # check permissions
     if group and not group.editable:
         flash("You don't have permission to edit this group")
