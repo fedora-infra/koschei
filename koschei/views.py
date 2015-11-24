@@ -387,7 +387,8 @@ class GroupForm(EmptyForm):
     name = StrippedStringField('name', [Regexp(name_re, message="Invalid group name")])
     packages = ListAreaField('packages', [NonEmptyList("Empty group not allowed"),
                                           NameListValidator("Invalid package list")])
-    owners = ListField('owners', [NameListValidator("Invalid owner list")])
+    owners = ListField('owners', [NonEmptyList("Group must have an owner"),
+                                  NameListValidator("Invalid owner list")])
 
 
 class AddPackagesForm(EmptyForm):
@@ -419,8 +420,6 @@ def process_group_form(group=None):
         return render_template('edit-group.html', group=group, form=form)
     names = set(form.packages.data)
     owners = set(form.owners.data)
-    # don't let the user remove himself
-    owners.add(g.user.name)
     users = [get_or_create(db, User, name=name) for name in owners]
     db.commit()
     user_ids = [u.id for u in users]
