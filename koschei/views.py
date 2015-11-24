@@ -421,8 +421,9 @@ def process_group_form(group=None):
     owners = set(form.owners.data)
     # don't let the user remove himself
     owners.add(g.user.name)
-    user_ids = [get_or_create(db, User, name=name).id for name in owners]
+    users = [get_or_create(db, User, name=name) for name in owners]
     db.commit()
+    user_ids = [u.id for u in users]
     packages = db.query(Package).filter(Package.name.in_(names))
     found_names = {p.name for p in packages}
     if len(found_names) != len(names):
