@@ -107,7 +107,6 @@ if pkgdb_config['enabled']:
                 if user:
                     user.packages_retrieved = False
                     db.commit()
-                    refresh_user_packages(user)
 
     @listen_event('polling_event')
     def refresh_monitored_packages(backend):
