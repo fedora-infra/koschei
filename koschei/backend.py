@@ -152,6 +152,13 @@ class Backend(object):
                           .format(build=build,
                                   state=Build.REV_STATE_MAP[state]))
             self.sync_tasks(build, complete=True)
+            if build.repo_id is None:
+                # Koji problem, no need to bother packagers with this
+                self.log.info('Deleting build {0} because it has no repo_id'
+                              .format(build))
+                self.db.delete(build)
+                self.db.commit()
+                return
             self.db.expire(build.package)
             prev_state = package.msg_state_string
             build.state = state
