@@ -110,8 +110,11 @@ if pkgdb_config['enabled']:
 
     @listen_event('polling_event')
     def refresh_monitored_packages(backend):
-        if pkgdb_config['sync_tracked']:
-            log.debug('Polling monitored packages...')
-            packages = query_monitored_packages()
-            if packages is not None:
-                backend.sync_tracked(packages)
+        try:
+            if pkgdb_config['sync_tracked']:
+                log.debug('Polling monitored packages...')
+                packages = query_monitored_packages()
+                if packages is not None:
+                    backend.sync_tracked(packages)
+        except requests.ConnectionError:
+            log.exception("Polling monitored packages failed, skipping cycle")
