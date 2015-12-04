@@ -297,6 +297,9 @@ class ProcessBuildsTask(AbstractResolverTask):
         self.store_deps(build.repo_id, build.package_id, curr_deps)
         if curr_deps is not None:
             build.deps_resolved = True
+        if not build.deps_resolved and build is build.package.last_build:
+            failed_prio = 3 * util.config['priorities']['failed_build_priority']
+            build.package.manual_priority += failed_prio
         if prev:
             prev_deps = self.get_deps_from_db(prev.package_id,
                                               prev.repo_id)
