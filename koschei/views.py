@@ -149,8 +149,8 @@ def package_view(package_query, template, **template_args):
     if not untracked:
         package_query = package_query.filter(Package.tracked == True)
     pkgs = package_query.filter(Package.blocked == False)\
-                        .outerjoin(Package.last_complete_build)\
-                        .options(contains_eager(Package.last_complete_build))\
+                        .outerjoin(Package.last_build)\
+                        .options(contains_eager(Package.last_build))\
                         .order_by(*order)
     page = pkgs.paginate(packages_per_page)
     return render_template(template, packages=page.items, page=page,
