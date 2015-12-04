@@ -27,10 +27,9 @@ if use_faitout:
 elif use_postgres:
     testdb = 'koschei_testdb'
     util.config['database_config']['drivername'] = 'postgres'
-    util.config['database_config']['username'] = 'postgres'
     util.config['database_config']['database'] = testdb
     cfg = util.config['database_config'].copy()
-    del cfg['database']
+    cfg['database'] = 'postgres'
     url = sqlalchemy.engine.url.URL(**cfg)
     engine = sqlalchemy.create_engine(url, poolclass=sqlalchemy.pool.NullPool)
     conn = engine.connect()
