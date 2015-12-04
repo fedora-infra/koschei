@@ -314,7 +314,11 @@ def user_packages(name):
         g.current_tab = 'my_packages'
     user = get_or_create(db, User, name=name)
     db.commit()
-    plugin.dispatch_event('refresh_user_packages', user=user)
+    try:
+        plugin.dispatch_event('refresh_user_packages', user=user)
+    except Exception:
+        flash("Error retrieving user's packages")
+        log.exception("Error retrieving user's packages")
     query = db.query(Package)\
               .outerjoin(UserPackageRelation)\
               .filter(UserPackageRelation.user_id == user.id)
