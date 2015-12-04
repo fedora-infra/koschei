@@ -85,6 +85,7 @@ class Package(Base):
         Column(Integer, ForeignKey('build.id', use_alter=True,
                                    name='fkey_package_last_complete_build_id'),
                nullable=True)
+    last_complete_build_state = Column(Integer)
     last_build_id = \
         Column(Integer, ForeignKey('build.id', use_alter=True,
                                    name='fkey_package_last_build_id'),
@@ -103,10 +104,9 @@ class Package(Base):
             return 'untracked'
         if self.resolved is False:
             return 'unresolved'
-        build = self.last_complete_build
-        if build:
+        if self.last_complete_build_state is not None:
             return {Build.COMPLETE: 'ok',
-                    Build.FAILED: 'failing'}.get(build.state)
+                    Build.FAILED: 'failing'}.get(self.last_complete_build_state)
 
     @property
     def state_string(self):
@@ -375,8 +375,9 @@ trigger = DDL("""
                   RETURNS TRIGGER AS $$
               BEGIN
                   UPDATE package
-                  SET last_complete_build_id = lcb.id
-                  FROM (SELECT id, state, started
+                  SET last_complete_build_id = lcb.id,
+                      last_complete_build_state = lcb.state
+                  FROM (SELECT id, state
                         FROM build
                         WHERE package_id = NEW.package_id
                               AND (state = 3 OR state = 5)
