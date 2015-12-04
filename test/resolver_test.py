@@ -125,20 +125,21 @@ class ResolverTest(DBTest):
         self.assertEquals(0, self.s.query(AppliedChange).count())
         self.assertTrue(foo_build.deps_processed)
 
-    # def test_resolution_fail(self):
-    #     self.prepare_packages(['bar'])
-    #     b = self.prepare_builds(bar=True, repo_id=None)[0]
-    #     b.repo_id = 666
-    #     b.epoch = 1
-    #     b.version = '2'
-    #     b.release = '2'
-    #     self.s.commit()
-    #     with patch('koschei.util.get_build_group', return_value=['R']):
-    #         with patch('koschei.util.get_rpm_requires', return_value=[['nonexistent']]):
-    #             self.resolver.create_task(ProcessBuildsTask).run()
-    #     self.repo_mock.get_sack.assert_called_once_with(666)
-    #     self.assertTrue(self.s.query(Package).filter_by(id=b.package_id).first().resolved is False)
-    #     self.assertFalse(self.s.query(ResolutionProblem).count())
+    def test_resolution_fail(self):
+        self.prepare_packages(['bar'])
+        b = self.prepare_builds(bar=True, repo_id=None)[0]
+        b.repo_id = 666
+        b.epoch = 1
+        b.version = '2'
+        b.release = '2'
+        self.s.commit()
+        with patch('koschei.util.get_build_group', return_value=['R']):
+            with patch('koschei.util.get_rpm_requires', return_value=[['nonexistent']]):
+                self.resolver.create_task(ProcessBuildsTask).run()
+        self.repo_mock.get_sack.assert_called_once_with(666)
+        self.assertTrue(b.deps_processed)
+        self.assertFalse(b.deps_resolved)
+        self.assertEquals(600, b.package.manual_priority)
 
     def prepare_old_build(self):
         old_build = self.prepare_foo_build(repo_id=555, version='3')
