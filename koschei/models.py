@@ -92,7 +92,8 @@ class Package(Base):
                nullable=True)
     resolved = Column(Boolean)
 
-    resolution_problems = relationship('ResolutionProblem', backref='package')
+    resolution_problems = relationship('ResolutionProblem', backref='package',
+                                       passive_deletes=True)
 
     tracked = Column(Boolean, nullable=False, server_default=true())
     blocked = Column(Boolean, nullable=False, server_default=false())
@@ -187,9 +188,9 @@ class PackageGroup(Base):
     name = Column(String, nullable=False)
 
     packages = relationship(Package, secondary=PackageGroupRelation.__table__,
-                            order_by=Package.name)
+                            order_by=Package.name, passive_deletes=True)
     owners = relationship(User, secondary=GroupACL.__table__,
-                          order_by=User.name)
+                          order_by=User.name, passive_deletes=True)
 
     @property
     def full_name(self):
@@ -239,7 +240,8 @@ class Build(Base):
     deps_resolved = Column(Boolean, nullable=False, server_default=false())
 
     build_arch_tasks = relationship(KojiTask, backref='build',
-                                    order_by=KojiTask.arch)
+                                    order_by=KojiTask.arch,
+                                    passive_deletes=True)
     # was the build done by koschei or was it real build done by packager
     real = Column(Boolean, nullable=False, server_default=false())
 
@@ -467,14 +469,14 @@ Package.last_build = \
 
 Package.all_builds = relationship(Build, order_by=Build.id.desc(),
                                   primaryjoin=(Build.package_id == Package.id),
-                                  backref='package')
+                                  backref='package', passive_deletes=True)
 Package.unapplied_changes = \
     relationship(UnappliedChange, backref='package',
                  order_by=[UnappliedChange.distance, UnappliedChange.dep_name])
 Build.dependency_changes = relationship(AppliedChange, backref='build',
                                         primaryjoin=(Build.id == AppliedChange.build_id),
                                         order_by=AppliedChange.distance
-                                        .nullslast())
+                                        .nullslast(), passive_deletes=True)
 
 PackageGroup.package_count = column_property(
     select([func.count(PackageGroupRelation.group_id)],
@@ -484,9 +486,11 @@ PackageGroup.package_count = column_property(
 # pylint: disable=E1101
 Package.groups = relationship(PackageGroup,
                               secondary=PackageGroupRelation.__table__,
-                              order_by=PackageGroup.name)
+                              order_by=PackageGroup.name, passive_deletes=True)
 User.packages = relationship(Package,
-                             secondary=UserPackageRelation.__table__)
+                             secondary=UserPackageRelation.__table__,
+                             passive_deletes=True)
 User.groups = relationship(PackageGroup,
                            secondary=GroupACL.__table__,
-                           order_by=[PackageGroup.namespace, PackageGroup.name])
+                           order_by=[PackageGroup.namespace,
+                                     PackageGroup.name], passive_deletes=True)
