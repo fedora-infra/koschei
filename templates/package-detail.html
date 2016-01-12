@@ -68,12 +68,13 @@
     <tr>
         <th>Links</th>
         <td>
-            <a href="{{ koji_weburl }}/packageinfo?packageID={{ package.name }}">Koji</a>,
-            <a href="{{ links['bugzilla'] }}/buglist.cgi?product=Fedora&component={{ package.name }}">Bugzilla</a>,
-            <a href="{{ links['dist-git'] }}/cgit/{{ package.name }}.git">Dist-git</a>,
-            <a href="{{ links['pkgdb'] }}/package/{{ package.name }}">PkgDB</a>,
-            <a href="{{ links['bodhi'] }}?packages={{ package.name }}">Bodhi</a>,
-            <a href="{{ links['packages'] }}/{{ package.name }}">Packages</a>
+            {% set enc_name = package.name | urlencode %}
+            <a href="{{ koji_weburl }}/packageinfo?packageID={{ enc_name }}">Koji</a>,
+            <a href="{{ links['bugzilla'] }}/buglist.cgi?product=Fedora&component={{ enc_name }}">Bugzilla</a>,
+            <a href="{{ links['dist-git'] }}/cgit/{{ enc_name }}.git">Dist-git</a>,
+            <a href="{{ links['pkgdb'] }}/package/{{ enc_name }}">PkgDB</a>,
+            <a href="{{ links['bodhi'] }}?packages={{ enc_name }}">Bodhi</a>,
+            <a href="{{ links['packages'] }}/{{ enc_name }}">Packages</a>
         </td>
     </tr>
     <tr>
