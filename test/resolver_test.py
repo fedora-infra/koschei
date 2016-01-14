@@ -115,6 +115,13 @@ class ResolverTest(DBTest):
                                    Dependency.arch).all()
         self.assertItemsEqual(expected_deps, actual_deps)
 
+    def test_virtual_in_group(self):
+        foo_build = self.prepare_foo_build()
+        with patch('koschei.util.get_build_group', return_value=['virtual']):
+            with patch('koschei.util.get_rpm_requires', return_value=[['F', 'A']]):
+                self.resolver.create_task(ProcessBuildsTask).run()
+        self.assertTrue(foo_build.deps_resolved)
+
     def test_none_repo_id(self):
         foo_build = self.prepare_foo_build()
         foo_build.repo_id = None
