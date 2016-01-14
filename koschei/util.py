@@ -302,7 +302,7 @@ def run_goal(sack, group, br):
     goal = hawkey.Goal(sack)
     problems = []
     for name in group:
-        sltr = hawkey.Selector(sack).set(name=name)
+        sltr = _get_best_selector(sack, name)
         if not sltr.matches():
             problems.append("Package in base build group not found: {}".format(name))
         goal.install(select=sltr)
