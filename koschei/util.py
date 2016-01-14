@@ -73,6 +73,7 @@ log = logging.getLogger('koschei.util')
 
 koji_config = config['koji_config']
 server = koji_config['server']
+authtype = koji_config['authtype']
 cert = os.path.expanduser(koji_config['cert'])
 ca_cert = os.path.expanduser(koji_config['ca'])
 base_build_opts = koji_config.get('build_opts', {})
@@ -131,7 +132,12 @@ class KojiSession(SessionProxy):
         def constructor():
             koji_session = koji.ClientSession(server, {'timeout': 3600})
             if not anonymous:
-                koji_session.ssl_login(cert, ca_cert, ca_cert)
+                if authtype == 'ssl':
+                    koji_session.ssl_login(cert, ca_cert, ca_cert)
+                elif authtype == 'kerberos':
+                    koji_session.krb_login()
+                else:
+                    raise RuntimeError("Unsupported Koji authtype: {}".format(authtype))
             return koji_session
         super(KojiSession, self).__init__('koji', constructor)
         self.__mcall_list = []
