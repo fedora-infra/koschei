@@ -197,6 +197,9 @@ class GenerateRepoTask(AbstractResolverTask):
         """
         if not resolved_map:
             return
+        self.db.query(Package)\
+            .filter(Package.id.in_(resolved_map.keys()))\
+            .lock_rows()
         for val in True, False:
             pkg_ids = [pkg_id for pkg_id, resolved
                        in resolved_map.iteritems() if resolved is val]

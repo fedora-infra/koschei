@@ -18,6 +18,7 @@
 
 import koji
 
+import sqlalchemy
 from sqlalchemy import (create_engine, Table, Column, Integer, String, Boolean,
                         ForeignKey, DateTime, Index, DDL)
 from sqlalchemy.sql.expression import func, select, false, true
@@ -34,11 +35,36 @@ Base = declarative_base()
 db_url = config.get('database_url') or URL(**config['database_config'])
 engine = create_engine(db_url, echo=False, pool_size=10)
 
-Session = sessionmaker(bind=engine, autocommit=False)
-
 
 def external_id():
     raise AssertionError("ID needs to be supplied")
+
+
+class Query(sqlalchemy.orm.Query):
+    # TODO move get_or_create here
+    # def get_or_create(self):
+    #     items = self.all()
+    #     if items:
+    #         if len(items) > 1:
+    #             raise ProgrammerError("get_or_create query returned more than one item")
+    #         return items[0]
+    #     entity = self._primary_entity.entities[0]
+    #     how to get args?
+    #     self.session.add(entity(**args))
+
+    def lock_rows(self):
+        """
+        Locks rows satisfying given filter expression in consistent order.
+        Should eliminate deadlocks with other transactions that do the same before
+        attempting to update.
+        """
+        mapper = self._only_full_mapper_zero("lock_rows")
+        self.order_by(*mapper.primary_key)\
+            .with_lockmode('update')\
+            .all()
+
+
+Session = sessionmaker(bind=engine, autocommit=False, query_cls=Query)
 
 
 def get_or_create(db, table, **cond):

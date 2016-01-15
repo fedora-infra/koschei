@@ -82,6 +82,11 @@ if pkgdb_config['enabled']:
                              .filter(Package.name.in_(names)).all()
                 entries = [{'user_id': user.id,
                             'package_id': pkg.id} for pkg in packages]
+                # postgres locks package rows due to FK
+                # try to lock them in consistent order
+                db.query(Package)\
+                    .filter(Package.id.in_(pkg.id for pkg in packages))\
+                    .lock_rows()
                 db.execute(delete(UserPackageRelation,
                                   UserPackageRelation.user_id == user.id))
                 db.execute(insert(UserPackageRelation,

@@ -21,7 +21,7 @@ from flask_sqlalchemy import BaseQuery, Pagination
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 from koschei.util import config
-from koschei.models import engine
+from koschei.models import engine, Query
 
 dirs = config['directories']
 app = Flask('koschei', template_folder=dirs['templates'],
@@ -32,27 +32,26 @@ app.config.update(config['flask'])
 frontend_config = config['frontend']
 
 
-def paginate(self, items_per_page):
-    try:
-        page = int(request.args.get('page', 1))
-    except ValueError:
-        abort(400)
-    if page < 1:
-        abort(404)
-    items = self.limit(items_per_page)\
-                .offset((page - 1) * items_per_page).all()
-    if not items and page != 1:
-        abort(404)
-    if page == 1 and len(items) < items_per_page:
-        total = len(items)
-    else:
-        total = self.order_by(None).count()
-    return Pagination(self, page, items_per_page, total, items)
-
-BaseQuery.paginate = paginate
+class FrontendQuery(Query, BaseQuery):
+    def paginate(self, items_per_page):
+        try:
+            page = int(request.args.get('page', 1))
+        except ValueError:
+            abort(400)
+        if page < 1:
+            abort(404)
+        items = self.limit(items_per_page)\
+                    .offset((page - 1) * items_per_page).all()
+        if not items and page != 1:
+            abort(404)
+        if page == 1 and len(items) < items_per_page:
+            total = len(items)
+        else:
+            total = self.order_by(None).count()
+        return Pagination(self, page, items_per_page, total, items)
 
 db = scoped_session(sessionmaker(autocommit=False, bind=engine,
-                                 query_cls=BaseQuery))
+                                 query_cls=FrontendQuery))
 
 # Following will make pylint shut up about missing query method
 if False:
