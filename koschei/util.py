@@ -72,9 +72,6 @@ logging.config.dictConfig(config['logging'])
 log = logging.getLogger('koschei.util')
 
 koji_config = config['koji_config']
-server = koji_config['server']
-cert = os.path.expanduser(koji_config['cert'])
-ca_cert = os.path.expanduser(koji_config['ca'])
 base_build_opts = koji_config.get('build_opts', {})
 pathinfo = koji.PathInfo(topdir=koji_config['topurl'])
 rel_pathinfo = koji.PathInfo(topdir='..')
@@ -96,9 +93,10 @@ class KojiSession(object):
         self.__proxied = self.__new_session()
 
     def __new_session(self):
+        server = koji_config['server']
         session = koji.ClientSession(server, {'timeout': 3600})
         if not self.__anonymous:
-            session.ssl_login(cert, ca_cert, ca_cert)
+            getattr(session, koji_config['login_method'])(**koji_config['login_args'])
         return session
 
     def __retry_loop(self, method):
