@@ -283,15 +283,16 @@ class Backend(object):
 
     def sync_tracked(self, tracked):
         """
-        Synchronize package tracked status.  End result is that all
+        Synchronize package tracked status. End result is that all
         specified packages are present in Koschei and are set to be
         tracked, and all other packages are not tracked.
         """
         packages = self.db.query(Package).all()
         to_update = [p.id for p in packages if p.tracked != (p.name in tracked)]
         if to_update:
-            self.db.query(Package).filter(Package.id.in_(to_update))\
-                   .update({'tracked': ~Package.tracked}, synchronize_session=False)
+            query = self.db.query(Package).filter(Package.id.in_(to_update))
+            query.lock_rows()
+            query.update({'tracked': ~Package.tracked}, synchronize_session=False)
             self.db.expire_all()
             self.db.flush()
 
