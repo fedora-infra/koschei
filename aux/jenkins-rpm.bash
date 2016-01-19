@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 VERSION="$(python setup.py -V)"
 git archive HEAD --prefix="koschei-$VERSION/"| gzip >"koschei-${VERSION}".tar.gz
 mkdir -p build rpms
