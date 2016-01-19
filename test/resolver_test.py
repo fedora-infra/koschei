@@ -132,6 +132,7 @@ class ResolverTest(DBTest):
         self.assertEquals(0, self.s.query(AppliedChange).count())
         self.assertTrue(foo_build.deps_processed)
 
+    @postgres_only
     def test_resolution_fail(self):
         self.prepare_packages(['bar'])
         b = self.prepare_builds(bar=True, repo_id=None)[0]
