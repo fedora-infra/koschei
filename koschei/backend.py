@@ -242,7 +242,6 @@ class Backend(object):
         if to_update:
             self.db.query(Package).filter(Package.id.in_(to_update))\
                    .update({'blocked': ~Package.blocked}, synchronize_session=False)
-            self.db.expire_all()
             self.db.flush()
         existing_names = {p.name for p in packages}
         to_add = [p for p in koji_packages if p['package_name'] not in existing_names]
@@ -253,6 +252,7 @@ class Backend(object):
                 pkg.tracked = False
                 self.db.add(pkg)
             self.db.flush()
+        self.db.expire_all()
 
     def refresh_latest_builds(self):
         """
