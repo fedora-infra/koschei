@@ -89,10 +89,10 @@ dep_config = config['dependency']
 
 
 class KojiSession(object):
-    def __init__(self, primary=True, anonymous=True):
+    def __init__(self, koji_config=primary_koji_config, anonymous=True):
         self.__mcall_list = []
         self.__anonymous = anonymous
-        self.__config = primary_koji_config if primary else secondary_koji_config
+        self.__config = koji_config
         self.__proxied = self.__new_session()
 
     def __new_session(self):

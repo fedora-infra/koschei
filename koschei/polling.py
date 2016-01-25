@@ -30,7 +30,8 @@ class Polling(KojiService):
     def __init__(self, backend=None, *args, **kwargs):
         super(Polling, self).__init__(*args, **kwargs)
         self.backend = backend or Backend(log=self.log, db=self.db,
-                                          koji_session=self.koji_session)
+                                          koji_session=self.koji_session,
+                                          secondary_koji=self.secondary_koji)
 
     def poll_builds(self):
         self.log.debug('Polling running Koji tasks...')

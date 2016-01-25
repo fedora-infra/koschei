@@ -28,7 +28,7 @@ from sqlalchemy.engine.url import URL
 from sqlalchemy.event import listen
 from datetime import datetime
 
-from .util import config
+from .util import config, primary_koji_config, secondary_koji_config
 
 Base = declarative_base()
 
@@ -185,6 +185,20 @@ class KojiTask(Base):
         return [state for state, num in koji.TASK_STATES.items()
                 if num == self.state][0].lower()
 
+    @property
+    def _koji_config(self):
+        # pylint:disable=no-member
+        return secondary_koji_config if self.build.real else primary_koji_config
+
+    @property
+    def results_url(self):
+        pathinfo = koji.PathInfo(topdir=self._koji_config['topurl'])
+        return pathinfo.task(self.task_id)
+
+    @property
+    def taskinfo_url(self):
+        return '{}/taskinfo?taskID={}'.format(self._koji_config['weburl'], self.task_id)
+
 
 class PackageGroupRelation(Base):
     __tablename__ = 'package_group_relation'
@@ -281,10 +295,16 @@ class Build(Base):
 
     @property
     def srpm_nvra(self):
+        # pylint:disable=no-member
         return dict(name=self.package.name,
                     version=self.version,
                     release=self.release,
                     arch='src')
+
+    @property
+    def taskinfo_url(self):
+        koji_config = secondary_koji_config if self.real else primary_koji_config
+        return '{}/taskinfo?taskID={}'.format(koji_config['weburl'], self.task_id)
 
     def __repr__(self):
         # pylint: disable=W1306

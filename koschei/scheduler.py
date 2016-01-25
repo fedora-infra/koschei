@@ -49,7 +49,8 @@ class Scheduler(KojiService):
         super(Scheduler, self).__init__(*args, **kwargs)
         self.backend = backend or Backend(log=self.log,
                                           db=self.db,
-                                          koji_session=self.koji_session)
+                                          koji_session=self.koji_session,
+                                          secondary_koji=self.secondary_koji)
         self.calculation_timestamp = 0
 
     def get_dependency_priority_query(self):

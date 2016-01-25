@@ -40,7 +40,8 @@ class Watcher(KojiService):
         super(Watcher, self).__init__(*args, **kwargs)
         self.backend = backend or Backend(log=self.log,
                                           db=self.db,
-                                          koji_session=self.koji_session)
+                                          koji_session=self.koji_session,
+                                          secondary_koji=self.secondary_koji)
 
     def get_topic(self, name):
         return '{}.{}'.format(self.topic_name, name)

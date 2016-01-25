@@ -33,8 +33,6 @@ from koschei.repo_cache import RepoCache
 from koschei.backend import check_package_state
 
 
-
-
 total_time = Stopwatch("Total repo generation")
 resolution_time = Stopwatch("Dependency resolution", total_time)
 resolve_dependencies_time = Stopwatch("resolve_dependencies", resolution_time)
@@ -42,10 +40,11 @@ create_dependency_changes_time = Stopwatch("create_dependency_changes", resoluti
 
 
 class AbstractResolverTask(object):
-    def __init__(self, log, db, koji_session, repo_cache):
+    def __init__(self, log, db, koji_session, secondary_koji, repo_cache):
         self.log = log
         self.db = db
         self.koji_session = koji_session
+        self.secondary_koji = secondary_koji
         self.repo_cache = repo_cache
         # TODO repo_id
         self.group = util.get_build_group(koji_session)
@@ -260,7 +259,7 @@ class GenerateRepoTask(AbstractResolverTask):
             return
         packages = self.get_packages(require_build=True)
         repo = Repo(repo_id=repo_id)
-        brs = util.get_rpm_requires(self.koji_session,
+        brs = util.get_rpm_requires(self.secondary_koji,
                                     [p.srpm_nvra for p in packages])
         brs = util.parallel_generator(brs, queue_size=None)
         try:
@@ -341,7 +340,7 @@ class ProcessBuildsTask(AbstractResolverTask):
             if repo_id not in dead_repos:
                 with self.repo_cache.get_sack(repo_id) as sack:
                     if sack:
-                        brs = util.get_rpm_requires(self.koji_session,
+                        brs = util.get_rpm_requires(self.secondary_koji,
                                                     [b.srpm_nvra for b in builds])
                         if len(builds) > 100:
                             brs = util.parallel_generator(brs, queue_size=None)
@@ -367,13 +366,15 @@ class ProcessBuildsTask(AbstractResolverTask):
 class Resolver(KojiService):
 
     def __init__(self, log=None, db=None, koji_session=None,
-                 repo_cache=None):
+                 secondary_koji=None, repo_cache=None):
         super(Resolver, self).__init__(log=log, db=db,
-                                       koji_session=koji_session)
+                                       koji_session=koji_session,
+                                       secondary_koji=secondary_koji)
         self.repo_cache = repo_cache or RepoCache()
 
     def create_task(self, cls):
         return cls(log=self.log, db=self.db, koji_session=self.koji_session,
+                   secondary_koji=self.secondary_koji,
                    repo_cache=self.repo_cache)
 
     def process_repo_generation_requests(self):

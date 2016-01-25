@@ -48,8 +48,11 @@ def main():
     kwargs = vars(args)
     del kwargs['cmd']
     if cmd.needs_backend:
+        koji_session = util.KojiSession(anonymous=True)
+        secondary_koji = util.KojiSession(anonymous=True,
+                                          koji_config=util.secondary_koji_config)
         backend = Backend(db=Session(), log=logging.getLogger(),
-                          koji_session=util.KojiSession(anonymous=True))
+                          koji_session=koji_session, secondary_koji=secondary_koji)
         kwargs['backend'] = backend
     cmd.execute(**kwargs)
     if cmd.needs_backend:
