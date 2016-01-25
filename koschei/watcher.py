@@ -29,9 +29,11 @@ from .models import Build, Package
 class Watcher(KojiService):
 
     topic_name = util.config['fedmsg']['topic']
-    build_tag = util.koji_config['build_tag']
+    # TODO
+    build_tag = util.primary_koji_config['build_tag']
     instance = util.config['fedmsg']['instance']
-    target_tag = util.koji_config['target_tag']
+    # TODO
+    target_tag = util.primary_koji_config['target_tag']
     watchdog = util.config['services']['watcher']['watchdog']
 
     def __init__(self, backend=None, *args, **kwargs):

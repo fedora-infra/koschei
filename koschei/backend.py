@@ -234,7 +234,8 @@ class Backend(object):
         Refresh packages from Koji: add packages not yet known by Koschei
         and update blocked flag.
         """
-        source_tag = util.koji_config['source_tag']
+        # TODO
+        source_tag = util.secondary_koji_config['source_tag']
         koji_packages = self.koji_session.listPackages(tagID=source_tag, inherited=True)
         whitelisted = {p['package_name'] for p in koji_packages if not p['blocked']}
         packages = self.db.query(Package).all()
@@ -262,7 +263,7 @@ class Backend(object):
         packages = self.db.query(Package).options(joinedload(Package.last_build)).all()
         for p in packages:
             self.db.expunge(p)
-        source_tag = util.koji_config['source_tag']
+        source_tag = util.secondary_koji_config['source_tag']
         infos = self.koji_session.listTagged(source_tag, latest=True, inherit=True)
         packages = {p.name: p for p in packages}
         self.register_real_builds({packages[i['package_name']]: i for i in infos})

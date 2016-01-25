@@ -4,7 +4,12 @@ config = {
     "database_config": {
         "drivername": "postgres",
     },
+    # koschei can use separate koji instances for different tasks:
+    # - primary - for building packages (and getting results), downloading
+    #   repos and getting build group
+    # - secondary - for getting real builds
     "koji_config": {
+        # primary instance
         "server": "http://koji.fedoraproject.org/kojihub",
         "topurl": "http://kojipkgs.fedoraproject.org",
         "weburl": "http://koji.fedoraproject.org/koji",
@@ -25,6 +30,11 @@ config = {
         "task_priority": 30,
         "multicall_chunk_size": 100,
     },
+    "secondary_koji_config": {
+        # secondary instance
+        # inherits configuration from primary
+    },
+
     "dependency": {
         "build_group": "build",
         "for_arch": "x86_64",

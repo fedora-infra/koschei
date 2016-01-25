@@ -41,8 +41,8 @@ class Scheduler(KojiService):
     priority_conf = util.config['priorities']
     priority_threshold = priority_conf['build_threshold']
     failed_priority = priority_conf['failed_build_priority']
-    max_builds = util.config['koji_config']['max_builds']
-    load_threshold = util.config['koji_config']['load_threshold']
+    max_builds = util.primary_koji_config['max_builds']
+    load_threshold = util.primary_koji_config['load_threshold']
     calculation_interval = util.config['priorities']['calculation_interval']
 
     def __init__(self, backend=None, *args, **kwargs):
