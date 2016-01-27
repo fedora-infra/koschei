@@ -76,7 +76,6 @@ secondary_koji_config = dict(primary_koji_config)
 secondary_koji_config.update(config['secondary_koji_config'])
 # TODO collections
 base_build_opts = primary_koji_config.get('build_opts', {})
-rel_pathinfo = koji.PathInfo(topdir='..')
 source_tag = primary_koji_config['source_tag']
 target_tag = primary_koji_config['target_tag']
 
@@ -204,6 +203,7 @@ def prepare_build_opts(opts=None):
 
 
 def get_last_srpm(koji_session, name):
+    rel_pathinfo = koji.PathInfo(topdir=primary_koji_config['srpm_relative_path_root'])
     info = koji_session.listTagged(source_tag, latest=True,
                                    package=name, inherit=True)
     if info:

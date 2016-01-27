@@ -14,6 +14,7 @@ config = {
         "server": "http://koji.fedoraproject.org/kojihub",
         "topurl": "http://kojipkgs.fedoraproject.org",
         "weburl": "http://koji.fedoraproject.org/koji",
+        "srpm_relative_path_root": "..",
         "login_method": "ssl_login",
         "login_args": {
             "cert": "/etc/koschei/fedora.cert",
