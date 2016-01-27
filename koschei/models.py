@@ -114,7 +114,11 @@ class Package(Base):
     last_complete_build_state = Column(Integer)
     last_build_id = \
         Column(Integer, ForeignKey('build.id', use_alter=True,
-                                   name='fkey_package_last_build_id'),
+                                   name='fkey_package_last_build_id',
+                                   # it's first updated by trigger, this is
+                                   # fallback, when there's nothing to update
+                                   # it to
+                                   ondelete='SET NULL'),
                nullable=True)
     resolved = Column(Boolean)
 
