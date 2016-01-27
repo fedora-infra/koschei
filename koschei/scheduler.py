@@ -140,27 +140,40 @@ class Scheduler(KojiService):
 
     def main(self):
         if is_buildroot_broken(self.db):
+            self.log.debug("Not scheduling: buildroot broken")
             return
         prioritized = self.get_priorities()
         self.db.rollback()  # no-op, ends the transaction
         if time.time() - self.calculation_timestamp > self.calculation_interval:
             self.persist_priorities(prioritized)
-        if (self.get_incomplete_builds_query().count() >= self.max_builds or
-                util.get_koji_load(self.koji_session) > self.load_threshold):
+        incomplete_builds = self.get_incomplete_builds_query().count()
+        if incomplete_builds >= self.max_builds:
+            self.log.debug("Not scheduling: {} incomplete builds"
+                           .format(incomplete_builds))
+            return
+        koji_load = util.get_koji_load(self.koji_session)
+        if koji_load > self.load_threshold:
+            self.log.debug("Not scheduling: {} koji load"
+                           .format(koji_load))
             return
 
         repo_id = util.get_latest_repo(self.koji_session).get('id')
 
         for package_id, priority in prioritized:
             if priority < self.priority_threshold:
+                self.log.debug("Not scheduling: no package above threshold")
                 return
             package = self.db.query(Package).get(package_id)
             newer_build = self.backend.get_newer_build_if_exists(package)
             if newer_build:
                 self.backend.register_real_build(package, newer_build)
                 self.db.commit()
+                self.log.debug("Skipping {} due to real build"
+                               .format(package))
                 continue
             if repo_id and package.last_complete_build.repo_id >= repo_id:
+                self.log.debug("Skipping {} due to repo_id"
+                               .format(package))
                 continue
 
             # a package was chosen
@@ -170,5 +183,6 @@ class Scheduler(KojiService):
             if not build:
                 self.log.debug("No SRPM found for {}".format(package.name))
                 continue
+
             self.db.commit()
             break
