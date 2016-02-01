@@ -176,9 +176,10 @@ class UserPackageRelation(Base):
 class KojiTask(Base):
     __tablename__ = 'koji_task'
 
+    id = Column(Integer, primary_key=True)
     build_id = Column(ForeignKey('build.id', ondelete='CASCADE'),
                       nullable=False, index=True)
-    task_id = Column(Integer, primary_key=True, default=external_id)
+    task_id = Column(Integer, nullable=False)
     arch = Column(String(16))
     state = Column(Integer)
     started = Column(DateTime)
