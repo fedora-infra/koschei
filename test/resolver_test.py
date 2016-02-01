@@ -68,11 +68,18 @@ class ResolverTest(DBTest):
         shutil.copytree(os.path.join(testdir, 'test_repo'), 'repo')
         self.repo_mock = Mock()
         self.repo_mock.get_sack.return_value = get_sack('x86_64')
+        self.sec_repo_mock = Mock()
+        self.sec_repo_mock.get_sack.return_value = get_sack('x86_64')
         self.koji_mock = KojiMock()
         self.koji_mock.repoInfo.return_value = {'id': 123, 'tag_name': 'f24-build',
                                                 'state': koji.REPO_STATES['READY']}
+        self.sec_koji_mock = KojiMock()
+        self.sec_koji_mock.repoInfo.return_value = {'id': 123, 'tag_name': 'f24-build',
+                                                    'state': koji.REPO_STATES['READY']}
         self.resolver = Resolver(db=self.s, koji_session=self.koji_mock,
-                                 repo_cache=self.repo_mock)
+                                 secondary_koji=self.sec_koji_mock,
+                                 repo_cache=self.repo_mock,
+                                 sec_repo_cache=self.sec_repo_mock)
 
     def prepare_foo_build(self, repo_id=666, version='4'):
         self.prepare_packages(['foo'])
