@@ -134,7 +134,8 @@ class AbstractResolverTask(object):
             koji_session = self.secondary_koji if secondary else self.koji_session
             repo_cache = self.sec_repo_cache if secondary else self.repo_cache
             repo_info = koji_session.repoInfo(repo_id)
-            if repo_info['state'] == koji.REPO_STATES['READY']:
+            if repo_info['state'] in (koji.REPO_STATES['READY'],
+                                      koji.REPO_STATES['EXPIRED']):
                 repo_cache.prefetch_repo(repo_info['id'], repo_info['tag_name'])
             else:
                 dead_repos.add((secondary, repo_id))
