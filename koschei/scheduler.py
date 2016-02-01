@@ -172,6 +172,7 @@ class Scheduler(KojiService):
                                .format(package))
                 continue
             if (repo_id and package.last_complete_build and
+                    not package.last_complete_build.real and
                     package.last_complete_build.repo_id >= repo_id):
                 self.log.debug("Skipping {} due to repo_id"
                                .format(package))
