@@ -49,11 +49,11 @@ class AbstractResolverTask(object):
         # TODO repo_id
         self.group = util.get_build_group(koji_session)
 
-    def store_deps(self, repo_id, package_id, installs):
+    def store_deps(self, build_id, installs):
         new_deps = []
         for install in installs or []:
             if install.arch != 'src':
-                dep = Dependency(repo_id=repo_id, package_id=package_id,
+                dep = Dependency(build_id=build_id,
                                  name=install.name, epoch=install.epoch,
                                  version=install.version,
                                  release=install.release,
@@ -82,12 +82,6 @@ class AbstractResolverTask(object):
             util.compute_dependency_distances(sack, br, deps)
         resolve_dependencies_time.stop()
         return (resolved, problems, deps)
-
-    def get_deps_from_db(self, package_id, repo_id):
-        deps = self.db.query(Dependency)\
-                      .filter_by(repo_id=repo_id,
-                                 package_id=package_id)
-        return deps.all()
 
     def create_dependency_changes(self, deps1, deps2, **rest):
         if not deps1 or not deps2:
@@ -235,8 +229,7 @@ class GenerateRepoTask(AbstractResolverTask):
             if curr_deps is not None:
                 last_build = self.get_build_for_comparison(package)
                 if last_build:
-                    prev_deps = self.get_deps_from_db(last_build.package_id,
-                                                      last_build.repo_id)
+                    prev_deps = last_build.dependencies
                     if prev_deps is not None:
                         create_dependency_changes_time.start()
                         changes += self.create_dependency_changes(
@@ -296,32 +289,29 @@ class ProcessBuildsTask(AbstractResolverTask):
     def process_build(self, sack, build, curr_deps):
         self.log.info("Processing build {}".format(build.id))
         prev = self.get_prev_build_for_comparison(build)
-        self.store_deps(build.repo_id, build.package_id, curr_deps)
+        self.store_deps(build.id, curr_deps)
         if curr_deps is not None:
             build.deps_resolved = True
         if not build.deps_resolved and build is build.package.last_build:
             failed_prio = 3 * util.config['priorities']['failed_build_priority']
             build.package.manual_priority += failed_prio
+        if not build.deps_resolved:
+            return
         if prev:
-            prev_deps = self.get_deps_from_db(prev.package_id,
-                                              prev.repo_id)
+            prev_deps = prev.dependencies
             if prev_deps and curr_deps:
                 changes = self.create_dependency_changes(prev_deps, curr_deps,
                                                          build_id=build.id,
                                                          prev_build_id=prev.id)
                 if changes:
                     self.db.execute(AppliedChange.__table__.insert(), changes)
-            keep_builds = util.config['dependency']['keep_build_deps_for']
-            boundary_build = self.db.query(Build)\
-                                 .filter_by(package_id=build.package_id)\
-                                 .order_by(Build.id.desc())\
-                                 .offset(keep_builds).first()
-            if boundary_build and boundary_build.repo_id:
-                self.db.query(Dependency)\
-                       .filter_by(package_id=build.package_id)\
-                       .filter(Dependency.repo_id <
-                               boundary_build.repo_id)\
-                       .delete(synchronize_session=False)
+        old_builds = self.db.query(Build.id)\
+            .filter_by(package_id=build.package_id)\
+            .order_by(Build.id.desc())\
+            .offset(1).subquery()
+        self.db.query(Dependency)\
+               .filter(Dependency.build_id.in_(old_builds))\
+               .delete(synchronize_session=False)
 
     def run(self):
         # pylint: disable=E1101

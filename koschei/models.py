@@ -289,6 +289,9 @@ class Build(Base):
     # was the build done by koschei or was it real build done by packager
     real = Column(Boolean, nullable=False, server_default=false())
 
+    dependencies = relationship('Dependency', backref='build',
+                                passive_deletes=True)
+
     @property
     def state_string(self):
         return self.REV_STATE_MAP[self.state]
@@ -336,8 +339,8 @@ class RepoGenerationRequest(Base):
 class Dependency(Base):
     __tablename__ = 'dependency'
     id = Column(Integer, primary_key=True)
-    repo_id = Column(Integer, nullable=False)
-    package_id = Column(ForeignKey('package.id', ondelete='CASCADE'))
+    build_id = Column(ForeignKey('build.id', ondelete='CASCADE'), index=True,
+                      nullable=False)
     name = Column(String, nullable=False)
     epoch = Column(Integer)
     version = Column(String, nullable=False)
@@ -349,7 +352,6 @@ class Dependency(Base):
     nevra = (name, epoch, version, release, arch)
 
 
-Index('ix_dependency_composite', Dependency.package_id, Dependency.repo_id)
 Index('ix_build_composite', Build.package_id, Build.id.desc())
 Index('ix_package_group_name', PackageGroup.namespace, PackageGroup.name,
       unique=True)

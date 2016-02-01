@@ -40,7 +40,6 @@ config = {
     "dependency": {
         "build_group": "build",
         "for_arch": "x86_64",
-        "keep_build_deps_for": 5,
         "arches": ['x86_64', 'i386'],
         "remote_repo": "http://kojipkgs.fedoraproject.org/repos/{build_tag}/{repo_id}/{arch}",
         "ignore_weak_deps": False,

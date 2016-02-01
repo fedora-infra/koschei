@@ -108,8 +108,8 @@ class ResolverTest(DBTest):
             with patch('koschei.util.get_rpm_requires', return_value=[['F', 'A']]):
                 self.resolver.create_task(ProcessBuildsTask).run()
         self.repo_mock.get_sack.assert_called_once_with(666)
-        expected_deps = [tuple([package_id, 666] + list(nevr)) for nevr in FOO_DEPS]
-        actual_deps = self.s.query(Dependency.package_id, Dependency.repo_id,
+        expected_deps = [tuple([foo_build.id] + list(nevr)) for nevr in FOO_DEPS]
+        actual_deps = self.s.query(Dependency.build_id,
                                    Dependency.name, Dependency.epoch,
                                    Dependency.version, Dependency.release,
                                    Dependency.arch).all()
@@ -157,7 +157,7 @@ class ResolverTest(DBTest):
         del old_deps[4] # E
         package_id = old_build.package_id
         for n, e, v, r, a in old_deps:
-            self.s.add(Dependency(package_id=package_id, repo_id=555, arch=a,
+            self.s.add(Dependency(build_id=old_build.id, arch=a,
                                   name=n, epoch=e, version=v, release=r))
         self.s.commit()
         return old_build
