@@ -49,7 +49,7 @@ class Backend(object):
     def __init__(self, log, db, koji_session, secondary_koji):
         self.log = log
         self.db = db
-        self.koji_session = koji_session
+        self.primary_koji = koji_session
         self.secondary_koji = secondary_koji
 
     def submit_build(self, package):
@@ -64,7 +64,7 @@ class Backend(object):
                           (None, None))
         if srpm_url:
             package.manual_priority = 0
-            build.task_id = util.koji_scratch_build(self.koji_session, name,
+            build.task_id = util.koji_scratch_build(self.primary_koji, name,
                                                     srpm_url, build_opts)
             build.started = datetime.now()
             build.epoch = srpm['epoch']
@@ -81,7 +81,7 @@ class Backend(object):
                .delete(synchronize_session=False)
 
     def get_newer_build_if_exists(self, package):
-        [info] = self.koji_session.listTagged(util.source_tag,
+        [info] = self.primary_koji.listTagged(util.source_tag,
                                               latest=True,
                                               package=package.name,
                                               inherit=True) or [None]
@@ -154,7 +154,7 @@ class Backend(object):
             self.log.info('Setting build {build} state to {state}'
                           .format(build=build,
                                   state=Build.REV_STATE_MAP[state]))
-            self.sync_tasks(build, self.koji_session, complete=True)
+            self.sync_tasks(build, self.primary_koji, complete=True)
             if build.repo_id is None:
                 # Koji problem, no need to bother packagers with this
                 self.log.info('Deleting build {0} because it has no repo_id'
@@ -173,7 +173,7 @@ class Backend(object):
                                prev_state=prev_state,
                                new_state=new_state)
         else:
-            self.sync_tasks(build, self.koji_session)
+            self.sync_tasks(build, self.primary_koji)
             self.db.commit()
 
     def sync_tasks(self, build, koji_session, complete=False):
@@ -301,7 +301,7 @@ class Backend(object):
             self.db.flush()
 
     def poll_repo(self):
-        curr_repo = util.get_latest_repo(self.koji_session)
+        curr_repo = util.get_latest_repo(self.primary_koji)
         if curr_repo:
             if not self.db.query(exists()
                                  .where(RepoGenerationRequest.repo_id ==

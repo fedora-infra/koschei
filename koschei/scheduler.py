@@ -49,7 +49,7 @@ class Scheduler(KojiService):
         super(Scheduler, self).__init__(*args, **kwargs)
         self.backend = backend or Backend(log=self.log,
                                           db=self.db,
-                                          koji_session=self.koji_session,
+                                          koji_session=self.primary_koji,
                                           secondary_koji=self.secondary_koji)
         self.calculation_timestamp = 0
 
@@ -151,7 +151,7 @@ class Scheduler(KojiService):
             self.log.debug("Not scheduling: {} incomplete builds"
                            .format(incomplete_builds))
             return
-        koji_load = util.get_koji_load(self.koji_session)
+        koji_load = util.get_koji_load(self.primary_koji)
         if koji_load > self.load_threshold:
             self.log.debug("Not scheduling: {} koji load"
                            .format(koji_load))

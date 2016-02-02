@@ -44,7 +44,7 @@ class AbstractResolverTask(object):
     def __init__(self, log, db, koji_session, secondary_koji, repo_cache, sec_repo_cache):
         self.log = log
         self.db = db
-        self.koji_session = koji_session
+        self.primary_koji = koji_session
         self.secondary_koji = secondary_koji
         self.repo_cache = repo_cache
         # TODO repo_id
@@ -127,12 +127,12 @@ class AbstractResolverTask(object):
 
     def prefetch_repos(self, repo_tuples):
         dead_repos = set()
-        # for repo_info in util.itercall(self.koji_session, repo_ids,
+        # for repo_info in util.itercall(self.primary_koji, repo_ids,
         #                                lambda k, repo_id: k.repoInfo(repo_id)):
 
         # FIXME
         for secondary, repo_id in repo_tuples:
-            koji_session = self.secondary_koji if secondary else self.koji_session
+            koji_session = self.secondary_koji if secondary else self.primary_koji
             repo_cache = self.sec_repo_cache if secondary else self.repo_cache
             repo_info = koji_session.repoInfo(repo_id)
             if repo_info['state'] in (koji.REPO_STATES['READY'],
@@ -341,7 +341,7 @@ class ProcessBuildsTask(AbstractResolverTask):
                 with cache.get_sack(repo_id) as sack:
                     if sack:
                         brs = util.get_rpm_requires(self.secondary_koji if real
-                                                    else self.koji_session,
+                                                    else self.primary_koji,
                                                     [b.srpm_nvra for b in builds])
                         if len(builds) > 100:
                             brs = util.parallel_generator(brs, queue_size=None)
@@ -379,7 +379,7 @@ class Resolver(KojiService):
                                          remote_repo=util.config['dependency']['secondary_remote_repo']))
 
     def create_task(self, cls):
-        return cls(log=self.log, db=self.db, koji_session=self.koji_session,
+        return cls(log=self.log, db=self.db, koji_session=self.primary_koji,
                    secondary_koji=self.secondary_koji,
                    repo_cache=self.repo_cache,
                    sec_repo_cache=self.sec_repo_cache)
