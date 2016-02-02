@@ -149,7 +149,8 @@ class SackManager(object):
 
 class RepoCache(object):
     def __init__(self,
-                 repo_dir=util.config['directories']['repodata'],
+                 repo_dir=os.path.join(util.config['directories']['cachedir'],
+                                       'repodata'),
                  remote_repo=util.config['dependency']['remote_repo'],
                  arches=util.config['dependency']['arches'],
                  for_arch=util.config['dependency']['for_arch'],

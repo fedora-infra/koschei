@@ -81,9 +81,6 @@ target_tag = primary_koji_config['target_tag']
 
 git_reference = config.get('git_reference', 'origin/master')
 
-
-repodata_dir = config['directories']['repodata']
-
 dep_config = config['dependency']
 
 

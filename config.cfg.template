@@ -106,9 +106,7 @@ config = {
         "sync_tracked": False,
     },
     "directories": {
-        "repodata": "@CACHEDIR@/repodata",
-        # FIXME
-        "secondary_repodata": "@CACHEDIR@/secondary_repodata",
+        "cachedir": "@CACHEDIR@",
         "templates": "@DATADIR@/templates",
         "static_folder": "@DATADIR@/static",
         "static_url": "/static",

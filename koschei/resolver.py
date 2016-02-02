@@ -19,6 +19,7 @@
 
 import itertools
 import koji
+import os
 
 from sqlalchemy.orm import joinedload
 
@@ -372,8 +373,10 @@ class Resolver(KojiService):
                                        secondary_koji=secondary_koji)
         self.repo_cache = repo_cache or RepoCache()
         # FIXME
-        self.sec_repo_cache = sec_repo_cache or RepoCache(repo_dir=util.config['directories']['secondary_repodata'],
-                                                          remote_repo=util.config['dependency']['secondary_remote_repo'])
+        self.sec_repo_cache = (sec_repo_cache or
+                               RepoCache(repo_dir=os.path.join(util.config['directories']['cachedir'],
+                                                               'secondary_repodata'),
+                                         remote_repo=util.config['dependency']['secondary_remote_repo']))
 
     def create_task(self, cls):
         return cls(log=self.log, db=self.db, koji_session=self.koji_session,
