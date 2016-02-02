@@ -157,8 +157,6 @@ class Scheduler(KojiService):
                            .format(koji_load))
             return
 
-        repo_id = util.get_latest_repo(self.koji_session).get('id')
-
         for package_id, priority in prioritized:
             if priority < self.priority_threshold:
                 self.log.debug("Not scheduling: no package above threshold")
@@ -169,12 +167,6 @@ class Scheduler(KojiService):
                 self.backend.register_real_build(package, newer_build)
                 self.db.commit()
                 self.log.debug("Skipping {} due to real build"
-                               .format(package))
-                continue
-            if (repo_id and package.last_complete_build and
-                    not package.last_complete_build.real and
-                    package.last_complete_build.repo_id >= repo_id):
-                self.log.debug("Skipping {} due to repo_id"
                                .format(package))
                 continue
 
