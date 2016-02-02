@@ -340,8 +340,7 @@ class ProcessBuildsTask(AbstractResolverTask):
                 cache = self.sec_repo_cache if real else self.repo_cache
                 with cache.get_sack(repo_id) as sack:
                     if sack:
-                        brs = util.get_rpm_requires(self.secondary_koji if real
-                                                    else self.primary_koji,
+                        brs = util.get_rpm_requires(self.secondary_koji,
                                                     [b.srpm_nvra for b in builds])
                         if len(builds) > 100:
                             brs = util.parallel_generator(brs, queue_size=None)
