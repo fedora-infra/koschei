@@ -33,7 +33,8 @@ elif False:
 else:
     # Discard debug information
     class _BitBucketLogger(object):
-        def debug(self, msg): pass
+        def debug(self, msg):
+            pass
     _log = _BitBucketLogger()
 
 
@@ -61,7 +62,9 @@ class _CacheItem(object):
         self._work = False
 
     def _prepare(self):
-        self._value = self._bank._factory.create(self._key, self._next._value if self._next else self._next_value)
+        self._value = self._bank._factory.create(self._key, self._next._value
+                                                 if self._next else
+                                                 self._next_value)
 
     def _release(self):
         self._bank._factory.destroy(self._key, self._value)

@@ -74,6 +74,10 @@ log = logging.getLogger('koschei.util')
 primary_koji_config = config['koji_config']
 secondary_koji_config = dict(primary_koji_config)
 secondary_koji_config.update(config['secondary_koji_config'])
+koji_configs = {
+    'primary': primary_koji_config,
+    'secondary': secondary_koji_config,
+}
 # TODO collections
 base_build_opts = primary_koji_config.get('build_opts', {})
 source_tag = primary_koji_config['source_tag']

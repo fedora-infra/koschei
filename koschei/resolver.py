@@ -30,7 +30,7 @@ from koschei.models import (Package, Dependency, UnappliedChange,
 from koschei import util
 from koschei.util import Stopwatch
 from koschei.service import KojiService
-from koschei.repo_cache import RepoCache
+from koschei.repo_cache import RepoCache, RepoDescriptor
 from koschei.backend import check_package_state
 
 
@@ -41,7 +41,7 @@ create_dependency_changes_time = Stopwatch("create_dependency_changes", resoluti
 
 
 class AbstractResolverTask(object):
-    def __init__(self, log, db, koji_session, secondary_koji, repo_cache, sec_repo_cache):
+    def __init__(self, log, db, koji_session, secondary_koji, repo_cache):
         self.log = log
         self.db = db
         self.primary_koji = koji_session
@@ -49,8 +49,6 @@ class AbstractResolverTask(object):
         self.repo_cache = repo_cache
         # TODO repo_id
         self.group = util.get_build_group(koji_session)
-        # FIXME
-        self.sec_repo_cache = sec_repo_cache
 
     def store_deps(self, build_id, installs):
         new_deps = []
@@ -133,11 +131,12 @@ class AbstractResolverTask(object):
         # FIXME
         for secondary, repo_id in repo_tuples:
             koji_session = self.secondary_koji if secondary else self.primary_koji
-            repo_cache = self.sec_repo_cache if secondary else self.repo_cache
             repo_info = koji_session.repoInfo(repo_id)
             if repo_info['state'] in (koji.REPO_STATES['READY'],
                                       koji.REPO_STATES['EXPIRED']):
-                repo_cache.prefetch_repo(repo_info['id'], repo_info['tag_name'])
+                desc = RepoDescriptor('secondary' if secondary else 'primary',
+                                      repo_info['tag_name'], repo_info['id'])
+                self.repo_cache.prefetch_repo(desc)
             else:
                 dead_repos.add((secondary, repo_id))
                 self.log.debug('Repo {} is dead, skipping'.format(repo_id))
@@ -371,17 +370,11 @@ class Resolver(KojiService):
                                        koji_session=koji_session,
                                        secondary_koji=secondary_koji)
         self.repo_cache = repo_cache or RepoCache()
-        # FIXME
-        self.sec_repo_cache = (sec_repo_cache or
-                               RepoCache(repo_dir=os.path.join(util.config['directories']['cachedir'],
-                                                               'secondary_repodata'),
-                                         remote_repo=util.config['dependency']['secondary_remote_repo']))
 
     def create_task(self, cls):
         return cls(log=self.log, db=self.db, koji_session=self.primary_koji,
                    secondary_koji=self.secondary_koji,
-                   repo_cache=self.repo_cache,
-                   sec_repo_cache=self.sec_repo_cache)
+                   repo_cache=self.repo_cache)
 
     def process_repo_generation_requests(self):
         latest_request = self.db.query(RepoGenerationRequest)\
