@@ -298,10 +298,6 @@ class Build(Base):
         return self.REV_STATE_MAP[self.state]
 
     @property
-    def triggers(self):
-        return [change.get_trigger() for change in self.dependency_changes]
-
-    @property
     def srpm_nvra(self):
         # pylint:disable=no-member
         return dict(name=self.package.name,
