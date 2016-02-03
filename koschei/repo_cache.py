@@ -51,7 +51,7 @@ class RepoDescriptor(object):
         parts = name.split('-')
         if len(parts) < 3:
             return None
-        return RepoDescriptor('-'.join(parts[:-2]), parts[-2], parts[-1])
+        return RepoDescriptor('-'.join(parts[:-2]), parts[-2], int(parts[-1]))
 
     def __str__(self):
         return '{}-{}-{}'.format(self.koji_id, self.build_tag, self.repo_id)
