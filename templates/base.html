@@ -81,7 +81,7 @@ href="{{ url_for('static', filename='koschei.css') }}"/>
         {% endwith %}
 
         {% for notice in get_global_notices() %}
-        <h3 class="notice">{{ notice.content or notice }}</h3>
+        <h3 class="notice">{{ notice }}</h3>
         {% endfor %}
 
         <div id="content">

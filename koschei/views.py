@@ -76,7 +76,8 @@ def columnize(what, css_class=None):
 
 
 def get_global_notices():
-    notices = db.query(AdminNotice).filter_by(key="global_notice").all()
+    notices = [n.content for n in
+               db.query(AdminNotice.content).filter_by(key="global_notice")]
     repo = get_last_repo(db)
     if repo and repo.base_resolved is False:
         problems = db.query(BuildrootProblem).filter_by(repo_id=repo.repo_id).all()
