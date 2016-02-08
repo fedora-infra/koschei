@@ -159,6 +159,33 @@ def itercall(koji_session, args, koji_call):
         args = args[chunk_size:]
 
 
+def selective_itercall(session_provider, args, koji_call):
+    """
+    Version of itercall that is able to use multiple Koji sessions and return
+    results in the same order as inputs while using minimal amount of multicalls
+
+    :param session_provider: function that is called on each argument to
+    determine Koji session to use
+    :param args: list of items to be processed by the call
+    :param koji_call: function that gets a Koji session and single item and
+    performs a Koji call on it
+    :returns: list of multicall results
+    """
+    sessions = map(session_provider, args)
+    results = [None] * len(args)
+    for session in set(sessions):
+        items = []
+        indices = []
+        for i, item in enumerate(args):
+            if sessions[i] is session:
+                items.append(item)
+                indices.append(i)
+        for i, item in zip(indices, itercall(session, items, koji_call)):
+            results[i] = item
+    return results
+
+
+
 class parallel_generator(object):
     sentinel = object()
 

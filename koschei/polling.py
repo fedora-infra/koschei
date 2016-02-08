@@ -30,15 +30,14 @@ class Polling(KojiService):
     def __init__(self, backend=None, *args, **kwargs):
         super(Polling, self).__init__(*args, **kwargs)
         self.backend = backend or Backend(log=self.log, db=self.db,
-                                          koji_session=self.primary_koji,
-                                          secondary_koji=self.secondary_koji)
+                                          koji_sessions=self.koji_sessions)
 
     def poll_builds(self):
         self.log.debug('Polling running Koji tasks...')
         running_builds = self.db.query(Build)\
                                 .filter_by(state=Build.RUNNING)
 
-        infos = util.itercall(self.primary_koji, running_builds,
+        infos = util.itercall(self.koji_sessions['primary'], running_builds,
                               lambda k, b: k.getTaskInfo(b.task_id))
 
         for task_info, build in zip(infos, running_builds):

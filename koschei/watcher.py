@@ -38,10 +38,8 @@ class Watcher(KojiService):
 
     def __init__(self, backend=None, *args, **kwargs):
         super(Watcher, self).__init__(*args, **kwargs)
-        self.backend = backend or Backend(log=self.log,
-                                          db=self.db,
-                                          koji_session=self.primary_koji,
-                                          secondary_koji=self.secondary_koji)
+        self.backend = backend or Backend(log=self.log, db=self.db,
+                                          koji_sessions=self.koji_sessions)
 
     def get_topic(self, name):
         return '{}.{}'.format(self.topic_name, name)
@@ -90,7 +88,7 @@ class Watcher(KojiService):
                     if topic.startswith(self.topic_name + '.'):
                         self.consume(topic, msg)
                     plugin.dispatch_event('fedmsg_event', topic, msg, db=self.db,
-                                          koji_session=self.primary_koji)
+                                          koji_sessions=self.koji_sessions)
                 finally:
                     self.db.rollback()
         except requests.exceptions.ConnectionError:

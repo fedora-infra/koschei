@@ -17,11 +17,11 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-import itertools
 import koji
-import os
 
 from sqlalchemy.orm import joinedload
+
+from itertools import izip
 
 from koschei.models import (Package, Dependency, UnappliedChange,
                             AppliedChange, Repo, ResolutionProblem,
@@ -41,14 +41,13 @@ create_dependency_changes_time = Stopwatch("create_dependency_changes", resoluti
 
 
 class AbstractResolverTask(object):
-    def __init__(self, log, db, koji_session, secondary_koji, repo_cache):
+    def __init__(self, log, db, koji_sessions, repo_cache):
         self.log = log
         self.db = db
-        self.primary_koji = koji_session
-        self.secondary_koji = secondary_koji
+        self.koji_sessions = koji_sessions
         self.repo_cache = repo_cache
         # TODO repo_id
-        self.group = util.get_build_group(koji_session)
+        self.group = util.get_build_group(koji_sessions['primary'])
 
     def store_deps(self, build_id, installs):
         new_deps = []
@@ -123,23 +122,21 @@ class AbstractResolverTask(object):
                       .filter(Build.deps_resolved == True)\
                       .order_by(Build.id.desc()).first()
 
-    def prefetch_repos(self, repo_tuples):
+    def prefetch_repos(self, descriptors):
         dead_repos = set()
-        # for repo_info in util.itercall(self.primary_koji, repo_ids,
-        #                                lambda k, repo_id: k.repoInfo(repo_id)):
-
-        # FIXME
-        for secondary, repo_id in repo_tuples:
-            koji_session = self.secondary_koji if secondary else self.primary_koji
-            repo_info = koji_session.repoInfo(repo_id)
+        def select_session(desc):
+            return self.koji_sessions[desc.koji_id]
+        def koji_call(koji_session, desc):
+            koji_session.repoInfo(desc.repo_id)
+        result_gen = util.selective_itercall(select_session, descriptors, koji_call)
+        for desc, repo_info in izip(descriptors, result_gen):
             if repo_info['state'] in (koji.REPO_STATES['READY'],
                                       koji.REPO_STATES['EXPIRED']):
-                desc = RepoDescriptor('secondary' if secondary else 'primary',
-                                      repo_info['tag_name'], repo_info['id'])
+                desc.build_tag = repo_info['tag_name']
                 self.repo_cache.prefetch_repo(desc)
             else:
-                dead_repos.add((secondary, repo_id))
-                self.log.debug('Repo {} is dead, skipping'.format(repo_id))
+                dead_repos.add(desc)
+                self.log.debug('Repo {} is dead, skipping'.format(desc.repo_id))
         return dead_repos
 
 class GenerateRepoTask(AbstractResolverTask):
@@ -229,7 +226,7 @@ class GenerateRepoTask(AbstractResolverTask):
             self.persist_results(resolved_map, problems, changes)
             self.db.commit()
         gen = ((package, self.resolve_dependencies(sack, br))
-               for package, br in itertools.izip(packages, brs))
+               for package, br in izip(packages, brs))
         gen = util.parallel_generator(gen, queue_size=10)
         for package, result in gen:
             resolved_map[package.id], curr_problems, curr_deps = result
@@ -256,16 +253,18 @@ class GenerateRepoTask(AbstractResolverTask):
         total_time.reset()
         total_time.start()
         self.log.info("Generating new repo")
-        if self.prefetch_repos([(False, repo_id)]):
+        repo_descriptor = RepoDescriptor(repo_id=repo_id, koji_id='primary',
+                                         build_tag=None)
+        if self.prefetch_repos([repo_descriptor]):
             self.db.rollback()
             return
         packages = self.get_packages(require_build=True)
         repo = Repo(repo_id=repo_id)
-        brs = util.get_rpm_requires(self.secondary_koji,
+        brs = util.get_rpm_requires(self.koji_sessions['secondary'],
                                     [p.srpm_nvra for p in packages])
         brs = util.parallel_generator(brs, queue_size=None)
         try:
-            with self.repo_cache.get_sack(repo_id) as sack:
+            with self.repo_cache.get_sack(repo_descriptor) as sack:
                 if not sack:
                     self.log.error('Cannot generate repo: {}'.format(repo_id))
                     self.db.rollback()
@@ -294,6 +293,10 @@ class GenerateRepoTask(AbstractResolverTask):
 
 
 class ProcessBuildsTask(AbstractResolverTask):
+
+    def repo_descriptor_for_build(self, build):
+        return RepoDescriptor('secondary' if build.real else 'primary',
+                              None, build.repo_id)
 
     def process_build(self, sack, build, curr_deps):
         self.log.info("Processing build {}".format(build.id))
@@ -324,38 +327,33 @@ class ProcessBuildsTask(AbstractResolverTask):
 
     def run(self):
         # pylint: disable=E1101
-        unprocessed = self.db.query(Build)\
-                             .filter_by(deps_processed=False)\
-                             .filter(Build.repo_id != None)\
-                             .options(joinedload(Build.package))\
-                             .order_by(Build.id).all()
+        builds = self.db.query(Build)\
+            .filter_by(deps_processed=False)\
+            .filter(Build.repo_id != None)\
+            .options(joinedload(Build.package))\
+            .order_by(Build.id).all()
 
-        repo_tuples = list(itertools.groupby(unprocessed, lambda build:
-                                             (build.real, build.repo_id)))
-        dead_repos = self.prefetch_repos(x for x, _ in repo_tuples)
-        for (real, repo_id), builds in repo_tuples:
-            builds = list(builds)
-            if (real, repo_id) not in dead_repos:
-                cache = self.sec_repo_cache if real else self.repo_cache
-                with cache.get_sack(repo_id) as sack:
+        descriptors = [self.repo_descriptor_for_build(build) for build in builds]
+        dead_repos = self.prefetch_repos(descriptors)
+        buildrequires = util.get_rpm_requires(self.koji_sessions['secondary'],
+                                              [b.srpm_nvra for b in builds])
+        if len(builds) > 100:
+            buildrequires = util.parallel_generator(buildrequires, queue_size=None)
+        for build, buildrequires, repo_descriptor in \
+                izip(builds, buildrequires, descriptors):
+            if repo_descriptor not in dead_repos:
+                # TODO it might have expired
+                with self.repo_cache.get_sack(repo_descriptor) as sack:
                     if sack:
-                        brs = util.get_rpm_requires(self.secondary_koji,
-                                                    [b.srpm_nvra for b in builds])
-                        if len(builds) > 100:
-                            brs = util.parallel_generator(brs, queue_size=None)
-                        gen = ((build, self.resolve_dependencies(sack, br))
-                               for build, br in itertools.izip(builds, brs))
-                        if len(builds) > 2:
-                            gen = util.parallel_generator(gen, queue_size=10)
-                        for build, result in gen:
-                            _, _, curr_deps = result
-                            self.process_build(sack, build, curr_deps)
+                        _, _, curr_deps = self.resolve_dependencies(sack, buildrequires)
+                        self.process_build(sack, build, curr_deps)
                     else:
-                        self.log.info("Repo id=%d not available, skipping", repo_id)
-            self.db.query(Build).filter(Build.id.in_([b.id for b in builds]))\
-                                .update({'deps_processed': True},
-                                        synchronize_session=False)
-            self.db.commit()
+                        self.log.info("Repo id=%d not available, skipping",
+                                      repo_descriptor.repo_id)
+                self.db.query(Build).filter(Build.id.in_([b.id for b in builds]))\
+                                    .update({'deps_processed': True},
+                                            synchronize_session=False)
+                self.db.commit()
         self.db.query(Build)\
             .filter_by(repo_id=None)\
             .filter(Build.state.in_(Build.FINISHED_STATES))\
@@ -364,16 +362,14 @@ class ProcessBuildsTask(AbstractResolverTask):
 
 class Resolver(KojiService):
 
-    def __init__(self, log=None, db=None, koji_session=None,
-                 secondary_koji=None, repo_cache=None, sec_repo_cache=None):
+    def __init__(self, log=None, db=None, koji_sessions=None,
+                 repo_cache=None):
         super(Resolver, self).__init__(log=log, db=db,
-                                       koji_session=koji_session,
-                                       secondary_koji=secondary_koji)
+                                       koji_sessions=koji_sessions)
         self.repo_cache = repo_cache or RepoCache()
 
     def create_task(self, cls):
-        return cls(log=self.log, db=self.db, koji_session=self.primary_koji,
-                   secondary_koji=self.secondary_koji,
+        return cls(log=self.log, db=self.db, koji_sessions=self.koji_sessions,
                    repo_cache=self.repo_cache)
 
     def process_repo_generation_requests(self):

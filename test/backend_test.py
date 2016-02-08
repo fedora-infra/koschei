@@ -128,8 +128,8 @@ class BackendTest(DBTest):
         self.koji_session = Mock()
         self.secondary_koji = Mock()
         self.log = Mock()
-        self.backend = Backend(db=self.s, koji_session=self.koji_session,
-                               secondary_koji=self.secondary_koji,
+        self.backend = Backend(db=self.s, koji_sessions={'primary': self.koji_session,
+                                                         'secondary': self.secondary_koji},
                                log=logging.getLogger('koschei.backend'))
         plugin.load_plugins(['fedmsg_publisher'])
 

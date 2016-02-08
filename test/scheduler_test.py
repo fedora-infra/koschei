@@ -10,7 +10,7 @@ from koschei.scheduler import Scheduler
 
 class SchedulerTest(DBTest):
     def get_scheduler(self):
-        sched = Scheduler(db=self.s, koji_session=Mock(), backend=Mock())
+        sched = Scheduler(db=self.s, koji_sessions={'primary': Mock(), 'secondary': Mock()}, backend=Mock())
         sched.lock_package_table = lambda: None
         return sched
 

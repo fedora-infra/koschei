@@ -46,11 +46,10 @@ def check_package_state(package, prev_state):
 
 class Backend(object):
 
-    def __init__(self, log, db, koji_session, secondary_koji):
+    def __init__(self, log, db, koji_sessions):
         self.log = log
         self.db = db
-        self.primary_koji = koji_session
-        self.secondary_koji = secondary_koji
+        self.koji_sessions = koji_sessions
 
     def submit_build(self, package):
         build = Build(package_id=package.id, state=Build.RUNNING)
@@ -60,11 +59,11 @@ class Backend(object):
             build_opts = {'arch_override': package.arch_override}
         # SRPMs are taken from secondary, primary needs to be able to build
         # from relative URL constructed against secondary (internal redirect)
-        srpm, srpm_url = (util.get_last_srpm(self.secondary_koji, name) or
+        srpm, srpm_url = (util.get_last_srpm(self.koji_sessions['secondary'], name) or
                           (None, None))
         if srpm_url:
             package.manual_priority = 0
-            build.task_id = util.koji_scratch_build(self.primary_koji, name,
+            build.task_id = util.koji_scratch_build(self.koji_sessions['primary'], name,
                                                     srpm_url, build_opts)
             build.started = datetime.now()
             build.epoch = srpm['epoch']
@@ -81,10 +80,9 @@ class Backend(object):
                .delete(synchronize_session=False)
 
     def get_newer_build_if_exists(self, package):
-        [info] = self.primary_koji.listTagged(util.source_tag,
-                                              latest=True,
-                                              package=package.name,
-                                              inherit=True) or [None]
+        [info] = self.koji_sessions['primary']\
+            .listTagged(util.source_tag, latest=True,
+                        package=package.name, inherit=True) or [None]
         if self.is_build_newer(package.last_build, info):
             return info
 
@@ -111,7 +109,7 @@ class Backend(object):
                           state=state_map[build_info['state']])
             self.db.add(build)
             self.db.flush()
-            self.sync_tasks(build, self.secondary_koji)
+            self.sync_tasks(build, self.koji_sessions['secondary'])
             self.flush_depchanges(build)
             self.log.info('Registering real build {}-{}-{} (task_id {})'
                           .format(package.name, build.version, build.release,
@@ -154,7 +152,7 @@ class Backend(object):
             self.log.info('Setting build {build} state to {state}'
                           .format(build=build,
                                   state=Build.REV_STATE_MAP[state]))
-            self.sync_tasks(build, self.primary_koji, complete=True)
+            self.sync_tasks(build, self.koji_sessions['primary'], complete=True)
             if build.repo_id is None:
                 # Koji problem, no need to bother packagers with this
                 self.log.info('Deleting build {0} because it has no repo_id'
@@ -173,7 +171,7 @@ class Backend(object):
                                prev_state=prev_state,
                                new_state=new_state)
         else:
-            self.sync_tasks(build, self.primary_koji)
+            self.sync_tasks(build, self.koji_sessions['primary'])
             self.db.commit()
 
     def sync_tasks(self, build, koji_session, complete=False):
@@ -239,7 +237,8 @@ class Backend(object):
         """
         # TODO
         source_tag = util.secondary_koji_config['source_tag']
-        koji_packages = self.secondary_koji.listPackages(tagID=source_tag, inherited=True)
+        koji_packages = self.koji_sessions['secondary'].listPackages(tagID=source_tag,
+                                                                     inherited=True)
         whitelisted = {p['package_name'] for p in koji_packages if not p['blocked']}
         packages = self.db.query(Package).all()
         to_update = [p.id for p in packages if p.blocked == (p.name in whitelisted)]
@@ -267,7 +266,8 @@ class Backend(object):
         for p in packages:
             self.db.expunge(p)
         source_tag = util.secondary_koji_config['source_tag']
-        infos = self.secondary_koji.listTagged(source_tag, latest=True, inherit=True)
+        infos = self.koji_sessions['secondary']\
+            .listTagged(source_tag, latest=True, inherit=True)
         packages = {p.name: p for p in packages}
         self.register_real_builds({packages[i['package_name']]: i for i in infos})
 
@@ -301,7 +301,7 @@ class Backend(object):
             self.db.flush()
 
     def poll_repo(self):
-        curr_repo = util.get_latest_repo(self.primary_koji)
+        curr_repo = util.get_latest_repo(self.koji_sessions['primary'])
         if curr_repo:
             if not self.db.query(exists()
                                  .where(RepoGenerationRequest.repo_id ==

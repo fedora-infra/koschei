@@ -49,7 +49,7 @@ class RepoDescriptor(object):
     @staticmethod
     def from_string(name):
         parts = name.split('-')
-        if len(parts) < 3:
+        if len(parts) < 3 or not parts[-1].isdigit():
             return None
         return RepoDescriptor('-'.join(parts[:-2]), parts[-2], int(parts[-1]))
 
@@ -145,6 +145,8 @@ class SackManager(object):
     # @Override
     def create(self, repo_descriptor, repo_dir):
         """ Load repo from disk into memory as sack """
+        if not repo_dir:
+            return
         try:
             sack = hawkey.Sack(arch=self._for_arch)
             for arch in self._arches:
