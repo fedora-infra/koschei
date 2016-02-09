@@ -29,9 +29,11 @@ main.load_globals()
 
 
 def create_backend():
+    koji_session = util.KojiSession(anonymous=True)
     return backend.Backend(db=db, log=log,
-                           koji_session=util.KojiSession(anonymous=True),
-                           secondary_koji=None) #TODO
+                           koji_sessions={'primary': koji_session,
+                                          'secondary': koji_session})
+
 
 
 def page_args(**kwargs):

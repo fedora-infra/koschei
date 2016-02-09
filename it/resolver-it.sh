@@ -42,7 +42,8 @@ util.get_rpm_requires = lambda _, ps: [brs[p['name']] for p in ps]
 group = json.load(open('it/get_build_group.json'))
 with mock.patch('koschei.util.get_build_group', return_value=group):
     with mock.patch('fedmsg.publish'):
-        task = resolver.Resolver(koji_session=koji_mock).create_task(resolver.GenerateRepoTask)
+        task = resolver.Resolver(koji_sessions={'primary': koji_mock, 'secondary': koji_mock})\
+            .create_task(resolver.GenerateRepoTask)
         task.run($repo_id)
 "
 psql koschei_it > it/actual.out <<EOF
