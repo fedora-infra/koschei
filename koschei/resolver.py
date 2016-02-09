@@ -122,8 +122,7 @@ class AbstractResolverTask(object):
                       .filter(Build.deps_resolved == True)\
                       .order_by(Build.id.desc()).first()
 
-    def prefetch_repos(self, descriptors):
-        dead_repos = set()
+    def set_descriptor_tags(self, descriptors):
         def select_session(desc):
             return self.koji_sessions[desc.koji_id]
         def koji_call(koji_session, desc):
@@ -133,11 +132,8 @@ class AbstractResolverTask(object):
             if repo_info['state'] in (koji.REPO_STATES['READY'],
                                       koji.REPO_STATES['EXPIRED']):
                 desc.build_tag = repo_info['tag_name']
-                self.repo_cache.prefetch_repo(desc)
             else:
-                dead_repos.add(desc)
                 self.log.debug('Repo {} is dead, skipping'.format(desc.repo_id))
-        return dead_repos
 
 class GenerateRepoTask(AbstractResolverTask):
 
@@ -255,9 +251,12 @@ class GenerateRepoTask(AbstractResolverTask):
         self.log.info("Generating new repo")
         repo_descriptor = RepoDescriptor(repo_id=repo_id, koji_id='primary',
                                          build_tag=None)
-        if self.prefetch_repos([repo_descriptor]):
+        self.set_descriptor_tags([repo_descriptor])
+        if not repo_descriptor.build_tag:
+            self.log.error('Cannot generate repo: {}'.format(repo_id))
             self.db.rollback()
             return
+        self.repo_cache.prefetch_repo(repo_descriptor)
         packages = self.get_packages(require_build=True)
         repo = Repo(repo_id=repo_id)
         brs = util.get_rpm_requires(self.koji_sessions['secondary'],
@@ -334,15 +333,16 @@ class ProcessBuildsTask(AbstractResolverTask):
             .order_by(Build.id).all()
 
         descriptors = [self.repo_descriptor_for_build(build) for build in builds]
-        dead_repos = self.prefetch_repos(descriptors)
+        self.set_descriptor_tags(descriptors)
         buildrequires = util.get_rpm_requires(self.koji_sessions['secondary'],
                                               [b.srpm_nvra for b in builds])
         if len(builds) > 100:
             buildrequires = util.parallel_generator(buildrequires, queue_size=None)
         for build, buildrequires, repo_descriptor in \
                 izip(builds, buildrequires, descriptors):
-            if repo_descriptor not in dead_repos:
-                # TODO it might have expired
+            if repo_descriptor.build_tag:
+                # FIXME parallel
+                self.repo_cache.prefetch_repo(repo_descriptor)
                 with self.repo_cache.get_sack(repo_descriptor) as sack:
                     if sack:
                         _, _, curr_deps = self.resolve_dependencies(sack, buildrequires)
