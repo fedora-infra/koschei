@@ -7,7 +7,7 @@ from datetime import datetime
 from functools import wraps
 from flask import abort, render_template, request, url_for, redirect, g, flash
 from sqlalchemy.orm import joinedload, subqueryload, undefer, contains_eager
-from sqlalchemy.sql import exists
+from sqlalchemy.sql import exists, func
 from sqlalchemy.exc import IntegrityError
 from jinja2 import Markup, escape
 from textwrap import dedent
@@ -229,21 +229,27 @@ def package_detail(name):
                 .filter_by(name=name)\
                 .options(subqueryload(Package.unapplied_changes))\
                 .first_or_404()
-    package.user_groups = []
-    group_query = db.query(PackageGroup)\
-        .join(PackageGroupRelation,
-              PackageGroup.id == PackageGroupRelation.group_id)\
-        .filter(PackageGroupRelation.package_id == package.id)
-    if g.user:
-        package.user_groups = group_query\
-            .join(GroupACL, PackageGroup.id == GroupACL.group_id)\
-            .filter(PackageGroup.namespace != None)\
-            .filter(GroupACL.user_id == g.user.id)\
-            .all()
-    package.global_groups = group_query\
+    package.global_groups = db.query(PackageGroup)\
+        .join(PackageGroupRelation)\
         .filter(PackageGroupRelation.package_id == package.id)\
         .filter(PackageGroup.namespace == None)\
         .all()
+    package.user_groups = []
+    package.available_groups = []
+    if g.user:
+        user_groups = \
+            db.query(PackageGroup,
+                     func.bool_or(PackageGroupRelation.package_id == package.id))\
+            .join(PackageGroupRelation)\
+            .join(GroupACL)\
+            .filter(GroupACL.user_id == g.user.id)\
+            .order_by(PackageGroup.namespace.nullsfirst(), PackageGroup.name)\
+            .group_by(PackageGroup.id)\
+            .distinct().all()
+        package.user_groups = [group for group, checked in user_groups if
+                               checked and group.namespace]
+        package.available_groups = [group for group, checked in user_groups if
+                                    not checked]
     page = db.query(Build)\
              .filter_by(package_id=package.id)\
              .options(subqueryload(Build.dependency_changes),
@@ -558,25 +564,38 @@ def search():
     return redirect(url_for('frontpage'))
 
 
-@app.route('/edit_package', methods=['POST'])
+@app.route('/package/<name>/edit', methods=['POST'])
 @auth.login_required()
-def edit_package():
+def edit_package(name):
+    package = db.query(Package).filter_by(name=name).first_or_404()
     form = request.form
     try:
-        package = db.query(Package)\
-                    .filter_by(name=form['package']).first_or_404()
+        for key, prev_val in form.items():
+            if key.startswith('group-prev-'):
+                group = db.query(PackageGroup).get_or_404(int(key[len('group-prev-'):]))
+                new_val = form.get('group-{}'.format(group.id))
+                if bool(new_val) != (prev_val == 'true'):
+                    if not group.editable:
+                        abort(403)
+                    if new_val:
+                        rel = PackageGroupRelation(package_id=package.id,
+                                                   group_id=group.id)
+                        db.add(rel)
+                    else:
+                        db.query(PackageGroupRelation)\
+                            .filter_by(group_id=group.id, package_id=package.id)\
+                            .delete(synchronize_session=False)
         if 'manual_priority' in form:
             new_priority = int(form['manual_priority'])
             package.manual_priority = new_priority
-            flash("Manual priority changed to {}".format(new_priority))
         if 'arch_override' in form:
             package.arch_override = form['arch_override'].strip() or None
-            flash("Arch override changed to {}".format(package.arch_override))
+        flash("Package modified")
     except (KeyError, ValueError):
         abort(400)
 
     db.commit()
-    return redirect(url_for('package_detail', name=form['package']))
+    return redirect(url_for('package_detail', name=package.name))
 
 
 @app.route('/bugreport/<name>')

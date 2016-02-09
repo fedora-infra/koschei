@@ -7,6 +7,7 @@
 {% block content %}
 <div class="pageHeader">{{ package.name }}</div>
 {% set editable = "" if g.user else 'disabled="true"' %}
+<form method="POST" action="{{ url_for('edit_package', name=package.name) }}">
 <table class="details">
     <tr>
         <th>Package state</th>
@@ -24,12 +25,8 @@
     <tr>
         <th>Manual priority</th>
         <td>
-            <form name="manual_priority" action="{{ url_for("edit_package") }}" method="post">
-                <input type="hidden" name="package" value="{{ package.name }}"/>
-                <input type="text" name="manual_priority" class="change_input"
-                value="{{ package.manual_priority }}" {{ editable }}/>
-                <input type="submit" value="Change" {{ editable }}/>
-            </form>
+            <input type="text" name="manual_priority" class="change_input"
+            value="{{ package.manual_priority }}" {{ editable }}/>
         </td>
     </tr>
     <tr>
@@ -41,12 +38,8 @@
     <tr>
         <th>Arch override</th>
         <td>
-            <form name="manual_priority" action="{{ url_for("edit_package") }}" method="post">
-                <input type="hidden" name="package" value="{{ package.name }}"/>
-                <input type="text" name="arch_override" class="change_input"
-                value="{{ package.arch_override or "" }}" {{ editable }}/>
-                <input type="submit" value="Change" {{ editable }}/>
-            </form>
+            <input type="text" name="arch_override" class="change_input"
+            value="{{ package.arch_override or "" }}" {{ editable }}/>
         </td>
     </tr>
     <tr>
@@ -54,17 +47,35 @@
         <td>
             {% for group in package.global_groups %}
             <a href="{{ url_for('group_detail', name=group.name) }}">{{ group.name }}</a>
+            {% if group.editable %}
+            <input type="checkbox" name="group-{{ group.id }}" checked="true"/>
+            <input type="hidden" name="group-prev-{{ group.id }}" value="true"/>
+            {% endif %}
             {% endfor %}
         </td>
     </tr>
+    {% if g.user %}
     <tr>
         <th>Your package groups</th>
         <td>
             {% for group in package.user_groups %}
             <a href="{{ url_for('group_detail', name=group.name, namespace=group.namespace) }}">{{ group.full_name }}</a>
+            <input type="checkbox" name="group-{{ group.id }}" checked="true"/>
+            <input type="hidden" name="group-prev-{{ group.id }}" value="true"/>
             {% endfor %}
         </td>
     </tr>
+    <tr>
+        <th>Available package groups</th>
+        <td>
+            {% for group in package.available_groups %}
+            <a href="{{ url_for('group_detail', name=group.name, namespace=group.namespace) }}">{{ group.full_name }}</a>
+            <input type="checkbox" name="group-{{ group.id }}"/>
+            <input type="hidden" name="group-prev-{{ group.id }}" value="false"/>
+            {% endfor %}
+        </td>
+    </tr>
+    {% endif %}
     <tr>
         <th>Links</th>
         <td>
@@ -81,6 +92,11 @@
         <th>Bug reports</th>
         <td>
             <a href="{{ url_for('bugreport', name=package.name) }}">File new FTBFS bug</a>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <button type="submit">Submit modifications</button>
         </td>
     </tr>
     {% if package.state_string == 'unresolved'  and package.resolution_problems %}
@@ -178,5 +194,6 @@
         {% endfor %}
     </tbody>
 </table>
+
 {{ macros.pagination_row(page, "Builds") }}
 {% endblock %}
