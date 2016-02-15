@@ -46,10 +46,10 @@ def check_package_state(package, prev_state):
 
 class Backend(object):
 
-    def __init__(self, log, db, koji_session):
+    def __init__(self, log, db, koji_sessions):
         self.log = log
         self.db = db
-        self.koji_session = koji_session
+        self.koji_sessions = koji_sessions
 
     def submit_build(self, package):
         build = Build(package_id=package.id, state=Build.RUNNING)
@@ -57,11 +57,13 @@ class Backend(object):
         build_opts = {}
         if package.arch_override:
             build_opts = {'arch_override': package.arch_override}
-        srpm, srpm_url = (util.get_last_srpm(self.koji_session, name) or
+        # SRPMs are taken from secondary, primary needs to be able to build
+        # from relative URL constructed against secondary (internal redirect)
+        srpm, srpm_url = (util.get_last_srpm(self.koji_sessions['secondary'], name) or
                           (None, None))
         if srpm_url:
             package.manual_priority = 0
-            build.task_id = util.koji_scratch_build(self.koji_session, name,
+            build.task_id = util.koji_scratch_build(self.koji_sessions['primary'], name,
                                                     srpm_url, build_opts)
             build.started = datetime.now()
             build.epoch = srpm['epoch']
@@ -78,10 +80,9 @@ class Backend(object):
                .delete(synchronize_session=False)
 
     def get_newer_build_if_exists(self, package):
-        [info] = self.koji_session.listTagged(util.source_tag,
-                                              latest=True,
-                                              package=package.name,
-                                              inherit=True) or [None]
+        [info] = self.koji_sessions['primary']\
+            .listTagged(util.source_tag, latest=True,
+                        package=package.name, inherit=True) or [None]
         if self.is_build_newer(package.last_build, info):
             return info
 
@@ -108,7 +109,7 @@ class Backend(object):
                           state=state_map[build_info['state']])
             self.db.add(build)
             self.db.flush()
-            self.sync_tasks(build)
+            self.sync_tasks(build, self.koji_sessions['secondary'])
             self.flush_depchanges(build)
             self.log.info('Registering real build {}-{}-{} (task_id {})'
                           .format(package.name, build.version, build.release,
@@ -151,7 +152,7 @@ class Backend(object):
             self.log.info('Setting build {build} state to {state}'
                           .format(build=build,
                                   state=Build.REV_STATE_MAP[state]))
-            self.sync_tasks(build, complete=True)
+            self.sync_tasks(build, self.koji_sessions['primary'], complete=True)
             if build.repo_id is None:
                 # Koji problem, no need to bother packagers with this
                 self.log.info('Deleting build {0} because it has no repo_id'
@@ -170,16 +171,17 @@ class Backend(object):
                                prev_state=prev_state,
                                new_state=new_state)
         else:
-            self.sync_tasks(build)
+            self.sync_tasks(build, self.koji_sessions['primary'])
             self.db.commit()
 
-    def sync_tasks(self, build, complete=False):
+    def sync_tasks(self, build, koji_session, complete=False):
         """
         Synchronizes task and subtask info from Koji.
         If the row already exists in the db, caller needs to lock it to prevent
         concurrent insertion of subtask rows.
+        Uses koji_session passed as argument.
         """
-        task_info = self.koji_session.getTaskInfo(build.task_id)
+        task_info = koji_session.getTaskInfo(build.task_id)
         try:
             build.started = datetime.fromtimestamp(task_info['create_ts'])
             build.finished = datetime.fromtimestamp(task_info['completion_ts'])
@@ -188,8 +190,7 @@ class Backend(object):
         if not build.finished and complete:
             # When fedmsg delivery is fast, the time is not set yet
             build.finished = datetime.now()
-        subtasks = self.koji_session.getTaskChildren(build.task_id,
-                                                     request=True)
+        subtasks = koji_session.getTaskChildren(build.task_id, request=True)
         build_arch_tasks = [task for task in subtasks
                             if task['method'] == 'buildArch']
         for task in build_arch_tasks:
@@ -234,15 +235,16 @@ class Backend(object):
         Refresh packages from Koji: add packages not yet known by Koschei
         and update blocked flag.
         """
-        source_tag = util.koji_config['source_tag']
-        koji_packages = self.koji_session.listPackages(tagID=source_tag, inherited=True)
+        # TODO
+        source_tag = util.secondary_koji_config['source_tag']
+        koji_packages = self.koji_sessions['secondary'].listPackages(tagID=source_tag,
+                                                                     inherited=True)
         whitelisted = {p['package_name'] for p in koji_packages if not p['blocked']}
         packages = self.db.query(Package).all()
         to_update = [p.id for p in packages if p.blocked == (p.name in whitelisted)]
         if to_update:
             self.db.query(Package).filter(Package.id.in_(to_update))\
                    .update({'blocked': ~Package.blocked}, synchronize_session=False)
-            self.db.expire_all()
             self.db.flush()
         existing_names = {p.name for p in packages}
         to_add = [p for p in koji_packages if p['package_name'] not in existing_names]
@@ -253,6 +255,7 @@ class Backend(object):
                 pkg.tracked = False
                 self.db.add(pkg)
             self.db.flush()
+        self.db.expire_all()
 
     def refresh_latest_builds(self):
         """
@@ -262,8 +265,9 @@ class Backend(object):
         packages = self.db.query(Package).options(joinedload(Package.last_build)).all()
         for p in packages:
             self.db.expunge(p)
-        source_tag = util.koji_config['source_tag']
-        infos = self.koji_session.listTagged(source_tag, latest=True, inherit=True)
+        source_tag = util.secondary_koji_config['source_tag']
+        infos = self.koji_sessions['secondary']\
+            .listTagged(source_tag, latest=True, inherit=True)
         packages = {p.name: p for p in packages}
         self.register_real_builds({packages[i['package_name']]: i for i in infos})
 
@@ -297,7 +301,7 @@ class Backend(object):
             self.db.flush()
 
     def poll_repo(self):
-        curr_repo = util.get_latest_repo(self.koji_session)
+        curr_repo = util.get_latest_repo(self.koji_sessions['primary'])
         if curr_repo:
             if not self.db.query(exists()
                                  .where(RepoGenerationRequest.repo_id ==

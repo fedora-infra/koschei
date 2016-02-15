@@ -1,5 +1,4 @@
 import re
-import koji
 import urllib
 import logging
 
@@ -30,8 +29,11 @@ main.load_globals()
 
 
 def create_backend():
+    koji_session = util.KojiSession(anonymous=True)
     return backend.Backend(db=db, log=log,
-                           koji_session=util.KojiSession(anonymous=True))
+                           koji_sessions={'primary': koji_session,
+                                          'secondary': koji_session})
+
 
 
 def page_args(**kwargs):
@@ -92,9 +94,9 @@ def require_login():
     return " " if g.user else ' disabled="true" '
 
 
-pathinfo = koji.PathInfo(topdir=util.koji_config['topurl'])
-app.jinja_env.globals.update(koji_weburl=util.config['koji_config']['weburl'],
-                             koji_pathinfo=pathinfo, inext=next, iter=iter,
+app.jinja_env.globals.update(primary_koji_url=util.primary_koji_config['weburl'],
+                             secondary_koji_url=util.secondary_koji_config['weburl'],
+                             inext=next, iter=iter,
                              min=min, max=max, page_args=page_args,
                              get_global_notices=get_global_notices,
                              require_login=require_login,
@@ -158,7 +160,6 @@ def package_view(package_query, template, **template_args):
                            order=order_names, **template_args)
 
 
-@property
 def state_icon(package):
     icon = {'ok': 'complete',
             'failing': 'failed',
@@ -166,7 +167,8 @@ def state_icon(package):
             'blocked': 'unknown',
             'untracked': 'unknown'}.get(package.state_string, 'unknown')
     return url_for('static', filename='images/{name}.png'.format(name=icon))
-Package.state_icon = state_icon
+Package.state_icon = property(state_icon)
+
 
 tabs = []
 

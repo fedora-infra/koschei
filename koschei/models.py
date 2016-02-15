@@ -28,7 +28,7 @@ from sqlalchemy.engine.url import URL
 from sqlalchemy.event import listen
 from datetime import datetime
 
-from .util import config
+from .util import config, primary_koji_config, secondary_koji_config
 
 Base = declarative_base()
 
@@ -114,7 +114,11 @@ class Package(Base):
     last_complete_build_state = Column(Integer)
     last_build_id = \
         Column(Integer, ForeignKey('build.id', use_alter=True,
-                                   name='fkey_package_last_build_id'),
+                                   name='fkey_package_last_build_id',
+                                   # it's first updated by trigger, this is
+                                   # fallback, when there's nothing to update
+                                   # it to
+                                   ondelete='SET NULL'),
                nullable=True)
     resolved = Column(Boolean)
 
@@ -172,9 +176,10 @@ class UserPackageRelation(Base):
 class KojiTask(Base):
     __tablename__ = 'koji_task'
 
+    id = Column(Integer, primary_key=True)
     build_id = Column(ForeignKey('build.id', ondelete='CASCADE'),
                       nullable=False, index=True)
-    task_id = Column(Integer, primary_key=True, default=external_id)
+    task_id = Column(Integer, nullable=False)
     arch = Column(String(16))
     state = Column(Integer)
     started = Column(DateTime)
@@ -184,6 +189,20 @@ class KojiTask(Base):
     def state_string(self):
         return [state for state, num in koji.TASK_STATES.items()
                 if num == self.state][0].lower()
+
+    @property
+    def _koji_config(self):
+        # pylint:disable=no-member
+        return secondary_koji_config if self.build.real else primary_koji_config
+
+    @property
+    def results_url(self):
+        pathinfo = koji.PathInfo(topdir=self._koji_config['topurl'])
+        return pathinfo.task(self.task_id)
+
+    @property
+    def taskinfo_url(self):
+        return '{}/taskinfo?taskID={}'.format(self._koji_config['weburl'], self.task_id)
 
 
 class PackageGroupRelation(Base):
@@ -271,20 +290,25 @@ class Build(Base):
     # was the build done by koschei or was it real build done by packager
     real = Column(Boolean, nullable=False, server_default=false())
 
+    dependencies = relationship('Dependency', backref='build',
+                                passive_deletes=True)
+
     @property
     def state_string(self):
         return self.REV_STATE_MAP[self.state]
 
     @property
-    def triggers(self):
-        return [change.get_trigger() for change in self.dependency_changes]
-
-    @property
     def srpm_nvra(self):
+        # pylint:disable=no-member
         return dict(name=self.package.name,
                     version=self.version,
                     release=self.release,
                     arch='src')
+
+    @property
+    def taskinfo_url(self):
+        koji_config = secondary_koji_config if self.real else primary_koji_config
+        return '{}/taskinfo?taskID={}'.format(koji_config['weburl'], self.task_id)
 
     def __repr__(self):
         # pylint: disable=W1306
@@ -312,8 +336,8 @@ class RepoGenerationRequest(Base):
 class Dependency(Base):
     __tablename__ = 'dependency'
     id = Column(Integer, primary_key=True)
-    repo_id = Column(Integer, nullable=False)
-    package_id = Column(ForeignKey('package.id', ondelete='CASCADE'))
+    build_id = Column(ForeignKey('build.id', ondelete='CASCADE'), index=True,
+                      nullable=False)
     name = Column(String, nullable=False)
     epoch = Column(Integer)
     version = Column(String, nullable=False)
@@ -325,7 +349,6 @@ class Dependency(Base):
     nevra = (name, epoch, version, release, arch)
 
 
-Index('ix_dependency_composite', Dependency.package_id, Dependency.repo_id)
 Index('ix_build_composite', Build.package_id, Build.id.desc())
 Index('ix_package_group_name', PackageGroup.namespace, PackageGroup.name,
       unique=True)

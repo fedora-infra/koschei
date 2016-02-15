@@ -47,35 +47,35 @@ class CacheManagerTest(TestCase):
         self.mgr.terminate()
 
     def test_single_item(self):
-	self.mgr.prefetch(7541)
-	self.mgr.acquire(7541)
-	self.mgr.release(7541)
-	self.mgr.terminate()
+        self.mgr.prefetch(7541)
+        self.mgr.acquire(7541)
+        self.mgr.release(7541)
+        self.mgr.terminate()
 
     def test_double_item(self):
-	self.mgr.prefetch(7541)
-	self.mgr.prefetch(689)
-	self.mgr.acquire(7541)
-	self.mgr.acquire(689)
-	self.mgr.release(7541)
-	self.mgr.release(689)
-	self.mgr.terminate()
+        self.mgr.prefetch(7541)
+        self.mgr.prefetch(689)
+        self.mgr.acquire(7541)
+        self.mgr.acquire(689)
+        self.mgr.release(7541)
+        self.mgr.release(689)
+        self.mgr.terminate()
 
     def test_acquire_cached(self):
-	self.mgr.prefetch(7541)
-	self.mgr.acquire(7541)
-	self.mgr.release(7541)
-	self.mgr.prefetch(7541)
-	self.mgr.acquire(7541)
-	self.mgr.release(7541)
-	self.mgr.terminate()
+        self.mgr.prefetch(7541)
+        self.mgr.acquire(7541)
+        self.mgr.release(7541)
+        self.mgr.prefetch(7541)
+        self.mgr.acquire(7541)
+        self.mgr.release(7541)
+        self.mgr.terminate()
 
     def test_acquire_multiple(self):
-	for i in xrange(1, 10):
-	    self.mgr.prefetch(i)
-	sleep(1)
-	for i in xrange(1, 10):
-	    self.mgr.acquire(i)
-	    sleep(0.05)
-	    self.mgr.release(i)
-	self.mgr.terminate()
+        for i in xrange(1, 10):
+            self.mgr.prefetch(i)
+        sleep(1)
+        for i in xrange(1, 10):
+            self.mgr.acquire(i)
+            sleep(0.05)
+            self.mgr.release(i)
+        self.mgr.terminate()

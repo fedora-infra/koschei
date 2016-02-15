@@ -41,15 +41,14 @@ class Scheduler(KojiService):
     priority_conf = util.config['priorities']
     priority_threshold = priority_conf['build_threshold']
     failed_priority = priority_conf['failed_build_priority']
-    max_builds = util.config['koji_config']['max_builds']
-    load_threshold = util.config['koji_config']['load_threshold']
+    max_builds = util.primary_koji_config['max_builds']
+    load_threshold = util.primary_koji_config['load_threshold']
     calculation_interval = util.config['priorities']['calculation_interval']
 
     def __init__(self, backend=None, *args, **kwargs):
         super(Scheduler, self).__init__(*args, **kwargs)
-        self.backend = backend or Backend(log=self.log,
-                                          db=self.db,
-                                          koji_session=self.koji_session)
+        self.backend = backend or Backend(log=self.log, db=self.db,
+                                          koji_sessions=self.koji_sessions)
         self.calculation_timestamp = 0
 
     def get_dependency_priority_query(self):
@@ -139,27 +138,34 @@ class Scheduler(KojiService):
 
     def main(self):
         if is_buildroot_broken(self.db):
+            self.log.debug("Not scheduling: buildroot broken")
             return
         prioritized = self.get_priorities()
         self.db.rollback()  # no-op, ends the transaction
         if time.time() - self.calculation_timestamp > self.calculation_interval:
             self.persist_priorities(prioritized)
-        if (self.get_incomplete_builds_query().count() >= self.max_builds or
-                util.get_koji_load(self.koji_session) > self.load_threshold):
+        incomplete_builds = self.get_incomplete_builds_query().count()
+        if incomplete_builds >= self.max_builds:
+            self.log.debug("Not scheduling: {} incomplete builds"
+                           .format(incomplete_builds))
             return
-
-        repo_id = util.get_latest_repo(self.koji_session).get('id')
+        koji_load = util.get_koji_load(self.koji_sessions['primary'])
+        if koji_load > self.load_threshold:
+            self.log.debug("Not scheduling: {} koji load"
+                           .format(koji_load))
+            return
 
         for package_id, priority in prioritized:
             if priority < self.priority_threshold:
+                self.log.debug("Not scheduling: no package above threshold")
                 return
             package = self.db.query(Package).get(package_id)
             newer_build = self.backend.get_newer_build_if_exists(package)
             if newer_build:
                 self.backend.register_real_build(package, newer_build)
                 self.db.commit()
-                continue
-            if repo_id and package.last_complete_build.repo_id >= repo_id:
+                self.log.debug("Skipping {} due to real build"
+                               .format(package))
                 continue
 
             # a package was chosen
@@ -169,5 +175,6 @@ class Scheduler(KojiService):
             if not build:
                 self.log.debug("No SRPM found for {}".format(package.name))
                 continue
+
             self.db.commit()
             break

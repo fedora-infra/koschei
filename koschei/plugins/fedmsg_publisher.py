@@ -19,7 +19,7 @@
 import fedmsg
 import logging
 
-from koschei.util import config
+from koschei.util import config, primary_koji_config
 from koschei.plugin import listen_event
 
 log = logging.getLogger('koschei.fedmsg_publisher')
@@ -38,7 +38,8 @@ if fedmsg_config['enabled']:
                             'old': prev_state,
                             'new': new_state,
                             'koji_instance': config['fedmsg']['instance'],
-                            'repo': config['koji_config']['target_tag'],
+                            # TODO
+                            'repo': primary_koji_config['target_tag'],
                             'groups': group_names})
         log.info('Publishing fedmsg:\n' + str(message))
         fedmsg.publish(**message)

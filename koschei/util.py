@@ -71,32 +71,35 @@ assert config != {}
 logging.config.dictConfig(config['logging'])
 log = logging.getLogger('koschei.util')
 
-koji_config = config['koji_config']
-base_build_opts = koji_config.get('build_opts', {})
-pathinfo = koji.PathInfo(topdir=koji_config['topurl'])
-rel_pathinfo = koji.PathInfo(topdir='..')
-source_tag = koji_config['source_tag']
-target_tag = koji_config['target_tag']
+primary_koji_config = config['koji_config']
+secondary_koji_config = dict(primary_koji_config)
+secondary_koji_config.update(config['secondary_koji_config'])
+koji_configs = {
+    'primary': primary_koji_config,
+    'secondary': secondary_koji_config,
+}
+# TODO collections
+base_build_opts = primary_koji_config.get('build_opts', {})
+source_tag = primary_koji_config['source_tag']
+target_tag = primary_koji_config['target_tag']
 
 git_reference = config.get('git_reference', 'origin/master')
-
-
-repodata_dir = config['directories']['repodata']
 
 dep_config = config['dependency']
 
 
 class KojiSession(object):
-    def __init__(self, anonymous=True):
+    def __init__(self, koji_config=primary_koji_config, anonymous=True):
         self.__mcall_list = []
         self.__anonymous = anonymous
+        self.__config = koji_config
         self.__proxied = self.__new_session()
 
     def __new_session(self):
-        server = koji_config['server']
+        server = self.__config['server']
         session = koji.ClientSession(server, {'timeout': 3600})
         if not self.__anonymous:
-            getattr(session, koji_config['login_method'])(**koji_config['login_args'])
+            getattr(session, self.__config['login_method'])(**self.__config['login_args'])
         return session
 
     def __retry_loop(self, method):
@@ -145,7 +148,8 @@ class KojiSession(object):
 
 
 def itercall(koji_session, args, koji_call):
-    chunk_size = koji_config['multicall_chunk_size']
+    # TODO
+    chunk_size = primary_koji_config['multicall_chunk_size']
     while args:
         koji_session.multicall = True
         for arg in args[:chunk_size]:
@@ -153,6 +157,33 @@ def itercall(koji_session, args, koji_call):
         for [info] in koji_session.multiCall():
             yield info
         args = args[chunk_size:]
+
+
+def selective_itercall(session_provider, args, koji_call):
+    """
+    Version of itercall that is able to use multiple Koji sessions and return
+    results in the same order as inputs while using minimal amount of multicalls
+
+    :param session_provider: function that is called on each argument to
+    determine Koji session to use
+    :param args: list of items to be processed by the call
+    :param koji_call: function that gets a Koji session and single item and
+    performs a Koji call on it
+    :returns: list of multicall results
+    """
+    sessions = map(session_provider, args)
+    results = [None] * len(args)
+    for session in set(sessions):
+        items = []
+        indices = []
+        for i, item in enumerate(args):
+            if sessions[i] is session:
+                items.append(item)
+                indices.append(i)
+        for i, item in zip(indices, itercall(session, items, koji_call)):
+            results[i] = item
+    return results
+
 
 
 class parallel_generator(object):
@@ -200,6 +231,7 @@ def prepare_build_opts(opts=None):
 
 
 def get_last_srpm(koji_session, name):
+    rel_pathinfo = koji.PathInfo(topdir=primary_koji_config['srpm_relative_path_root'])
     info = koji_session.listTagged(source_tag, latest=True,
                                    package=name, inherit=True)
     if info:
@@ -218,7 +250,7 @@ def koji_scratch_build(session, name, source, build_opts):
              dict(name=name, target=target_tag, source=source,
                   build_opts=build_opts))
     task_id = session.build(source, target_tag, build_opts,
-                            priority=koji_config['task_priority'])
+                            priority=primary_koji_config['task_priority'])
     log.info('Submitted koji scratch build for %s, task_id=%d', name, task_id)
     return task_id
 
@@ -331,7 +363,7 @@ def compute_dependency_distances(sack, br, deps):
 
 
 def get_build_group(koji_session):
-    tag_name = koji_config['build_tag']
+    tag_name = primary_koji_config['build_tag']
     group_name = dep_config['build_group']
     groups = koji_session.getTagGroups(tag_name)
     [packages] = [group['packagelist'] for group in groups if group['name'] == group_name]
@@ -361,7 +393,7 @@ def get_rpm_requires(koji_session, nvras):
 
 def get_koji_load(koji_session):
     channel = koji_session.getChannel('default')
-    build_arches = koji_config.get('build_arches')
+    build_arches = primary_koji_config.get('build_arches')
     hosts = koji_session.listHosts(build_arches, channel['id'], enabled=True)
     max_load = 0
     assert build_arches
@@ -376,7 +408,8 @@ def get_koji_load(koji_session):
 
 def download_task_output(koji_session, task_id, file_name, out_path):
     offset = 0
-    chunk_size = koji_config.get('chunk_size', 1024 * 1024)
+    # TODO
+    chunk_size = primary_koji_config.get('chunk_size', 1024 * 1024)
     with open(out_path, 'w') as out_file:
         while True:
             out = koji_session.downloadTaskOutput(task_id, file_name,
@@ -410,7 +443,7 @@ def lock(lock_path):
 
 
 def get_latest_repo(koji_session):
-    build_tag = koji_config['build_tag']
+    build_tag = primary_koji_config['build_tag']
     return koji_session.getRepo(build_tag, state=koji.REPO_READY)
 
 

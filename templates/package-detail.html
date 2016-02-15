@@ -80,7 +80,7 @@
         <th>Links</th>
         <td>
             {% set enc_name = package.name | urlencode %}
-            <a href="{{ koji_weburl }}/packageinfo?packageID={{ enc_name }}">Koji</a>,
+            <a href="{{ secondary_koji_url }}/packageinfo?packageID={{ enc_name }}">Koji</a>,
             <a href="{{ links['bugzilla'] }}/buglist.cgi?product=Fedora&component={{ enc_name }}">Bugzilla</a>,
             <a href="{{ links['dist-git'] }}/cgit/{{ enc_name }}.git">Dist-git</a>,
             <a href="{{ links['pkgdb'] }}/package/{{ enc_name }}">PkgDB</a>,
@@ -134,7 +134,7 @@
         <tr class="{{ row_class }}">
             <td></td>
             <td colspan="7" class="real_build_description">
-                Real build: <a class="mono" href="{{ koji_weburl }}/search?match=&type=build&terms={{ package.name }}-{{ build.version }}-{{ build.release }}">{{ package.name }}-{{ build.version }}-{{ build.release }}</a>
+                Real build: <a class="mono" href="{{ secondary_koji_url }}/search?match=&type=build&terms={{ package.name }}-{{ build.version }}-{{ build.release }}">{{ package.name }}-{{ build.version }}-{{ build.release }}</a>
             </td>
         </tr>
         {% endif %}
@@ -143,7 +143,7 @@
                 <img src="{{ url_for('static', filename='images/' ~ build.state_string ~ '.png') }}"
                 title="{{ build.state_string }}" alt="{{ build.state_string }}"/></td>
             <td>
-                <a href="{{ koji_weburl }}/taskinfo?taskID={{ build.task_id }}">
+                <a href="{{ build.taskinfo_url }}">
                     {{ build.task_id }}
                 </a>
             </td>
@@ -167,15 +167,15 @@
                 <div class="task{{ subtask.state_string }}">{{ subtask.arch }}</div>
             </td>
             <td>
-                <a href="{{ koji_weburl }}/taskinfo?taskID={{ subtask.task_id }}">
+                <a href="{{ subtask.taskinfo_url }}">
                     {{ "├└"[loop.last] }}{{ subtask.task_id }}
                 </a>
             </td>
             <td>(
-                <a href="{{ koji_pathinfo.task(subtask.task_id) }}/build.log">
+                <a href="{{ subtask.results_url }}/build.log">
                     build.log
                 </a>|
-                <a href="{{ koji_pathinfo.task(subtask.task_id) }}/root.log">
+                <a href="{{ subtask.results_url }}/root.log">
                     root.log
                 </a>
                 )</td>

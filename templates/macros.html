@@ -73,7 +73,7 @@
                 </td>
                 {% if last_build %}
                 <td>
-                    <a href="{{ koji_weburl }}/taskinfo?taskID={{ last_build.task_id }}">
+                    <a href="{{ last_build.taskinfo_url }}">
                         {{ last_build.task_id }}
                     </a>
                 </td>

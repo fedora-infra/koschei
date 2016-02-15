@@ -71,7 +71,11 @@ class ResolverTest(DBTest):
         self.koji_mock = KojiMock()
         self.koji_mock.repoInfo.return_value = {'id': 123, 'tag_name': 'f24-build',
                                                 'state': koji.REPO_STATES['READY']}
-        self.resolver = Resolver(db=self.s, koji_session=self.koji_mock,
+        self.sec_koji_mock = KojiMock()
+        self.sec_koji_mock.repoInfo.return_value = {'id': 123, 'tag_name': 'f24-build',
+                                                    'state': koji.REPO_STATES['READY']}
+        self.resolver = Resolver(db=self.s, koji_sessions={'primary': self.koji_mock,
+                                                           'secondary': self.sec_koji_mock},
                                  repo_cache=self.repo_mock)
 
     def prepare_foo_build(self, repo_id=666, version='4'):
@@ -107,9 +111,8 @@ class ResolverTest(DBTest):
         with patch('koschei.util.get_build_group', return_value=['R']):
             with patch('koschei.util.get_rpm_requires', return_value=[['F', 'A']]):
                 self.resolver.create_task(ProcessBuildsTask).run()
-        self.repo_mock.get_sack.assert_called_once_with(666)
-        expected_deps = [tuple([package_id, 666] + list(nevr)) for nevr in FOO_DEPS]
-        actual_deps = self.s.query(Dependency.package_id, Dependency.repo_id,
+        expected_deps = [tuple([foo_build.id] + list(nevr)) for nevr in FOO_DEPS]
+        actual_deps = self.s.query(Dependency.build_id,
                                    Dependency.name, Dependency.epoch,
                                    Dependency.version, Dependency.release,
                                    Dependency.arch).all()
@@ -144,7 +147,6 @@ class ResolverTest(DBTest):
         with patch('koschei.util.get_build_group', return_value=['R']):
             with patch('koschei.util.get_rpm_requires', return_value=[['nonexistent']]):
                 self.resolver.create_task(ProcessBuildsTask).run()
-        self.repo_mock.get_sack.assert_called_once_with(666)
         self.assertTrue(b.deps_processed)
         self.assertFalse(b.deps_resolved)
         self.assertEquals(600, b.package.manual_priority)
@@ -157,7 +159,7 @@ class ResolverTest(DBTest):
         del old_deps[4] # E
         package_id = old_build.package_id
         for n, e, v, r, a in old_deps:
-            self.s.add(Dependency(package_id=package_id, repo_id=555, arch=a,
+            self.s.add(Dependency(build_id=old_build.id, arch=a,
                                   name=n, epoch=e, version=v, release=r))
         self.s.commit()
         return old_build
@@ -186,7 +188,6 @@ class ResolverTest(DBTest):
                 task.run(666)
         self.s.expire_all()
         foo = self.s.query(Package).filter_by(name='foo').first()
-        self.repo_mock.get_sack.assert_called_once_with(666)
         self.assertTrue(foo.resolved)
         expected_changes = [(foo.id, 'C', 1, 1, '2', '3', '1.fc22', '1.fc22', 2),
                             (foo.id, 'E', None, 0, None, '0.1', None, '1.fc22.1', 2)]

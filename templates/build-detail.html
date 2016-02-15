@@ -61,7 +61,7 @@
     <tr>
         <th>Koji tasks</th>
         <td>
-            <a href="{{ koji_weburl }}/taskinfo?taskID={{ build.task_id }}">
+            <a href="{{ build.taskinfo_url }}">
                 {{ build.task_id }}
             </a>
         </td>
@@ -74,16 +74,16 @@
                 <tr>
                     <td class="task{{ subtask.state_string }}">
                         {{ "├└"[loop.last] }}
-                        <a href="{{ koji_weburl }}/taskinfo?taskID={{ subtask.task_id }}">
+                        <a href="{{ subtask.taskinfo_url }}">
                             {{ subtask.task_id }}
                         </a>
                         {{ subtask.arch }}: {{ subtask.state_string }}
                     </td>
                     <td>(
-                        <a href="{{ koji_pathinfo.task(subtask.task_id) }}/build.log">
+                        <a href="{{ subtask.results_url }}/build.log">
                             build.log
                         </a>
-                        <a href="{{ koji_pathinfo.task(subtask.task_id) }}/root.log">
+                        <a href="{{ subtask.results_url }}/root.log">
                             root.log
                         </a>
                         )</td>

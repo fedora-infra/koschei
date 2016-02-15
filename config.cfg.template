@@ -4,10 +4,17 @@ config = {
     "database_config": {
         "drivername": "postgres",
     },
+    # koschei can use separate koji instances for different tasks:
+    # - primary - for building packages (and getting results), downloading
+    #   repos and getting build group
+    # - secondary - for getting real builds, package list, buildrequires and
+    #   SRPMs
     "koji_config": {
+        # primary instance
         "server": "http://koji.fedoraproject.org/kojihub",
         "topurl": "http://kojipkgs.fedoraproject.org",
         "weburl": "http://koji.fedoraproject.org/koji",
+        "srpm_relative_path_root": "..",
         "login_method": "ssl_login",
         "login_args": {
             "cert": "/etc/koschei/fedora.cert",
@@ -24,13 +31,17 @@ config = {
         "load_threshold": 0.5,
         "task_priority": 30,
         "multicall_chunk_size": 100,
+        "repo_url": "http://kojipkgs.fedoraproject.org/repos/{build_tag}/{repo_id}/{arch}",
     },
+    "secondary_koji_config": {
+        # secondary instance
+        # inherits configuration from primary
+    },
+
     "dependency": {
         "build_group": "build",
         "for_arch": "x86_64",
-        "keep_build_deps_for": 5,
         "arches": ['x86_64', 'i386'],
-        "remote_repo": "http://kojipkgs.fedoraproject.org/repos/{build_tag}/{repo_id}/{arch}",
         "ignore_weak_deps": False,
 
         # Number of package resolution changes (state, depchanges, problems) to
@@ -93,7 +104,7 @@ config = {
         "sync_tracked": False,
     },
     "directories": {
-        "repodata": "@CACHEDIR@/repodata",
+        "cachedir": "@CACHEDIR@",
         "templates": "@DATADIR@/templates",
         "static_folder": "@DATADIR@/static",
         "static_url": "/static",

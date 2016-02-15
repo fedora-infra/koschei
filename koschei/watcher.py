@@ -29,16 +29,17 @@ from .models import Build, Package
 class Watcher(KojiService):
 
     topic_name = util.config['fedmsg']['topic']
-    build_tag = util.koji_config['build_tag']
+    # TODO
+    build_tag = util.primary_koji_config['build_tag']
     instance = util.config['fedmsg']['instance']
-    target_tag = util.koji_config['target_tag']
+    # TODO
+    target_tag = util.primary_koji_config['target_tag']
     watchdog = util.config['services']['watcher']['watchdog']
 
     def __init__(self, backend=None, *args, **kwargs):
         super(Watcher, self).__init__(*args, **kwargs)
-        self.backend = backend or Backend(log=self.log,
-                                          db=self.db,
-                                          koji_session=self.koji_session)
+        self.backend = backend or Backend(log=self.log, db=self.db,
+                                          koji_sessions=self.koji_sessions)
 
     def get_topic(self, name):
         return '{}.{}'.format(self.topic_name, name)
@@ -87,7 +88,7 @@ class Watcher(KojiService):
                     if topic.startswith(self.topic_name + '.'):
                         self.consume(topic, msg)
                     plugin.dispatch_event('fedmsg_event', topic, msg, db=self.db,
-                                          koji_session=self.koji_session)
+                                          koji_sessions=self.koji_sessions)
                 finally:
                     self.db.rollback()
         except requests.exceptions.ConnectionError:
