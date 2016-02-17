@@ -68,7 +68,15 @@ class KojiService(Service):
 
     def __init__(self, koji_sessions=None, **kwargs):
         super(KojiService, self).__init__(**kwargs)
-        self.koji_sessions = koji_sessions or {
-            'primary': util.KojiSession(anonymous=self.koji_anonymous),
-            'secondary': util.KojiSession(koji_config=util.secondary_koji_config)
-        }
+        if koji_sessions:
+            self.koji_sessions = koji_sessions
+        else:
+            primary_koji = util.KojiSession(anonymous=self.koji_anonymous)
+            secondary_koji = primary_koji
+            if util.secondary_koji_config != util.primary_koji_config:
+                secondary_koji = util.KojiSession(koji_id='secondary')
+
+            self.koji_sessions = {
+                'primary': primary_koji,
+                'secondary': secondary_koji
+            }

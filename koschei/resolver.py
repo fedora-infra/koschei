@@ -49,6 +49,9 @@ class AbstractResolverTask(object):
         # TODO repo_id
         self.group = util.get_build_group(koji_sessions['primary'])
 
+    def get_koji_session_for_build(self, build):
+        return self.koji_sessions['secondary' if build.real else 'primary']
+
     def store_deps(self, build_id, installs):
         new_deps = []
         for install in installs or []:
@@ -294,7 +297,7 @@ class GenerateRepoTask(AbstractResolverTask):
 class ProcessBuildsTask(AbstractResolverTask):
 
     def repo_descriptor_for_build(self, build):
-        return RepoDescriptor('secondary' if build.real else 'primary',
+        return RepoDescriptor(self.get_koji_session_for_build(build).koji_id,
                               None, build.repo_id)
 
     def process_build(self, sack, build, curr_deps):

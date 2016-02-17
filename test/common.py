@@ -111,6 +111,7 @@ class DBTest(AbstractTest):
 class KojiMock(Mock):
     def __init__(self, *args, **kwargs):
         Mock.__init__(self, *args, **kwargs)
+        self.koji_id = 'primary'
         self.multicall = False
         self._mcall_list = []
 

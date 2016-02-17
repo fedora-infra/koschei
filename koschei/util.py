@@ -89,17 +89,18 @@ dep_config = config['dependency']
 
 
 class KojiSession(object):
-    def __init__(self, koji_config=primary_koji_config, anonymous=True):
+    def __init__(self, koji_id='primary', anonymous=True):
+        self.koji_id = koji_id
+        self.config = koji_configs[koji_id]
         self.__mcall_list = []
         self.__anonymous = anonymous
-        self.__config = koji_config
         self.__proxied = self.__new_session()
 
     def __new_session(self):
-        server = self.__config['server']
+        server = self.config['server']
         session = koji.ClientSession(server, {'timeout': 3600})
         if not self.__anonymous:
-            getattr(session, self.__config['login_method'])(**self.__config['login_args'])
+            getattr(session, self.config['login_method'])(**self.config['login_args'])
         return session
 
     def __retry_loop(self, method):
@@ -130,7 +131,7 @@ class KojiSession(object):
         return result
 
     def __setattr__(self, name, value):
-        if name.startswith('_'):
+        if name.startswith('_') or name in ('config', 'koji_id'):
             object.__setattr__(self, name, value)
         else:
             object.__setattr__(self.__proxied, name, value)
