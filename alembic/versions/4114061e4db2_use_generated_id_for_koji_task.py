@@ -15,8 +15,8 @@ import sqlalchemy as sa
 
 
 def upgrade():
-    op.drop_constraint(u'build_task_id_key', 'build', type_='unique')
-    op.execute("ALTER TABLE koji_task DROP CONSTRAINT koji_task_pkey")
+    op.execute("ALTER TABLE build DROP CONSTRAINT IF EXISTS build_task_id_key")
+    op.execute("ALTER TABLE koji_task DROP CONSTRAINT IF EXISTS koji_task_pkey")
     op.execute("ALTER TABLE koji_task ADD COLUMN id SERIAL PRIMARY KEY")
 
 

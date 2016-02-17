@@ -15,7 +15,7 @@ import sqlalchemy as sa
 
 
 def upgrade():
-    op.execute("DROP SEQUENCE koji_task_task_id_seq CASCADE")
+    op.execute("DROP SEQUENCE IF EXISTS koji_task_task_id_seq CASCADE")
 
 
 def downgrade():
