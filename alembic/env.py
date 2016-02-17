@@ -7,7 +7,7 @@ from logging.config import fileConfig
 if 'KOSCHEI_CONFIG' not in os.environ:
     os.environ['KOSCHEI_CONFIG'] = '/usr/share/koschei/config.cfg:/etc/koschei/config.cfg:/etc/koschei/config-admin.cfg'
 
-from koschei.models import Base
+from koschei.models import Base, grant_db_access
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -66,6 +66,7 @@ def run_migrations_online():
     try:
         with context.begin_transaction():
             context.run_migrations()
+            grant_db_access(None, connection)
     finally:
         connection.close()
 
