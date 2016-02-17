@@ -45,11 +45,12 @@ class Service(object):
         while True:
             try:
                 self.main()
-                time.sleep(interval)
             except KeyboardInterrupt:
                 sys.exit(0)
+            else:
+                time.sleep(interval)
             finally:
-                self.db.rollback()
+                self.db.close()
 
     @classmethod
     def find_service(cls, name):

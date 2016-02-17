@@ -56,7 +56,7 @@ class ServiceTest(AbstractTest):
             s = MyService(main, log=mock_log, db=mock_db)
             self.assertRaises(MyException, s.run_service)
             self.assertEqual(3, called[0])
-            self.assertEqual(3, mock_db.rollback.call_count)
+            self.assertEqual(3, mock_db.close.call_count)
             mock_log.info.assert_called()
             sleep.assert_has_calls([call(3)] * 2)
 
