@@ -368,7 +368,7 @@ def get_build_group(koji_session):
     groups = koji_session.getTagGroups(tag_name)
     [packages] = [group['packagelist'] for group in groups if group['name'] == group_name]
     return [package['package'] for package in packages
-            if not package['blocked'] and package['type'] == 'default']
+            if not package['blocked'] and package['type'] in ('default', 'mandatory')]
 
 
 def get_rpm_requires(koji_session, nvras):
