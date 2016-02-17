@@ -77,7 +77,7 @@ class RepoManager(object):
         return os.path.join(self._repo_dir, str(repo_descriptor))
 
     # @Override
-    def destroy(self, repo_descriptor):
+    def destroy(self, repo_descriptor, _):
         repo_dir = self._get_repo_dir(repo_descriptor)
         if os.path.exists(repo_dir):
             shutil.rmtree(repo_dir)
@@ -85,7 +85,7 @@ class RepoManager(object):
     # @Override
     # Download given repo_id from Koji to disk
     def create(self, repo_descriptor, _):
-        self.destroy(repo_descriptor)
+        self.destroy(repo_descriptor, None)
         repo_dir = self._get_repo_dir(repo_descriptor)
         temp_dir = repo_dir + ".tmp"
         if os.path.exists(temp_dir):
