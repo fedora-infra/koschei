@@ -25,9 +25,8 @@ from itertools import izip, groupby
 from collections import defaultdict
 
 from koschei.models import (Package, Dependency, UnappliedChange,
-                            AppliedChange, Repo, ResolutionProblem,
-                            RepoGenerationRequest, Build, BuildrootProblem,
-                            get_last_repo)
+                            AppliedChange, Collection, ResolutionProblem,
+                            Build, BuildrootProblem)
 from koschei import util
 from koschei.util import Stopwatch
 from koschei.service import KojiService
@@ -143,8 +142,9 @@ class AbstractResolverTask(object):
 
 class GenerateRepoTask(AbstractResolverTask):
 
-    def get_packages(self, expunge=True, require_build=False):
+    def get_packages(self, collection, expunge=True, require_build=False):
         query = self.db.query(Package).filter(Package.blocked == False)\
+                       .filter_by(collection_id=collection.id)\
                        .filter(Package.tracked == True)
         if require_build:
             query = query.filter(Package.last_complete_build_id != None)
@@ -273,7 +273,13 @@ class GenerateRepoTask(AbstractResolverTask):
             generate_dependency_changes_time.stop()
         persist()
 
-    def run(self, repo_id):
+    def run(self, collection, repo_id):
+        """
+        Generates new dependency changes for requested repo using given
+        collection. Finishes early when base buildroot is not resolvable.
+        Updates collection resolution metadata (repo_id, base_resolved) after
+        finished. Commits data in increments.
+        """
         total_time.reset()
         generate_dependency_changes_time.reset()
         fetch_dependencies_generator_time.reset()
@@ -287,8 +293,7 @@ class GenerateRepoTask(AbstractResolverTask):
             self.db.rollback()
             return
         self.repo_cache.prefetch_repo(repo_descriptor)
-        packages = self.get_packages(require_build=True)
-        repo = Repo(repo_id=repo_id)
+        packages = self.get_packages(collection, require_build=True)
         brs = util.get_rpm_requires(self.koji_sessions['secondary'],
                                     [p.srpm_nvra for p in packages])
         brs = util.parallel_generator(brs, queue_size=None)
@@ -298,14 +303,15 @@ class GenerateRepoTask(AbstractResolverTask):
                     self.log.error('Cannot generate repo: {}'.format(repo_id))
                     self.db.rollback()
                     return
-                repo.base_resolved, base_problems, _ = self.resolve_dependencies(sack, [])
+                resolved, base_problems, _ = self.resolve_dependencies(sack, [])
                 resolution_time.stop()
-                if not repo.base_resolved:
-                    self.log.info("Build group not resolvable")
-                    self.db.add(repo)
-                    self.db.flush()
+                if not resolved:
+                    self.log.info("Build group not resolvable for {}"
+                                  .format(collection.name))
+                    collection.latest_repo_id = repo_id
+                    collection.latest_repo_resolved = False
                     self.db.execute(BuildrootProblem.__table__.insert(),
-                                    [{'repo_id': repo.repo_id, 'problem': problem}
+                                    [{'collection_id': collection.id, 'problem': problem}
                                      for problem in base_problems])
                     self.db.commit()
                     return
@@ -315,7 +321,8 @@ class GenerateRepoTask(AbstractResolverTask):
                 resolution_time.stop()
         finally:
             brs.stop()
-        self.db.add(repo)
+        collection.latest_repo_id = repo_id
+        collection.latest_repo_resolved = True
         self.db.commit()
         total_time.stop()
         total_time.display()
@@ -425,21 +432,10 @@ class Resolver(KojiService):
         return cls(log=self.log, db=self.db, koji_sessions=self.koji_sessions,
                    repo_cache=self.repo_cache)
 
-    def process_repo_generation_requests(self):
-        latest_request = self.db.query(RepoGenerationRequest)\
-                                .order_by(RepoGenerationRequest.repo_id
-                                          .desc())\
-                                .first()
-        if latest_request:
-            repo_id = latest_request.repo_id
-            last_repo = get_last_repo(self.db)
-            if not last_repo or repo_id > last_repo.repo_id:
-                self.create_task(GenerateRepoTask).run(repo_id)
-            self.db.query(RepoGenerationRequest)\
-                   .filter(RepoGenerationRequest.repo_id <= repo_id)\
-                   .delete()
-            self.db.commit()
-
     def main(self):
         self.create_task(ProcessBuildsTask).run()
-        self.process_repo_generation_requests()
+        for collection in self.db.query(Collection).all():
+            curr_repo = util.get_latest_repo(self.koji_sessions['primary'],
+                                             collection.build_tag)
+            if curr_repo and curr_repo['id'] > collection.latest_repo_id:
+                self.create_task(GenerateRepoTask).run(collection, curr_repo['id'])

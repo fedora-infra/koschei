@@ -48,13 +48,8 @@ class Polling(KojiService):
             state = koji.TASK_STATES.getvalue(task_info['state'])
             self.backend.update_build_state(build, state)
 
-    def poll_repo(self):
-        self.log.debug('Polling latest Koji repo')
-        self.backend.poll_repo()
-
     def main(self):
         self.poll_builds()
-        self.poll_repo()
         self.log.debug('Polling Koji packages...')
         self.backend.refresh_packages()
         self.db.commit()

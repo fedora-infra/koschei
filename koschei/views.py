@@ -16,7 +16,7 @@ from wtforms.validators import Regexp, ValidationError
 
 from .models import (Package, Build, PackageGroup, PackageGroupRelation,
                      AdminNotice, User, UserPackageRelation, BuildrootProblem,
-                     GroupACL, get_or_create, get_last_repo)
+                     GroupACL, Collection, get_or_create)
 from . import util, auth, backend, main, plugin
 from .frontend import app, db, frontend_config
 
@@ -80,12 +80,14 @@ def columnize(what, css_class=None):
 def get_global_notices():
     notices = [n.content for n in
                db.query(AdminNotice.content).filter_by(key="global_notice")]
-    repo = get_last_repo(db)
-    if repo and repo.base_resolved is False:
-        problems = db.query(BuildrootProblem).filter_by(repo_id=repo.repo_id).all()
-        notices.append("Base buildroot is not installable. Operation suspended.<br/>"
-                       "Dependency problems:<br/>" +
-                       '<br/>'.join((p.problem for p in problems)))
+    # TODO display per collection
+    for collection in db.query(Collection).all():
+        if collection.latest_repo_resolved is False:
+            problems = db.query(BuildrootProblem)\
+                .filter_by(collection_id=collection.id).all()
+            notices.append("Base buildroot for {} is not installable. "
+                           "Dependency problems:<br/>".format(collection) +
+                           '<br/>'.join((p.problem for p in problems)))
     notices = map(Markup, notices)
     return notices
 
@@ -522,7 +524,7 @@ if not frontend_config['auto_tracking']:
                 return render_template("add-packages.html", form=form)
             names = set(form.packages.data)
             try:
-                added = be.add_packages(names)
+                added = be.sync_tracked(names)
             except backend.PackagesDontExist as e:
                 flash("Packages don't exist: " + ','.join(e.names))
                 return render_template("add-packages.html", form=form)

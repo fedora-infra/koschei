@@ -84,7 +84,7 @@ class SchedulerTest(DBTest):
     @postgres_only
     def test_time_priority(self):
         for days in [0, 2, 5, 7, 12]:
-            pkg = m.Package(name='p{}'.format(days))
+            pkg = m.Package(name='p{}'.format(days), collection_id=self.collection.id)
             self.s.add(pkg)
             self.s.flush()
             build = m.Build(package_id=pkg.id,
@@ -128,7 +128,8 @@ class SchedulerTest(DBTest):
             for name in priorities.keys():
                 pkg = self.s.query(m.Package).filter_by(name=name).first()
                 if not pkg:
-                    pkg = m.Package(name=name, tracked=states.get(name) != 'ignored')
+                    pkg = m.Package(name=name, tracked=states.get(name) != 'ignored',
+                                    collection_id=self.collection.id)
                     self.s.add(pkg)
                     self.s.flush()
                     if states.get(name, True) is not None:

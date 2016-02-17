@@ -48,6 +48,8 @@ class DBTest(AbstractTest):
         super(DBTest, self).__init__(*args, **kwargs)
         self.s = None
         self.task_id_counter = 1
+        self.collection = m.Collection(name="foo", display_name="bar", target_tag="tag",
+                                       build_tag="tag2", priority_coefficient=1.0)
 
     def setUp(self):
         super(DBTest, self).setUp()
@@ -57,13 +59,15 @@ class DBTest(AbstractTest):
             conn.execute(table.delete())
         conn.close()
         self.s = m.Session()
+        self.s.add(self.collection)
+        self.s.commit()
 
     def tearDown(self):
         super(DBTest, self).tearDown()
         self.s.close()
 
     def prepare_basic_data(self):
-        pkg = m.Package(name='rnv')
+        pkg = m.Package(name='rnv', collection_id=self.collection.id)
         self.s.add(pkg)
         self.s.flush()
         build = m.Build(package_id=pkg.id, state=m.Build.RUNNING,
@@ -77,7 +81,7 @@ class DBTest(AbstractTest):
         for name in pkg_names:
             pkg = self.s.query(m.Package).filter_by(name=name).first()
             if not pkg:
-                pkg = m.Package(name=name)
+                pkg = m.Package(name=name, collection_id=self.collection.id)
                 self.s.add(pkg)
             pkgs.append(pkg)
         self.s.commit()

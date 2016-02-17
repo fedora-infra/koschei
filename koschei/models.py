@@ -20,7 +20,7 @@ import koji
 
 import sqlalchemy
 from sqlalchemy import (create_engine, Table, Column, Integer, String, Boolean,
-                        ForeignKey, DateTime, Index, DDL)
+                        ForeignKey, DateTime, Index, DDL, Float)
 from sqlalchemy.sql.expression import func, select, false, true
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import (sessionmaker, relationship, column_property,
@@ -93,14 +93,44 @@ class User(Base):
     packages_retrieved = Column(Boolean, nullable=False, server_default=false())
 
 
+class Collection(Base):
+    __tablename__ = 'collection'
+
+    id = Column(Integer, primary_key=True)
+    # name used in machine context (urls, fedmsg), e.g. "f24"
+    name = Column(String, nullable=False, unique=True)
+    # name for ordinary people, e.g. "Fedora 24"
+    display_name = Column(String, nullable=False)
+
+    target_tag = Column(String, nullable=False)
+    build_tag = Column(String, nullable=False)
+
+    # priority of packages in given collection is multiplied by this
+    priority_coefficient = Column(Float, nullable=False, server_default='1')
+
+    latest_repo_id = Column(Integer)
+    latest_repo_resolved = Column(Boolean)
+
+    packages = relationship('Package', backref='collection', passive_deletes=True)
+
+    def is_buildroot_broken(self):
+        return self.latest_repo_resolved is False # None means unknown
+
+    def __str__(self):
+        return self.display_name
+
+
 class Package(Base):
     __tablename__ = 'package'
 
     id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False, unique=True)
+    name = Column(String, nullable=False)
     static_priority = Column(Integer, nullable=False, default=0)
     manual_priority = Column(Integer, nullable=False, default=0)
     added = Column(DateTime, nullable=False, default=datetime.now)
+    collection_id = Column(Integer, ForeignKey(Collection.id, ondelete='CASCADE'),
+                           nullable=False)
+    collection = None # backref, shut up pylint
 
     arch_override = Column(String)
 
@@ -329,14 +359,6 @@ class ResolutionProblem(Base):
     problem = Column(String, nullable=False)
 
 
-class RepoGenerationRequest(Base):
-    __tablename__ = 'repo_generation_request'
-
-    id = Column(Integer, primary_key=True)
-    repo_id = Column(Integer, nullable=False)
-    requested = Column(DateTime, nullable=False, default=datetime.now)
-
-
 class Dependency(Base):
     __tablename__ = 'dependency'
     id = Column(Integer, primary_key=True)
@@ -398,26 +420,11 @@ class UnappliedChange(DependencyChange, Base):
                            index=True, nullable=False)
 
 
-class Repo(Base):
-    __tablename__ = 'repo'
-    repo_id = Column(Integer, primary_key=True, default=external_id)
-    base_resolved = Column(Boolean, nullable=False)
-
-
 class BuildrootProblem(Base):
     __tablename__ = 'buildroot_problem'
     id = Column(Integer, primary_key=True)
-    repo_id = Column(ForeignKey(Repo.repo_id), index=True)
+    collection_id = Column(ForeignKey(Collection.id, ondelete='CASCADE'), index=True)
     problem = Column(String, nullable=False)
-
-
-def get_last_repo(db):
-    return db.query(Repo).order_by(Repo.repo_id.desc()).first()
-
-
-def is_buildroot_broken(db):
-    repo = get_last_repo(db)
-    return repo is not None and repo.base_resolved is False
 
 
 class AdminNotice(Base):

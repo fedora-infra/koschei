@@ -21,14 +21,13 @@ import os
 import shutil
 import librepo
 import koji
-import unittest
 import hawkey
 from contextlib import contextmanager
 from common import DBTest, testdir, postgres_only, x86_64_only, KojiMock
 from mock import Mock, patch
 from koschei import util
 from koschei.models import (Dependency, UnappliedChange, AppliedChange, Package,
-                            ResolutionProblem, Repo, BuildrootProblem)
+                            ResolutionProblem, BuildrootProblem)
 from koschei.resolver import (Resolver, AbstractResolverTask, GenerateRepoTask,
                               ProcessBuildsTask)
 
@@ -191,7 +190,7 @@ class ResolverTest(DBTest):
             task = self.resolver.create_task(GenerateRepoTask)
             with patch('koschei.util.get_rpm_requires',
                        return_value=[['F', 'A'], ['nonexistent']]):
-                task.run(666)
+                task.run(self.collection, 666)
         self.s.expire_all()
         foo = self.s.query(Package).filter_by(name='foo').first()
         self.assertTrue(foo.resolved)
@@ -204,6 +203,8 @@ class ResolverTest(DBTest):
         self.assertItemsEqual(expected_changes, actual_changes)
         self.assertFalse(self.s.query(ResolutionProblem)
                          .filter_by(package_id=foo.id).count())
+        self.assertTrue(self.collection.latest_repo_resolved)
+        self.assertEqual(666, self.collection.latest_repo_id)
 
     @postgres_only
     def test_broken_buildroot(self):
@@ -213,10 +214,10 @@ class ResolverTest(DBTest):
             task = self.resolver.create_task(GenerateRepoTask)
             with patch('koschei.util.get_rpm_requires', return_value=[['nonexistent']]):
                 with patch('fedmsg.publish') as fedmsg_mock:
-                    task.run(666)
+                    task.run(self.collection, 666)
                     self.assertFalse(fedmsg_mock.called)
-        repo = self.s.query(Repo).one()
-        self.assertFalse(repo.base_resolved)
+        self.assertFalse(self.collection.latest_repo_resolved)
+        self.assertEquals(666, self.collection.latest_repo_id)
         self.assertTrue(self.s.query(BuildrootProblem).count())
 
     def test_buildrequires(self):

@@ -26,7 +26,7 @@ from sqlalchemy import (func, union_all, extract, cast, Integer, case, null,
 from sqlalchemy.sql.functions import coalesce
 
 from . import util
-from .models import Package, Build, UnappliedChange, is_buildroot_broken
+from .models import Package, Build, UnappliedChange, Collection
 from .service import KojiService
 from .backend import Backend
 
@@ -111,7 +111,8 @@ class Scheduler(KojiService):
                                 Integer).label('curr_priority')
         priorities = self.db.query(pkg_id, current_priority)\
                             .group_by(pkg_id).subquery()
-        return self.db.query(Package.id, priorities.c.curr_priority)\
+        return self.db.query(Package.id, priorities.c.curr_priority
+                             * Collection.priority_coefficient)\
                       .join(priorities, Package.id == priorities.c.pkg_id)\
                       .filter((Package.resolved == True) |
                               (Package.resolved == None))\
@@ -137,9 +138,6 @@ class Scheduler(KojiService):
         self.db.execute("LOCK TABLE package IN EXCLUSIVE MODE;")
 
     def main(self):
-        if is_buildroot_broken(self.db):
-            self.log.debug("Not scheduling: buildroot broken")
-            return
         prioritized = self.get_priorities()
         self.db.rollback()  # no-op, ends the transaction
         if time.time() - self.calculation_timestamp > self.calculation_interval:
@@ -160,6 +158,10 @@ class Scheduler(KojiService):
                 self.log.debug("Not scheduling: no package above threshold")
                 return
             package = self.db.query(Package).get(package_id)
+            if package.collection.is_buildroot_broken():
+                self.log.debug("Skipping {}: {} buildroot broken"
+                               .format(package, package.collection))
+                continue
             newer_build = self.backend.get_newer_build_if_exists(package)
             if newer_build:
                 self.backend.register_real_build(package, newer_build)

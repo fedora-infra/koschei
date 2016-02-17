@@ -28,7 +28,7 @@ class PollingTest(DBTest):
     def prepare_builds(self, **kwargs):
         builds = {}
         for i, (name, state) in enumerate(sorted(kwargs.items())):
-            pkg = m.Package(name=name)
+            pkg = m.Package(name=name, collection_id=self.collection.id)
             self.s.add(pkg)
             self.s.flush()
             build = m.Build(package_id=pkg.id, task_id=i + 1, state=state)

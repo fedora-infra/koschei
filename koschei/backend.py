@@ -21,12 +21,11 @@ import koji
 from datetime import datetime
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.sql import exists
 
 from koschei import util
 from koschei.models import (Build, UnappliedChange, KojiTask, Package,
                             PackageGroup, PackageGroupRelation,
-                            RepoGenerationRequest, get_or_create)
+                            Collection, get_or_create)
 from koschei.plugin import dispatch_event
 
 
@@ -57,13 +56,15 @@ class Backend(object):
         build_opts = {}
         if package.arch_override:
             build_opts = {'arch_override': package.arch_override}
+        tag = package.collection.build_tag
         # SRPMs are taken from secondary, primary needs to be able to build
         # from relative URL constructed against secondary (internal redirect)
-        srpm, srpm_url = (util.get_last_srpm(self.koji_sessions['secondary'], name) or
-                          (None, None))
-        if srpm_url:
-            build.task_id = util.koji_scratch_build(self.koji_sessions['primary'], name,
-                                                    srpm_url, build_opts)
+        srpm_res = util.get_last_srpm(self.koji_sessions['secondary'], tag, name)
+        if srpm_res:
+            srpm, srpm_url = srpm_res
+            package.manual_priority = 0
+            build.task_id = util.koji_scratch_build(self.koji_sessions['primary'],
+                                                    tag, name, srpm_url, build_opts)
             build.started = datetime.now()
             build.epoch = srpm['epoch']
             build.version = srpm['version']
@@ -80,7 +81,7 @@ class Backend(object):
 
     def get_newer_build_if_exists(self, package):
         [info] = self.koji_sessions['primary']\
-            .listTagged(util.source_tag, latest=True,
+            .listTagged(package.collection.tag, latest=True,
                         package=package.name, inherit=True) or [None]
         if self.is_build_newer(package.last_build, info):
             return info
@@ -95,7 +96,7 @@ class Backend(object):
                                                  task_info['release'])) < 0) and
                 self.db.query(Build)
                 .filter_by(task_id=task_info['task_id'])
-                .count() == 0)
+                .count() == 0) #TODO use exists
 
     def register_real_build(self, package, build_info):
         # TODO send fedmsg for real builds?
@@ -110,9 +111,9 @@ class Backend(object):
             self.db.flush()
             self.sync_tasks(build, self.koji_sessions['secondary'])
             self.flush_depchanges(build)
-            self.log.info('Registering real build {}-{}-{} (task_id {})'
+            self.log.info('Registering real build {}-{}-{} for collection {} (task_id {})'
                           .format(package.name, build.version, build.release,
-                                  build.task_id))
+                                  package.collection, build.task_id))
             self.db.commit()
             return build
         except IntegrityError:
@@ -240,27 +241,26 @@ class Backend(object):
         Refresh packages from Koji: add packages not yet known by Koschei
         and update blocked flag.
         """
-        # TODO
-        source_tag = util.secondary_koji_config['source_tag']
-        koji_packages = self.koji_sessions['secondary'].listPackages(tagID=source_tag,
-                                                                     inherited=True)
-        whitelisted = {p['package_name'] for p in koji_packages if not p['blocked']}
-        packages = self.db.query(Package).all()
-        to_update = [p.id for p in packages if p.blocked == (p.name in whitelisted)]
-        if to_update:
-            self.db.query(Package).filter(Package.id.in_(to_update))\
-                   .update({'blocked': ~Package.blocked}, synchronize_session=False)
-            self.db.flush()
-        existing_names = {p.name for p in packages}
-        to_add = [p for p in koji_packages if p['package_name'] not in existing_names]
-        if to_add:
-            for p in to_add:
-                pkg = Package(name=p['package_name'])
-                pkg.blocked = p['blocked']
-                pkg.tracked = False
-                self.db.add(pkg)
-            self.db.flush()
-        self.db.expire_all()
+        for collection in self.db.query(Collection):
+            koji_packages = self.koji_sessions['secondary']\
+                .listPackages(tagID=collection.target_tag, inherited=True)
+            whitelisted = {p['package_name'] for p in koji_packages if not p['blocked']}
+            packages = self.db.query(Package).filter_by(collection_id=collection.id).all()
+            to_update = [p.id for p in packages if p.blocked == (p.name in whitelisted)]
+            if to_update:
+                self.db.query(Package).filter(Package.id.in_(to_update))\
+                       .update({'blocked': ~Package.blocked}, synchronize_session=False)
+                self.db.flush()
+            existing_names = {p.name for p in packages}
+            to_add = [p for p in koji_packages if p['package_name'] not in existing_names]
+            if to_add:
+                for p in to_add:
+                    pkg = Package(name=p['package_name'], collection_id=collection.id)
+                    pkg.blocked = p['blocked']
+                    pkg.tracked = False
+                    self.db.add(pkg)
+                self.db.flush()
+            self.db.expire_all()
 
     def refresh_latest_builds(self):
         """
@@ -270,33 +270,23 @@ class Backend(object):
         packages = self.db.query(Package).options(joinedload(Package.last_build)).all()
         for p in packages:
             self.db.expunge(p)
-        source_tag = util.secondary_koji_config['source_tag']
-        infos = self.koji_sessions['secondary']\
-            .listTagged(source_tag, latest=True, inherit=True)
         packages = {p.name: p for p in packages}
-        self.register_real_builds({packages[i['package_name']]: i for i in infos})
+        for collection in self.db.query(Collection):
+            tag = collection.target_tag
+            infos = self.koji_sessions['secondary']\
+                .listTagged(tag, latest=True, inherit=True)
+            self.register_real_builds({packages[i['package_name']]: i for i in infos})
 
-    def add_packages(self, names, group=None, static_priority=None,
-                     manual_priority=None):
-        packages = self.db.query(Package).filter(Package.name.in_(names))
-        nonexistent = set(names) - {p.name for p in packages}
-        if nonexistent:
-            raise PackagesDontExist(nonexistent)
-        newly_added = [p for p in packages if not p.tracked]
-        for pkg in newly_added:
-            pkg.tracked = True
-        if group:
-            self.add_group(group, packages)
-        self.db.flush()
-        return newly_added
-
-    def sync_tracked(self, tracked):
+    def sync_tracked(self, tracked, collection_id=None):
         """
         Synchronize package tracked status. End result is that all
         specified packages are present in Koschei and are set to be
         tracked, and all other packages are not tracked.
         """
-        packages = self.db.query(Package).all()
+        packages = self.db.query(Package)
+        if collection_id is not None:
+            packages = packages.filter_by(collection_id=collection_id)
+        packages = packages.all()
         to_update = [p.id for p in packages if p.tracked != (p.name in tracked)]
         if to_update:
             query = self.db.query(Package).filter(Package.id.in_(to_update))
@@ -304,13 +294,3 @@ class Backend(object):
             query.update({'tracked': ~Package.tracked}, synchronize_session=False)
             self.db.expire_all()
             self.db.flush()
-
-    def poll_repo(self):
-        curr_repo = util.get_latest_repo(self.koji_sessions['primary'])
-        if curr_repo:
-            if not self.db.query(exists()
-                                 .where(RepoGenerationRequest.repo_id ==
-                                        curr_repo['id'])).scalar():
-                request = RepoGenerationRequest(repo_id=curr_repo['id'])
-                self.db.add(request)
-                self.db.commit()

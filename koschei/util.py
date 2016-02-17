@@ -78,10 +78,6 @@ koji_configs = {
     'primary': primary_koji_config,
     'secondary': secondary_koji_config,
 }
-# TODO collections
-base_build_opts = primary_koji_config.get('build_opts', {})
-source_tag = primary_koji_config['source_tag']
-target_tag = primary_koji_config['target_tag']
 
 git_reference = config.get('git_reference', 'origin/master')
 
@@ -196,16 +192,16 @@ class parallel_generator(object):
 
 
 def prepare_build_opts(opts=None):
-    build_opts = base_build_opts.copy()
+    build_opts = primary_koji_config.get('build_opts', {}).copy()
     if opts:
         build_opts.update(opts)
     build_opts['scratch'] = True
     return build_opts
 
 
-def get_last_srpm(koji_session, name):
+def get_last_srpm(koji_session, tag, name):
     rel_pathinfo = koji.PathInfo(topdir=primary_koji_config['srpm_relative_path_root'])
-    info = koji_session.listTagged(source_tag, latest=True,
+    info = koji_session.listTagged(tag, latest=True,
                                    package=name, inherit=True)
     if info:
         srpms = koji_session.listRPMs(buildID=info[0]['build_id'],
@@ -216,7 +212,7 @@ def get_last_srpm(koji_session, name):
                     rel_pathinfo.rpm(srpms[0]))
 
 
-def koji_scratch_build(session, name, source, build_opts):
+def koji_scratch_build(session, target_tag, name, source, build_opts):
     build_opts = prepare_build_opts(build_opts)
     log.info('Intiating koji build for %(name)s:\n\tsource=%(source)s\
               \n\ttarget=%(target)s\n\tbuild_opts=%(build_opts)s',
@@ -430,8 +426,7 @@ def lock(lock_path):
         yield
 
 
-def get_latest_repo(koji_session):
-    build_tag = primary_koji_config['build_tag']
+def get_latest_repo(koji_session, build_tag):
     return koji_session.getRepo(build_tag, state=koji.REPO_READY)
 
 
