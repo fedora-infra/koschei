@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata xmlns="http://linux.duke.edu/metadata/common" xmlns:rpm="http://linux.duke.edu/metadata/rpm" packages="7">
+<package type="rpm">
+  <name>A</name>
+  <arch>x86_64</arch>
+  <version epoch="0" ver="1" rel="1.fc22"/>
+  <checksum type="sha256" pkgid="YES">003ffa4e6ce8ec1514dfc963a35b970618c763acba5e011ce85571fec24b6dbd</checksum>
+  <summary>bla bla bla</summary>
+  <description>asdf</description>
+  <packager></packager>
+  <url>www.example.com</url>
+  <time file="1452769121" build="1452769121"/>
+  <size package="6222" installed="4" archive="388"/>
+  <location href="A-1-1.fc22.x86_64.rpm"/>
+  <format>
+    <rpm:license>GPL</rpm:license>
+    <rpm:vendor></rpm:vendor>
+    <rpm:group>Unspecified</rpm:group>
+    <rpm:buildhost>fluttershy</rpm:buildhost>
+    <rpm:sourcerpm>A-1-1.fc22.src.rpm</rpm:sourcerpm>
+    <rpm:header-range start="4392" end="6034"/>
+    <rpm:provides>
+      <rpm:entry name="A" flags="EQ" epoch="0" ver="1" rel="1.fc22"/>
+      <rpm:entry name="A(x86-64)" flags="EQ" epoch="0" ver="1" rel="1.fc22"/>
+    </rpm:provides>
+    <rpm:requires>
+      <rpm:entry name="B"/>
+    </rpm:requires>
+  </format>
+</package>
+<package type="rpm">
+  <name>B</name>
+  <arch>noarch</arch>
+  <version epoch="0" ver="4.1" rel="2.fc22"/>
+  <checksum type="sha256" pkgid="YES">e53311f45fb8655b0cd7fc73c4a4b2fbee563dacbacdc0ec97792331cf6492c1</checksum>
+  <summary>bla bla bla</summary>
+  <description>asdf</description>
+  <packager></packager>
+  <url>www.example.com</url>
+  <time file="1452769121" build="1452769121"/>
+  <size package="6206" installed="4" archive="388"/>
+  <location href="B-4.1-2.fc22.noarch.rpm"/>
+  <format>
+    <rpm:license>GPL</rpm:license>
+    <rpm:vendor></rpm:vendor>
+    <rpm:group>Unspecified</rpm:group>
+    <rpm:buildhost>fluttershy</rpm:buildhost>
+    <rpm:sourcerpm>B-4.1-2.fc22.src.rpm</rpm:sourcerpm>
+    <rpm:header-range start="4392" end="6018"/>
+    <rpm:provides>
+      <rpm:entry name="B" flags="EQ" epoch="0" ver="4.1" rel="2.fc22"/>
+    </rpm:provides>
+    <rpm:requires>
+      <rpm:entry name="C"/>
+    </rpm:requires>
+  </format>
+</package>
+<package type="rpm">
+  <name>C</name>
+  <arch>x86_64</arch>
+  <version epoch="1" ver="3" rel="1.fc22"/>
+  <checksum type="sha256" pkgid="YES">ef4cf6bfa005002f5436acceb5daf930c149140da9095d97d1d7515884f0fc68</checksum>
+  <summary>bla bla bla</summary>
+  <description>asdf</description>
+  <packager></packager>
+  <url>www.example.com</url>
+  <time file="1452769122" build="1452769122"/>
+  <size package="6242" installed="4" archive="388"/>
+  <location href="C-3-1.fc22.x86_64.rpm"/>
+  <format>
+    <rpm:license>GPL</rpm:license>
+    <rpm:vendor></rpm:vendor>
+    <rpm:group>Unspecified</rpm:group>
+    <rpm:buildhost>fluttershy</rpm:buildhost>
+    <rpm:sourcerpm>C-3-1.fc22.src.rpm</rpm:sourcerpm>
+    <rpm:header-range start="4392" end="6054"/>
+    <rpm:provides>
+      <rpm:entry name="C" flags="EQ" epoch="1" ver="3" rel="1.fc22"/>
+      <rpm:entry name="C(x86-64)" flags="EQ" epoch="1" ver="3" rel="1.fc22"/>
+    </rpm:provides>
+  </format>
+</package>
+<package type="rpm">
+  <name>D</name>
+  <arch>x86_64</arch>
+  <version epoch="2" ver="8.b" rel="1.rc1.fc22"/>
+  <checksum type="sha256" pkgid="YES">f3d67d7b9e53024b62f47e9eaf940b18afe2ff2ed515fedb5d063a988d0d09d7</checksum>
+  <summary>bla bla bla</summary>
+  <description>asdf</description>
+  <packager></packager>
+  <url>www.example.com</url>
+  <time file="1452769122" build="1452769122"/>
+  <size package="6274" installed="4" archive="388"/>
+  <location href="D-8.b-1.rc1.fc22.x86_64.rpm"/>
+  <format>
+    <rpm:license>GPL</rpm:license>
+    <rpm:vendor></rpm:vendor>
+    <rpm:group>Unspecified</rpm:group>
+    <rpm:buildhost>fluttershy</rpm:buildhost>
+    <rpm:sourcerpm>D-8.b-1.rc1.fc22.src.rpm</rpm:sourcerpm>
+    <rpm:header-range start="4392" end="6086"/>
+    <rpm:provides>
+      <rpm:entry name="D" flags="EQ" epoch="2" ver="8.b" rel="1.rc1.fc22"/>
+      <rpm:entry name="D(x86-64)" flags="EQ" epoch="2" ver="8.b" rel="1.rc1.fc22"/>
+    </rpm:provides>
+    <rpm:requires>
+      <rpm:entry name="F"/>
+    </rpm:requires>
+  </format>
+</package>
+<package type="rpm">
+  <name>E</name>
+  <arch>noarch</arch>
+  <version epoch="0" ver="0.1" rel="1.fc22.1"/>
+  <checksum type="sha256" pkgid="YES">c48d2e5b53d047de928ea75d93ae31d02d8e80841fa42141bacde069158867db</checksum>
+  <summary>bla bla bla</summary>
+  <description>asdf</description>
+  <packager></packager>
+  <url>www.example.com</url>
+  <time file="1452769122" build="1452769122"/>
+  <size package="6238" installed="4" archive="388"/>
+  <location href="E-0.1-1.fc22.1.noarch.rpm"/>
+  <format>
+    <rpm:license>GPL</rpm:license>
+    <rpm:vendor></rpm:vendor>
+    <rpm:group>Unspecified</rpm:group>
+    <rpm:buildhost>fluttershy</rpm:buildhost>
+    <rpm:sourcerpm>E-0.1-1.fc22.1.src.rpm</rpm:sourcerpm>
+    <rpm:header-range start="4392" end="6050"/>
+    <rpm:provides>
+      <rpm:entry name="E" flags="EQ" epoch="0" ver="0.1" rel="1.fc22.1"/>
+    </rpm:provides>
+    <rpm:requires>
+      <rpm:entry name="D"/>
+    </rpm:requires>
+  </format>
+</package>
+<package type="rpm">
+  <name>F</name>
+  <arch>noarch</arch>
+  <version epoch="0" ver="1" rel="1.fc22"/>
+  <checksum type="sha256" pkgid="YES">c7ed680c1ec6ff8361a2add1f795ee6456031dc3350479e5ba0bd784d248b220</checksum>
+  <summary>bla bla bla</summary>
+  <description>asdf</description>
+  <packager></packager>
+  <url>www.example.com</url>
+  <time file="1452769123" build="1452769123"/>
+  <size package="6214" installed="4" archive="388"/>
+  <location href="F-1-1.fc22.noarch.rpm"/>
+  <format>
+    <rpm:license>GPL</rpm:license>
+    <rpm:vendor></rpm:vendor>
+    <rpm:group>Unspecified</rpm:group>
+    <rpm:buildhost>fluttershy</rpm:buildhost>
+    <rpm:sourcerpm>F-1-1.fc22.src.rpm</rpm:sourcerpm>
+    <rpm:header-range start="4392" end="6026"/>
+    <rpm:provides>
+      <rpm:entry name="F" flags="EQ" epoch="0" ver="1" rel="1.fc22"/>
+    </rpm:provides>
+    <rpm:requires>
+      <rpm:entry name="B"/>
+      <rpm:entry name="C"/>
+      <rpm:entry name="E"/>
+    </rpm:requires>
+  </format>
+</package>
+<package type="rpm">
+  <name>R</name>
+  <arch>x86_64</arch>
+  <version epoch="0" ver="3.3" rel="2.fc22"/>
+  <checksum type="sha256" pkgid="YES">2da616bfd3f57685ce08b95a908138702f262bee97df4bc0865abb0638b829b9</checksum>
+  <summary>bla bla bla</summary>
+  <description>asdf</description>
+  <packager></packager>
+  <url>www.example.com</url>
+  <time file="1452769123" build="1452769123"/>
+  <size package="6234" installed="4" archive="388"/>
+  <location href="R-3.3-2.fc22.x86_64.rpm"/>
+  <format>
+    <rpm:license>GPL</rpm:license>
+    <rpm:vendor></rpm:vendor>
+    <rpm:group>Unspecified</rpm:group>
+    <rpm:buildhost>fluttershy</rpm:buildhost>
+    <rpm:sourcerpm>R-3.3-2.fc22.src.rpm</rpm:sourcerpm>
+    <rpm:header-range start="4392" end="6046"/>
+    <rpm:provides>
+      <rpm:entry name="R" flags="EQ" epoch="0" ver="3.3" rel="2.fc22"/>
+      <rpm:entry name="R(x86-64)" flags="EQ" epoch="0" ver="3.3" rel="2.fc22"/>
+      <rpm:entry name="virtual"/>
+    </rpm:provides>
+  </format>
+</package>
+</metadata>

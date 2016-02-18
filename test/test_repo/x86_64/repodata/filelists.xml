@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<filelists xmlns="http://linux.duke.edu/metadata/filelists" packages="7">
+<package pkgid="003ffa4e6ce8ec1514dfc963a35b970618c763acba5e011ce85571fec24b6dbd" name="A" arch="x86_64">
+  <version epoch="0" ver="1" rel="1.fc22"/>
+  <file type="dir">/usr/share/doc/A</file>
+  <file>/usr/share/doc/A/bla</file>
+</package>
+<package pkgid="e53311f45fb8655b0cd7fc73c4a4b2fbee563dacbacdc0ec97792331cf6492c1" name="B" arch="noarch">
+  <version epoch="0" ver="4.1" rel="2.fc22"/>
+  <file type="dir">/usr/share/doc/B</file>
+  <file>/usr/share/doc/B/bla</file>
+</package>
+<package pkgid="ef4cf6bfa005002f5436acceb5daf930c149140da9095d97d1d7515884f0fc68" name="C" arch="x86_64">
+  <version epoch="1" ver="3" rel="1.fc22"/>
+  <file type="dir">/usr/share/doc/C</file>
+  <file>/usr/share/doc/C/bla</file>
+</package>
+<package pkgid="f3d67d7b9e53024b62f47e9eaf940b18afe2ff2ed515fedb5d063a988d0d09d7" name="D" arch="x86_64">
+  <version epoch="2" ver="8.b" rel="1.rc1.fc22"/>
+  <file type="dir">/usr/share/doc/D</file>
+  <file>/usr/share/doc/D/bla</file>
+</package>
+<package pkgid="c48d2e5b53d047de928ea75d93ae31d02d8e80841fa42141bacde069158867db" name="E" arch="noarch">
+  <version epoch="0" ver="0.1" rel="1.fc22.1"/>
+  <file type="dir">/usr/share/doc/E</file>
+  <file>/usr/share/doc/E/bla</file>
+</package>
+<package pkgid="c7ed680c1ec6ff8361a2add1f795ee6456031dc3350479e5ba0bd784d248b220" name="F" arch="noarch">
+  <version epoch="0" ver="1" rel="1.fc22"/>
+  <file type="dir">/usr/share/doc/F</file>
+  <file>/usr/share/doc/F/bla</file>
+</package>
+<package pkgid="2da616bfd3f57685ce08b95a908138702f262bee97df4bc0865abb0638b829b9" name="R" arch="x86_64">
+  <version epoch="0" ver="3.3" rel="2.fc22"/>
+  <file type="dir">/usr/share/doc/R</file>
+  <file>/usr/share/doc/R/bla</file>
+</package>
+</filelists>
