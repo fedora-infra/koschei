@@ -49,6 +49,7 @@
     <rpm:header-range start="4392" end="6018"/>
     <rpm:provides>
       <rpm:entry name="B" flags="EQ" epoch="0" ver="4.1" rel="2.fc22"/>
+      <rpm:entry name="/bin/csh"/>
     </rpm:provides>
     <rpm:requires>
       <rpm:entry name="C"/>

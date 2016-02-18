@@ -29,7 +29,8 @@ from mock import Mock, patch
 from koschei import util
 from koschei.models import (Dependency, UnappliedChange, AppliedChange, Package,
                             ResolutionProblem, Repo, BuildrootProblem)
-from koschei.resolver import Resolver, GenerateRepoTask, ProcessBuildsTask
+from koschei.resolver import (Resolver, AbstractResolverTask, GenerateRepoTask,
+                              ProcessBuildsTask)
 
 FOO_DEPS = [
     ('A', 0, '1', '1.fc22', 'x86_64'),
@@ -230,3 +231,13 @@ class ResolverTest(DBTest):
         res = [req for req in util.get_rpm_requires(koji_mock, [inp])]
         koji_mock.getRPMDeps.assert_called_once_with(inp, koji.DEP_REQUIRE)
         self.assertEqual(res, [['maven-local', 'jetty-toolchain']])
+
+    def test1(self):
+        with patch('koschei.util.get_build_group', return_value=['R']):
+            with get_sack('x86_64') as sack:
+                task = self.resolver.create_task(AbstractResolverTask)
+                (resolved, problems, deps) = task.resolve_dependencies(sack, ['/bin/csh'])
+                self.assertItemsEqual([], problems)
+                self.assertTrue(resolved)
+                self.assertIsNotNone(deps)
+                self.assertItemsEqual(['B', 'C', 'R'], [dep.name for dep in deps])
