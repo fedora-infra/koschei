@@ -298,22 +298,25 @@ def _get_best_selector(sack, dep):
 
     subj = hawkey.Subject(dep)
     sltr = hawkey.Selector(sack)
-    kwargs = {'allow_globs': True}
-    if re.search(r'^\*?/', dep):
-        key = "file__glob" if is_glob_pattern(dep) else "file"
-        return sltr.set(**{key: dep})
-    nevra = first(subj.nevra_possibilities_real(sack, **kwargs))
-    if nevra:
-        return _nevra_to_selector(sltr, nevra)
 
-    if is_glob_pattern(dep):
-        return sltr.set(provides__glob=dep)
+    nevra = first(subj.nevra_possibilities_real(sack, allow_globs=True))
+    if nevra:
+        s = _nevra_to_selector(sltr, nevra)
+        if len(s.matches()) > 0:
+            return s
 
     # pylint: disable=E1101
     reldep = first(subj.reldep_possibilities_real(sack))
     if reldep:
         dep = str(reldep)
-        return sltr.set(provides=dep)
+        s = sltr.set(provides=dep)
+        if len(s.matches()) > 0:
+            return s
+
+    if re.search(r'^\*?/', dep):
+        key = "file__glob" if is_glob_pattern(dep) else "file"
+        return sltr.set(**{key: dep})
+
     return sltr
 
 
