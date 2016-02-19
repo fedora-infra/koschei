@@ -232,7 +232,7 @@ class ResolverTest(DBTest):
         koji_mock.getRPMDeps.assert_called_once_with(inp, koji.DEP_REQUIRE)
         self.assertEqual(res, [['maven-local', 'jetty-toolchain']])
 
-    def test1(self):
+    def test_virtual_file_provides(self):
         with patch('koschei.util.get_build_group', return_value=['R']):
             with get_sack('x86_64') as sack:
                 task = self.resolver.create_task(AbstractResolverTask)
