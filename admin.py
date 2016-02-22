@@ -49,8 +49,7 @@ def main():
     del kwargs['cmd']
     if cmd.needs_backend:
         primary = util.KojiSession(anonymous=True)
-        secondary = util.KojiSession(anonymous=True,
-                                     koji_config=util.secondary_koji_config)
+        secondary = util.KojiSession(anonymous=True, koji_id='secondary')
         backend = Backend(db=Session(), log=logging.getLogger(),
                           koji_sessions={'primary': primary, 'secondary': secondary})
         kwargs['backend'] = backend
