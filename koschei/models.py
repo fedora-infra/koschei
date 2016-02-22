@@ -16,10 +16,14 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+import koji
+import struct
+import zlib
+
 from datetime import datetime
 
-import koji
 import sqlalchemy
+
 from sqlalchemy import (create_engine, Table, Column, Integer, String, Boolean,
                         ForeignKey, DateTime, Index, DDL, Float)
 from sqlalchemy.sql import insert
@@ -29,6 +33,8 @@ from sqlalchemy.orm import (sessionmaker, relationship, column_property,
                             configure_mappers)
 from sqlalchemy.engine.url import URL
 from sqlalchemy.event import listen
+from sqlalchemy.types import TypeDecorator
+from sqlalchemy.dialects.postgresql import BYTEA
 
 from .util import config, primary_koji_config, secondary_koji_config
 
@@ -113,6 +119,35 @@ def get_or_create(db, table, **cond):
         item = table(**cond)
         db.add(item)
     return item
+
+
+class CompressedKeyArray(TypeDecorator):
+    impl = BYTEA
+
+    def process_bind_param(self, value, _):
+        if value is None:
+            return None
+        offset = 0
+        for i in range(len(value)):
+            value[i] -= offset
+            offset += value[i]
+        array = bytearray()
+        for item in value:
+            array += struct.pack(">I", item)
+        return zlib.compress(str(array))
+
+    def process_result_value(self, value, _):
+        if value is None:
+            return None
+        res = []
+        uncompressed = zlib.decompress(value)
+        for i in range(0, len(uncompressed), 4):
+            res.append(struct.unpack(">I", str(uncompressed[i:i + 4]))[0])
+        offset = 0
+        for i in range(len(res)):
+            res[i] += offset
+            offset = res[i]
+        return res
 
 
 class User(Base):
@@ -362,6 +397,7 @@ class Build(Base):
     # was the build done by koschei or was it real build done by packager
     real = Column(Boolean, nullable=False, server_default=false())
 
+    dependency_keys = Column(CompressedKeyArray)
     dependencies = relationship('Dependency', backref='build',
                                 passive_deletes=True)
 
