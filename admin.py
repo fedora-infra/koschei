@@ -14,7 +14,7 @@ if 'KOSCHEI_CONFIG' not in os.environ:
                                     '/etc/koschei/config-admin.cfg')
 
 from koschei.models import (engine, Base, Package, PackageGroup, Session,
-                            AdminNotice)
+                            AdminNotice, Collection)
 from koschei.backend import Backend, PackagesDontExist
 from koschei import util
 
@@ -235,6 +235,23 @@ class ModifyGroup(Command):
             group.namespace = None
         backend.db.commit()
 
+
+class CreateCollection(Command):
+    """ Creates new package collection """
+
+    def setup_parser(self, parser):
+        parser.add_argument('name',
+                            help="Name identificator")
+        parser.add_argument('display_name',
+                            help="Human readable name")
+        parser.add_argument('target_tag',
+                            help="Koji target tag")
+        parser.add_argument('build_tag',
+                            help="Koji build tag")
+
+    def execute(self, backend, **kwargs):
+        backend.db.add(Collection(**kwargs))
+        backend.db.commit()
 
 class PSQL(Command):
     """ Convenience to get psql shell connected to koschei DB. """
