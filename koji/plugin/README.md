@@ -7,7 +7,7 @@ Installation
 First install plugin file in Koji hub file system:
 
     mkdir -p /usr/lib/koji-hub-plugins/
-    cp koji/plugin.py /usr/lib/koji-hub-plugins/koschei.py
+    cp koji/plugin/koschei.py /usr/lib/koji-hub-plugins/
 
 And then enable it in hub config.  `/etc/koji-hub/hub.conf` should
 contain:
