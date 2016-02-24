@@ -228,6 +228,16 @@ def koji_scratch_build(session, name, source, build_opts):
     return task_id
 
 
+def is_koji_fault(session, task_id):
+    """
+    Return true iff specified finished Koji task was ended due to Koji fault.
+    """
+    try:
+        session.getTaskResult(task_id)
+        return False
+    except koji.Fault:
+        return True
+
 def mkdir_if_absent(path):
     try:
         os.makedirs(path)
