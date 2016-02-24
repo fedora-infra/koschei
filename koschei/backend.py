@@ -149,6 +149,12 @@ class Backend(object):
                 self.db.commit()
                 return
             assert state in (Build.COMPLETE, Build.FAILED)
+            if util.is_koji_fault(self.koji_sessions['primary'], build.task_id):
+                self.log.info('Deleting build {0} because it ended with Koji fault'
+                              .format(build))
+                self.db.delete(build)
+                self.db.commit()
+                return
             self.log.info('Setting build {build} state to {state}'
                           .format(build=build,
                                   state=Build.REV_STATE_MAP[state]))
