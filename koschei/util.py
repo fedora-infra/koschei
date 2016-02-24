@@ -92,60 +92,32 @@ class KojiSession(object):
     def __init__(self, koji_id='primary', anonymous=True):
         self.koji_id = koji_id
         self.config = koji_configs[koji_id]
-        self.__mcall_list = []
         self.__anonymous = anonymous
         self.__proxied = self.__new_session()
 
     def __new_session(self):
         server = self.config['server']
-        session = koji.ClientSession(server, {'timeout': 3600})
+        opts = {
+            'anon_retry': True,
+            'max_retries': 1000,
+            'offline_retry': True,
+            'offline_retry_interval': 120,
+            'timeout': 3600,
+        }
+        opts.update(self.config.get('session_opts', {}))
+        session = koji.ClientSession(server, opts)
         if not self.__anonymous:
             getattr(session, self.config['login_method'])(**self.config['login_args'])
         return session
 
-    def __retry_loop(self, method):
-        def inner(*args, **kwargs):
-            retry_in = config.get('base_retry_interval', 10)
-            while True:
-                if not self.__proxied:
-                    self.__proxied = self.__new_session()
-                try:
-                    return method(*args, **kwargs)
-                except Exception:
-                    log.exception("Koji exception. Retrying in %s.", retry_in)
-                    self.__proxied = None
-                    time.sleep(retry_in)
-                    retry_in *= 2
-        return inner
-
     def __getattr__(self, name):
-        result = getattr(self.__proxied, name)
-        if callable(result):
-            if self.__proxied.multicall:
-                def wrapper(*args, **kwargs):
-                    self.__mcall_list.append((name, args, kwargs))
-                return wrapper
-            def getmethod(*args, **kwargs):
-                return getattr(self.__proxied, name)(*args, **kwargs)
-            return self.__retry_loop(getmethod)
-        return result
+        return getattr(self.__proxied, name)
 
     def __setattr__(self, name, value):
         if name.startswith('_') or name in ('config', 'koji_id'):
             object.__setattr__(self, name, value)
         else:
             object.__setattr__(self.__proxied, name, value)
-
-    def multiCall(self):
-        assert self.__proxied.multicall
-        def inner():
-            self.__proxied.multicall = True
-            for name, args, kwargs in self.__mcall_list:
-                getattr(self.__proxied, name)(*args, **kwargs)
-            ret = self.__proxied.multiCall()
-            self.__mcall_list = []
-            return ret
-        return self.__retry_loop(inner)()
 
 
 def itercall(koji_session, args, koji_call):
