@@ -23,7 +23,8 @@ from sqlalchemy import (create_engine, Table, Column, Integer, String, Boolean,
                         ForeignKey, DateTime, Index, DDL)
 from sqlalchemy.sql.expression import func, select, false, true
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship, column_property
+from sqlalchemy.orm import (sessionmaker, relationship, column_property,
+                            configure_mappers)
 from sqlalchemy.engine.url import URL
 from sqlalchemy.event import listen
 from datetime import datetime
@@ -543,3 +544,5 @@ User.groups = relationship(PackageGroup,
                            secondary=GroupACL.__table__,
                            order_by=[PackageGroup.namespace,
                                      PackageGroup.name], passive_deletes=True)
+
+configure_mappers()
