@@ -355,7 +355,7 @@ class ProcessBuildsTask(AbstractResolverTask):
                 .update({'deps_processed': True}, synchronize_session=False)
             self.db.commit()
         for descriptor, _ in groupby(repos_to_process, lambda desc: desc.repo_id):
-            self.repo_cache.prefetch(descriptor)
+            self.repo_cache.prefetch_repo(descriptor)
         buildrequires = util.get_rpm_requires(self.koji_sessions['secondary'],
                                               [dict(name=b.name, version=b.version,
                                                     release=b.release, arch='src')
