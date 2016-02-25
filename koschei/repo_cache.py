@@ -24,6 +24,7 @@ import logging
 import hawkey
 
 from contextlib import contextmanager
+from functools import total_ordering
 from koschei.cache_manager import CacheManager
 
 from koschei import util
@@ -32,6 +33,7 @@ log = logging.getLogger('koschei.repo_cache')
 
 REPO_404 = 19
 
+@total_ordering
 class RepoDescriptor(object):
     def __init__(self, koji_id, build_tag, repo_id):
         self.koji_id = koji_id
@@ -64,9 +66,13 @@ class RepoDescriptor(object):
         except AttributeError:
             return False
 
+    def __lt__(self, other):
+        return self.repo_id < other.repo_id
+
     def make_url(self, arch):
         return self.remote_url.format(build_tag=self.build_tag,
                                       repo_id=self.repo_id, arch=arch)
+
 
 class RepoManager(object):
     def __init__(self, repo_dir, arches):
