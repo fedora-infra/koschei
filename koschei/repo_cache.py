@@ -53,7 +53,7 @@ class RepoDescriptor(object):
         parts = name.split('-')
         if len(parts) < 3 or not parts[-1].isdigit():
             return None
-        return RepoDescriptor('-'.join(parts[:-2]), parts[-2], int(parts[-1]))
+        return RepoDescriptor(parts[0], '-'.join(parts[1:-1]), int(parts[-1]))
 
     def __str__(self):
         return '{}-{}-{}'.format(self.koji_id, self.build_tag, self.repo_id)
