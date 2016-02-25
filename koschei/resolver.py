@@ -365,7 +365,7 @@ class ProcessBuildsTask(AbstractResolverTask):
         for repo_descriptor, group in groupby(izip(repos_to_process,
                                                    builds_to_process,
                                                    buildrequires),
-                                              lambda item: item[0].repo_id):
+                                              lambda item: item[0]):
             with self.repo_cache.get_sack(repo_descriptor) as sack:
                 if sack:
                     for _, build, brs in group:
