@@ -235,6 +235,8 @@ def is_koji_fault(session, task_id):
     try:
         session.getTaskResult(task_id)
         return False
+    except koji.GenericError:
+        return False
     except koji.Fault:
         return True
 
