@@ -322,8 +322,9 @@ class ProcessBuildsTask(AbstractResolverTask):
                     self.db.execute(AppliedChange.__table__.insert(), changes)
         old_builds = self.db.query(Build.id)\
             .filter_by(package_id=entry.package_id)\
+            .filter(Build.id < entry.id)\
             .order_by(Build.id.desc())\
-            .offset(1).subquery()
+            .subquery()
         self.db.query(Dependency)\
                .filter(Dependency.build_id.in_(old_builds))\
                .delete(synchronize_session=False)
