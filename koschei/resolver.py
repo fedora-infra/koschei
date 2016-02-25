@@ -21,7 +21,7 @@ import koji
 
 from sqlalchemy.orm import joinedload
 
-from itertools import izip
+from itertools import izip, groupby
 
 from koschei.models import (Package, Dependency, UnappliedChange,
                             AppliedChange, Repo, ResolutionProblem,
@@ -297,30 +297,31 @@ class GenerateRepoTask(AbstractResolverTask):
 class ProcessBuildsTask(AbstractResolverTask):
 
     def repo_descriptor_for_build(self, build):
-        return RepoDescriptor(self.get_koji_session_for_build(build).koji_id,
+        return RepoDescriptor('primary',
                               None, build.repo_id)
 
-    def process_build(self, sack, build, curr_deps):
-        self.log.info("Processing build {}".format(build.id))
-        prev = self.get_prev_build_for_comparison(build)
-        self.store_deps(build.id, curr_deps)
-        if curr_deps is not None:
-            build.deps_resolved = True
-        if not build.deps_resolved and build is build.package.last_build:
+    def process_build(self, sack, entry, curr_deps):
+        self.log.info("Processing build {}".format(entry.id))
+        prev = self.get_prev_build_for_comparison(entry)
+        self.store_deps(entry.id, curr_deps)
+        self.db.query(Build).filter_by(id=entry.id)\
+            .update({'deps_processed': True, 'deps_resolved': curr_deps is not None})
+        if curr_deps is None and entry.id == entry.last_build_id:
             failed_prio = 3 * util.config['priorities']['failed_build_priority']
-            build.package.manual_priority += failed_prio
-        if not build.deps_resolved:
+            self.db.query(Package).filter_by(id=entry.package_id)\
+                .update({'manual_priority': Package.manual_priority + failed_prio})
+        if curr_deps is None:
             return
         if prev:
             prev_deps = prev.dependencies
             if prev_deps and curr_deps:
                 changes = self.create_dependency_changes(prev_deps, curr_deps,
-                                                         build_id=build.id,
+                                                         build_id=entry.id,
                                                          prev_build_id=prev.id)
                 if changes:
                     self.db.execute(AppliedChange.__table__.insert(), changes)
         old_builds = self.db.query(Build.id)\
-            .filter_by(package_id=build.package_id)\
+            .filter_by(package_id=entry.package_id)\
             .order_by(Build.id.desc())\
             .offset(1).subquery()
         self.db.query(Dependency)\
@@ -329,38 +330,56 @@ class ProcessBuildsTask(AbstractResolverTask):
 
     def run(self):
         # pylint: disable=E1101
-        builds = self.db.query(Build)\
-            .filter_by(deps_processed=False)\
+        builds = self.db.query(Build.id, Build.repo_id, Build.real, Build.package_id,
+                               Package.name, Build.version, Build.release,
+                               Package.last_build_id)\
+            .join(Build.package)\
+            .filter(Build.deps_processed == False)\
             .filter(Build.repo_id != None)\
-            .options(joinedload(Build.package))\
-            .order_by(Build.id).all()
+            .order_by(Build.repo_id).all()
 
         descriptors = [self.repo_descriptor_for_build(build) for build in builds]
         self.set_descriptor_tags(descriptors)
+        builds_to_process = []
+        repos_to_process = []
+        unavailable_build_ids = []
+        for descriptor, build in izip(descriptors, builds):
+            if descriptor.build_tag:
+                repos_to_process.append(descriptor)
+                builds_to_process.append(build)
+            else:
+                unavailable_build_ids.append(build.id)
+        if unavailable_build_ids:
+            self.db.query(Build)\
+                .filter(Build.id.in_(unavailable_build_ids))\
+                .update({'deps_processed': True}, synchronize_session=False)
+            self.db.commit()
+        for descriptor, _ in groupby(repos_to_process, lambda desc: desc.repo_id):
+            self.repo_cache.prefetch(descriptor)
         buildrequires = util.get_rpm_requires(self.koji_sessions['secondary'],
-                                              [b.srpm_nvra for b in builds])
+                                              [dict(name=b.name, version=b.version,
+                                                    release=b.release, arch='src')
+                                               for b in builds_to_process])
         if len(builds) > 100:
             buildrequires = util.parallel_generator(buildrequires, queue_size=None)
-        for build, buildrequires, repo_descriptor in \
-                izip(builds, buildrequires, descriptors):
-            if repo_descriptor.build_tag:
-                # FIXME parallel
-                self.repo_cache.prefetch_repo(repo_descriptor)
-                with self.repo_cache.get_sack(repo_descriptor) as sack:
-                    if sack:
-                        _, _, curr_deps = self.resolve_dependencies(sack, buildrequires)
+        for repo_descriptor, group in groupby(izip(repos_to_process,
+                                                   builds_to_process,
+                                                   buildrequires),
+                                              lambda item: item[0].repo_id):
+            with self.repo_cache.get_sack(repo_descriptor) as sack:
+                if sack:
+                    for _, build, brs in group:
+                        _, _, curr_deps = self.resolve_dependencies(sack, brs)
                         self.process_build(sack, build, curr_deps)
-                    else:
-                        self.log.info("Repo id=%d not available, skipping",
-                                      repo_descriptor.repo_id)
-                self.db.query(Build).filter(Build.id.in_([b.id for b in builds]))\
-                                    .update({'deps_processed': True},
-                                            synchronize_session=False)
-                self.db.commit()
+                        self.db.commit()
+                else:
+                    self.log.info("Repo id=%d not available, skipping",
+                                  repo_descriptor.repo_id)
         self.db.query(Build)\
             .filter_by(repo_id=None)\
             .filter(Build.state.in_(Build.FINISHED_STATES))\
             .update({'deps_processed': True}, synchronize_session=False)
+        self.db.commit()
 
 
 class Resolver(KojiService):
