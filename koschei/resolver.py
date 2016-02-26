@@ -22,6 +22,7 @@ import koji
 from sqlalchemy.orm import joinedload
 
 from itertools import izip, groupby
+from collections import defaultdict
 
 from koschei.models import (Package, Dependency, UnappliedChange,
                             AppliedChange, Repo, ResolutionProblem,
@@ -38,6 +39,8 @@ total_time = Stopwatch("Total repo generation")
 resolution_time = Stopwatch("Dependency resolution", total_time)
 resolve_dependencies_time = Stopwatch("resolve_dependencies", resolution_time)
 create_dependency_changes_time = Stopwatch("create_dependency_changes", resolution_time)
+generate_dependency_changes_time = Stopwatch("generate_dependency_changes")
+fetch_dependencies_generator_time = Stopwatch("fetch_dependencies_generator")
 
 
 class AbstractResolverTask(object):
@@ -109,7 +112,7 @@ class AbstractResolverTask(object):
         for dep in old:
             change = new_change(dep_name=dep.name,
                                 prev_version=dep.version, prev_epoch=dep.epoch,
-                                prev_release=dep.release, distance=dep.distance)
+                                prev_release=dep.release, distance=None)
             changes[dep.name] = change
         for dep in new:
             change = changes.get(dep.name) or new_change(dep_name=dep.name)
@@ -153,6 +156,9 @@ class GenerateRepoTask(AbstractResolverTask):
         if expunge:
             for p in packages:
                 self.db.expunge(p)
+                self.db.expunge(p.last_build)
+                if p.last_build is not p.last_complete_build:
+                    self.db.expunge(p.last_complete_build)
         return packages
 
     def check_package_state_changes(self, resolved_map):
@@ -212,6 +218,25 @@ class GenerateRepoTask(AbstractResolverTask):
             if vals:
                 self.db.execute(rel.__table__.insert(), vals)
 
+    def fetch_dependencies_generator(self, packages):
+        fetch_dependencies_generator_time.start()
+        chunk_size = util.config['dependency']['dependency_fetch_chunk_size']
+        while packages:
+            current_packages = packages[:chunk_size]
+            builds = [self.get_build_for_comparison(package) for package
+                      in current_packages]
+            build_to_package = {b.id: b.package_id for b in builds if b}
+            deps_per_package = defaultdict(list)
+            for dep in self.db.query(Dependency.build_id, *Dependency.nevra)\
+                                .filter(Dependency.build_id.in_(build_to_package.keys())):
+                deps_per_package[build_to_package[dep.build_id]].append(dep)
+            fetch_dependencies_generator_time.stop()
+            for package in current_packages:
+                yield deps_per_package[package.id]
+            fetch_dependencies_generator_time.start()
+            packages = packages[chunk_size:]
+        fetch_dependencies_generator_time.stop()
+
     def generate_dependency_changes(self, sack, packages, brs, repo_id):
         """
         Generates and persists dependency changes for given list of packages.
@@ -226,30 +251,32 @@ class GenerateRepoTask(AbstractResolverTask):
             self.db.commit()
         gen = ((package, self.resolve_dependencies(sack, br))
                for package, br in izip(packages, brs))
-        gen = util.parallel_generator(gen, queue_size=10)
-        for package, result in gen:
+        queue_size = util.config['dependency']['resolver_queue_size']
+        gen = util.parallel_generator(gen, queue_size=queue_size)
+        deps_fetcher = self.fetch_dependencies_generator(packages)
+        for (package, result), prev_deps in izip(gen, deps_fetcher):
+            generate_dependency_changes_time.start()
             resolved_map[package.id], curr_problems, curr_deps = result
             problems += [dict(package_id=package.id, problem=problem)
                          for problem in sorted(set(curr_problems))]
-            if curr_deps is not None:
-                last_build = self.get_build_for_comparison(package)
-                if last_build:
-                    prev_deps = last_build.dependencies
-                    if prev_deps is not None:
-                        create_dependency_changes_time.start()
-                        changes += self.create_dependency_changes(
-                            prev_deps, curr_deps, package_id=package.id,
-                            prev_build_id=last_build.id)
-                        create_dependency_changes_time.stop()
+            if curr_deps is not None and prev_deps:
+                create_dependency_changes_time.start()
+                changes += self.create_dependency_changes(
+                    prev_deps, curr_deps, package_id=package.id,
+                    prev_build_id=prev_deps[0].build_id)
+                create_dependency_changes_time.stop()
             if len(resolved_map) > util.config['dependency']['persist_chunk_size']:
                 persist()
                 resolved_map = {}
                 problems = []
                 changes = []
+            generate_dependency_changes_time.stop()
         persist()
 
     def run(self, repo_id):
         total_time.reset()
+        generate_dependency_changes_time.reset()
+        fetch_dependencies_generator_time.reset()
         total_time.start()
         self.log.info("Generating new repo")
         repo_descriptor = RepoDescriptor(repo_id=repo_id, koji_id='primary',
@@ -292,6 +319,8 @@ class GenerateRepoTask(AbstractResolverTask):
         self.db.commit()
         total_time.stop()
         total_time.display()
+        generate_dependency_changes_time.display()
+        fetch_dependencies_generator_time.display()
 
 
 class ProcessBuildsTask(AbstractResolverTask):

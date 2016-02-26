@@ -46,7 +46,13 @@ config = {
 
         # Number of package resolution changes (state, depchanges, problems) to
         # be persisted at the same time
-        "persist_chunk_size": 200,
+        "persist_chunk_size": 600,
+
+        # Number of builds for which dependencies are fetched in single query
+        "dependency_fetch_chunk_size": 500,
+
+        # The size of queue (item == package) between resolving and io thread
+        "resolver_queue_size": 300,
 
         # Max number of hawkey sacks that can be kept in memory at given time
         # (excluding sacks with no references, which can be garbage collected
