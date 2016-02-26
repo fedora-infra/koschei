@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='koschei',
-    version='1.4',
+    version='1.5',
     description='',
     author='',
     author_email='',
