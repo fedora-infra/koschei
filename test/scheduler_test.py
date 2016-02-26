@@ -10,7 +10,10 @@ from koschei.scheduler import Scheduler
 
 class SchedulerTest(DBTest):
     def get_scheduler(self):
-        sched = Scheduler(db=self.s, koji_sessions={'primary': Mock(), 'secondary': Mock()}, backend=Mock())
+        backend_mock = Mock()
+        backend_mock.get_newer_build_if_exists.return_value = None
+        sched = Scheduler(db=self.s, koji_sessions={'primary': Mock(), 'secondary': Mock()},
+                          backend=backend_mock)
         sched.lock_package_table = lambda: None
         return sched
 
@@ -153,7 +156,7 @@ class SchedulerTest(DBTest):
                 sched.main()
                 if scheduled:
                     pkg = self.s.query(m.Package).filter_by(name=scheduled).one()
-                    sched.backend.submit_build.assertCalledOnceWith(pkg)
+                    sched.backend.submit_build.assert_called_once_with(pkg)
                 else:
                     self.assertFalse(sched.backend.submit_build.called)
 

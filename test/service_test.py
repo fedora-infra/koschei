@@ -57,7 +57,6 @@ class ServiceTest(AbstractTest):
             self.assertRaises(MyException, s.run_service)
             self.assertEqual(3, called[0])
             self.assertEqual(3, mock_db.close.call_count)
-            mock_log.info.assert_called()
             sleep.assert_has_calls([call(3)] * 2)
 
     def test_interrupt(self):
