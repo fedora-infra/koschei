@@ -170,7 +170,7 @@ config = {
             {version}-{release}
 
             Steps to Reproduce:
-            koji build --scratch rawhide {nvr}.{arch}.rpm
+            koji build --scratch rawhide {name}-{version}-{release}.{arch}.rpm
 
             Additional info:
             This package is tracked by Koschei. See:
