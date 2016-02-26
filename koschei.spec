@@ -1,7 +1,7 @@
 %bcond_without tests
 
 Name:           koschei
-Version:        1.4
+Version:        1.5
 Release:        1%{?dist}
 Summary:        Continuous integration for Fedora packages
 License:        GPLv2+
