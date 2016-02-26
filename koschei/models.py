@@ -315,8 +315,8 @@ class Build(Base):
 
     def __repr__(self):
         # pylint: disable=W1306
-        return '{p.id} (name={p.package.name}, state={p.state_string})'\
-               .format(p=self)
+        return ('{b.id} (name={b.package.name}, state={b.state_string}, '
+                'task_id={b.task_id})').format(b=self)
 
 
 class ResolutionProblem(Base):
