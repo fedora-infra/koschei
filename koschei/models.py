@@ -156,11 +156,12 @@ class Package(Base):
         return self.last_build_id != self.last_complete_build_id
 
     @property
-    def srpm_nvra(self):
+    def srpm_nevra(self):
         return dict(name=self.name,
+                    epoch=self.last_complete_build.epoch,
                     version=self.last_complete_build.version,
                     release=self.last_complete_build.release,
-                    arch='src')
+                    arch='src') if self.last_complete_build else None
 
     def __repr__(self):
         return '{0.id} (name={0.name})'.format(self)
@@ -299,9 +300,10 @@ class Build(Base):
         return self.REV_STATE_MAP[self.state]
 
     @property
-    def srpm_nvra(self):
+    def srpm_nevra(self):
         # pylint:disable=no-member
         return dict(name=self.package.name,
+                    epoch=self.epoch,
                     version=self.version,
                     release=self.release,
                     arch='src')
