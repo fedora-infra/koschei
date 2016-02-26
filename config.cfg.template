@@ -63,14 +63,14 @@ config = {
 
         # Max number of threads that can concurrently load sacks. Generally
         # this value should be equal to number of processors in the system.
-        "cache_l1_threads": 4,
+        "cache_l1_threads": 1,
 
         # Max number of threads that can concurrently download repos from Koji.
-        "cache_l2_threads": 4,
+        "cache_l2_threads": 1,
 
         # Total number of threads used for cache prefetching.  Making it
         # greater than cache_l1_threads+cache_l2_threads wouldn't make sense.
-        "cache_threads_max": 8,
+        "cache_threads_max": 2,
     },
     "priorities": {
         "newly_added": 3000, # should be higher than the threshold
