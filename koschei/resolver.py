@@ -263,7 +263,7 @@ class GenerateRepoTask(AbstractResolverTask):
         packages = self.get_packages(require_build=True)
         repo = Repo(repo_id=repo_id)
         brs = util.get_rpm_requires(self.koji_sessions['secondary'],
-                                    [p.srpm_nvra for p in packages])
+                                    [p.srpm_nevra for p in packages])
         brs = util.parallel_generator(brs, queue_size=None)
         try:
             with self.repo_cache.get_sack(repo_descriptor) as sack:

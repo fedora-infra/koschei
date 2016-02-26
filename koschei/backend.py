@@ -59,9 +59,9 @@ class Backend(object):
             build_opts = {'arch_override': package.arch_override}
         # SRPMs are taken from secondary, primary needs to be able to build
         # from relative URL constructed against secondary (internal redirect)
-        srpm, srpm_url = (util.get_last_srpm(self.koji_sessions['secondary'], name) or
-                          (None, None))
-        if srpm_url:
+        srpm = package.srpm_nevra
+        if srpm:
+            srpm_url = util.get_srpm_url(srpm)
             package.manual_priority = 0
             build.task_id = util.koji_scratch_build(self.koji_sessions['primary'], name,
                                                     srpm_url, build_opts)
