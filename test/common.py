@@ -5,7 +5,7 @@ import json
 
 from mock import Mock
 
-from test import use_postgres, use_faitout, testdir
+from test import use_postgres, use_faitout, testdir, is_x86_64
 from koschei import models as m
 
 workdir = '.workdir'
@@ -13,6 +13,9 @@ workdir = '.workdir'
 def postgres_only(fn):
     return unittest.skipIf(not use_postgres and not use_faitout,
                            "Requires postgres")(fn)
+
+def x86_64_only(fn):
+    return unittest.skipIf(not is_x86_64, "Requires x86_64 host")(fn)
 
 class AbstractTest(unittest.TestCase):
 

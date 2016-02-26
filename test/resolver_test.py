@@ -24,7 +24,7 @@ import koji
 import unittest
 import hawkey
 from contextlib import contextmanager
-from common import DBTest, testdir, postgres_only, KojiMock
+from common import DBTest, testdir, postgres_only, x86_64_only, KojiMock
 from mock import Mock, patch
 from koschei import util
 from koschei.models import (Dependency, UnappliedChange, AppliedChange, Package,
@@ -106,6 +106,7 @@ class ResolverTest(DBTest):
         with patch('koschei.util.get_build_group', return_value=['gcc','bash']):
             self.assertEqual(b1, self.resolver.create_task(GenerateRepoTask).get_build_for_comparison(foo))
 
+    @x86_64_only
     def test_resolve_build(self):
         foo_build = self.prepare_foo_build()
         package_id = foo_build.package_id
@@ -119,6 +120,7 @@ class ResolverTest(DBTest):
                                    Dependency.arch).all()
         self.assertItemsEqual(expected_deps, actual_deps)
 
+    @x86_64_only
     def test_virtual_in_group(self):
         foo_build = self.prepare_foo_build()
         with patch('koschei.util.get_build_group', return_value=['virtual']):
@@ -165,6 +167,7 @@ class ResolverTest(DBTest):
         self.s.commit()
         return old_build
 
+    @x86_64_only
     def test_differences(self):
         self.prepare_old_build()
         build = self.prepare_foo_build(repo_id=666, version='4')
@@ -232,6 +235,7 @@ class ResolverTest(DBTest):
         koji_mock.getRPMDeps.assert_called_once_with(inp, koji.DEP_REQUIRE)
         self.assertEqual(res, [['maven-local', 'jetty-toolchain']])
 
+    @x86_64_only
     def test_virtual_file_provides(self):
         with patch('koschei.util.get_build_group', return_value=['R']):
             with get_sack('x86_64') as sack:

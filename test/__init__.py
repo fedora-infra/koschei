@@ -3,6 +3,7 @@ from __future__ import print_function
 import os
 import sys
 import logging
+import platform
 import sqlalchemy
 import requests
 
@@ -12,6 +13,8 @@ testdir = os.path.dirname(os.path.realpath(__file__))
 
 use_faitout = os.environ.get('TEST_WITH_FAITOUT')
 use_postgres = os.environ.get('TEST_WITH_POSTGRES')
+
+is_x86_64 = platform.machine() == 'x86_64'
 
 os.environ['KOSCHEI_CONFIG'] = '{0}/../config.cfg.template:{0}/test_config.cfg'\
                                .format(testdir)
