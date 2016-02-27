@@ -8,6 +8,7 @@ ExecStart=/usr/libexec/koschei/koschei-resolver -m koschei.main resolver
 User=koschei
 Group=koschei
 Nice=5
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
