@@ -19,6 +19,7 @@ class SchedulerTest(DBTest):
 
     def prepare_depchanges(self):
         pkg, build1 = self.prepare_basic_data()
+        build1.state = m.Build.COMPLETE
         build2 = self.prepare_builds(1, rnv=None)[0]
         chngs = []
         # update, value 20

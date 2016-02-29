@@ -352,6 +352,8 @@ class Dependency(Base):
     nevra = (name, epoch, version, release, arch)
 
 
+Index('ix_build_running', Build.package_id, unique=True,
+      postgresql_where=(Build.state == Build.RUNNING))
 Index('ix_build_composite', Build.package_id, Build.id.desc())
 Index('ix_package_group_name', PackageGroup.namespace, PackageGroup.name,
       unique=True)

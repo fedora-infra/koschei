@@ -87,6 +87,7 @@ class ResolverTest(DBTest):
         self.s.commit()
         return foo_build
 
+    @postgres_only
     def test_dont_resolve_against_old_build_when_new_is_running(self):
         foo = self.prepare_packages(['foo'])[0]
         build = self.prepare_builds(foo=False, repo_id=2)[0]
@@ -168,6 +169,7 @@ class ResolverTest(DBTest):
         return old_build
 
     @x86_64_only
+    @postgres_only
     def test_differences(self):
         self.prepare_old_build()
         build = self.prepare_foo_build(repo_id=666, version='4')
