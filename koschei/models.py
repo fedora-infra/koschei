@@ -273,7 +273,7 @@ class Build(Base):
     id = Column(Integer, primary_key=True)
     package_id = Column(Integer, ForeignKey('package.id', ondelete='CASCADE'))
     state = Column(Integer, nullable=False, default=RUNNING)
-    task_id = Column(Integer, index=True)
+    task_id = Column(Integer)
     started = Column(DateTime)
     finished = Column(DateTime)
     epoch = Column(Integer)
