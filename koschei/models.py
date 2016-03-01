@@ -156,9 +156,8 @@ class Package(Base):
         return self.last_build_id != self.last_complete_build_id
 
     @property
-    def srpm_nevra(self):
+    def srpm_nvra(self):
         return dict(name=self.name,
-                    epoch=self.last_complete_build.epoch,
                     version=self.last_complete_build.version,
                     release=self.last_complete_build.release,
                     arch='src') if self.last_complete_build else None
@@ -300,10 +299,9 @@ class Build(Base):
         return self.REV_STATE_MAP[self.state]
 
     @property
-    def srpm_nevra(self):
+    def srpm_nvra(self):
         # pylint:disable=no-member
         return dict(name=self.package.name,
-                    epoch=self.epoch,
                     version=self.version,
                     release=self.release,
                     arch='src')

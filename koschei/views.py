@@ -608,7 +608,7 @@ def bugreport(name):
                 .filter(Package.last_complete_build_id != None)\
                 .options(joinedload(Package.last_complete_build))\
                 .first() or abort(404)
-    srpm = package.srpm_nevra or abort(404)
+    srpm = package.srpm_nvra or abort(404)
     template = util.config['bugreport']['template']
     bug = {key: template[key].format(**srpm) for key in template.keys()}
     bug['comment'] = dedent(bug['comment']).strip()

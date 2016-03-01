@@ -203,9 +203,17 @@ def prepare_build_opts(opts=None):
     return build_opts
 
 
-def get_srpm_url(srpm):
+def get_last_srpm(koji_session, name):
     rel_pathinfo = koji.PathInfo(topdir=primary_koji_config['srpm_relative_path_root'])
-    return rel_pathinfo.build(srpm) + '/' + rel_pathinfo.rpm(srpm)
+    info = koji_session.listTagged(source_tag, latest=True,
+                                   package=name, inherit=True)
+    if info:
+        srpms = koji_session.listRPMs(buildID=info[0]['build_id'],
+                                      arches='src')
+        if srpms:
+            return (srpms[0],
+                    rel_pathinfo.build(info[0]) + '/' +
+                    rel_pathinfo.rpm(srpms[0]))
 
 
 def koji_scratch_build(session, name, source, build_opts):
