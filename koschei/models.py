@@ -129,6 +129,9 @@ class Package(Base):
     tracked = Column(Boolean, nullable=False, server_default=true())
     blocked = Column(Boolean, nullable=False, server_default=false())
 
+    SKIPPED_NO_SRPM = 1
+    scheduler_skip_reason = Column(Integer)
+
     def get_state(self):
         if self.blocked:
             return 'blocked'

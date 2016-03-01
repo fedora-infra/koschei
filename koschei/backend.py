@@ -62,7 +62,6 @@ class Backend(object):
         srpm, srpm_url = (util.get_last_srpm(self.koji_sessions['secondary'], name) or
                           (None, None))
         if srpm_url:
-            package.manual_priority = 0
             build.task_id = util.koji_scratch_build(self.koji_sessions['primary'], name,
                                                     srpm_url, build_opts)
             build.started = datetime.now()
