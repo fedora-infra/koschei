@@ -100,6 +100,7 @@ app.jinja_env.globals.update(primary_koji_url=util.primary_koji_config['weburl']
                              min=min, max=max, page_args=page_args,
                              get_global_notices=get_global_notices,
                              require_login=require_login,
+                             Package=Package, Build=Build,
                              auto_tracking=frontend_config['auto_tracking'])
 
 app.jinja_env.filters.update(columnize=columnize,

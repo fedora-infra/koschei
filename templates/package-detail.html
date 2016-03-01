@@ -14,6 +14,13 @@
         <td>
             <img src="{{ package.state_icon }}"/>
             {{ package.state_string }}
+            {% if package.scheduler_skip_reason %}
+            <br>
+            Package is not being scheduled
+            {% if package.scheduler_skip_reason == Package.SKIPPED_NO_SRPM %}
+            because no suitable SRPM was found
+            {% endif %}
+            {% endif %}
         </td>
     </tr>
     <tr>
