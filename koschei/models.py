@@ -64,6 +64,9 @@ class Query(sqlalchemy.orm.Query):
             .with_lockmode('update')\
             .all()
 
+    def all_flat(self):
+        return [x for [x] in self.all()]
+
 
 Session = sessionmaker(bind=engine, autocommit=False, query_cls=Query)
 
@@ -304,6 +307,7 @@ class Build(Base):
 
     id = Column(Integer, primary_key=True)
     package_id = Column(Integer, ForeignKey('package.id', ondelete='CASCADE'))
+    package = None # backref
     state = Column(Integer, nullable=False, default=RUNNING)
     task_id = Column(Integer)
     started = Column(DateTime)

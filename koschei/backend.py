@@ -19,8 +19,8 @@
 import koji
 
 from datetime import datetime
-from sqlalchemy.orm import joinedload
-from sqlalchemy.exc import IntegrityError
+
+from sqlalchemy.sql import insert
 
 from koschei import util
 from koschei.models import (Build, UnappliedChange, KojiTask, Package,
@@ -87,38 +87,73 @@ class Backend(object):
             return info
 
     def is_build_newer(self, current_build, task_info):
-        return (task_info and (not current_build or
-                               util.compare_evr((current_build.epoch,
-                                                 current_build.version,
-                                                 current_build.release),
-                                                (task_info['epoch'],
-                                                 task_info['version'],
-                                                 task_info['release'])) < 0) and
-                self.db.query(Build)
-                .filter_by(task_id=task_info['task_id'])
-                .count() == 0) #TODO use exists
+        return util.compare_evr((current_build.epoch,
+                                 current_build.version,
+                                 current_build.release),
+                                (task_info['epoch'],
+                                 task_info['version'],
+                                 task_info['release'])) < 0
 
-    def register_real_build(self, package, build_info):
+    def register_real_builds(self, package_build_infos):
+        """
+        Registers real builds for given build infos.
+        Takes care of locking and commits the transaction.
+
+        :param: package_build_infos tuples in format (package_id, build_info)
+        """
         # TODO send fedmsg for real builds?
-        try:
-            state_map = {koji.BUILD_STATES['COMPLETE']: Build.COMPLETE,
-                         koji.BUILD_STATES['FAILED']: Build.FAILED}
-            build = Build(task_id=build_info['task_id'], real=True,
-                          version=build_info['version'], epoch=build_info['epoch'],
-                          release=build_info['release'], package_id=package.id,
-                          state=state_map[build_info['state']])
-            self.db.add(build)
-            self.db.flush()
-            self.sync_tasks(build, self.koji_sessions['secondary'])
-            self.flush_depchanges(build)
-            self.log.info('Registering real build {}-{}-{} for collection {} (task_id {})'
-                          .format(package.name, build.version, build.release,
-                                  package.collection, build.task_id))
-            self.db.commit()
-            return build
-        except IntegrityError:
-            # other daemon adds the same concurrently
-            self.db.rollback()
+        state_map = {koji.BUILD_STATES['COMPLETE']: Build.COMPLETE,
+                     koji.BUILD_STATES['FAILED']: Build.FAILED}
+        builds = [dict(task_id=build_info['task_id'], real=True,
+                       version=build_info['version'], epoch=build_info['epoch'],
+                       release=build_info['release'], package_id=package_id,
+                       state=state_map[build_info['state']])
+                  for package_id, build_info in package_build_infos]
+        registered = []
+        for chunk in util.chunks(builds, 100): #TODO configurable
+            while True:
+                try:
+                    self.db.execute(insert(Build), chunk)
+                    self.db.commit()
+                    registered += chunk
+                    break
+                except IntegrityError:
+                    self.db.rollback()
+                    self.log.info("Retrying real build insertion")
+                    existing_ids = self.db.query(Build.task_id)\
+                        .filter_by(real=True)\
+                        .filter(Build.task_id.in_(b['task_id'] for b in chunk))\
+                        .all()
+                    existing_ids = {b.task_id for [b] in existing_ids}
+                    chunk = [b for b in chunk if b['task_id'] not in existing_ids]
+        for chunk in util.chunks(registered, 100):
+            while True:
+                try:
+                    orm_chunk = self.db.query(Build)\
+                        .filter_by(real=True)\
+                        .filter(Build.task_id.in_(b['task_id'] for b in chunk))\
+                        .all()
+                    self.sync_tasks(orm_chunk, self.koji_sessions['secondary'])
+                    self.db.commit()
+                    break
+                except IntegrityError:
+                    self.db.rollback()
+                    self.log.info("Retrying koji_task insertion")
+
+
+        if registered:
+            # pylint:disable=unused-variable
+            # used via sqla cache
+            pkgs = self.db.query(Package)\
+                .filter(Package.id.in_(b['package_id'] for b in registered))\
+                .all()
+            for build in registered:
+                package = self.db.query(Package).get(build['package_id'])
+                self.log.info(
+                    'Registering real build {}-{}-{} for collection {} (task_id {})'
+                    .format(package.name, build['version'], build['release'],
+                            self.db.query(Collection).get(package.collection_id),
+                            build['task_id']))
 
     def update_build_state(self, build, state):
         """
@@ -227,15 +262,6 @@ class Backend(object):
                                        package_id=pkg.id)
             self.db.add(rel)
 
-    def register_real_builds(self, task_info_mapping):
-        """
-        Takes a dictionary mapping package (ORM entity) to koji task_infos
-        and registers possible real builds.
-        """
-        for pkg, info in task_info_mapping.items():
-            if self.is_build_newer(pkg.last_build, info):
-                self.register_real_build(pkg, info)
-
     def refresh_packages(self):
         """
         Refresh packages from Koji: add packages not yet known by Koschei
@@ -267,15 +293,27 @@ class Backend(object):
         Checks Koji for latest builds of packages and registers possible
         new real builds.
         """
-        packages = self.db.query(Package).options(joinedload(Package.last_build)).all()
-        for p in packages:
-            self.db.expunge(p)
-        packages = {p.name: p for p in packages}
         for collection in self.db.query(Collection):
             tag = collection.target_tag
             infos = self.koji_sessions['secondary']\
                 .listTagged(tag, latest=True, inherit=True)
-            self.register_real_builds({packages[i['package_name']]: i for i in infos})
+            existing_task_ids = set(self.db.query(Build.task_id)
+                                    .join(Build.package)
+                                    .filter(Package.collection_id == collection.id)
+                                    .filter(Build.real)
+                                    .all_flat())
+            to_add = [info for info in infos if info['task_id'] not in existing_task_ids]
+            if to_add:
+                name_mapping = {pkg.name: pkg.id for pkg
+                                in self.db.query(Package.id, Package.name)
+                                .filter(Package.collection_id == collection.id)
+                                .filter(Package.name.in_(i['package_name']
+                                                         for i in to_add))}
+
+                package_build_infos = [(name_mapping[info['package_name']],
+                                        info) for info in to_add]
+                self.register_real_builds(package_build_infos)
+
 
     def sync_tracked(self, tracked, collection_id=None):
         """
