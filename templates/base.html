@@ -59,6 +59,15 @@ href="{{ url_for('static', filename='koschei.css') }}"/>
             </ul>
         </div>
 
+        <div>
+            <ul>
+                {% for collection in g.collections %}
+                <li {% if collection.id == g.current_collection.id %}id="active"{% endif %}>
+                    <a href="?collection={{ collection.name }}">{{ collection }}</a>
+                </li>
+                {% endfor %}
+            </ul>
+
         <span id="loginInfo">
             {% block statusline %}
             {% endblock %}

@@ -56,7 +56,7 @@
 
             <tr class="row-odd pkg-{{ package.state_string }}">
                 <td>
-                    <a href="{{ url_for('package_detail', name=package.name) }}">{{ package.name }}</a>
+                    <a href="{{ url_for('package_detail', name=package.name) }}?collection={{ g.current_collection.name }}">{{ package.name }}</a>
                 </td>
                 <td>
                     <div class="hidden">{{ package.state_string }}</div>

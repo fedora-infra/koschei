@@ -81,7 +81,7 @@ def get_global_notices():
     notices = [n.content for n in
                db.query(AdminNotice.content).filter_by(key="global_notice")]
     # TODO display per collection
-    for collection in db.query(Collection).all():
+    for collection in g.collections:
         if collection.latest_repo_resolved is False:
             problems = db.query(BuildrootProblem)\
                 .filter_by(collection_id=collection.id).all()
@@ -141,6 +141,7 @@ def get_order(order_map, order_spec):
 
 
 def package_view(package_query, template, **template_args):
+    package_query = package_query.filter(Package.collection_id == g.current_collection.id)
     untracked = request.args.get('untracked') == '1'
     order_name = request.args.get('order_by', 'running,state,name')
     # pylint: disable=E1101
@@ -221,6 +222,25 @@ def inject_fedmenu():
         return {}
 
 
+@app.before_request
+def get_collections():
+    collection_name = request.args.get('collection')
+    # TODO order
+    g.collections = db.query(Collection).order_by(Collection.id).all()
+    if not g.collections:
+        abort(500, "No collections setup")
+    if collection_name:
+        for collection in g.collections:
+            if collection.name == collection_name:
+                g.current_collection = collection
+                break
+        else:
+            abort(404, "Collection not found")
+    else:
+        # TODO default collection
+        g.current_collection = g.collections[0]
+
+
 @app.route('/')
 @tab('Packages')
 def frontpage():
@@ -231,7 +251,7 @@ def frontpage():
 @tab('Packages', slave=True)
 def package_detail(name):
     package = db.query(Package)\
-                .filter_by(name=name)\
+                .filter_by(name=name, collection_id=g.current_collection.id)\
                 .options(subqueryload(Package.unapplied_changes))\
                 .first_or_404()
     package.global_groups = db.query(PackageGroup)\
