@@ -240,3 +240,17 @@ class BackendTest(DBTest):
             #                               prev_state='failing', new_state='ok')
             self.assertItemsEqual([(x['id'],) for x in rnv_subtasks],
                                   self.s.query(m.KojiTask.task_id))
+
+    @postgres_only
+    def test_refresh_latest_builds_already_present(self):
+        self.secondary_koji.getTaskInfo = Mock(return_value=rnv_task)
+        self.secondary_koji.getTaskChildren = Mock(return_value=rnv_subtasks)
+        package = self.prepare_packages(['rnv'])[0]
+        [build] = self.prepare_builds(rnv=False)
+        build.real = True
+        build.task_id = rnv_build_info[0]['task_id']
+        self.secondary_koji.listTagged = Mock(return_value=rnv_build_info)
+        self.s.commit()
+        with patch('koschei.backend.dispatch_event') as event:
+            self.backend.refresh_latest_builds()
+            self.assertEquals(1, self.s.query(m.Build).count())
