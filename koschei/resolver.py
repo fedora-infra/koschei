@@ -405,6 +405,7 @@ class ProcessBuildsTask(AbstractResolverTask):
                 else:
                     self.log.info("Repo id=%d not available, skipping",
                                   repo_descriptor.repo_id)
+            sack = None
         self.db.query(Build)\
             .filter_by(repo_id=None)\
             .filter(Build.state.in_(Build.FINISHED_STATES))\
