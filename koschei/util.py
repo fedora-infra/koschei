@@ -116,6 +116,12 @@ class KojiSession(object):
             object.__setattr__(self.__proxied, name, value)
 
 
+def chunks(seq, chunk_size=100):
+    while seq:
+        yield seq[:chunk_size]
+        seq = seq[chunk_size:]
+
+
 def itercall(koji_session, args, koji_call):
     # TODO
     chunk_size = primary_koji_config['multicall_chunk_size']

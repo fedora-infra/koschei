@@ -18,11 +18,14 @@
 
 import koji
 
+from itertools import izip
 from datetime import datetime
 
 from sqlalchemy.sql import insert
+from sqlalchemy.exc import IntegrityError
 
 from koschei import util
+from koschei.util import itercall
 from koschei.models import (Build, UnappliedChange, KojiTask, Package,
                             PackageGroup, PackageGroupRelation,
                             Collection, get_or_create)
@@ -97,7 +100,7 @@ class Backend(object):
     def register_real_builds(self, package_build_infos):
         """
         Registers real builds for given build infos.
-        Takes care of locking and commits the transaction.
+        Takes care of concurrency and commits the transaction.
 
         :param: package_build_infos tuples in format (package_id, build_info)
         """
@@ -139,7 +142,6 @@ class Backend(object):
                 except IntegrityError:
                     self.db.rollback()
                     self.log.info("Retrying koji_task insertion")
-
 
         if registered:
             # pylint:disable=unused-variable
@@ -193,7 +195,7 @@ class Backend(object):
             self.log.info('Setting build {build} state to {state}'
                           .format(build=build,
                                   state=Build.REV_STATE_MAP[state]))
-            self.sync_tasks(build, self.koji_sessions['primary'], complete=True)
+            self.sync_tasks([build], self.koji_sessions['primary'], complete=True)
             if build.repo_id is None:
                 # Koji problem, no need to bother packagers with this
                 self.log.info('Deleting build {0} because it has no repo_id'
@@ -212,43 +214,45 @@ class Backend(object):
                                prev_state=prev_state,
                                new_state=new_state)
         else:
-            self.sync_tasks(build, self.koji_sessions['primary'])
+            self.sync_tasks([build], self.koji_sessions['primary'])
             self.db.commit()
 
-    def sync_tasks(self, build, koji_session, complete=False):
+    def sync_tasks(self, builds, koji_session, complete=False):
         """
-        Synchronizes task and subtask info from Koji.
-        If the row already exists in the db, caller needs to lock it to prevent
-        concurrent insertion of subtask rows.
+        Synchronizes task and subtask info from Koji for given builds.
+        Can raise IntegrityError on concurrent access to koji_tasks.
         Uses koji_session passed as argument.
         """
-        task_info = koji_session.getTaskInfo(build.task_id)
-        try:
-            build.started = datetime.fromtimestamp(task_info['create_ts'])
-            build.finished = datetime.fromtimestamp(task_info['completion_ts'])
-        except (KeyError, TypeError, ValueError):
-            pass
-        if not build.finished and complete:
-            # When fedmsg delivery is fast, the time is not set yet
-            build.finished = datetime.now()
-        subtasks = koji_session.getTaskChildren(build.task_id, request=True)
-        build_arch_tasks = [task for task in subtasks
-                            if task['method'] == 'buildArch']
-        for task in build_arch_tasks:
+        call = itercall(koji_session, builds, lambda k, b: k.getTaskInfo(b.task_id))
+        for build, task_info in izip(builds, call):
             try:
-                # They all have the same repo_id, right?
-                build.repo_id = task['request'][4]['repo_id']
-            except KeyError:
-                pass
-            db_task = get_or_create(self.db, KojiTask, task_id=task['id'])
-            db_task.build_id = build.id
-            db_task.state = task['state']
-            db_task.arch = task['arch']
-            try:
-                db_task.started = datetime.fromtimestamp(task['create_ts'])
-                db_task.finished = datetime.fromtimestamp(task['completion_ts'])
+                build.started = datetime.fromtimestamp(task_info['create_ts'])
+                build.finished = datetime.fromtimestamp(task_info['completion_ts'])
             except (KeyError, TypeError, ValueError):
                 pass
+            if not build.finished and complete:
+                # When fedmsg delivery is fast, the time is not set yet
+                build.finished = datetime.now()
+        call = itercall(koji_session, builds,
+                        lambda k, b: k.getTaskChildren(b.task_id, request=True))
+        for build, subtasks in izip(builds, call):
+            build_arch_tasks = [task for task in subtasks
+                                if task['method'] == 'buildArch']
+            for task in build_arch_tasks:
+                try:
+                    # They all have the same repo_id, right?
+                    build.repo_id = task['request'][4]['repo_id']
+                except KeyError:
+                    pass
+                db_task = get_or_create(self.db, KojiTask, task_id=task['id'])
+                db_task.build_id = build.id
+                db_task.state = task['state']
+                db_task.arch = task['arch']
+                try:
+                    db_task.started = datetime.fromtimestamp(task['create_ts'])
+                    db_task.finished = datetime.fromtimestamp(task['completion_ts'])
+                except (KeyError, TypeError, ValueError):
+                    pass
 
     def add_group(self, group, pkgs):
         group_obj = self.db.query(PackageGroup)\

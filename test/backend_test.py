@@ -19,10 +19,10 @@
 import koji
 import logging
 
-from common import DBTest, postgres_only
+from common import DBTest, postgres_only, KojiMock
 from mock import Mock, patch
 from koschei.backend import Backend
-from koschei import plugin
+from koschei import plugin, models as m
 
 rnv_task = {'arch': 'noarch',
             'awaited': None,
@@ -122,11 +122,34 @@ inconsistent_subtask = [{'arch': 'armhfp',
                          'waiting': None,
                          'weight': 1.64134472187}]
 
+rnv_build_info = [{'build_id': 730661,
+                   'completion_time': '2016-02-05 04:45:30.705758',
+                   'creation_event_id': 14616092,
+                   'creation_time': '2016-02-05 04:34:41.128873',
+                   'epoch': None,
+                   'id': 730661,
+                   'name': 'rnv',
+                   'nvr': 'rnv-1.7.11-10.fc24',
+                   'owner_id': 3445,
+                   'owner_name': 'releng',
+                   'package_id': 16808,
+                   'package_name': 'rnv',
+                   'release': '10.fc24',
+                   'start_time': '2016-02-05 04:34:41.128873',
+                   'state': 1,
+                   'tag_id': 308,
+                   'tag_name': 'f24',
+                   'task_id': 12865126,
+                   'version': '1.7.11',
+                   'volume_id': 0,
+                   'volume_name': 'DEFAULT'}]
+
+
 class BackendTest(DBTest):
     def setUp(self):
         super(BackendTest, self).setUp()
-        self.koji_session = Mock()
-        self.secondary_koji = Mock()
+        self.koji_session = KojiMock()
+        self.secondary_koji = KojiMock()
         self.log = Mock()
         self.backend = Backend(db=self.s, koji_sessions={'primary': self.koji_session,
                                                          'secondary': self.secondary_koji},
@@ -152,6 +175,32 @@ class BackendTest(DBTest):
             self.assertEqual('ok', package.state_string)
             event.assert_called_once_with('package_state_change', package=package,
                                           prev_state='failing', new_state='ok')
+            self.assertItemsEqual([(x['id'],) for x in rnv_subtasks],
+                                  self.s.query(m.KojiTask.task_id))
+
+    @postgres_only
+    def test_update_state_existing_task(self):
+        self.koji_session.getTaskInfo = Mock(return_value=rnv_task)
+        self.koji_session.getTaskChildren = Mock(return_value=rnv_subtasks)
+        package = self.prepare_packages(['rnv'])[0]
+        self.prepare_builds(rnv=False)
+        running_build = self.prepare_builds(rnv=None)[0]
+        running_build.task_id = rnv_task['id']
+        koji_task = m.KojiTask(task_id=rnv_subtasks[0]['id'],
+                               build_id=running_build.id)
+        self.s.add(koji_task)
+        self.s.commit()
+        self.assertEqual('failing', package.state_string)
+        with patch('koschei.backend.dispatch_event') as event:
+            self.backend.update_build_state(running_build, 'CLOSED')
+            self.koji_session.getTaskInfo.assert_called_once_with(rnv_task['id'])
+            self.koji_session.getTaskChildren.assert_called_once_with(rnv_task['id'],
+                                                                      request=True)
+            self.assertEqual('ok', package.state_string)
+            event.assert_called_once_with('package_state_change', package=package,
+                                          prev_state='failing', new_state='ok')
+            self.assertItemsEqual([(x['id'],) for x in rnv_subtasks],
+                                  self.s.query(m.KojiTask.task_id))
 
     # Regression test for https://github.com/msimacek/koschei/issues/27
     @postgres_only
@@ -172,3 +221,22 @@ class BackendTest(DBTest):
             self.assertEqual('ok', package.state_string)
             event.assert_called_once_with('package_state_change', package=package,
                                           prev_state='failing', new_state='ok')
+
+    @postgres_only
+    def test_refresh_latest_builds(self):
+        self.secondary_koji.getTaskInfo = Mock(return_value=rnv_task)
+        self.secondary_koji.getTaskChildren = Mock(return_value=rnv_subtasks)
+        package = self.prepare_packages(['rnv'])[0]
+        self.prepare_builds(rnv=False)
+        self.secondary_koji.listTagged = Mock(return_value=rnv_build_info)
+        self.s.commit()
+        with patch('koschei.backend.dispatch_event') as event:
+            self.backend.refresh_latest_builds()
+            self.secondary_koji.getTaskInfo.assert_called_once_with(rnv_build_info[0]['task_id'])
+            self.secondary_koji.getTaskChildren.assert_called_once_with(rnv_build_info[0]['task_id'],
+                                                                        request=True)
+            self.assertEqual('ok', package.state_string)
+            # event.assert_called_once_with('package_state_change', package=package,
+            #                               prev_state='failing', new_state='ok')
+            self.assertItemsEqual([(x['id'],) for x in rnv_subtasks],
+                                  self.s.query(m.KojiTask.task_id))
