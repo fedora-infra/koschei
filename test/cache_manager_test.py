@@ -16,7 +16,7 @@
 #
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-from unittest import TestCase
+from unittest import TestCase, skip
 from time import sleep
 from koschei.cache_manager import CacheManager
 
@@ -79,3 +79,19 @@ class CacheManagerTest(TestCase):
             sleep(0.05)
             self.mgr.release(i)
         self.mgr.terminate()
+
+    # Regression test for issue #81
+    @skip
+    def test_hit_miss_ordering(self):
+        self.mgr = CacheManager(2)
+        self.mgr.add_bank(SackFactory(), 1, 2)
+        self.mgr.add_bank(RepoFactory(), 5, 4)
+        self.mgr.prefetch(2)
+        self.mgr.acquire(2)
+        self.mgr.release(2)
+        self.mgr.prefetch(1)
+        self.mgr.prefetch(2)
+        self.mgr.acquire(1)
+        self.mgr.release(1)
+        self.mgr.acquire(2)
+        self.mgr.release(2)
