@@ -23,6 +23,7 @@ import shutil
 import logging
 import hawkey
 
+from collections import deque
 from contextlib import contextmanager
 from functools import total_ordering
 from koschei.cache_manager import CacheManager
@@ -209,11 +210,16 @@ class RepoCache(object):
         self.mgr.add_bank(sack_manager, cache_l1_capacity, cache_l1_threads)
         self.mgr.add_bank(repo_manager, cache_l2_capacity, cache_l2_threads)
 
+        self.prefetch_order = deque()
+
     def prefetch_repo(self, repo_descriptor):
+        prefetch_order.append(repo_descriptor)
         self.mgr.prefetch(repo_descriptor)
 
     @contextmanager
     def get_sack(self, repo_descriptor):
+        if (prefetch_order.popleft() != repo_descriptor):
+            raise AssertionError("Repo prefetch order does not match acquire order")
         yield self.mgr.acquire(repo_descriptor)
         self.mgr.release(repo_descriptor)
 
