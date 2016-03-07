@@ -95,14 +95,12 @@ class Cleanup(Command):
             """.format(months=older_than))
         print("Deleted {} builds".format(res.rowcount))
         res.close()
-        if reindex:
-            conn.execute("REINDEX TABLE build")
-            conn.execute("REINDEX TABLE dependency_change")
-            conn.execute("REINDEX TABLE koji_task")
-            print("Reindexed")
         if vacuum:
             conn.execute("VACUUM FULL ANALYZE")
             print("Vacuum full analyze done")
+        if reindex:
+            conn.execute("REINDEX DATABASE {}".format(engine.url.database))
+            print("Reindexed")
 
 
 class Notice(Command):
