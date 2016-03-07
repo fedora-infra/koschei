@@ -213,12 +213,12 @@ class RepoCache(object):
         self.prefetch_order = deque()
 
     def prefetch_repo(self, repo_descriptor):
-        prefetch_order.append(repo_descriptor)
+        self.prefetch_order.append(repo_descriptor)
         self.mgr.prefetch(repo_descriptor)
 
     @contextmanager
     def get_sack(self, repo_descriptor):
-        if (prefetch_order.popleft() != repo_descriptor):
+        if (self.prefetch_order.popleft() != repo_descriptor):
             raise AssertionError("Repo prefetch order does not match acquire order")
         yield self.mgr.acquire(repo_descriptor)
         self.mgr.release(repo_descriptor)
