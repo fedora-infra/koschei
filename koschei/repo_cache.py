@@ -221,8 +221,7 @@ class RepoCache(object):
 
     @contextmanager
     def get_sack(self, repo_descriptor):
-        if (self.prefetch_order.popleft() != repo_descriptor):
-            raise AssertionError("Repo prefetch order does not match acquire order")
+        assert self.prefetch_order.popleft() == repo_descriptor
         yield self.mgr.acquire(repo_descriptor)
         self.mgr.release(repo_descriptor)
 
