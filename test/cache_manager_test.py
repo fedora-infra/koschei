@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Red Hat, Inc.
+# Copyright (C) 2015-2016 Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -81,7 +81,6 @@ class CacheManagerTest(TestCase):
         self.mgr.terminate()
 
     # Regression test for issue #81
-    @skip
     def test_hit_miss_ordering(self):
         self.mgr = CacheManager(2)
         self.mgr.add_bank(SackFactory(), 1, 2)
