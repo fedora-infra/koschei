@@ -63,7 +63,7 @@ href="{{ url_for('static', filename='koschei.css') }}"/>
             <ul>
                 {% for collection in g.collections %}
                 <li {% if collection.id == g.current_collection.id %}id="active"{% endif %}>
-                    <a href="?{{ page_args(collection=collection.name) }}">{{ collection }}</a>
+                    <a href="?{{ page_args(collection=collection.name, page=None) }}">{{ collection }}</a>
                 </li>
                 {% endfor %}
             </ul>
