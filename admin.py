@@ -235,25 +235,50 @@ class EditGroup(Command):
             group.namespace = None
         backend.db.commit()
 
-
-class CreateCollection(Command):
-    """ Creates new package collection """
+class CollectionCommandParser(object):
+    args_required = True
 
     def setup_parser(self, parser):
         parser.add_argument('name',
                             help="Name identificator")
-        parser.add_argument('display_name',
+        parser.add_argument('-d', '--display-name',
+                            required=self.args_required,
                             help="Human readable name")
-        parser.add_argument('target_tag',
+        parser.add_argument('-t', '--target-tag',
+                            required=self.args_required,
                             help="Koji target tag")
-        parser.add_argument('build_tag',
+        parser.add_argument('-b', '--build-tag',
+                            required=self.args_required,
                             help="Koji build tag")
+        parser.add_argument('-p', '--priority-coefficient',
+                            required=self.args_required,
+                            help="Priority coefficient")
+
+
+class CreateCollection(CollectionCommandParser, Command):
+    """ Creates new package collection """
 
     def execute(self, backend, **kwargs):
         backend.db.add(Collection(**kwargs))
         backend.db.commit()
 
-class PSQL(Command):
+
+class EditCollection(CollectionCommandParser, Command):
+    """ Modifies existing package collection """
+    args_required = False
+
+    def execute(self, backend, name, **kwargs):
+        collection = backend.db.query(Collection).filter_by(name=name).first()
+        if not collection:
+            sys.exit("Collection not found")
+        for key, value in kwargs.items():
+            if value is not None:
+                setattr(collection, key, value)
+        backend.db.commit()
+
+
+
+class Psql(Command):
     """ Convenience to get psql shell connected to koschei DB. """
 
     needs_backend = False
