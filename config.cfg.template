@@ -60,7 +60,7 @@ config = {
         # constrains permit, possibly even exceeding available physical memory
         # (unused sacks can be swapped to disk by OS and reading sack from swap
         # should be much faster than loading it from repodata).
-        "cache_l1_capacity": 10,
+        "cache_l1_capacity": 4,
 
         # Max number of repos kept on disk.  For slow Koji connections this
         # value should be as high as storage constrains permit.  If Koji is on
