@@ -17,8 +17,6 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 import logging
-import signal
-import sys
 import time
 
 from . import util
@@ -28,7 +26,6 @@ from .models import Session
 class Service(object):
 
     def __init__(self, log=None, db=None):
-        signal.signal(signal.SIGTERM, lambda x, y: sys.exit(0))
         self.log = log or logging.getLogger(
             'koschei.' + self.__class__.__name__.lower())
         self.db = db or Session()
@@ -45,12 +42,9 @@ class Service(object):
         while True:
             try:
                 self.main()
-            except KeyboardInterrupt:
-                sys.exit(0)
-            else:
-                time.sleep(interval)
             finally:
                 self.db.close()
+            time.sleep(interval)
 
     @classmethod
     def find_service(cls, name):

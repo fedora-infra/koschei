@@ -18,6 +18,7 @@
 from __future__ import print_function
 
 import sys
+import signal
 import logging
 import fedmsg
 import fedmsg.config
@@ -49,8 +50,11 @@ if __name__ == '__main__':
     if not service:
         print("No such service", file=sys.stderr)
         sys.exit(2)
+    signal.signal(signal.SIGTERM, lambda x, y: sys.exit(0))
     try:
         service().run_service()
     except Exception:
         log.exception("Service %s crashed.", name)
         raise
+    except KeyboardInterrupt:
+        sys.exit(0)
