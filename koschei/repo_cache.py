@@ -118,7 +118,8 @@ class RepoManager(object):
             return repo_dir
         except librepo.LibrepoException as e:
             if e.args[0] == REPO_404:
-                log.debug('Repo {} was not found'.format(repo_descriptor))
+                log.debug('Repo {} was not found (url={})'.format(repo_descriptor,
+                                                                  h.urls[0]))
                 return None
             raise
 
