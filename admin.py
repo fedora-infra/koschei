@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 # pylint: disable=W0221
+import re
 import os
 import sys
 import argparse
@@ -19,11 +20,6 @@ from koschei.backend import Backend, PackagesDontExist
 from koschei import util
 
 
-def fail(msg):
-    print(msg, file=sys.stderr)
-    sys.exit(1)
-
-
 class Command(object):
     needs_backend = True
 
@@ -38,7 +34,8 @@ def main():
     main_parser = argparse.ArgumentParser()
     subparser = main_parser.add_subparsers()
     for Cmd in Command.__subclasses__():
-        cmd_name = Cmd.__name__.lower()
+        cmd_name = re.sub(r'([A-Z])', lambda s: '-' + s.group(0).lower(),
+                          Cmd.__name__)[1:]
         cmd = Cmd()
         parser = subparser.add_parser(cmd_name, help=cmd.__doc__)
         cmd.setup_parser(parser)
@@ -84,7 +81,7 @@ class Cleanup(Command):
 
     def execute(self, backend, older_than, reindex, vacuum):
         if older_than < 2:
-            fail("Minimal allowed value is 2 months")
+            sys.exit("Minimal allowed value is 2 months")
         conn = backend.db.connection()
         conn.connection.connection.rollback()
         conn.connection.connection.autocommit = True
@@ -103,7 +100,7 @@ class Cleanup(Command):
             print("Reindexed")
 
 
-class Notice(Command):
+class SetNotice(Command):
     """ Set admin notice displayed in web interface """
 
     def setup_parser(self, parser):
@@ -114,13 +111,18 @@ class Notice(Command):
         key = 'global_notice'
         content = content.strip()
         notice = db.query(AdminNotice).filter_by(key=key).first()
-        if not content or content == 'clear':
-            if notice:
-                db.delete(notice)
-        else:
-            notice = notice or AdminNotice(key=key)
-            notice.content = content
-            db.add(notice)
+        notice = notice or AdminNotice(key=key)
+        notice.content = content
+        db.add(notice)
+
+
+class ClearNotice(Command):
+    """ Clears current admin notice """
+
+    def execute(self, backend):
+        key = 'global_notice'
+        backend.db.query(AdminNotice).filter_by(key=key).delete()
+        backend.db.commit()
 
 
 class AddPkg(Command):
@@ -137,10 +139,10 @@ class AddPkg(Command):
             backend.add_packages(names, group=group, static_priority=static_priority,
                                  manual_priority=manual_priority)
         except PackagesDontExist as e:
-            fail("Packages don't exist: " + ','.join(e.names))
+            sys.exit("Packages don't exist: " + ','.join(e.names))
 
 
-class AddGrp(Command):
+class AddGroup(Command):
 
     def setup_parser(self, parser):
         parser.add_argument('group')
@@ -151,11 +153,11 @@ class AddGrp(Command):
                              .filter(Package.name.in_(pkgs)).all()
         names = {pkg.name for pkg in pkg_objs}
         if names != set(pkgs):
-            fail("Packages not found: " + ','.join(set(pkgs).difference(names)))
+            sys.exit("Packages not found: " + ','.join(set(pkgs).difference(names)))
         backend.add_group(group, pkg_objs)
 
 
-class SetPrio(Command):
+class SetPriority(Command):
     """ Sets package's priority to given value """
 
     def setup_parser(self, parser):
@@ -168,7 +170,7 @@ class SetPrio(Command):
                          .filter(Package.name.in_(names)).all()
         if len(names) != len(pkgs):
             not_found = set(names).difference(pkg.name for pkg in pkgs)
-            fail('Packages not found: {}'.format(','.join(not_found)))
+            sys.exit('Packages not found: {}'.format(','.join(not_found)))
         for pkg in pkgs:
             if static:
                 pkg.static_priority = value
@@ -193,17 +195,17 @@ class SetArchOverride(Command):
             group_obj = backend.db.query(PackageGroup)\
                                   .filter_by(name=name).first()
             if not group_obj:
-                fail("Group {} not found".format(name))
+                sys.exit("Group {} not found".format(name))
             for pkg in group_obj.packages:
                 pkg.arch_override = arch_override
         else:
             pkg = backend.db.query(Package).filter_by(name=name).first()
             if not pkg:
-                fail("Package {} not found".format(name))
+                sys.exit("Package {} not found".format(name))
             pkg.arch_override = arch_override
 
 
-class ModifyGroup(Command):
+class EditGroup(Command):
     """ Sets package group attributes """
 
     def setup_parser(self, parser):
@@ -224,7 +226,7 @@ class ModifyGroup(Command):
         group = backend.db.query(PackageGroup)\
             .filter_by(name=name, namespace=ns or None).first()
         if not group:
-            fail("Group {} not found".format(current_name))
+            sys.exit("Group {} not found".format(current_name))
         if new_name:
             group.name = new_name
         if new_namespace:
