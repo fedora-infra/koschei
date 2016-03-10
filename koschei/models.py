@@ -100,6 +100,7 @@ class Collection(Base):
     __tablename__ = 'collection'
 
     id = Column(Integer, primary_key=True)
+    order = Column(Integer, nullable=False, server_default="100")
     # name used in machine context (urls, fedmsg), e.g. "f24"
     name = Column(String, nullable=False, unique=True)
     # name for ordinary people, e.g. "Fedora 24"
@@ -110,6 +111,13 @@ class Collection(Base):
 
     # priority of packages in given collection is multiplied by this
     priority_coefficient = Column(Float, nullable=False, server_default='1')
+
+    # build group name
+    build_group = Column(String, nullable=False, server_default='build')
+    # comma separated list of architectures for which to include repos when resolving
+    resolution_arches = Column(String, nullable=False, server_default='x86_64,i386')
+    # architecture for which resolution should be performed
+    resolve_for_arch = Column(String, nullable=False, server_default='x86_64')
 
     latest_repo_id = Column(Integer)
     latest_repo_resolved = Column(Boolean)
