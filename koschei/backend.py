@@ -117,6 +117,11 @@ class Backend(object):
             while True:
                 try:
                     self.db.execute(insert(Build), chunk)
+                    orm_chunk = self.db.query(Build)\
+                        .filter_by(real=True)\
+                        .filter(Build.task_id.in_(b['task_id'] for b in chunk))\
+                        .all()
+                    self.sync_tasks(orm_chunk, self.koji_sessions['secondary'])
                     self.db.commit()
                     registered += chunk
                     break
@@ -129,19 +134,6 @@ class Backend(object):
                         .all()
                     existing_ids = {b.task_id for [b] in existing_ids}
                     chunk = [b for b in chunk if b['task_id'] not in existing_ids]
-        for chunk in util.chunks(registered, 100):
-            while True:
-                try:
-                    orm_chunk = self.db.query(Build)\
-                        .filter_by(real=True)\
-                        .filter(Build.task_id.in_(b['task_id'] for b in chunk))\
-                        .all()
-                    self.sync_tasks(orm_chunk, self.koji_sessions['secondary'])
-                    self.db.commit()
-                    break
-                except IntegrityError:
-                    self.db.rollback()
-                    self.log.info("Retrying koji_task insertion")
 
         if registered:
             # pylint:disable=unused-variable
