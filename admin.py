@@ -251,8 +251,17 @@ class CollectionCommandParser(object):
                             required=self.args_required,
                             help="Koji build tag")
         parser.add_argument('-p', '--priority-coefficient',
-                            required=self.args_required,
                             help="Priority coefficient")
+        parser.add_argument('-o', '--order',
+                            help="Order when displaying. "
+                            "First collection becomes the default")
+        parser.add_argument('--resolution-arches',
+                            help="Comma separated list of arches which should "
+                            "be included in resolution sack")
+        parser.add_argument('--resolve-for-arch',
+                            help="Arhcitecture for which resolution will be done")
+        parser.add_argument('--build-group',
+                            help="Build group name")
 
 
 class CreateCollection(CollectionCommandParser, Command):
