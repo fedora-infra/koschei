@@ -19,23 +19,13 @@
 from threading import RLock, Condition, Thread
 
 
-if False:
-    # Print debug information to stderr
-    class _StderrLogger(object):
-        def debug(self, msg):
-            import sys
-            sys.stderr.write(msg + "\n")
-    _log = _StderrLogger()
-elif False:
-    # Print debug information to logger
-    import logging
-    _log = logging.getLogger('koschei.cache_manager')
-else:
-    # Discard debug information
-    class _BitBucketLogger(object):
-        def debug(self, msg):
-            pass
-    _log = _BitBucketLogger()
+# Print debug information to stderr
+class _Logger(object):
+    def debug(self, msg):
+        #import sys
+        #sys.stderr.write(msg + "\n")
+        pass
+_log = _Logger()
 
 
 class _CacheItem(object):
