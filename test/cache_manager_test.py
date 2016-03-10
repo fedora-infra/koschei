@@ -98,6 +98,7 @@ class CacheManagerTest(TestCase):
         self.mgr.release(1)
         self.mgr.acquire(2)
         self.mgr.release(2)
+        self.mgr.terminate()
 
     def test_acquire_twice(self):
         self.mgr.prefetch(7541)
@@ -106,8 +107,10 @@ class CacheManagerTest(TestCase):
         self.mgr.release(7541)
         self.mgr.acquire(7541)
         self.mgr.release(7541)
+        self.mgr.terminate()
 
     def test_initial_cache(self):
         self.mgr = CacheManager(1)
         self.mgr.add_bank(SackFactory(), 1, 2)
         self.mgr.add_bank(RepoFactory_Initial(), 1, 4)
+        self.mgr.terminate()
