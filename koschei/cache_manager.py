@@ -46,7 +46,6 @@ class _CacheItem(object):
     def __init__(self, key, bank):
         self._key = key
         self._value = None
-        self._next_value = None
         self._index = 0
         self._next = None
         self._bank = bank
@@ -59,12 +58,17 @@ class _CacheItem(object):
         self._state = next_state
 
     def _prepare(self):
-        self._value = self._bank._factory.create(self._key, self._next._value
-                                                 if self._next else
-                                                 self._next_value)
+        try:
+            self._value = self._bank._factory.create(self._key, self._next._value
+                                                     if self._next else None)
+        except:
+            self._value = None
 
     def _release(self):
-        self._bank._factory.destroy(self._key, self._value)
+        try:
+            self._bank._factory.destroy(self._key, self._value)
+        except:
+            pass
         self._value = None
 
 
@@ -162,7 +166,10 @@ class CacheManager(object):
         bank = _CacheBank(bank_id, item_factory, capacity, max_threads)
         self._banks.append(bank)
 
-        initial_cache = item_factory.populate_cache()
+        try:
+            initial_cache = item_factory.populate_cache()
+        except:
+            initial_cache = None
         if initial_cache:
             for key, value in initial_cache:
                 item = bank._add(key, _CacheItem.RELEASED)
@@ -226,7 +233,6 @@ class CacheManager(object):
     def _thread_proc(self):
         try:
             self._lock.acquire()
-            locked = True
             _log.debug("Worker started")
             while not self._terminate:
                 self._add_requested_items()
@@ -241,10 +247,8 @@ class CacheManager(object):
                 if item._next:
                     item._next._transition(_CacheItem.PREPARED, _CacheItem.ACQUIRED)
                 self._lock.release()
-                locked = False
                 item._prepare()
                 self._lock.acquire()
-                locked = True
                 item._transition(_CacheItem.PREPARING, _CacheItem.PREPARED)
                 if item._next:
                     item._next._transition(_CacheItem.ACQUIRED, _CacheItem.RELEASED)
@@ -258,8 +262,7 @@ class CacheManager(object):
             _log.debug("Worker terminated")
         finally:
             _log.debug("Worker exited")
-            if locked:
-                self._lock.release()
+            self._lock.release()
 
     def prefetch(self, key):
         """
