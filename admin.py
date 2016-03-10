@@ -286,6 +286,27 @@ class EditCollection(CollectionCommandParser, Command):
         backend.db.commit()
 
 
+class DeleteCollection(Command):
+    """ Deletes collection, including packages and builds it constains.
+    May take long time to execute. """
+
+    def setup_parser(self, parser):
+        parser.add_argument('name',
+                            help="Name identificator")
+        parser.add_argument('-f', '--force', action='store_true')
+
+    def execute(self, backend, name, force):
+        collection = backend.db.query(Collection).filter_by(name=name).first()
+        if not collection:
+            sys.exit("Collection not found")
+        if (not force and
+                backend.db.query(Package).filter_by(collection_id=collection.id).count()):
+            sys.exit("The collection contains packages. Specify --force to delete "
+                     "it anyway. It means deleting all the packages build history. "
+                     "It cannot be reverted and may take long time to execute")
+        backend.db.delete(collection)
+        backend.db.commit()
+
 
 class Psql(Command):
     """ Convenience to get psql shell connected to koschei DB. """
