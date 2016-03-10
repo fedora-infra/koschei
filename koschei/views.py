@@ -225,7 +225,6 @@ def inject_fedmenu():
 @app.before_request
 def get_collections():
     collection_name = request.args.get('collection')
-    # TODO order
     g.collections = db.query(Collection).order_by(Collection.order).all()
     if not g.collections:
         abort(500, "No collections setup")
@@ -237,7 +236,6 @@ def get_collections():
         else:
             abort(404, "Collection not found")
     else:
-        # TODO default collection
         g.current_collection = g.collections[0]
 
 
