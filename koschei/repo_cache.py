@@ -27,6 +27,7 @@ from collections import deque
 from contextlib import contextmanager
 from functools import total_ordering
 from koschei.cache_manager import CacheManager
+from koschei.models import Session, Collection
 
 from koschei import util
 
@@ -77,11 +78,26 @@ class RepoDescriptor(object):
         return self.remote_url.format(build_tag=self.build_tag,
                                       repo_id=self.repo_id, arch=arch)
 
+class AbstractManager(object):
+    def get_arch_desc(self, repo_descriptor):
+        # separate thread needs own session
+        db = Session()
+        try:
+            collection = db.query(Collection)\
+                .filter_by(build_tag=repo_descriptor.build_tag)\
+                .first()
+            if not collection:
+                log.info('Collection for build tag "{}" not found'
+                         .format(repo_descriptor.build_tag))
+                return None, None
+            return collection.resolve_for_arch, collection.resolution_arches.split(',')
+        finally:
+            db.close()
 
-class RepoManager(object):
-    def __init__(self, repo_dir, arches):
+
+class RepoManager(AbstractManager):
+    def __init__(self, repo_dir):
         self._repo_dir = repo_dir
-        self._arches = arches
 
     def _get_repo_dir(self, repo_descriptor):
         return os.path.join(self._repo_dir, str(repo_descriptor))
@@ -101,7 +117,10 @@ class RepoManager(object):
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
         try:
-            for arch in self._arches:
+            _, arches = self.get_arch_desc(repo_descriptor)
+            if not arches:
+                return
+            for arch in arches:
                 log.debug('Downloading repo {} for arch {} from Koji to disk'.
                           format(repo_descriptor, arch))
                 h = librepo.Handle()
@@ -148,19 +167,18 @@ class RepoManager(object):
         return repos
 
 
-class SackManager(object):
-    def __init__(self, arches, for_arch):
-        self._arches = arches
-        self._for_arch = for_arch
-
+class SackManager(AbstractManager):
     # @Override
     def create(self, repo_descriptor, repo_dir):
         """ Load repo from disk into memory as sack """
         if not repo_dir:
             return
         try:
-            sack = hawkey.Sack(arch=self._for_arch)
-            for arch in self._arches:
+            for_arch, arches = self.get_arch_desc(repo_descriptor)
+            if not for_arch:
+                return
+            sack = hawkey.Sack(arch=for_arch)
+            for arch in arches:
                 log.debug('Loading repo {} for arch {} from disk into memory'.
                           format(repo_descriptor, arch))
                 arch_repo_dir = os.path.join(repo_dir, arch)
@@ -197,9 +215,7 @@ class SackManager(object):
 class RepoCache(object):
     def __init__(self,
                  repo_dir=os.path.join(util.config['directories']['cachedir'],
-                                       'repodata'),
-                 arches=util.config['dependency']['arches'],
-                 for_arch=util.config['dependency']['for_arch']):
+                                       'repodata')):
 
         cache_l1_capacity = util.config['dependency']['cache_l1_capacity']
         cache_l2_capacity = util.config['dependency']['cache_l2_capacity']
@@ -207,8 +223,8 @@ class RepoCache(object):
         cache_l2_threads = util.config['dependency']['cache_l2_threads']
         cache_threads_max = util.config['dependency']['cache_threads_max']
 
-        sack_manager = SackManager(arches, for_arch)
-        repo_manager = RepoManager(repo_dir, arches)
+        sack_manager = SackManager()
+        repo_manager = RepoManager(repo_dir)
 
         self.mgr = CacheManager(cache_threads_max)
         self.mgr.add_bank(sack_manager, cache_l1_capacity, cache_l1_threads)
