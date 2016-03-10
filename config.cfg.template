@@ -21,9 +21,6 @@ config = {
             "ca": "/etc/koschei/fedora-server-ca.cert",
             "serverca": "/etc/koschei/fedora-server-ca.cert",
         },
-        "source_tag": "f24",
-        "target_tag": "f24",
-        "build_tag": "f24-build",
         "max_builds": 30,
         "build_arches": ['i386', 'x86_64', 'armhfp'],
         "build_opts": {
@@ -39,9 +36,6 @@ config = {
     },
 
     "dependency": {
-        "build_group": "build",
-        "for_arch": "x86_64",
-        "arches": ['x86_64', 'i386'],
         "ignore_weak_deps": False,
 
         # Number of package resolution changes (state, depchanges, problems) to
