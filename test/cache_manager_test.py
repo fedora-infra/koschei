@@ -32,6 +32,18 @@ class RepoFactory_Initial(RepoFactory):
     def populate_cache(self):
         return ((7541, 'repo 7541'), (689, 'repo 689'))
 
+class RepoFactory_CreateException(RepoFactory):
+    def create(self, repo_id, ignored):
+        raise Exception("error downloading repo")
+
+class RepoFactory_DestroyException(RepoFactory):
+    def destroy(self, repo_id, repo):
+        raise Exception("error removing repo from disk")
+
+class RepoFactory_PopulateException(RepoFactory):
+    def populate_cache(self):
+        raise Exception("error loading repos from disk")
+
 class SackFactory(object):
     def create(self, repo_id, repo):
         assert repo == ("repo %s" % repo_id)
@@ -113,4 +125,32 @@ class CacheManagerTest(TestCase):
         self.mgr = CacheManager(1)
         self.mgr.add_bank(SackFactory(), 1, 2)
         self.mgr.add_bank(RepoFactory_Initial(), 1, 4)
+        self.mgr.terminate()
+
+    def test_create_exception(self):
+        self.mgr = CacheManager(1)
+        self.mgr.add_bank(SackFactory(), 1, 2)
+        self.mgr.add_bank(RepoFactory_CreateException(), 1, 4)
+        self.mgr.prefetch(7541)
+        val = self.mgr.acquire(7541)
+        assert not val
+        self.mgr.release(7541)
+        self.mgr.terminate()
+
+    def test_destroy_exception(self):
+        self.mgr = CacheManager(1)
+        self.mgr.add_bank(SackFactory(), 1, 2)
+        self.mgr.add_bank(RepoFactory_DestroyException(), 1, 4)
+        self.mgr.prefetch(7541)
+        self.mgr.acquire(7541)
+        self.mgr.release(7541)
+        self.mgr.terminate()
+
+    def test_populate_exception(self):
+        self.mgr = CacheManager(1)
+        self.mgr.add_bank(SackFactory(), 1, 2)
+        self.mgr.add_bank(RepoFactory_PopulateException(), 1, 4)
+        self.mgr.prefetch(7541)
+        self.mgr.acquire(7541)
+        self.mgr.release(7541)
         self.mgr.terminate()
