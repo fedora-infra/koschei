@@ -1,112 +1,113 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-  <title>{% block title %}Koschei{% endblock %}</title>
-<link rel="stylesheet" type="text/css" media="screen" title="Koschei Style"
-href="{{ url_for('static', filename='koschei.css') }}"/>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+        <title>{% block title %}Koschei{% endblock %}</title>
+        <link rel="stylesheet" type="text/css" media="screen" title="Koschei Style"
+        href="{{ url_for('static', filename='koschei.css') }}"/>
 
-{% if fedmenu_url is defined %}
-<script type="text/javascript" src="{{fedmenu_url}}/js/jquery-1.11.2.min.js"></script>
-<script type="text/javascript" src="{{fedmenu_url}}/js/fedmenu.js"></script>
-<script type="text/javascript" src="{{fedmenu_url}}/js/fedora-libravatar.js"></script>
-<script type="text/javascript">
-  fedmenu({
-      'url': '{{fedmenu_data_url}}',
-      'mimeType': 'application/javascript',
-      'position': 'bottom-right',
-      {% if package is defined %}
-      'package': '{{ package.name }}',
-      {% endif %}
-      {% if user is defined %}
-      'user': '{{ user.name }}',
-      {% endif %}
-  });
-</script>
-{% endif %}
-
-</head>
-<body>
-<div id="wrap">
-    <div id="innerwrap">
-        <div id="header">
-            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Koschei Logo" id="kojiLogo"/>
-            <form action="{{ url_for('search') }}" id="headerSearch">
-                <!--<select name="type">
-                    <option value="package">Packages</option>
-                    <option value="group">Groups</option>
-                </select>-->
-                <input type="text" name="q"/>
-                <input type="submit" value="Search"/>
-            </form>
-        </div>
-
-        <div id="mainNav">
-            <h4 class="hide">Main Site Links:</h4>
-            <ul>
-                {% for tab_name, tab_caption in g.tabs %}
-                <li {% if g.current_tab == tab_name %}id="activeTab"{% endif %}>
-                    <a href="{{ url_for(tab_name) }}">{{ tab_caption }}</a>
-                </li>
-                {% endfor %}
-                <li {% if g.current_tab == 'my_packages' %}id="activeTab"{% endif %}>
-                    {% if g.user %}
-                    <a href="{{ url_for('user_packages', name=g.user.name) }}">My packages</a>
-                    {% else %}
-                    <div>My packages</div>
-                    {% endif %}
-                </li>
-            </ul>
-        </div>
-
-        <div>
-            <ul>
-                {% for collection in g.collections %}
-                <li {% if collection.id == g.current_collection.id %}id="active"{% endif %}>
-                    <a href="?{{ page_args(collection=collection.name, page=None) }}">{{ collection }}</a>
-                </li>
-                {% endfor %}
-            </ul>
-
-        <span id="loginInfo">
-            {% block statusline %}
-            {% endblock %}
-            {% if g.user %}
-            <span>Logged in as {{ g.user.name }}</span>
-            <a href="{{ url_for('logout') }}">logout</a>
-            {% else %}
-            <a href="{{ url_for('login') }}">login</a>
-            {% endif %}
-        </span>
-
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
-        <ul class=flashes>
-            {% for message in messages %}
-            <li>{{ message }}</li>
-            {% endfor %}
-        </ul>
+        {% if fedmenu_url is defined %}
+        <script type="text/javascript" src="{{fedmenu_url}}/js/jquery-1.11.2.min.js"></script>
+        <script type="text/javascript" src="{{fedmenu_url}}/js/fedmenu.js"></script>
+        <script type="text/javascript" src="{{fedmenu_url}}/js/fedora-libravatar.js"></script>
+        <script type="text/javascript">
+            fedmenu({
+                'url': '{{fedmenu_data_url}}',
+                'mimeType': 'application/javascript',
+                'position': 'bottom-right',
+                {% if package is defined %}
+                'package': '{{ package.name }}',
+                {% endif %}
+                {% if user is defined %}
+                'user': '{{ user.name }}',
+                {% endif %}
+            });
+        </script>
         {% endif %}
-        {% endwith %}
 
-        {% for notice in get_global_notices() %}
-        <h3 class="notice">{{ notice }}</h3>
-        {% endfor %}
+    </head>
+    <body>
+        <div id="wrap">
+            <div id="innerwrap">
+                <div id="header">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Koschei Logo" id="kojiLogo"/>
+                    <form action="{{ url_for('search') }}" id="headerSearch">
+                        <!--<select name="type">
+                            <option value="package">Packages</option>
+                            <option value="group">Groups</option>
+                        </select>-->
+                        <input type="text" name="q"/>
+                        <input type="submit" value="Search"/>
+                    </form>
+                </div>
 
-        <div id="content">
-            {% block content %}
-            {% endblock %}
+                <div id="mainNav">
+                    <h4 class="hide">Main Site Links:</h4>
+                    <ul>
+                        {% for tab_name, tab_caption in g.tabs %}
+                        <li {% if g.current_tab == tab_name %}id="activeTab"{% endif %}>
+                            <a href="{{ url_for(tab_name) }}">{{ tab_caption }}</a>
+                        </li>
+                        {% endfor %}
+                        <li {% if g.current_tab == 'my_packages' %}id="activeTab"{% endif %}>
+                            {% if g.user %}
+                            <a href="{{ url_for('user_packages', name=g.user.name) }}">My packages</a>
+                            {% else %}
+                            <div>My packages</div>
+                            {% endif %}
+                        </li>
+                    </ul>
+                </div>
+
+                <span id="loginInfo">
+                    {% block statusline %}
+                    {% endblock %}
+                    {% if g.user %}
+                    <span>Logged in as {{ g.user.name }}</span>
+                    <a href="{{ url_for('logout') }}">logout</a>
+                    {% else %}
+                    <a href="{{ url_for('login') }}">login</a>
+                    {% endif %}
+                </span>
+
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <ul class=flashes>
+                    {% for message in messages %}
+                    <li>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+                {% endwith %}
+
+                {% for notice in get_global_notices() %}
+                <h3 class="notice">{{ notice }}</h3>
+                {% endfor %}
+
+                <div class="collection-bar">
+                    <ul class="collections">
+                        {% for collection in g.collections %}
+                        <li {% if collection.id == g.current_collection.id %}id="active"{% endif %}>
+                            <a href="?{{ page_args(collection=collection.name, page=None) }}">{{ collection }}</a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <div id="content">
+                    {% block content %}
+                    {% endblock %}
+                </div>
+                <p id="footer">
+                    Copyright &copy; 2014-2015 Red Hat.
+                    <a href="https://github.com/msimacek/koschei/issues">Reporting bugs.</a>
+                    You can find the source for Koschei <a href="https://github.com/msimacek/koschei">here on GitHub.</a>
+                    <a href="http://fedorahosted.org/koji/">
+                        <img src="{{ url_for('static', filename='images/powered-by-koji.png') }}"
+                        alt="Powered By Koji" id="PoweredByKojiLogo"/>
+                    </a>
+                </p>
+            </div>
         </div>
-        <p id="footer">
-            Copyright &copy; 2014-2015 Red Hat.
-            <a href="https://github.com/msimacek/koschei/issues">Reporting bugs.</a>
-            You can find the source for Koschei <a href="https://github.com/msimacek/koschei">here on GitHub.</a>
-            <a href="http://fedorahosted.org/koji/">
-                <img src="{{ url_for('static', filename='images/powered-by-koji.png') }}"
-                alt="Powered By Koji" id="PoweredByKojiLogo"/>
-            </a>
-        </p>
-    </div>
-</div>
-</body>
+    </body>
 </html>
