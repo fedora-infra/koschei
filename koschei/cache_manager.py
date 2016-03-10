@@ -61,12 +61,14 @@ class _CacheItem(object):
         try:
             self._value = self._bank._factory.create(self._key, self._next._value
                                                      if self._next else None)
+        # pylint: disable=W0702
         except:
             self._value = None
 
     def _release(self):
         try:
             self._bank._factory.destroy(self._key, self._value)
+        # pylint: disable=W0702
         except:
             pass
         self._value = None
@@ -168,6 +170,7 @@ class CacheManager(object):
 
         try:
             initial_cache = item_factory.populate_cache()
+        # pylint: disable=W0702
         except:
             initial_cache = None
         if initial_cache:
