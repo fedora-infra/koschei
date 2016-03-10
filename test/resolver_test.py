@@ -28,8 +28,7 @@ from mock import Mock, patch
 from koschei import util
 from koschei.models import (Dependency, UnappliedChange, AppliedChange, Package,
                             ResolutionProblem, BuildrootProblem)
-from koschei.resolver import (Resolver, AbstractResolverTask, GenerateRepoTask,
-                              ProcessBuildsTask)
+from koschei.resolver import Resolver
 
 FOO_DEPS = [
     ('A', 0, '1', '1.fc22', 'x86_64'),
@@ -93,7 +92,7 @@ class ResolverTest(DBTest):
         build.deps_processed = build.deps_resolved = True
         self.prepare_builds(foo=None, repo_id=None)
         with patch('koschei.util.get_build_group', return_value=['gcc','bash']):
-            self.assertIsNone(self.resolver.create_task(GenerateRepoTask).get_build_for_comparison(foo))
+            self.assertIsNone(self.resolver.get_build_for_comparison(foo))
 
     @postgres_only
     def test_skip_unresolved_failed_build(self):
@@ -104,7 +103,7 @@ class ResolverTest(DBTest):
         b2.deps_processed = True
         self.s.commit()
         with patch('koschei.util.get_build_group', return_value=['gcc','bash']):
-            self.assertEqual(b1, self.resolver.create_task(GenerateRepoTask).get_build_for_comparison(foo))
+            self.assertEqual(b1, self.resolver.get_build_for_comparison(foo))
 
     @x86_64_only
     def test_resolve_build(self):
@@ -112,7 +111,7 @@ class ResolverTest(DBTest):
         package_id = foo_build.package_id
         with patch('koschei.util.get_build_group', return_value=['R']):
             with patch('koschei.util.get_rpm_requires', return_value=[['F', 'A']]):
-                self.resolver.create_task(ProcessBuildsTask).run()
+                self.resolver.process_builds()
         expected_deps = [tuple([foo_build.id] + list(nevr)) for nevr in FOO_DEPS]
         actual_deps = self.s.query(Dependency.build_id,
                                    Dependency.name, Dependency.epoch,
@@ -125,7 +124,7 @@ class ResolverTest(DBTest):
         foo_build = self.prepare_foo_build()
         with patch('koschei.util.get_build_group', return_value=['virtual']):
             with patch('koschei.util.get_rpm_requires', return_value=[['F', 'A']]):
-                self.resolver.create_task(ProcessBuildsTask).run()
+                self.resolver.process_builds()
         self.assertTrue(foo_build.deps_resolved)
 
     def test_none_repo_id(self):
@@ -134,7 +133,7 @@ class ResolverTest(DBTest):
         self.s.commit()
         with patch('koschei.util.get_build_group', return_value=['R']):
             with patch('koschei.util.get_rpm_requires', return_value=[['F', 'A']]):
-                self.resolver.create_task(ProcessBuildsTask).run()
+                self.resolver.process_builds()
         self.assertEquals(0, self.s.query(AppliedChange).count())
         self.assertTrue(foo_build.deps_processed)
 
@@ -149,7 +148,7 @@ class ResolverTest(DBTest):
         self.s.commit()
         with patch('koschei.util.get_build_group', return_value=['R']):
             with patch('koschei.util.get_rpm_requires', return_value=[['nonexistent']]):
-                self.resolver.create_task(ProcessBuildsTask).run()
+                self.resolver.process_builds()
         self.assertTrue(b.deps_processed)
         self.assertFalse(b.deps_resolved)
         self.assertEquals(600, b.package.manual_priority)
@@ -174,7 +173,7 @@ class ResolverTest(DBTest):
         build = self.prepare_foo_build(repo_id=666, version='4')
         with patch('koschei.util.get_build_group', return_value=['R']):
             with patch('koschei.util.get_rpm_requires', return_value=[['F', 'A']]):
-                self.resolver.create_task(ProcessBuildsTask).run()
+                self.resolver.process_builds()
         expected_changes = [(build.id, 'C', 1, 1, '2', '3', '1.fc22', '1.fc22', 2),
                             (build.id, 'E', None, 0, None, '0.1', None, '1.fc22.1', 2)]
         c = AppliedChange
@@ -187,10 +186,9 @@ class ResolverTest(DBTest):
     def test_repo_generation(self):
         self.prepare_old_build()
         with patch('koschei.util.get_build_group', return_value=['R']):
-            task = self.resolver.create_task(GenerateRepoTask)
             with patch('koschei.util.get_rpm_requires',
                        return_value=[['F', 'A'], ['nonexistent']]):
-                task.run(self.collection, 666)
+                self.resolver.generate_repo(self.collection, 666)
         self.s.expire_all()
         foo = self.s.query(Package).filter_by(name='foo').first()
         self.assertTrue(foo.resolved)
@@ -211,10 +209,9 @@ class ResolverTest(DBTest):
         self.prepare_old_build()
         self.prepare_packages(['bar'])
         with patch('koschei.util.get_build_group', return_value=['bar']):
-            task = self.resolver.create_task(GenerateRepoTask)
             with patch('koschei.util.get_rpm_requires', return_value=[['nonexistent']]):
                 with patch('fedmsg.publish') as fedmsg_mock:
-                    task.run(self.collection, 666)
+                    self.resolver.generate_repo(self.collection, 666)
                     self.assertFalse(fedmsg_mock.called)
         self.assertFalse(self.collection.latest_repo_resolved)
         self.assertEquals(666, self.collection.latest_repo_id)
@@ -242,8 +239,7 @@ class ResolverTest(DBTest):
     def test_virtual_file_provides(self):
         with patch('koschei.util.get_build_group', return_value=['R']):
             with get_sack('x86_64') as sack:
-                task = self.resolver.create_task(AbstractResolverTask)
-                (resolved, problems, deps) = task.resolve_dependencies(sack, ['/bin/csh'])
+                (resolved, problems, deps) = self.resolver.resolve_dependencies(sack, ['/bin/csh'])
                 self.assertItemsEqual([], problems)
                 self.assertTrue(resolved)
                 self.assertIsNotNone(deps)

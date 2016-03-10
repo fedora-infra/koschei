@@ -42,14 +42,12 @@ generate_dependency_changes_time = Stopwatch("generate_dependency_changes")
 fetch_dependencies_generator_time = Stopwatch("fetch_dependencies_generator")
 
 
-class AbstractResolverTask(object):
-    def __init__(self, log, db, koji_sessions, repo_cache):
-        self.log = log
-        self.db = db
-        self.koji_sessions = koji_sessions
-        self.repo_cache = repo_cache
-        # TODO repo_id
-        self.group = util.get_build_group(koji_sessions['primary'])
+class Resolver(KojiService):
+    def __init__(self, log=None, db=None, koji_sessions=None,
+                 repo_cache=None):
+        super(Resolver, self).__init__(log=log, db=db,
+                                       koji_sessions=koji_sessions)
+        self.repo_cache = repo_cache or RepoCache()
 
     def get_koji_session_for_build(self, build):
         return self.koji_sessions['secondary' if build.real else 'primary']
@@ -139,8 +137,6 @@ class AbstractResolverTask(object):
                 desc.build_tag = repo_info['tag_name']
             else:
                 self.log.debug('Repo {} is dead, skipping'.format(desc.repo_id))
-
-class GenerateRepoTask(AbstractResolverTask):
 
     def get_packages(self, collection, expunge=True, require_build=False):
         query = self.db.query(Package).filter(Package.blocked == False)\
@@ -273,7 +269,7 @@ class GenerateRepoTask(AbstractResolverTask):
             generate_dependency_changes_time.stop()
         persist()
 
-    def run(self, collection, repo_id):
+    def generate_repo(self, collection, repo_id):
         """
         Generates new dependency changes for requested repo using given
         collection. Finishes early when base buildroot is not resolvable.
@@ -329,9 +325,6 @@ class GenerateRepoTask(AbstractResolverTask):
         generate_dependency_changes_time.display()
         fetch_dependencies_generator_time.display()
 
-
-class ProcessBuildsTask(AbstractResolverTask):
-
     def repo_descriptor_for_build(self, build):
         return RepoDescriptor('primary',
                               None, build.repo_id)
@@ -365,7 +358,7 @@ class ProcessBuildsTask(AbstractResolverTask):
                .filter(Dependency.build_id.in_(old_builds))\
                .delete(synchronize_session=False)
 
-    def run(self):
+    def process_builds(self):
         # pylint: disable=E1101
         builds = self.db.query(Build.id, Build.repo_id, Build.real, Build.package_id,
                                Package.name, Build.version, Build.release,
@@ -420,22 +413,10 @@ class ProcessBuildsTask(AbstractResolverTask):
         self.db.commit()
 
 
-class Resolver(KojiService):
-
-    def __init__(self, log=None, db=None, koji_sessions=None,
-                 repo_cache=None):
-        super(Resolver, self).__init__(log=log, db=db,
-                                       koji_sessions=koji_sessions)
-        self.repo_cache = repo_cache or RepoCache()
-
-    def create_task(self, cls):
-        return cls(log=self.log, db=self.db, koji_sessions=self.koji_sessions,
-                   repo_cache=self.repo_cache)
-
     def main(self):
-        self.create_task(ProcessBuildsTask).run()
+        self.process_builds()
         for collection in self.db.query(Collection).all():
             curr_repo = util.get_latest_repo(self.koji_sessions['primary'],
                                              collection.build_tag)
             if curr_repo and curr_repo['id'] > collection.latest_repo_id:
-                self.create_task(GenerateRepoTask).run(collection, curr_repo['id'])
+                self.generate_repo(collection, curr_repo['id'])
