@@ -22,8 +22,8 @@ from threading import RLock, Condition, Thread
 # Print debug information to stderr
 class _Logger(object):
     def debug(self, msg):
-        #import sys
-        #sys.stderr.write(msg + "\n")
+        # import sys
+        # sys.stderr.write(msg + "\n")
         pass
 _log = _Logger()
 
@@ -185,8 +185,8 @@ class CacheManager(object):
                 if item:
                     assert item._state == _CacheItem.RELEASED
                     break
-                elif bank._count_work() >= bank._max_threads or\
-                     bank._count_hard() >= bank._capacity:
+                elif (bank._count_work() >= bank._max_threads or
+                      bank._count_hard() >= bank._capacity):
                     _log.debug("_ari: Item {key} can't be added because bank {bank_id}"
                                " has reached capacity or thread limits"
                                .format(key=key, bank_id=bank._id))
