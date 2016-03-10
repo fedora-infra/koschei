@@ -10,6 +10,10 @@
 <form method="POST" action="{{ url_for('edit_package', name=package.name) }}">
 <table class="details">
     <tr>
+        <th>Package collection</th>
+        <td>{{ package.collection }}</td>
+    </tr>
+    <tr>
         <th>Package state</th>
         <td>
             <img src="{{ package.state_icon }}"/>
