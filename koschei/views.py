@@ -80,14 +80,12 @@ def columnize(what, css_class=None):
 def get_global_notices():
     notices = [n.content for n in
                db.query(AdminNotice.content).filter_by(key="global_notice")]
-    # TODO display per collection
-    for collection in g.collections:
-        if collection.latest_repo_resolved is False:
-            problems = db.query(BuildrootProblem)\
-                .filter_by(collection_id=collection.id).all()
-            notices.append("Base buildroot for {} is not installable. "
-                           "Dependency problems:<br/>".format(collection) +
-                           '<br/>'.join((p.problem for p in problems)))
+    if g.current_collection.latest_repo_resolved is False:
+        problems = db.query(BuildrootProblem)\
+            .filter_by(collection_id=g.current_collection.id).all()
+        notices.append("Base buildroot for {} is not installable. "
+                       "Dependency problems:<br/>".format(g.current_collection) +
+                       '<br/>'.join((p.problem for p in problems)))
     notices = map(Markup, notices)
     return notices
 
