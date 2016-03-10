@@ -21,7 +21,7 @@ pip install --upgrade pep8
 
 hash -r
 
-TEST_WITH_FAITOUT=1 nosetests --with-xunit --cover-erase --cover-package=koschei --with-xcoverage
+TEST_WITH_FAITOUT=1 nosetests --with-xunit --cover-erase --cover-branches --cover-package=koschei --with-xcoverage
 
 checked_files=`find koschei/ admin.py -name '*.py'`
 pylint --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" \
