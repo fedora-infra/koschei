@@ -222,8 +222,10 @@ class RepoCache(object):
     @contextmanager
     def get_sack(self, repo_descriptor):
         assert self.prefetch_order.popleft() == repo_descriptor
-        yield self.mgr.acquire(repo_descriptor)
-        self.mgr.release(repo_descriptor)
+        try:
+            yield self.mgr.acquire(repo_descriptor)
+        finally:
+            self.mgr.release(repo_descriptor)
 
     def cleanup(self):
         return self.mgr.terminate()
