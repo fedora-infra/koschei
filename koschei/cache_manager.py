@@ -69,7 +69,7 @@ class _CacheItem(object):
 
 
 class _CacheBank(object):
-    def __init__(self, id, factory, capacity, max_threads):
+    def __init__(self, bank_id, factory, capacity, max_threads):
         """
         Create cache bank.  Params:
           factory     - object supplied by caller, used to create and
@@ -78,7 +78,7 @@ class _CacheBank(object):
           max_threads - max number of threads that can be working on
                         producing items for this bank
         """
-        self._id = id
+        self._id = bank_id
         self._factory = factory
         self._capacity = capacity
         self._max_threads = max_threads
@@ -104,7 +104,9 @@ class _CacheBank(object):
         return sum(1 for item in self._items if item._state == _CacheItem.PREPARING)
 
     def _count_soft(self):
-        """ Count soft items (states: REQUESTED, PREPARING, PREPARED, ACQUIRED, RELEASED) """
+        """
+        Count soft items (states: REQUESTED, PREPARING, PREPARED, ACQUIRED, RELEASED)
+        """
         return len(self._items)
 
     def _lru(self, state):
@@ -156,8 +158,8 @@ class CacheManager(object):
             self._threads.append(thread)
 
     def add_bank(self, item_factory, capacity, max_threads):
-        id = len(self._banks) + 1
-        bank = _CacheBank(id, item_factory, capacity, max_threads)
+        bank_id = len(self._banks) + 1
+        bank = _CacheBank(bank_id, item_factory, capacity, max_threads)
         self._banks.append(bank)
 
         initial_cache = item_factory.populate_cache()
@@ -175,16 +177,19 @@ class CacheManager(object):
             _log.debug("_ari: Processing item {key}".format(key=key))
             item = self._banks[0]._lookup(key)
             if item and item._state != _CacheItem.RELEASED:
-                _log.debug("_ari: Item {key} already used, can't add it again".format(key=key))
+                _log.debug("_ari: Item {key} already used, can't add it again"
+                           .format(key=key))
                 continue
             for bank in self._banks:
                 item = bank._lookup(key)
                 if item:
                     assert item._state == _CacheItem.RELEASED
                     break
-                elif bank._count_work() >= bank._max_threads or bank._count_hard() >= bank._capacity:
-                    _log.debug("_ari: Item {key} can't be added because bank {bank_id} has reached"
-                               " capacity or thread limits".format(key=key, bank_id=bank._id))
+                elif bank._count_work() >= bank._max_threads or\
+                     bank._count_hard() >= bank._capacity:
+                    _log.debug("_ari: Item {key} can't be added because bank {bank_id}"
+                               " has reached capacity or thread limits"
+                               .format(key=key, bank_id=bank._id))
                     return
             prev_item = None
             for bank in self._banks:
