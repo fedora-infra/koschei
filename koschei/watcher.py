@@ -29,11 +29,7 @@ from .models import Build, Package
 class Watcher(KojiService):
 
     topic_name = util.config['fedmsg']['topic']
-    # TODO
-    build_tag = util.primary_koji_config['build_tag']
     instance = util.config['fedmsg']['instance']
-    # TODO
-    target_tag = util.primary_koji_config['target_tag']
     watchdog = util.config['services']['watcher']['watchdog']
 
     def __init__(self, backend=None, *args, **kwargs):
@@ -50,14 +46,8 @@ class Watcher(KojiService):
             self.log.info('consuming ' + topic)
             if topic == self.get_topic('task.state.change'):
                 self.update_build_state(content)
-            elif topic == self.get_topic('repo.done'):
-                if content.get('tag') == self.build_tag:
-                    self.repo_done(content['repo_id'])
             elif topic == self.get_topic('tag'):
                 self.register_real_build(content)
-
-    def repo_done(self, repo_id):
-        self.backend.poll_repo()
 
     def update_build_state(self, msg):
         assert msg['attribute'] == 'state'
@@ -68,12 +58,11 @@ class Watcher(KojiService):
             self.backend.update_build_state(build, state)
 
     def register_real_build(self, msg):
-        if msg['tag'] == self.target_tag:
-            pkg = self.db.query(Package).filter_by(name=msg['name']).first()
-            if pkg:
-                newer_build = self.backend.get_newer_build_if_exists(pkg)
-                if newer_build:
-                    self.backend.register_real_build(pkg, newer_build)
+        pkg = self.db.query(Package).filter_by(name=msg['name']).first()
+        if pkg:
+            newer_build = self.backend.get_newer_build_if_exists(pkg)
+            if newer_build:
+                self.backend.register_real_build(pkg, newer_build)
 
     def notify_watchdog(self):
         if not self.watchdog:
