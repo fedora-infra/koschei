@@ -239,7 +239,7 @@ class ResolverTest(DBTest):
     def test_virtual_file_provides(self):
         with patch('koschei.util.get_build_group', return_value=['R']):
             with get_sack('x86_64') as sack:
-                (resolved, problems, deps) = self.resolver.resolve_dependencies(sack, ['/bin/csh'])
+                (resolved, problems, deps) = self.resolver.resolve_dependencies(sack, ['/bin/csh'], ['R'])
                 self.assertItemsEqual([], problems)
                 self.assertTrue(resolved)
                 self.assertIsNotNone(deps)
@@ -251,8 +251,7 @@ class ResolverTest(DBTest):
     def test_rich_deps(self):
         with patch('koschei.util.get_build_group', return_value=['R']):
             with get_sack('x86_64') as sack:
-                task = self.resolver.create_task(AbstractResolverTask)
-                (resolved, problems, deps) = task.resolve_dependencies(sack, ['qt-x11'])
+                (resolved, problems, deps) = self.resolver.resolve_dependencies(sack, ['qt-x11'], ['R'])
                 self.assertItemsEqual([], problems)
                 self.assertTrue(resolved)
                 self.assertIsNotNone(deps)
@@ -264,8 +263,7 @@ class ResolverTest(DBTest):
     def test_rich_deps2(self):
         with patch('koschei.util.get_build_group', return_value=['R']):
             with get_sack('x86_64') as sack:
-                task = self.resolver.create_task(AbstractResolverTask)
-                (resolved, problems, deps) = task.resolve_dependencies(sack, ['qt-x11', 'plasma-workspace'])
+                (resolved, problems, deps) = self.resolver.resolve_dependencies(sack, ['qt-x11', 'plasma-workspace'], ['R'])
                 self.assertItemsEqual([], problems)
                 self.assertTrue(resolved)
                 self.assertIsNotNone(deps)

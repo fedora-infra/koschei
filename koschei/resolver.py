@@ -48,6 +48,19 @@ class Resolver(KojiService):
         super(Resolver, self).__init__(log=log, db=db,
                                        koji_sessions=koji_sessions)
         self.repo_cache = repo_cache or RepoCache()
+        self.build_groups = {}
+
+    def get_build_group(self, collection_or_id):
+        collection_id = getattr(collection_or_id, 'id', collection_or_id)
+        group = self.build_groups.get(collection_id)
+        if group is None:
+            collection = self.db.query(Collection).get(collection_id)
+            group = util.get_build_group(self.koji_sessions['primary'],
+                                         collection.build_tag,
+                                         collection.build_group)
+            self.build_groups[collection.id] = group
+        assert group
+        return group
 
     def get_koji_session_for_build(self, build):
         return self.koji_sessions['secondary' if build.real else 'primary']
@@ -72,10 +85,10 @@ class Resolver(KojiService):
             self.db.connection().execute(table.insert(), dicts)
             self.db.expire_all()
 
-    def resolve_dependencies(self, sack, br):
+    def resolve_dependencies(self, sack, br, build_group):
         resolve_dependencies_time.start()
         deps = None
-        resolved, problems, installs = util.run_goal(sack, self.group, br)
+        resolved, problems, installs = util.run_goal(sack, build_group, br)
         if resolved:
             problems = []
             deps = [Dependency(name=pkg.name, epoch=pkg.epoch,
@@ -233,7 +246,7 @@ class Resolver(KojiService):
             packages = packages[chunk_size:]
         fetch_dependencies_generator_time.stop()
 
-    def generate_dependency_changes(self, sack, packages, brs, repo_id):
+    def generate_dependency_changes(self, sack, collection, packages, brs, repo_id):
         """
         Generates and persists dependency changes for given list of packages.
         Emits package state change events.
@@ -245,7 +258,8 @@ class Resolver(KojiService):
             self.check_package_state_changes(resolved_map)
             self.persist_results(resolved_map, problems, changes)
             self.db.commit()
-        gen = ((package, self.resolve_dependencies(sack, br))
+        build_group = self.get_build_group(collection)
+        gen = ((package, self.resolve_dependencies(sack, br, build_group))
                for package, br in izip(packages, brs))
         queue_size = util.config['dependency']['resolver_queue_size']
         gen = util.parallel_generator(gen, queue_size=queue_size)
@@ -299,7 +313,9 @@ class Resolver(KojiService):
                     self.log.error('Cannot generate repo: {}'.format(repo_id))
                     self.db.rollback()
                     return
-                resolved, base_problems, _ = self.resolve_dependencies(sack, [])
+                build_group = self.get_build_group(collection)
+                resolved, base_problems, _ = self.resolve_dependencies(sack, [],
+                                                                       build_group)
                 resolution_time.stop()
                 if not resolved:
                     self.log.info("Build group not resolvable for {}"
@@ -313,7 +329,7 @@ class Resolver(KojiService):
                     return
                 self.log.info("Resolving dependencies...")
                 resolution_time.start()
-                self.generate_dependency_changes(sack, packages, brs, repo_id)
+                self.generate_dependency_changes(sack, collection, packages, brs, repo_id)
                 resolution_time.stop()
         finally:
             brs.stop()
@@ -362,7 +378,7 @@ class Resolver(KojiService):
         # pylint: disable=E1101
         builds = self.db.query(Build.id, Build.repo_id, Build.real, Build.package_id,
                                Package.name, Build.version, Build.release,
-                               Package.last_build_id)\
+                               Package.last_build_id, Package.collection_id)\
             .join(Build.package)\
             .filter(Build.deps_processed == False)\
             .filter(Build.repo_id != None)\
@@ -399,7 +415,9 @@ class Resolver(KojiService):
             with self.repo_cache.get_sack(repo_descriptor) as sack:
                 if sack:
                     for _, build, brs in group:
-                        _, _, curr_deps = self.resolve_dependencies(sack, brs)
+                        build_group = self.get_build_group(build.collection_id)
+                        _, _, curr_deps = self.resolve_dependencies(sack, brs,
+                                                                    build_group)
                         self.process_build(sack, build, curr_deps)
                         self.db.commit()
                 else:

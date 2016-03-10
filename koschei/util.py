@@ -352,9 +352,7 @@ def compute_dependency_distances(sack, br, deps):
         pkgs_on_level = set(hawkey.Query(sack).filter(provides=reldeps))
 
 
-def get_build_group(koji_session):
-    tag_name = primary_koji_config['build_tag']
-    group_name = dep_config['build_group']
+def get_build_group(koji_session, tag_name, group_name):
     groups = koji_session.getTagGroups(tag_name)
     [packages] = [group['packagelist'] for group in groups if group['name'] == group_name]
     return [package['package'] for package in packages
