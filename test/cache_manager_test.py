@@ -28,6 +28,10 @@ class RepoFactory(object):
     def populate_cache(self):
         pass
 
+class RepoFactory_Initial(RepoFactory):
+    def populate_cache(self):
+        return ((7541, 'repo 7541'), (689, 'repo 689'))
+
 class SackFactory(object):
     def create(self, repo_id, repo):
         assert repo == ("repo %s" % repo_id)
@@ -94,3 +98,16 @@ class CacheManagerTest(TestCase):
         self.mgr.release(1)
         self.mgr.acquire(2)
         self.mgr.release(2)
+
+    def test_acquire_twice(self):
+        self.mgr.prefetch(7541)
+        self.mgr.prefetch(7541)
+        self.mgr.acquire(7541)
+        self.mgr.release(7541)
+        self.mgr.acquire(7541)
+        self.mgr.release(7541)
+
+    def test_initial_cache(self):
+        self.mgr = CacheManager(1)
+        self.mgr.add_bank(SackFactory(), 1, 2)
+        self.mgr.add_bank(RepoFactory_Initial(), 1, 4)
