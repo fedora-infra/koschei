@@ -29,7 +29,9 @@ class FedmsgSenderTest(DBTest):
                                             msg={'name': 'rnv',
                                                  'old': 'failed',
                                                  'new': 'ok',
-                                                 'repo': 'f22',
+                                                 'repo': 'tag',
+                                                 'collection': 'foo',
+                                                 'collection_name': 'Foo',
                                                  'koji_instance': 'primary',
                                                  'groups': ['c', 'foo/xml']})
 

@@ -48,7 +48,7 @@ class DBTest(AbstractTest):
         super(DBTest, self).__init__(*args, **kwargs)
         self.s = None
         self.task_id_counter = 1
-        self.collection = m.Collection(name="foo", display_name="bar", target_tag="tag",
+        self.collection = m.Collection(name="foo", display_name="Foo", target_tag="tag",
                                        build_tag="build_tag", priority_coefficient=1.0)
 
     def setUp(self):

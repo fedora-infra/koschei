@@ -31,7 +31,7 @@ from koschei import util
 from koschei.util import Stopwatch
 from koschei.service import KojiService
 from koschei.repo_cache import RepoCache, RepoDescriptor
-from koschei.backend import check_package_state
+from koschei.plugin import dispatch_event
 
 
 total_time = Stopwatch("Total repo generation")
@@ -172,20 +172,39 @@ class Resolver(KojiService):
 
     def check_package_state_changes(self, resolved_map):
         """
-        Emits package state change events for packages that changed.
+        Creates a map of package state changes.
         Needs to be called before the change is persisted.
 
         :param resolved_map: dict from package ids to their new resolution state
         """
         packages = self.db.query(Package)\
             .filter(Package.id.in_(resolved_map.iterkeys()))\
-            .options(joinedload(Package.last_complete_build))\
-            .options(joinedload(Package.groups))
+            .options(joinedload(Package.last_complete_build))
+        state_changes = {}
         for pkg in packages:
             self.db.expunge(pkg) # don't propagate the write, we'll do it manually later
             prev_state = pkg.msg_state_string
             pkg.resolved = resolved_map[pkg.id]
-            check_package_state(pkg, prev_state)
+            new_state = pkg.msg_state_string
+            if prev_state != new_state:
+                state_changes[pkg.id] = prev_state, new_state
+        return state_changes
+
+    def emit_package_state_changes(self, state_changes):
+        """
+        Emits package state change events for given map as produced by
+        check_package_state_changes
+        """
+        if not state_changes:
+            return
+        for package in self.db.query(Package)\
+            .filter(Package.id.in_(state_changes.iterkeys()))\
+            .options(joinedload(Package.groups),
+                     joinedload(Package.collection)):
+            prev_state, new_state = state_changes[package.id]
+            dispatch_event('package_state_change', package=package,
+                           prev_state=prev_state,
+                           new_state=new_state)
 
     def get_build_for_comparison(self, package):
         """
@@ -255,9 +274,10 @@ class Resolver(KojiService):
         problems = []
         changes = []
         def persist():
-            self.check_package_state_changes(resolved_map)
+            state_changes = self.check_package_state_changes(resolved_map)
             self.persist_results(resolved_map, problems, changes)
             self.db.commit()
+            self.emit_package_state_changes(state_changes)
         build_group = self.get_build_group(collection)
         gen = ((package, self.resolve_dependencies(sack, br, build_group))
                for package, br in izip(packages, brs))
