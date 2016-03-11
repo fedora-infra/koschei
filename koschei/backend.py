@@ -28,7 +28,7 @@ from koschei import util
 from koschei.util import itercall
 from koschei.models import (Build, UnappliedChange, KojiTask, Package,
                             PackageGroup, PackageGroupRelation,
-                            Collection, get_or_create)
+                            Collection)
 from koschei.plugin import dispatch_event
 
 
@@ -216,7 +216,9 @@ class Backend(object):
         Uses koji_session passed as argument.
         """
         call = itercall(koji_session, builds, lambda k, b: k.getTaskInfo(b.task_id))
+        build_ids = []
         for build, task_info in izip(builds, call):
+            build_ids.append(build.id)
             try:
                 build.started = datetime.fromtimestamp(task_info['create_ts'])
                 build.finished = datetime.fromtimestamp(task_info['completion_ts'])
@@ -227,6 +229,9 @@ class Backend(object):
                 build.finished = datetime.now()
         call = itercall(koji_session, builds,
                         lambda k, b: k.getTaskChildren(b.task_id, request=True))
+        existing_tasks = {t.task_id: t for t in self.db.query(KojiTask)
+                          .filter(KojiTask.build_id.in_(build_ids))}
+        to_insert = []
         for build, subtasks in izip(builds, call):
             build_arch_tasks = [task for task in subtasks
                                 if task['method'] == 'buildArch']
@@ -236,7 +241,11 @@ class Backend(object):
                     build.repo_id = task['request'][4]['repo_id']
                 except KeyError:
                     pass
-                db_task = get_or_create(self.db, KojiTask, task_id=task['id'])
+                # db_task = get_or_create(self.db, KojiTask, task_id=task['id'])
+                db_task = existing_tasks.get(task['id'])
+                if not db_task:
+                    db_task = KojiTask(task_id=task['id'])
+                    to_insert.append(db_task)
                 db_task.build_id = build.id
                 db_task.state = task['state']
                 db_task.arch = task['arch']
@@ -245,6 +254,7 @@ class Backend(object):
                     db_task.finished = datetime.fromtimestamp(task['completion_ts'])
                 except (KeyError, TypeError, ValueError):
                     pass
+        self.db.bulk_insert(to_insert)
 
     def add_group(self, group, pkgs):
         group_obj = self.db.query(PackageGroup)\
