@@ -54,6 +54,9 @@ class Query(sqlalchemy.orm.Query):
     #     how to get args?
     #     self.session.add(entity(**args))
 
+    def delete(self, synchronize_session=False):
+        return super(Query, self).delete(synchronize_session=synchronize_session)
+
     def lock_rows(self):
         """
         Locks rows satisfying given filter expression in consistent order.
