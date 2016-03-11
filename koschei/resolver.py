@@ -246,11 +246,12 @@ class Resolver(KojiService):
             current_packages = packages[:chunk_size]
             builds = [self.get_build_for_comparison(package) for package
                       in current_packages]
-            build_to_package = {b.id: b.package_id for b in builds if b}
-            deps_per_package = defaultdict(list)
-            for dep in self.db.query(Dependency.build_id, *Dependency.nevra)\
-                                .filter(Dependency.build_id.in_(build_to_package.keys())):
-                deps_per_package[build_to_package[dep.build_id]].append(dep)
+            if builds:
+                build_to_package = {b.id: b.package_id for b in builds if b}
+                deps_per_package = defaultdict(list)
+                for dep in self.db.query(Dependency.build_id, *Dependency.nevra)\
+                                    .filter(Dependency.build_id.in_(build_to_package.keys())):
+                    deps_per_package[build_to_package[dep.build_id]].append(dep)
             fetch_dependencies_generator_time.stop()
             for package in current_packages:
                 yield deps_per_package[package.id]
