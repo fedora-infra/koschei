@@ -21,6 +21,7 @@ import koji
 import sqlalchemy
 from sqlalchemy import (create_engine, Table, Column, Integer, String, Boolean,
                         ForeignKey, DateTime, Index, DDL, Float)
+from sqlalchemy.sql import insert
 from sqlalchemy.sql.expression import func, select, false, true
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import (sessionmaker, relationship, column_property,
@@ -68,7 +69,30 @@ class Query(sqlalchemy.orm.Query):
         return [x for [x] in self.all()]
 
 
-Session = sessionmaker(bind=engine, autocommit=False, query_cls=Query)
+class KoscheiDbSession(sqlalchemy.orm.session.Session):
+    def bulk_insert(self, objects):
+        """
+        Inserts ORM objects using sqla-core bulk insert. Only handles simple flat
+        objects, no relationships.
+
+        :param: objects List of ORM objects to be persisted. All objects must be of
+                        the same type.
+        """
+        # pylint:disable=unidiomatic-typecheck
+        if objects:
+            cls = type(objects[0])
+            table = cls.__table__
+            dicts = []
+            for obj in objects:
+                assert type(obj) == cls
+                dicts.append({c.name: getattr(obj, c.name) for c in table.c if not
+                              c.primary_key})
+            self.execute(insert(table), dicts)
+            self.expire_all()
+
+
+Session = sessionmaker(bind=engine, autocommit=False, class_=KoscheiDbSession,
+                       query_cls=Query)
 
 
 def get_or_create(db, table, **cond):

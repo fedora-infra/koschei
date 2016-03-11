@@ -76,14 +76,7 @@ class Resolver(KojiService):
                                  arch=install.arch)
                 new_deps.append(dep)
 
-        if new_deps:
-            # pylint: disable=E1101
-            table = Dependency.__table__
-            dicts = [{c.name: getattr(dep, c.name) for c in table.c
-                      if not c.primary_key}
-                     for dep in new_deps]
-            self.db.connection().execute(table.insert(), dicts)
-            self.db.expire_all()
+        self.db.bulk_insert(new_deps)
 
     def resolve_dependencies(self, sack, br, build_group):
         resolve_dependencies_time.start()
