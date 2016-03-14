@@ -23,7 +23,7 @@ import fedmsg.meta
 
 from sqlalchemy.sql import delete, insert
 
-from koschei.models import Session, User, UserPackageRelation, Package
+from koschei.models import User, UserPackageRelation, Package
 from koschei.util import config
 from koschei.plugin import listen_event
 
@@ -42,9 +42,11 @@ def query_pkgdb(url):
     return req.json()
 
 
-def query_users_packages(username):
-    log.debug("Requesting pkgdb packages for " + username)
-    packages = query_pkgdb('packager/package/' + username)
+def query_users_packages(username, branch):
+    log.debug("Requesting pkgdb packages for {} (branch {})"
+              .format(username, branch))
+    packages = query_pkgdb('packager/package/{}?branches={}'
+                           .format(username, branch))
     if packages:
         packages = (packages['point of contact'] +
                     packages['co-maintained'] +
@@ -64,34 +66,31 @@ if pkgdb_config['enabled']:
     topic_re = re.compile(pkgdb_config['topic_re'])
 
     @listen_event('refresh_user_packages')
-    def refresh_user_packages(user):
-        if not user.packages_retrieved:
-            db = Session.object_session(user)
-            names = query_users_packages(user.name)
-            if names is not None:
-                user.packages_retrieved = True
-                existing = {p for [p] in
-                            db.query(Package.name)
-                            .filter(Package.name.in_(names))}
-                for name in names:
-                    if name not in existing:
-                        pkg = Package(name=name, tracked=False)
-                        db.add(pkg)
-                db.flush()
-                packages = db.query(Package.id)\
-                             .filter(Package.name.in_(names)).all()
-                entries = [{'user_id': user.id,
-                            'package_id': pkg.id} for pkg in packages]
-                # postgres locks package rows due to FK
-                # try to lock them in consistent order
-                db.query(Package)\
-                    .filter(Package.id.in_(pkg.id for pkg in packages))\
-                    .lock_rows()
-                db.execute(delete(UserPackageRelation,
-                                  UserPackageRelation.user_id == user.id))
-                db.execute(insert(UserPackageRelation,
-                                  entries))
-            db.commit()
+    def refresh_user_packages(db, user, current_collection):
+        names = query_users_packages(user.name, current_collection.branch)
+        if names is not None:
+            existing = {p for [p] in
+                        db.query(Package.name)
+                        .filter(Package.name.in_(names))}
+            for name in names:
+                if name not in existing:
+                    pkg = Package(name=name, tracked=False)
+                    db.add(pkg)
+            db.flush()
+            packages = db.query(Package.id)\
+                         .filter(Package.name.in_(names)).all()
+            entries = [{'user_id': user.id,
+                        'package_id': pkg.id} for pkg in packages]
+            # postgres locks package rows due to FK
+            # try to lock them in consistent order
+            db.query(Package)\
+                .filter(Package.id.in_(pkg.id for pkg in packages))\
+                .lock_rows()
+            db.execute(delete(UserPackageRelation,
+                              UserPackageRelation.user_id == user.id))
+            db.execute(insert(UserPackageRelation,
+                              entries))
+        db.commit()
 
     @listen_event('fedmsg_event')
     def consume_fedmsg(topic, msg, db, **kwargs):

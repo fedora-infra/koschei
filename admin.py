@@ -259,9 +259,11 @@ class CollectionCommandParser(object):
                             help="Comma separated list of arches which should "
                             "be included in resolution sack")
         parser.add_argument('--resolve-for-arch',
-                            help="Arhcitecture for which resolution will be done")
+                            help="Architecture for which resolution will be done")
         parser.add_argument('--build-group',
                             help="Build group name")
+        parser.add_argument('--branch',
+                            help="Git branch name. Used by PkgDB plugin. Optional")
 
 
 class CreateCollection(CollectionCommandParser, Command):

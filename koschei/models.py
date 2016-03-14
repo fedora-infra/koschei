@@ -136,6 +136,9 @@ class Collection(Base):
     target_tag = Column(String, nullable=False)
     build_tag = Column(String, nullable=False)
 
+    # PkgDB branch name
+    branch = Column(String)
+
     # priority of packages in given collection is multiplied by this
     priority_coefficient = Column(Float, nullable=False, server_default='1')
 

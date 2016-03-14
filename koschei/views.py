@@ -343,7 +343,8 @@ def user_packages(name):
     user = get_or_create(db, User, name=name)
     db.commit()
     try:
-        plugin.dispatch_event('refresh_user_packages', user=user)
+        plugin.dispatch_event('refresh_user_packages', db=db, user=user,
+                              current_collection=current_collection)
     except Exception:
         flash("Error retrieving user's packages")
         log.exception("Error retrieving user's packages")
