@@ -102,6 +102,13 @@ config = {
         "pkgdb_url": 'https://admin.fedoraproject.org/pkgdb/api',
         "topic_re": r'\.prod\.pkgdb\.',
         "sync_tracked": False,
+        "cache": {
+            "backend": "dogpile.cache.dbm",
+            "expiration_time": 300,
+            "arguments": {
+                "filename": "@CACHEDIR@/pkgdb-user-cache.dbm"
+            },
+        },
     },
     "directories": {
         "cachedir": "@CACHEDIR@",

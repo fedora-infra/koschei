@@ -13,6 +13,7 @@ pip install flask-sqlalchemy==2.0
 pip install flask-wtf==0.8
 pip install flask-openid==1.2.3
 pip install alembic==0.7.4
+pip install dogpile.cache==0.5.5
 pip install --upgrade nose
 pip install --upgrade nosexcover
 pip install --upgrade coverage

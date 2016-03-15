@@ -41,6 +41,7 @@ Requires:       httpd
 Requires:       python-librepo
 Requires:       rpm-python
 Requires:       postgresql
+Requires:       python-dogpile-cache
 Requires(pre):  shadow-utils
 Requires(post): systemd
 Requires(preun): systemd
