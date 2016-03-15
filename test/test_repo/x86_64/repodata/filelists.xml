@@ -35,4 +35,10 @@
   <file type="dir">/usr/share/doc/R</file>
   <file>/usr/share/doc/R/bla</file>
 </package>
+<package pkgid="e226307babc464427c8c63144d8f76b539cdcdbc08bfe989914c778bc6790721" name="qt-x11" arch="x86_64">
+  <version epoch="1" ver="4.8.7" rel="11.fc25"/>
+</package>
+<package pkgid="539a4c575a42a3abed12967bc35d6223f6b8e255f5c1d1a268750a6d60812c50" name="sni-qt" arch="x86_64">
+  <version epoch="0" ver="0.2.6" rel="7.fc24"/>
+</package>
 </filelists>

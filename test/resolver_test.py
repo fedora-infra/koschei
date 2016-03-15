@@ -247,3 +247,29 @@ class ResolverTest(DBTest):
                 self.assertTrue(resolved)
                 self.assertIsNotNone(deps)
                 self.assertItemsEqual(['B', 'C', 'R'], [dep.name for dep in deps])
+
+    # qt-x11 requires (sni-qt(x86-64) if plasma-workspace)
+    # since plasma-workspace is not installed, sni-qt should not be instaled either
+    @x86_64_only
+    def test_rich_deps(self):
+        with patch('koschei.util.get_build_group', return_value=['R']):
+            with get_sack('x86_64') as sack:
+                task = self.resolver.create_task(AbstractResolverTask)
+                (resolved, problems, deps) = task.resolve_dependencies(sack, ['qt-x11'])
+                self.assertItemsEqual([], problems)
+                self.assertTrue(resolved)
+                self.assertIsNotNone(deps)
+                self.assertItemsEqual(['qt-x11', 'R'], [dep.name for dep in deps])
+
+    # qt-x11 requires (sni-qt(x86-64) if plasma-workspace)
+    # since plasma-workspace is installed, sni-qt should be instaled too
+    @x86_64_only
+    def test_rich_deps2(self):
+        with patch('koschei.util.get_build_group', return_value=['R']):
+            with get_sack('x86_64') as sack:
+                task = self.resolver.create_task(AbstractResolverTask)
+                (resolved, problems, deps) = task.resolve_dependencies(sack, ['qt-x11', 'plasma-workspace'])
+                self.assertItemsEqual([], problems)
+                self.assertTrue(resolved)
+                self.assertIsNotNone(deps)
+                self.assertItemsEqual(['qt-x11', 'plasma-workspace', 'sni-qt', 'R'], [dep.name for dep in deps])
