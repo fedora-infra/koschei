@@ -1,11 +1,6 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
-{% block title %}Koschei - {{ user.name }}'s packages{% endblock %}
+{% block title %}Koschei - {{ username }}'s packages{% endblock %}
 {% block content %}
 {{ macros.package_table(packages, page, order) }}
-<div>
-    <form name="force-resync" action="{{ url_for('resync_packages', name=user.name) }}">
-        <button type="submit">Force pkgdb resync</button>
-    </form>
-</div>
 {% endblock %}

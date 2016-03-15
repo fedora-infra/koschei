@@ -20,16 +20,18 @@ import re
 import logging
 import requests
 import fedmsg.meta
+import dogpile.cache
 
-from sqlalchemy.sql import delete, insert
-
-from koschei.models import User, UserPackageRelation, Package
+from koschei.models import Package, Collection
 from koschei.util import config
 from koschei.plugin import listen_event
 
 log = logging.getLogger('koschei.pkgdb_plugin')
 
 pkgdb_config = config['pkgdb']
+
+user_cache = dogpile.cache.make_region()
+user_cache.configure(**pkgdb_config['cache'])
 
 
 def query_pkgdb(url):
@@ -60,37 +62,25 @@ def query_monitored_packages():
     if packages:
         return packages['packages']
 
+def user_key(collection, username):
+    return "{}###{}".format(collection.id, username)
+
 
 if pkgdb_config['enabled']:
 
     topic_re = re.compile(pkgdb_config['topic_re'])
 
-    @listen_event('refresh_user_packages')
-    def refresh_user_packages(db, user, current_collection):
-        names = query_users_packages(user.name, current_collection.branch)
-        if names is not None:
-            existing = {p for [p] in
-                        db.query(Package.name)
-                        .filter(Package.name.in_(names))}
-            for name in names:
-                if name not in existing:
-                    pkg = Package(name=name, tracked=False)
-                    db.add(pkg)
-            db.flush()
-            packages = db.query(Package.id)\
-                         .filter(Package.name.in_(names)).all()
-            entries = [{'user_id': user.id,
-                        'package_id': pkg.id} for pkg in packages]
-            # postgres locks package rows due to FK
-            # try to lock them in consistent order
-            db.query(Package)\
-                .filter(Package.id.in_(pkg.id for pkg in packages))\
-                .lock_rows()
-            db.execute(delete(UserPackageRelation,
-                              UserPackageRelation.user_id == user.id))
-            db.execute(insert(UserPackageRelation,
-                              entries))
-        db.commit()
+    @listen_event('get_user_packages')
+    def get_user_packages(db, username, current_collection):
+        def create():
+            names = query_users_packages(username, current_collection.branch)
+            if names:
+                return db.query(Package.id)\
+                    .filter(Package.name.in_(names))\
+                    .filter(Package.collection_id == current_collection.id)\
+                    .all_flat()
+
+        return user_cache.get_or_create(user_key(current_collection, username), create)
 
     @listen_event('fedmsg_event')
     def consume_fedmsg(topic, msg, db, **kwargs):
@@ -106,11 +96,10 @@ if pkgdb_config['enabled']:
                   .update({'tracked': tracked}, synchronize_session=False)
                 db.expire_all()
                 db.commit()
+            collection_ids = db.query(Collection.id).all_flat()
             for username in fedmsg.meta.msg2usernames(msg):
-                user = db.query(User).filter_by(name=username).first()
-                if user:
-                    user.packages_retrieved = False
-                    db.commit()
+                for collection_id in collection_ids:
+                    user_cache.delete(user_key(collection_id, username))
 
     @listen_event('polling_event')
     def refresh_monitored_packages(backend):

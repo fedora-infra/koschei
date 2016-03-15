@@ -338,30 +338,18 @@ def group_detail(name=None, namespace=None):
 @app.route('/user/<name>')
 @tab('Packages', slave=True)
 def user_packages(name):
-    if g.user and name == g.user.name:
-        g.current_tab = 'my_packages'
-    user = get_or_create(db, User, name=name)
-    db.commit()
+    ids = []
     try:
-        plugin.dispatch_event('refresh_user_packages', db=db, user=user,
-                              current_collection=current_collection)
+        for res in plugin.dispatch_event('get_user_packages', db=db, username=name,
+                                         current_collection=g.current_collection):
+            ids += res
     except Exception:
         flash("Error retrieving user's packages")
         log.exception("Error retrieving user's packages")
     query = db.query(Package)\
-              .outerjoin(UserPackageRelation)\
-              .filter(UserPackageRelation.user_id == user.id)
+        .filter(Package.id.in_(ids))
 
-    return package_view(query, "user-packages.html", user=user)
-
-
-@app.route('/user/<name>/resync')
-@auth.login_required()
-def resync_packages(name):
-    user = get_or_create(db, User, name=name)
-    user.packages_retrieved = False
-    db.commit()
-    return redirect(url_for('user_packages', name=name))
+    return package_view(query, "user-packages.html", username=name)
 
 
 class StrippedStringField(StringField):

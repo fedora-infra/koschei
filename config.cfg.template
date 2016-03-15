@@ -104,7 +104,7 @@ config = {
         "sync_tracked": False,
         "cache": {
             "backend": "dogpile.cache.dbm",
-            "expiration_time": 300,
+            "expiration_time": 600,
             "arguments": {
                 "filename": "@CACHEDIR@/pkgdb-user-cache.dbm"
             },

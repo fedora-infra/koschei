@@ -31,5 +31,7 @@ def listen_event(name):
 
 
 def dispatch_event(name, *args, **kwargs):
+    result = []
     for listener in listeners[name]:
-        listener(*args, **kwargs)
+        result.append(listener(*args, **kwargs))
+    return result
