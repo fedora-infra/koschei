@@ -15,7 +15,7 @@ from wtforms import StringField, TextAreaField
 from wtforms.validators import Regexp, ValidationError
 
 from .models import (Package, Build, PackageGroup, PackageGroupRelation,
-                     AdminNotice, User, UserPackageRelation, BuildrootProblem,
+                     AdminNotice, User, BuildrootProblem,
                      GroupACL, Collection, get_or_create)
 from . import util, auth, backend, main, plugin
 from .frontend import app, db, frontend_config
