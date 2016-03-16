@@ -252,7 +252,7 @@ def package_detail(name):
                 .first_or_404()
     package.global_groups = db.query(PackageGroup)\
         .join(PackageGroupRelation)\
-        .filter(PackageGroupRelation.package_id == package.id)\
+        .filter(PackageGroupRelation.package_name == package.name)\
         .filter(PackageGroup.namespace == None)\
         .all()
     package.user_groups = []
@@ -260,8 +260,8 @@ def package_detail(name):
     if g.user:
         user_groups = \
             db.query(PackageGroup,
-                     func.bool_or(PackageGroupRelation.package_id == package.id))\
-            .join(PackageGroupRelation)\
+                     func.bool_or(PackageGroupRelation.package_name == package.name))\
+            .outerjoin(PackageGroupRelation)\
             .join(GroupACL)\
             .filter(GroupACL.user_id == g.user.id)\
             .order_by(PackageGroup.namespace.nullsfirst(), PackageGroup.name)\
@@ -329,7 +329,9 @@ def group_detail(name=None, namespace=None):
               .filter_by(name=name, namespace=namespace).first_or_404()
 
     query = db.query(Package)\
-              .outerjoin(PackageGroupRelation)\
+              .outerjoin(PackageGroupRelation,
+                         PackageGroupRelation.package_name == Package.name)\
+              .filter(Package.collection_id == g.current_collection.id)\
               .filter(PackageGroupRelation.group_id == group.id)
 
     return package_view(query, "group-detail.html", group=group)
@@ -474,7 +476,7 @@ def process_group_form(group=None):
           .filter_by(group_id=group.id).delete()
         db.query(GroupACL)\
           .filter_by(group_id=group.id).delete()
-    rels = [dict(group_id=group.id, package_id=pkg.id) for pkg in packages]
+    rels = [dict(group_id=group.id, package_name=name) for name in found_names]
     acls = [dict(group_id=group.id, user_id=user_id) for user_id in user_ids]
     db.execute(PackageGroupRelation.__table__.insert(), rels)
     db.execute(GroupACL.__table__.insert(), acls)
@@ -540,12 +542,7 @@ if not frontend_config['auto_tracking']:
                           .first() or abort(400)
                 if not group.editable:
                     abort(400)
-                subq = db.query(PackageGroupRelation.package_id)\
-                         .filter_by(group_id=group.id).subquery()
-                packages = db.query(Package)\
-                             .filter(Package.name.in_(names))\
-                             .filter(Package.id.notin_(subq)).all()
-                rels = [dict(group_id=group.id, package_id=pkg.id) for pkg in packages]
+                rels = [dict(group_id=group.id, package_name=name) for name in names]
                 if rels:
                     db.execute(PackageGroupRelation.__table__.insert(), rels)
             if added:
@@ -588,12 +585,12 @@ def edit_package(name):
                     if not group.editable:
                         abort(403)
                     if new_val:
-                        rel = PackageGroupRelation(package_id=package.id,
+                        rel = PackageGroupRelation(package_name=package.name,
                                                    group_id=group.id)
                         db.add(rel)
                     else:
                         db.query(PackageGroupRelation)\
-                            .filter_by(group_id=group.id, package_id=package.id)\
+                            .filter_by(group_id=group.id, package_name=package.name)\
                             .delete(synchronize_session=False)
         if 'manual_priority' in form:
             new_priority = int(form['manual_priority'])

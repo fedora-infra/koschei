@@ -276,9 +276,8 @@ class PackageGroupRelation(Base):
     __tablename__ = 'package_group_relation'
     group_id = Column(Integer, ForeignKey('package_group.id',
                                           ondelete='CASCADE'),
-                      primary_key=True)
-    package_id = Column(Integer, ForeignKey('package.id', ondelete='CASCADE'),
-                        primary_key=True)
+                      primary_key=True, index=True)
+    package_name = Column(String, primary_key=True, index=True)
 
 
 class GroupACL(Base):
@@ -299,8 +298,6 @@ class PackageGroup(Base):
     namespace = Column(String)
     name = Column(String, nullable=False)
 
-    packages = relationship(Package, secondary=PackageGroupRelation.__table__,
-                            order_by=Package.name, passive_deletes=True)
     owners = relationship(User, secondary=GroupACL.__table__,
                           order_by=User.name, passive_deletes=True)
 
@@ -582,7 +579,13 @@ PackageGroup.package_count = column_property(
 # pylint: disable=E1101
 Package.groups = relationship(PackageGroup,
                               secondary=PackageGroupRelation.__table__,
+                              secondaryjoin=(PackageGroup.id == PackageGroupRelation.group_id),
+                              primaryjoin=(PackageGroupRelation.package_name == Package.name),
                               order_by=PackageGroup.name, passive_deletes=True)
+PackageGroup.packages = relationship(Package, secondary=PackageGroupRelation.__table__,
+                                     primaryjoin=(PackageGroup.id == PackageGroupRelation.group_id),
+                                     secondaryjoin=(PackageGroupRelation.package_name == Package.name),
+                                     order_by=Package.name, passive_deletes=True)
 User.groups = relationship(PackageGroup,
                            secondary=GroupACL.__table__,
                            order_by=[PackageGroup.namespace,
