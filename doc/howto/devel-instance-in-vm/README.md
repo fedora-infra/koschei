@@ -117,7 +117,7 @@ Optionally install Koji user certificate as /etc/koschei/koschei.pem (only if yo
 If you skipped importing DB dump when creating database, you will now need to import DB schema to have empty DB with proper structure:
 
     # su - koschei
-    (koschei)$ koschei-admin createdb
+    (koschei)$ koschei-admin create-db
 
 
 Running frontend

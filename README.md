@@ -51,7 +51,7 @@ Setting up the database:
 - In case your DB instance is on another machine or uses different
   authentication method than the default `ident`, you'll need to configure the
   connection in koschei configuration file. See below.
-- Populate DB schema with `koschei-admin createdb`
+- Populate DB schema with `koschei-admin create-db`
 
 Koschei consists of multiple systemd services that can be started separately.
 For fully working instance you'll want to start all of them, for passive
