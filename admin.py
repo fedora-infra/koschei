@@ -130,14 +130,15 @@ class AddPkg(Command):
 
     def setup_parser(self, parser):
         parser.add_argument('names', nargs='+')
-        parser.add_argument('-s', '--static-priority', type=int)
-        parser.add_argument('-m', '--manual-priority', type=int)
-        parser.add_argument('-g', '--group')
+        parser.add_argument('-c', '--collection')
 
-    def execute(self, backend, names, group, static_priority, manual_priority):
+    def execute(self, backend, names, collection):
+        if collection:
+            collection = backend.db.query(Collection).first()
+            if not collection:
+                sys.exit("Collection not found")
         try:
-            backend.add_packages(names, group=group, static_priority=static_priority,
-                                 manual_priority=manual_priority)
+            backend.sync_tracked(names, collection_id=collection.id)
         except PackagesDontExist as e:
             sys.exit("Packages don't exist: " + ','.join(e.names))
 
