@@ -531,7 +531,7 @@ if not frontend_config['auto_tracking']:
                 return render_template("add-packages.html", form=form)
             names = set(form.packages.data)
             try:
-                added = be.sync_tracked(names)
+                added = be.add_packages(names)
             except backend.PackagesDontExist as e:
                 flash("Packages don't exist: " + ','.join(e.names))
                 return render_template("add-packages.html", form=form)

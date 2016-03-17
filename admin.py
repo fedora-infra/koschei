@@ -138,7 +138,8 @@ class AddPkg(Command):
             if not collection:
                 sys.exit("Collection not found")
         try:
-            backend.sync_tracked(names, collection_id=collection.id)
+            backend.add_packages(names, collection_id=collection.id if
+                                 collection else None)
         except PackagesDontExist as e:
             sys.exit("Packages don't exist: " + ','.join(e.names))
 

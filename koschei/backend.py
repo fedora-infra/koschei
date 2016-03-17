@@ -320,6 +320,17 @@ class Backend(object):
                                         info) for info in to_add]
                 self.register_real_builds(package_build_infos)
 
+    def add_packages(self, names, collection_id=None):
+        query = self.db.query(Package).filter(Package.name.in_(names))
+        if collection_id:
+            query = query.filter_by(collection_id=collection_id)
+        packages = query.all()
+        if len(packages) != len(names):
+            nonexistent = set(names) - {p.name for p in packages}
+            raise PackagesDontExist(names=nonexistent)
+        packages = self.db.query(Package).filter(Package.name.in_(names))\
+            .update({'tracked': True})
+
     def sync_tracked(self, tracked, collection_id=None):
         """
         Synchronize package tracked status. End result is that all

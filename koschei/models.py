@@ -54,8 +54,13 @@ class Query(sqlalchemy.orm.Query):
     #     how to get args?
     #     self.session.add(entity(**args))
 
-    def delete(self, synchronize_session=False):
-        return super(Query, self).delete(synchronize_session=synchronize_session)
+    def delete(self, *args, **kwargs):
+        kwargs['synchronize_session'] = False
+        return super(Query, self).delete(*args, **kwargs)
+
+    def update(self, *args, **kwargs):
+        kwargs['synchronize_session'] = False
+        return super(Query, self).update(*args, **kwargs)
 
     def lock_rows(self):
         """
