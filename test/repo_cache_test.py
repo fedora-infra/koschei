@@ -4,7 +4,7 @@ import contextlib
 import unittest
 
 from mock import PropertyMock, Mock, patch, call
-from common import DBTest
+from common import DBTest, postgres_only
 from koschei import repo_cache
 from koschei import models as m
 
@@ -28,6 +28,7 @@ class RepoCacheTest(DBTest):
             os.makedirs(os.path.join('repodata', str(desc)))
         os.mkdir('repodata/not-repo')
 
+    @postgres_only
     def test_read_from_disk(self):
         with mocks() as (librepo_mock, sack_mock):
             cache = repo_cache.RepoCache()
@@ -43,6 +44,7 @@ class RepoCacheTest(DBTest):
                 self.assertEqual(2, librepo_mock.perform.call_count)
                 self.assertIs(sack_mock, sack)
 
+    @postgres_only
     def test_download(self):
         with mocks() as (librepo_mock, _):
             cache = repo_cache.RepoCache()
@@ -50,6 +52,7 @@ class RepoCacheTest(DBTest):
             with cache.get_sack(repo_cache.RepoDescriptor('primary', 'build_tag', 1)):
                 self.assertEqual(4, librepo_mock.perform.call_count)
 
+    @postgres_only
     def test_reuse(self):
         cache = repo_cache.RepoCache()
         with mocks() as (librepo_mock, _):
