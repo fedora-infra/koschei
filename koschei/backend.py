@@ -59,7 +59,7 @@ class Backend(object):
         build_opts = {}
         if package.arch_override:
             build_opts = {'arch_override': package.arch_override}
-        tag = package.collection.build_tag
+        tag = package.collection.target_tag
         # SRPMs are taken from secondary, primary needs to be able to build
         # from relative URL constructed against secondary (internal redirect)
         srpm_res = util.get_last_srpm(self.koji_sessions['secondary'], tag, name)
@@ -84,7 +84,7 @@ class Backend(object):
 
     def get_newer_build_if_exists(self, package):
         [info] = self.koji_sessions['primary']\
-            .listTagged(package.collection.tag, latest=True,
+            .listTagged(package.collection.target_tag, latest=True,
                         package=package.name, inherit=True) or [None]
         if self.is_build_newer(package.last_build, info):
             return info
