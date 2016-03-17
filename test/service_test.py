@@ -59,14 +59,6 @@ class ServiceTest(AbstractTest):
             self.assertEqual(3, mock_db.close.call_count)
             sleep.assert_has_calls([call(3)] * 2)
 
-    def test_interrupt(self):
-        def main(inst):
-            raise KeyboardInterrupt()
-        mock_log = Mock()
-        mock_db = Mock()
-        s = MyService(main, log=mock_log, db=mock_db)
-        self.assertRaises(SystemExit, s.run_service)
-
     def test_find_nonexistent(self):
         svc = Service.find_service('nonexistent')
         self.assertIsNone(svc)
