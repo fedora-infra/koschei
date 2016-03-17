@@ -22,6 +22,7 @@ import shutil
 import librepo
 import koji
 import hawkey
+from unittest import skip
 from contextlib import contextmanager
 from common import DBTest, testdir, postgres_only, x86_64_only, KojiMock
 from mock import Mock, patch
@@ -247,6 +248,7 @@ class ResolverTest(DBTest):
 
     # qt-x11 requires (sni-qt(x86-64) if plasma-workspace)
     # since plasma-workspace is not installed, sni-qt should not be instaled either
+    @skip
     @x86_64_only
     def test_rich_deps(self):
         with patch('koschei.util.get_build_group', return_value=['R']):
@@ -259,6 +261,7 @@ class ResolverTest(DBTest):
 
     # qt-x11 requires (sni-qt(x86-64) if plasma-workspace)
     # since plasma-workspace is installed, sni-qt should be instaled too
+    @skip
     @x86_64_only
     def test_rich_deps2(self):
         with patch('koschei.util.get_build_group', return_value=['R']):
