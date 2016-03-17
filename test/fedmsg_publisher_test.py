@@ -15,7 +15,7 @@ class FedmsgSenderTest(DBTest):
             self.s.add(group)
             self.s.flush()
             self.s.add(PackageGroupRelation(group_id=group.id,
-                                            package_id=pkg.id))
+                                            package_name=pkg.name))
         self.s.commit()
         return pkg
 
