@@ -3,13 +3,14 @@ import urllib
 import logging
 
 from datetime import datetime
+from textwrap import dedent
 from functools import wraps
+
 from flask import abort, render_template, request, url_for, redirect, g, flash
 from sqlalchemy.orm import joinedload, subqueryload, undefer, contains_eager
 from sqlalchemy.sql import exists, func
 from sqlalchemy.exc import IntegrityError
 from jinja2 import Markup, escape
-from textwrap import dedent
 from flask_wtf import Form
 from wtforms import StringField, TextAreaField
 from wtforms.validators import Regexp, ValidationError
@@ -33,7 +34,6 @@ def create_backend():
     return backend.Backend(db=db, log=log,
                            koji_sessions={'primary': koji_session,
                                           'secondary': koji_session})
-
 
 
 def page_args(**kwargs):

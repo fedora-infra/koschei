@@ -17,12 +17,11 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-import koji
-
-from sqlalchemy.orm import joinedload
-
 from itertools import izip, groupby
 from collections import defaultdict
+
+import koji
+from sqlalchemy.orm import joinedload
 
 from koschei.models import (Package, Dependency, UnappliedChange,
                             AppliedChange, Collection, ResolutionProblem,
@@ -175,7 +174,8 @@ class Resolver(KojiService):
             .options(joinedload(Package.last_complete_build))
         state_changes = {}
         for pkg in packages:
-            self.db.expunge(pkg) # don't propagate the write, we'll do it manually later
+            # don't propagate the write, we'll do it manually later
+            self.db.expunge(pkg)
             prev_state = pkg.msg_state_string
             pkg.resolved = resolved_map[pkg.id]
             new_state = pkg.msg_state_string
@@ -250,7 +250,7 @@ class Resolver(KojiService):
                 build_to_package = {b.id: b.package_id for b in builds if b}
                 deps_per_package = defaultdict(list)
                 for dep in self.db.query(Dependency.build_id, *Dependency.nevra)\
-                                    .filter(Dependency.build_id.in_(build_to_package.keys())):
+                        .filter(Dependency.build_id.in_(build_to_package.keys())):
                     deps_per_package[build_to_package[dep.build_id]].append(dep)
             fetch_dependencies_generator_time.stop()
             for package in current_packages:
@@ -267,6 +267,7 @@ class Resolver(KojiService):
         resolved_map = {}
         problems = []
         changes = []
+
         def persist():
             state_changes = self.check_package_state_changes(resolved_map)
             self.persist_results(resolved_map, problems, changes)
@@ -443,7 +444,6 @@ class Resolver(KojiService):
             .filter(Build.state.in_(Build.FINISHED_STATES))\
             .update({'deps_processed': True}, synchronize_session=False)
         self.db.commit()
-
 
     def main(self):
         self.process_builds()

@@ -16,8 +16,9 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-import koji
+from datetime import datetime
 
+import koji
 import sqlalchemy
 from sqlalchemy import (create_engine, Table, Column, Integer, String, Boolean,
                         ForeignKey, DateTime, Index, DDL, Float)
@@ -28,7 +29,6 @@ from sqlalchemy.orm import (sessionmaker, relationship, column_property,
                             configure_mappers)
 from sqlalchemy.engine.url import URL
 from sqlalchemy.event import listen
-from datetime import datetime
 
 from .util import config, primary_koji_config, secondary_koji_config
 
@@ -171,7 +171,7 @@ class Package(Base):
     added = Column(DateTime, nullable=False, default=datetime.now)
     collection_id = Column(Integer, ForeignKey(Collection.id, ondelete='CASCADE'),
                            nullable=False, index=True)
-    collection = None # backref, shut up pylint
+    collection = None  # backref, shut up pylint
 
     arch_override = Column(String)
 
@@ -222,7 +222,6 @@ class Package(Base):
     @property
     def msg_state_string(self):
         """String representation of state used when publishing messages"""
-        # TODO distinguish between blocked and untracked without breaking fedmsg format
         return not self.blocked and self.tracked and self.get_state() or 'ignored'
 
     @property
@@ -334,7 +333,7 @@ class Build(Base):
 
     id = Column(Integer, primary_key=True)
     package_id = Column(Integer, ForeignKey('package.id', ondelete='CASCADE'))
-    package = None # backref
+    package = None  # backref
     state = Column(Integer, nullable=False, default=RUNNING)
     task_id = Column(Integer)
     started = Column(DateTime)
@@ -579,12 +578,16 @@ PackageGroup.package_count = column_property(
 # pylint: disable=E1101
 Package.groups = relationship(PackageGroup,
                               secondary=PackageGroupRelation.__table__,
-                              secondaryjoin=(PackageGroup.id == PackageGroupRelation.group_id),
-                              primaryjoin=(PackageGroupRelation.package_name == Package.name),
+                              secondaryjoin=(PackageGroup.id ==
+                                             PackageGroupRelation.group_id),
+                              primaryjoin=(PackageGroupRelation.package_name ==
+                                           Package.name),
                               order_by=PackageGroup.name, passive_deletes=True)
 PackageGroup.packages = relationship(Package, secondary=PackageGroupRelation.__table__,
-                                     primaryjoin=(PackageGroup.id == PackageGroupRelation.group_id),
-                                     secondaryjoin=(PackageGroupRelation.package_name == Package.name),
+                                     primaryjoin=(PackageGroup.id ==
+                                                  PackageGroupRelation.group_id),
+                                     secondaryjoin=(PackageGroupRelation.package_name
+                                                    == Package.name),
                                      order_by=Package.name, passive_deletes=True)
 User.groups = relationship(PackageGroup,
                            secondary=GroupACL.__table__,

@@ -35,6 +35,7 @@ log = logging.getLogger('koschei.repo_cache')
 
 REPO_404 = 19
 
+
 @total_ordering
 class RepoDescriptor(object):
     def __init__(self, koji_id, build_tag, repo_id):
@@ -62,9 +63,9 @@ class RepoDescriptor(object):
 
     def __eq__(self, other):
         try:
-            return (self.koji_id == other.koji_id
-                    and self.build_tag == other.build_tag
-                    and self.repo_id == other.repo_id)
+            return (self.koji_id == other.koji_id and
+                    self.build_tag == other.build_tag and
+                    self.repo_id == other.repo_id)
         except AttributeError:
             return False
 
@@ -77,6 +78,7 @@ class RepoDescriptor(object):
     def make_url(self, arch):
         return self.remote_url.format(build_tag=self.build_tag,
                                       repo_id=self.repo_id, arch=arch)
+
 
 class AbstractManager(object):
     def get_arch_desc(self, repo_descriptor):

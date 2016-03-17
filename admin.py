@@ -235,6 +235,7 @@ class EditGroup(Command):
             group.namespace = None
         backend.db.commit()
 
+
 class CollectionCommandParser(object):
     args_required = True
 

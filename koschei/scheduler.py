@@ -111,8 +111,8 @@ class Scheduler(KojiService):
                                 Integer).label('curr_priority')
         priorities = self.db.query(pkg_id, current_priority)\
                             .group_by(pkg_id).subquery()
-        return self.db.query(Package.id, priorities.c.curr_priority
-                             * Collection.priority_coefficient)\
+        return self.db.query(Package.id, priorities.c.curr_priority *
+                             Collection.priority_coefficient)\
                       .join(Package.collection)\
                       .join(priorities, Package.id == priorities.c.pkg_id)\
                       .filter((Package.resolved == True) |

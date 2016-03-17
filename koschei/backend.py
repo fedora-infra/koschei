@@ -320,7 +320,6 @@ class Backend(object):
                                         info) for info in to_add]
                 self.register_real_builds(package_build_infos)
 
-
     def sync_tracked(self, tracked, collection_id=None):
         """
         Synchronize package tracked status. End result is that all

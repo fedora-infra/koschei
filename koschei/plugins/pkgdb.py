@@ -62,6 +62,7 @@ def query_monitored_packages():
     if packages:
         return packages['packages']
 
+
 def user_key(collection, username):
     return "{}###{}".format(collection.id, username)
 

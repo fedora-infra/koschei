@@ -21,7 +21,6 @@ from __future__ import print_function
 
 import os
 import re
-import rpm
 import koji
 import logging
 import logging.config
@@ -34,7 +33,7 @@ import socket
 from Queue import Queue
 from threading import Thread
 from contextlib import contextmanager
-from rpm import RPMSENSE_LESS, RPMSENSE_GREATER, RPMSENSE_EQUAL
+from rpm import labelCompare, RPMSENSE_LESS, RPMSENSE_GREATER, RPMSENSE_EQUAL
 
 
 def merge_dict(d1, d2):
@@ -190,7 +189,7 @@ class parallel_generator(object):
     def next(self):
         item = self.queue.get()
         if item is self.sentinel:
-            raise self.worker_exception # StopIteration in case of success
+            raise self.worker_exception  # StopIteration in case of success
         return item
 
     def stop(self):
@@ -241,6 +240,7 @@ def is_koji_fault(session, task_id):
         return False
     except koji.Fault:
         return True
+
 
 def mkdir_if_absent(path):
     try:
@@ -415,7 +415,7 @@ def epoch_to_str(epoch):
 
 def compare_evr(evr1, evr2):
     evr1, evr2 = ((epoch_to_str(e), v, r) for (e, v, r) in (evr1, evr2))
-    return rpm.labelCompare(evr1, evr2)
+    return labelCompare(evr1, evr2)
 
 
 def set_difference(s1, s2, key):
@@ -485,6 +485,7 @@ class Stopwatch(object):
 
         for child in self._children:
             child.display()
+
 
 def sd_notify(msg):
     sock_path = os.environ.get('NOTIFY_SOCKET', None)
