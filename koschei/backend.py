@@ -83,7 +83,7 @@ class Backend(object):
                .delete(synchronize_session=False)
 
     def get_newer_build_if_exists(self, package):
-        [info] = self.koji_sessions['primary']\
+        [info] = self.koji_sessions['secondary']\
             .listTagged(package.collection.target_tag, latest=True,
                         package=package.name, inherit=True) or [None]
         if self.is_build_newer(package.last_build, info):
@@ -328,7 +328,7 @@ class Backend(object):
         if len(packages) != len(names):
             nonexistent = set(names) - {p.name for p in packages}
             raise PackagesDontExist(names=nonexistent)
-        packages = self.db.query(Package).filter(Package.name.in_(names))\
+        self.db.query(Package).filter(Package.name.in_(names))\
             .update({'tracked': True})
 
     def sync_tracked(self, tracked, collection_id=None):
