@@ -213,6 +213,11 @@ class Backend(object):
         primary = self.koji_sessions['primary']
         for mapping in self.db.query(RepoMapping)\
                 .filter_by(primary_id=None):
+            task_info = primary.getTaskInfo(mapping.task_id)
+            if task_info['state'] in (koji.TASK_STATES['CANCELED'],
+                                      koji.TASK_STATES['FAILED']):
+                self.db.delete(mapping)
+                continue
             for subtask in primary.getTaskChildren(mapping.task_id,
                                                    request=True):
                 assert subtask['method'] == 'createrepo'
