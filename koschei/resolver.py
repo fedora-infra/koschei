@@ -48,8 +48,8 @@ class Resolver(KojiService):
         super(Resolver, self).__init__(log=log, db=db,
                                        koji_sessions=koji_sessions)
         self.repo_cache = repo_cache or RepoCache()
-        self.backend = backend or Backend(koji_sessions=koji_sessions,
-                                          log=log, db=db)
+        self.backend = backend or Backend(koji_sessions=self.koji_sessions,
+                                          log=self.log, db=self.db)
         self.build_groups = {}
 
     def get_build_group(self, collection_or_id):
@@ -453,7 +453,7 @@ class Resolver(KojiService):
         for collection in self.db.query(Collection).all():
             curr_repo = util.get_latest_repo(self.koji_sessions['primary'],
                                              collection.build_tag)
-            if util.secondary_mode:
+            if curr_repo and util.secondary_mode:
                 self.backend.refresh_repo_mappings()
                 mapping = self.db.query(RepoMapping)\
                     .filter_by(secondary_id=curr_repo['id'])\
