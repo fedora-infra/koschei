@@ -209,6 +209,19 @@ class Backend(object):
             self.sync_tasks([build], self.koji_sessions['primary'])
             self.db.commit()
 
+    def refresh_repo_mappings(self):
+        primary = self.koji_sessions['primary']
+        for mapping in self.db.query(RepoMapping)\
+                .filter_by(primary_id=None):
+            for subtask in primary.getTaskChildren(mapping.task_id,
+                                                   request=True):
+                assert subtask['method'] == 'createrepo'
+                try:
+                    mapping.primary_id = subtask['request'][0]
+                    break
+                except KeyError:
+                    pass
+
     def set_build_repo_id(self, build, task):
         if build.repo_id:
             return
@@ -216,19 +229,8 @@ class Backend(object):
             build.repo_id = task['request'][4]['repo_id']
         except KeyError:
             return
-        if (self.koji_sessions['primary'] is not self.koji_sessions['secondary']
-                and build.repo_id and not build.real):
-            primary = self.koji_sessions['primary']
-            for mapping in self.db.query(RepoMapping)\
-                    .filter_by(primary_id=None):
-                for subtask in primary.getTaskChildren(mapping.task_id,
-                                                       request=True):
-                    assert subtask['method'] == 'createrepo'
-                    try:
-                        mapping.primary_id = subtask['request'][0]
-                        break
-                    except KeyError:
-                        pass
+        if util.secondary_mode and build.repo_id and not build.real:
+            self.refresh_repo_mappings()
             # need to map the repo_id to primary
             mapping = self.db.query(RepoMapping)\
                 .filter_by(primary_id=build.repo_id)\

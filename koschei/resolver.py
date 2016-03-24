@@ -25,11 +25,12 @@ from sqlalchemy.orm import joinedload
 
 from koschei.models import (Package, Dependency, UnappliedChange,
                             AppliedChange, Collection, ResolutionProblem,
-                            Build, BuildrootProblem)
+                            Build, BuildrootProblem, RepoMapping)
 from koschei import util
 from koschei.util import Stopwatch
 from koschei.service import KojiService
 from koschei.repo_cache import RepoCache, RepoDescriptor
+from koschei.backend import Backend
 from koschei.plugin import dispatch_event
 
 
@@ -43,10 +44,12 @@ fetch_dependencies_generator_time = Stopwatch("fetch_dependencies_generator")
 
 class Resolver(KojiService):
     def __init__(self, log=None, db=None, koji_sessions=None,
-                 repo_cache=None):
+                 repo_cache=None, backend=None):
         super(Resolver, self).__init__(log=log, db=db,
                                        koji_sessions=koji_sessions)
         self.repo_cache = repo_cache or RepoCache()
+        self.backend = backend or Backend(koji_sessions=koji_sessions,
+                                          log=log, db=db)
         self.build_groups = {}
 
     def get_build_group(self, collection_or_id):
@@ -450,5 +453,13 @@ class Resolver(KojiService):
         for collection in self.db.query(Collection).all():
             curr_repo = util.get_latest_repo(self.koji_sessions['primary'],
                                              collection.build_tag)
+            if util.secondary_mode:
+                self.backend.refresh_repo_mappings()
+                mapping = self.db.query(RepoMapping)\
+                    .filter_by(secondary_id=curr_repo['id'])\
+                    .first()
+                # don't resolve it if we don't have it on primary yet
+                if not mapping or not mapping.primary_id:
+                    continue
             if curr_repo and curr_repo['id'] > collection.latest_repo_id:
                 self.generate_repo(collection, curr_repo['id'])

@@ -78,6 +78,8 @@ koji_configs = {
     'secondary': secondary_koji_config,
 }
 
+secondary_mode = bool(config['secondary_koji_config'])
+
 git_reference = config.get('git_reference', 'origin/master')
 
 dep_config = config['dependency']
