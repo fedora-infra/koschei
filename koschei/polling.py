@@ -27,6 +27,8 @@ from .backend import Backend
 
 
 class Polling(KojiService):
+    koji_anonymous = False
+
     def __init__(self, backend=None, *args, **kwargs):
         super(Polling, self).__init__(*args, **kwargs)
         self.backend = backend or Backend(log=self.log, db=self.db,
