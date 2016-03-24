@@ -134,7 +134,9 @@ class AddPkg(Command):
 
     def execute(self, backend, names, collection):
         if collection:
-            collection = backend.db.query(Collection).first()
+            collection = backend.db.query(Collection)\
+                .filter_by(name=collection)\
+                .first()
             if not collection:
                 sys.exit("Collection not found")
         try:
