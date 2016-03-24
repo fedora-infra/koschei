@@ -30,8 +30,8 @@ def poll_secondary_repo(backend):
                     '{}-{}'.format(collection.name, remote_repo['id']),
                     repo_url)
                 primary.addExternalRepoToTag(tag, repo['name'], 0)  # priority
-                task = primary.newRepo(tag)
-                db.add(RepoMapping(task_id=task['id'],
+                task_id = primary.newRepo(tag)
+                db.add(RepoMapping(task_id=task_id,
                                    secondary_id=remote_repo['id']))
                 db.commit()
             except koji.Fault:
