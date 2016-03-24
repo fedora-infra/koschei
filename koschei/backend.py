@@ -357,8 +357,10 @@ class Backend(object):
         if len(packages) != len(names):
             nonexistent = set(names) - {p.name for p in packages}
             raise PackagesDontExist(names=nonexistent)
-        self.db.query(Package).filter(Package.name.in_(names))\
-            .update({'tracked': True})
+        query = self.db.query(Package).filter(Package.name.in_(names))
+        if collection_id:
+            query = query.filter_by(collection_id=collection_id)
+        query.update({'tracked': True})
 
     def sync_tracked(self, tracked, collection_id=None):
         """
