@@ -16,7 +16,10 @@ def poll_secondary_repo(backend):
     secondary = backend.koji_sessions['secondary']
     for collection in db.query(Collection).all():
         remote_repo = util.get_latest_repo(secondary, collection.build_tag)
-        if remote_repo['id'] > collection.latest_repo_id:
+        mapping = db.query(RepoMapping)\
+            .filter_by(secondary_id=remote_repo['id'])\
+            .first()
+        if not mapping:
             log.info("Requesting new repo for %s", collection)
             try:
                 repo_url = secondary.config['repo_url']\
