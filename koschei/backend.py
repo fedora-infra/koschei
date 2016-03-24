@@ -28,7 +28,7 @@ from koschei import util
 from koschei.util import itercall
 from koschei.models import (Build, UnappliedChange, KojiTask, Package,
                             PackageGroup, PackageGroupRelation,
-                            Collection)
+                            Collection, RepoMapping)
 from koschei.plugin import dispatch_event
 
 
@@ -209,6 +209,32 @@ class Backend(object):
             self.sync_tasks([build], self.koji_sessions['primary'])
             self.db.commit()
 
+    def set_build_repo_id(self, build, task):
+        if build.repo_id:
+            return
+        try:
+            build.repo_id = task['request'][4]['repo_id']
+        except KeyError:
+            return
+        if (self.koji_sessions['primary'] is not self.koji_sessions['secondary']
+                and build.repo_id and not build.real):
+            primary = self.koji_sessions['primary']
+            for mapping in self.db.query(RepoMapping)\
+                    .filter_by(primary_id=None):
+                for subtask in primary.getTaskChildren(mapping.task_id,
+                                                       request=True):
+                    assert subtask['method'] == 'createrepo'
+                    try:
+                        mapping.primary_id = subtask['request'][0]
+                        break
+                    except KeyError:
+                        pass
+            # need to map the repo_id to primary
+            mapping = self.db.query(RepoMapping)\
+                .filter_by(primary_id=build.repo_id)\
+                .first()
+            build.repo_id = mapping.secondary_id if mapping else None
+
     def sync_tasks(self, builds, koji_session, complete=False):
         """
         Synchronizes task and subtask info from Koji for given builds.
@@ -236,11 +262,7 @@ class Backend(object):
             build_arch_tasks = [task for task in subtasks
                                 if task['method'] == 'buildArch']
             for task in build_arch_tasks:
-                try:
-                    # They all have the same repo_id, right?
-                    build.repo_id = task['request'][4]['repo_id']
-                except KeyError:
-                    pass
+                self.set_build_repo_id(build, task)
                 # db_task = get_or_create(self.db, KojiTask, task_id=task['id'])
                 db_task = existing_tasks.get(task['id'])
                 if not db_task:

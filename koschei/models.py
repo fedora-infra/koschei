@@ -467,6 +467,14 @@ class AdminNotice(Base):
     key = Column(String, primary_key=True)
     content = Column(String, nullable=False)
 
+
+class RepoMapping(Base):
+    __tablename__ = 'repo_mapping'
+    secondary_id = Column(Integer, primary_key=True)  # repo_id on secondary
+    primary_id = Column(Integer)  # repo_id on primary, not known at the beginning
+    task_id = Column(Integer, nullable=False)  # newRepo task ID
+
+
 # Triggers
 
 trigger = DDL("""
