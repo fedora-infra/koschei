@@ -89,6 +89,7 @@ config = {
             "interval": 20 * 60,
         },
     },
+    "plugins": ['fedmsg_publisher', 'pkgdb'],
     "fedmsg": {
         "topic": "org.fedoraproject.prod.buildsys",
         "instance": "primary"
