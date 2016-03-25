@@ -152,7 +152,6 @@ class RepoManager(AbstractManager):
             repo_descriptor = RepoDescriptor.from_string(repo_name)
             repo_path = os.path.join(self._repo_dir, repo_name)
             if repo_descriptor:
-                log.debug('Adding cached repo: {}'.format(repo_descriptor))
                 repos.append((repo_descriptor, repo_path))
             else:
                 # Try to remove files that don't look like valid
@@ -166,6 +165,7 @@ class RepoManager(AbstractManager):
                 except Exception:
                     log.debug('Unable to remove bogus file from cache: {}'
                               .format(repo_path))
+        log.debug('Added {} repos from disk'.format(len(repos)))
         return repos
 
 
