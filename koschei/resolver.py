@@ -22,6 +22,7 @@ from collections import defaultdict
 
 import koji
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
 from koschei.models import (Package, Dependency, UnappliedChange,
                             AppliedChange, Collection, ResolutionProblem,
@@ -436,8 +437,12 @@ class Resolver(KojiService):
                         build_group = self.get_build_group(build.collection_id)
                         _, _, curr_deps = self.resolve_dependencies(sack, brs,
                                                                     build_group)
-                        self.process_build(sack, build, curr_deps)
-                        self.db.commit()
+                        try:
+                            self.process_build(sack, build, curr_deps)
+                            self.db.commit()
+                        except (StaleDataError, ObjectDeletedError):
+                            # build deleted concurrently
+                            self.db.rollback()
                 else:
                     self.log.info("Repo id=%d not available, skipping",
                                   repo_descriptor.repo_id)

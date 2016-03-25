@@ -20,6 +20,8 @@ from __future__ import print_function
 
 import koji
 
+from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
+
 from . import util, plugin
 from .models import Build
 from .service import KojiService
@@ -43,12 +45,17 @@ class Polling(KojiService):
                               lambda k, b: k.getTaskInfo(b.task_id))
 
         for task_info, build in zip(infos, running_builds):
-            name = build.package.name
-            self.log.debug('Polling task {id} ({name}): task_info={info}'
-                           .format(id=build.task_id, name=name,
-                                   info=task_info))
-            state = koji.TASK_STATES.getvalue(task_info['state'])
-            self.backend.update_build_state(build, state)
+            try:
+                name = build.package.name
+                self.log.debug('Polling task {id} ({name}): task_info={info}'
+                               .format(id=build.task_id, name=name,
+                                       info=task_info))
+                state = koji.TASK_STATES.getvalue(task_info['state'])
+                self.backend.update_build_state(build, state)
+            except (StaleDataError, ObjectDeletedError):
+                # build was deleted concurrently
+                self.db.rollback()
+                continue
 
     def main(self):
         self.poll_builds()

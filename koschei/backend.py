@@ -23,6 +23,7 @@ from datetime import datetime
 
 from sqlalchemy.sql import insert
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
 from koschei import util
 from koschei.util import itercall
@@ -156,58 +157,62 @@ class Backend(object):
         Sends fedmsg when the build is complete.
         Commits the transaction.
         """
-        if state in Build.KOJI_STATE_MAP:
-            state = Build.KOJI_STATE_MAP[state]
-            build_id = build.id
-            package_id = build.package_id
-            self.db.expire_all()
-            # lock package so there are no concurrent state changes
-            package = self.db.query(Package).filter_by(id=package_id)\
-                             .with_lockmode('update').one()
-            # lock build
-            build = self.db.query(Build).filter_by(id=build_id)\
-                           .with_lockmode('update').first()
-            if not build or build.state == state:
-                # other process did the job already
-                self.db.rollback()
-                return
-            if state == Build.CANCELED:
-                self.log.info('Deleting build {0} because it was canceled'
-                              .format(build))
-                self.db.delete(build)
+        try:
+            if state in Build.KOJI_STATE_MAP:
+                state = Build.KOJI_STATE_MAP[state]
+                build_id = build.id
+                package_id = build.package_id
+                self.db.expire_all()
+                # lock package so there are no concurrent state changes
+                package = self.db.query(Package).filter_by(id=package_id)\
+                                 .with_lockmode('update').one()
+                # lock build
+                build = self.db.query(Build).filter_by(id=build_id)\
+                               .with_lockmode('update').first()
+                if not build or build.state == state:
+                    # other process did the job already
+                    self.db.rollback()
+                    return
+                if state == Build.CANCELED:
+                    self.log.info('Deleting build {0} because it was canceled'
+                                  .format(build))
+                    self.db.delete(build)
+                    self.db.commit()
+                    return
+                assert state in (Build.COMPLETE, Build.FAILED)
+                if util.is_koji_fault(self.koji_sessions['primary'], build.task_id):
+                    self.log.info('Deleting build {0} because it ended with Koji fault'
+                                  .format(build))
+                    self.db.delete(build)
+                    self.db.commit()
+                    return
+                self.log.info('Setting build {build} state to {state}'
+                              .format(build=build,
+                                      state=Build.REV_STATE_MAP[state]))
+                self.sync_tasks([build], self.koji_sessions['primary'], complete=True)
+                if build.repo_id is None:
+                    # Koji problem, no need to bother packagers with this
+                    self.log.info('Deleting build {0} because it has no repo_id'
+                                  .format(build))
+                    self.db.delete(build)
+                    self.db.commit()
+                    return
+                self.db.expire(build.package)
+                prev_state = package.msg_state_string
+                build.state = state
+                # unlock
                 self.db.commit()
-                return
-            assert state in (Build.COMPLETE, Build.FAILED)
-            if util.is_koji_fault(self.koji_sessions['primary'], build.task_id):
-                self.log.info('Deleting build {0} because it ended with Koji fault'
-                              .format(build))
-                self.db.delete(build)
+                new_state = package.msg_state_string
+                if prev_state != new_state:
+                    dispatch_event('package_state_change', package=package,
+                                   prev_state=prev_state,
+                                   new_state=new_state)
+            else:
+                self.sync_tasks([build], self.koji_sessions['primary'])
                 self.db.commit()
-                return
-            self.log.info('Setting build {build} state to {state}'
-                          .format(build=build,
-                                  state=Build.REV_STATE_MAP[state]))
-            self.sync_tasks([build], self.koji_sessions['primary'], complete=True)
-            if build.repo_id is None:
-                # Koji problem, no need to bother packagers with this
-                self.log.info('Deleting build {0} because it has no repo_id'
-                              .format(build))
-                self.db.delete(build)
-                self.db.commit()
-                return
-            self.db.expire(build.package)
-            prev_state = package.msg_state_string
-            build.state = state
-            # unlock
-            self.db.commit()
-            new_state = package.msg_state_string
-            if prev_state != new_state:
-                dispatch_event('package_state_change', package=package,
-                               prev_state=prev_state,
-                               new_state=new_state)
-        else:
-            self.sync_tasks([build], self.koji_sessions['primary'])
-            self.db.commit()
+        except (StaleDataError, ObjectDeletedError):
+            # build was deleted concurrently
+            self.db.rollback()
 
     def refresh_repo_mappings(self):
         primary = self.koji_sessions['primary']
