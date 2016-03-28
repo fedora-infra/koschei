@@ -65,10 +65,11 @@ def format_evr(epoch, version, release):
 def format_depchange(change):
     if change:
         is_update = util.compare_evr(change.prev_evr, change.curr_evr) < 0
-        return (change.dep_name, format_evr(*change.prev_evr),
+        dist = change.distance if change.distance else 'buildsys'
+        return (dist, change.dep_name, format_evr(*change.prev_evr),
                 '<>'[is_update], format_evr(*change.curr_evr))
 
-    return [''] * 4
+    return [''] * 5
 
 
 def columnize(what, css_class=None):
