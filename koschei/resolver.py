@@ -65,9 +65,6 @@ class Resolver(KojiService):
         assert group
         return group
 
-    def get_koji_session_for_build(self, build):
-        return self.koji_sessions['secondary' if build.real else 'primary']
-
     def store_deps(self, build_id, installs):
         new_deps = []
         for install in installs or []:
@@ -135,11 +132,10 @@ class Resolver(KojiService):
                       .order_by(Build.id.desc()).first()
 
     def set_descriptor_tags(self, descriptors):
-        def select_session(desc):
-            return self.koji_sessions[desc.koji_id]
         def koji_call(koji_session, desc):
             koji_session.repoInfo(desc.repo_id)
-        result_gen = util.selective_itercall(select_session, descriptors, koji_call)
+        result_gen = util.itercall(self.koji_sessions['secondary'],
+                                   descriptors, koji_call)
         for desc, repo_info in izip(descriptors, result_gen):
             if repo_info['state'] in (koji.REPO_STATES['READY'],
                                       koji.REPO_STATES['EXPIRED']):
@@ -361,8 +357,7 @@ class Resolver(KojiService):
         fetch_dependencies_generator_time.display()
 
     def repo_descriptor_for_build(self, build):
-        return RepoDescriptor('primary',
-                              None, build.repo_id)
+        return RepoDescriptor('primary', None, build.repo_id)
 
     def process_build(self, sack, entry, curr_deps):
         self.log.info("Processing build {}".format(entry.id))
@@ -456,7 +451,7 @@ class Resolver(KojiService):
     def main(self):
         self.process_builds()
         for collection in self.db.query(Collection).all():
-            curr_repo = util.get_latest_repo(self.koji_sessions['primary'],
+            curr_repo = util.get_latest_repo(self.koji_sessions['secondary'],
                                              collection.build_tag)
             if curr_repo and util.secondary_mode:
                 self.backend.refresh_repo_mappings()
