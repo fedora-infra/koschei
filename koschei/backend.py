@@ -348,7 +348,7 @@ class Backend(object):
                     .filter(Package.collection_id == collection.id)\
                     .filter(Package.name.in_(i['package_name'] for i in to_add))
                 if not collection.poll_untracked:
-                    query = query.filter(tracked=True)
+                    query = query.filter_by(tracked=True)
                 name_mapping = {pkg.name: pkg.id for pkg in query}
                 package_build_infos = \
                     [(name_mapping[info['package_name']], info) for info in to_add
