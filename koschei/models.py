@@ -157,6 +157,9 @@ class Collection(Base):
     latest_repo_id = Column(Integer)
     latest_repo_resolved = Column(Boolean)
 
+    # whether to poll builds for untracked packages
+    poll_untracked = Column(Boolean, nullable=False, server_default=true())
+
     packages = relationship('Package', backref='collection', passive_deletes=True)
 
     def is_buildroot_broken(self):
