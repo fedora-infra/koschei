@@ -98,7 +98,7 @@ class SchedulerTest(DBTest):
         expected_prios = [-30.0, 161.339324401, 230.787748579,
                           256.455946637, 297.675251883]
         for item, exp in zip(res, expected_prios):
-            self.assertAlmostEqual(exp, item.priority, places=1)
+            self.assertAlmostEqual(exp, item.priority, places=-1)
 
     @postgres_only
     def test_failed_build_priority(self):
