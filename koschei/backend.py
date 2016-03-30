@@ -236,16 +236,20 @@ class Backend(object):
         if build.repo_id:
             return
         try:
-            build.repo_id = task['request'][4]['repo_id']
+            repo_id = task['request'][4]['repo_id']
         except KeyError:
             return
-        if util.secondary_mode and build.repo_id and not build.real:
-            self.refresh_repo_mappings()
-            # need to map the repo_id to primary
-            mapping = self.db.query(RepoMapping)\
-                .filter_by(primary_id=build.repo_id)\
-                .first()
-            build.repo_id = mapping.secondary_id if mapping else None
+        if repo_id:
+            if util.secondary_mode and not build.real:
+                self.refresh_repo_mappings()
+                # need to map the repo_id to primary
+                mapping = self.db.query(RepoMapping)\
+                    .filter_by(primary_id=repo_id)\
+                    .first()
+                if mapping:
+                    build.repo_id = mapping.secondary_id
+            else:
+                build.repo_id = repo_id
 
     def sync_tasks(self, builds, koji_session, complete=False):
         """
