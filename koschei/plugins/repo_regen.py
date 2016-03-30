@@ -27,15 +27,15 @@ def poll_secondary_repo(backend):
                             repo_id=remote_repo['id'],
                             arch="$arch")
                 tag = collection.build_tag
-                for repo in primary.listExternalRepos(tag):
-                    primary.removeExternalRepoFromTag(tag, repo['name'])
-                repo = primary.createExternalRepo(
-                    '{}-{}'.format(collection.name, remote_repo['id']),
-                    repo_url)
+                for repo in primary.getTagExternalRepos(tag):
+                    primary.removeExternalRepoFromTag(tag, repo['external_repo_id'])
+                name = '{}-{}'.format(collection.name, remote_repo['id'])
+                repo = (primary.getExternalRepo(name) or
+                        primary.createExternalRepo(name, repo_url))
                 primary.addExternalRepoToTag(tag, repo['name'], 0)  # priority
                 task_id = primary.newRepo(tag)
                 db.add(RepoMapping(task_id=task_id,
                                    secondary_id=remote_repo['id']))
                 db.commit()
-            except koji.Fault:
+            except koji.GenericError:
                 log.exception("Requesting new repo failed")
