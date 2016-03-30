@@ -114,7 +114,7 @@ class Backend(object):
                        state=state_map[build_info['state']])
                   for package_id, build_info in package_build_infos]
         registered = []
-        for chunk in util.chunks(builds, 100): #TODO configurable
+        for chunk in util.chunks(builds, 100):  # TODO configurable
             while True:
                 try:
                     self.db.execute(insert(Build), chunk)

@@ -80,10 +80,6 @@ koji_configs = {
 
 secondary_mode = bool(config['secondary_koji_config'])
 
-git_reference = config.get('git_reference', 'origin/master')
-
-dep_config = config['dependency']
-
 
 class KojiSession(object):
     def __init__(self, koji_id='primary', anonymous=True):
@@ -159,7 +155,6 @@ def selective_itercall(session_provider, args, koji_call):
         for i, item in zip(indices, itercall(session, items, koji_call)):
             results[i] = item
     return results
-
 
 
 class parallel_generator(object):

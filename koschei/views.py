@@ -453,8 +453,7 @@ def process_group_form(group=None):
     if not form.validate_or_flash():
         return render_template('edit-group.html', group=group, form=form)
     names = set(form.packages.data)
-    owners = set(form.owners.data)
-    users = [get_or_create(db, User, name=name) for name in owners]
+    users = [get_or_create(db, User, name=name) for name in set(form.owners.data)]
     db.commit()
     user_ids = [u.id for u in users]
     packages = db.query(Package).filter(Package.name.in_(names))

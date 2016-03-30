@@ -33,6 +33,7 @@ frontend_config = config['frontend']
 
 
 class FrontendQuery(Query, BaseQuery):
+    # pylint:disable=arguments-differ
     def paginate(self, items_per_page):
         try:
             page = int(request.args.get('page', 1))
