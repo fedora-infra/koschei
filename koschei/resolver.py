@@ -310,8 +310,7 @@ class Resolver(KojiService):
         fetch_dependencies_generator_time.reset()
         total_time.start()
         self.log.info("Generating new repo")
-        repo_descriptor = RepoDescriptor(repo_id=repo_id, koji_id='primary',
-                                         build_tag=None)
+        repo_descriptor = self.create_repo_descriptor(repo_id)
         self.set_descriptor_tags([repo_descriptor])
         if not repo_descriptor.build_tag:
             self.log.error('Cannot generate repo: {}'.format(repo_id))
@@ -356,8 +355,9 @@ class Resolver(KojiService):
         generate_dependency_changes_time.display()
         fetch_dependencies_generator_time.display()
 
-    def repo_descriptor_for_build(self, build):
-        return RepoDescriptor('primary', None, build.repo_id)
+    def create_repo_descriptor(self, repo_id):
+        return RepoDescriptor('secondary' if util.secondary_mode else 'primary',
+                              None, repo_id)
 
     def process_build(self, sack, entry, curr_deps):
         self.log.info("Processing build {}".format(entry.id))
@@ -398,7 +398,7 @@ class Resolver(KojiService):
             .filter(Build.repo_id != None)\
             .order_by(Build.repo_id).all()
 
-        descriptors = [self.repo_descriptor_for_build(build) for build in builds]
+        descriptors = [self.create_repo_descriptor(build.repo_id) for build in builds]
         self.set_descriptor_tags(descriptors)
         builds_to_process = []
         repos_to_process = []
