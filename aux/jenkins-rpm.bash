@@ -7,7 +7,7 @@ cd build
 rm -f *.src.rpm
 sed "s/^Release:[^%]*/&.jenkins$BUILD_NUMBER/" ../koschei.spec > koschei.spec
 rpmbuild -bs -D"_sourcedir $PWD/.." -D"_srcrpmdir $PWD" koschei.spec
-mock -r epel-7-x86_64 --rebuild koschei-*.src.rpm --resultdir ../rpms
+mock -r fedora-23-x86_64 --rebuild koschei-*.src.rpm --resultdir ../rpms
 
 cd ../rpms
 # Keep last 5 RPMS (and 5 SRPMS)
