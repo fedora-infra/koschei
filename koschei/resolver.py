@@ -18,10 +18,11 @@
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 from itertools import izip, groupby
-from collections import defaultdict
 
 import koji
-from sqlalchemy.orm import joinedload
+
+from sqlalchemy.sql import insert
+from sqlalchemy.orm import joinedload, undefer
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
 from koschei.models import (Package, Dependency, UnappliedChange,
@@ -40,7 +41,66 @@ resolution_time = Stopwatch("Dependency resolution", total_time)
 resolve_dependencies_time = Stopwatch("resolve_dependencies", resolution_time)
 create_dependency_changes_time = Stopwatch("create_dependency_changes", resolution_time)
 generate_dependency_changes_time = Stopwatch("generate_dependency_changes")
-fetch_dependencies_generator_time = Stopwatch("fetch_dependencies_generator")
+
+
+class DependencyWithDistance(object):
+    def __init__(self, name, epoch, version, release, arch):
+        self.name = name
+        self.epoch = epoch
+        self.version = version
+        self.release = release
+        self.arch = arch
+        self.distance = None
+
+
+class DependencyCache(object):
+    def __init__(self):
+        self.nevras = {}
+        self.ids = {}
+
+    def _get_or_create(self, db, nevra):
+        dep = self.nevras.get(nevra)
+        if dep is None:
+            dep = db.query(*Dependency.inevra)\
+                .filter((Dependency.name == nevra[0]) &
+                        (Dependency.epoch == nevra[1]) &
+                        (Dependency.version == nevra[2]) &
+                        (Dependency.release == nevra[3]) &
+                        (Dependency.arch == nevra[4]))\
+                .first()
+            if dep is None:
+                kwds = dict(name=nevra[0], epoch=nevra[1], version=nevra[2],
+                            release=nevra[3], arch=nevra[4])
+                dep = db.execute(insert(Dependency, [kwds],
+                                        returning=Dependency.inevra)).fetchone()
+            self.nevras[nevra] = dep
+            self.ids[dep.id] = dep
+        return dep
+
+    def get_or_create_nevras(self, db, nevras):
+        res = []
+        for nevra in nevras:
+            res.append(self._get_or_create(db, nevra))
+        return res
+
+    def get_by_ids(self, db, ids):
+        res = []
+        missing = []
+        # pylint:disable=redefined-builtin
+        for id in ids:
+            dep = self.ids.get(id)
+            if dep is None:
+                missing.append(id)
+            else:
+                res.append(dep)
+        if missing:
+            deps = db.query(*Dependency.inevra).filter(Dependency.id.in_(missing)).all()
+            for dep in deps:
+                self.ids[dep.id] = dep
+                self.nevras[(dep.name, dep.epoch, dep.version, dep.release,
+                             dep.arch)] = dep
+                res.append(dep)
+        return res
 
 
 class Resolver(KojiService):
@@ -52,6 +112,7 @@ class Resolver(KojiService):
         self.backend = backend or Backend(koji_sessions=self.koji_sessions,
                                           log=self.log, db=self.db)
         self.build_groups = {}
+        self.dependency_cache = DependencyCache()
 
     def get_build_group(self, collection_or_id):
         collection_id = getattr(collection_or_id, 'id', collection_or_id)
@@ -65,18 +126,14 @@ class Resolver(KojiService):
         assert group
         return group
 
-    def store_deps(self, build_id, installs):
+    def store_deps(self, installs):
         new_deps = []
         for install in installs or []:
             if install.arch != 'src':
-                dep = Dependency(build_id=build_id,
-                                 name=install.name, epoch=install.epoch,
-                                 version=install.version,
-                                 release=install.release,
-                                 arch=install.arch)
+                dep = (install.name, install.epoch, install.version,
+                       install.release, install.arch)
                 new_deps.append(dep)
-
-        self.db.bulk_insert(new_deps)
+        return self.dependency_cache.get_or_create_nevras(self.db, new_deps)
 
     def resolve_dependencies(self, sack, br, build_group):
         resolve_dependencies_time.start()
@@ -84,9 +141,9 @@ class Resolver(KojiService):
         resolved, problems, installs = util.run_goal(sack, build_group, br)
         if resolved:
             problems = []
-            deps = [Dependency(name=pkg.name, epoch=pkg.epoch,
-                               version=pkg.version, release=pkg.release,
-                               arch=pkg.arch)
+            deps = [DependencyWithDistance(name=pkg.name, epoch=pkg.epoch,
+                                           version=pkg.version, release=pkg.release,
+                                           arch=pkg.arch)
                     for pkg in installs if pkg.arch != 'src']
             util.compute_dependency_distances(sack, br, deps)
         resolve_dependencies_time.stop()
@@ -126,10 +183,12 @@ class Resolver(KojiService):
 
     def get_prev_build_for_comparison(self, build):
         return self.db.query(Build)\
-                      .filter_by(package_id=build.package_id)\
-                      .filter(Build.id < build.id)\
-                      .filter(Build.deps_resolved == True)\
-                      .order_by(Build.id.desc()).first()
+            .filter_by(package_id=build.package_id)\
+            .filter(Build.id < build.id)\
+            .filter(Build.deps_resolved == True)\
+            .order_by(Build.id.desc())\
+            .options(undefer('dependency_keys'))\
+            .first()
 
     def set_descriptor_tags(self, descriptors):
         def koji_call(koji_session, desc):
@@ -143,15 +202,16 @@ class Resolver(KojiService):
             else:
                 self.log.debug('Repo {} is dead, skipping'.format(desc.repo_id))
 
-    def get_packages(self, collection, expunge=True, require_build=False):
-        query = self.db.query(Package).filter(Package.blocked == False)\
-                       .filter_by(collection_id=collection.id)\
-                       .filter(Package.tracked == True)
-        if require_build:
-            query = query.filter(Package.last_complete_build_id != None)
-        packages = query.options(joinedload(Package.last_build))\
-                        .options(joinedload(Package.last_complete_build))\
-                        .all()
+    def get_packages(self, collection, expunge=True):
+        packages = self.db.query(Package)\
+            .filter(Package.blocked == False)\
+            .filter_by(collection_id=collection.id)\
+            .filter(Package.tracked == True)\
+            .filter(Package.last_complete_build_id != None)\
+            .options(joinedload(Package.last_build))\
+            .options(joinedload(Package.last_complete_build))\
+            .options(undefer('*'))\
+            .all()
         # detaches objects from ORM, prevents spurious queries that hinder
         # performance
         if expunge:
@@ -239,26 +299,6 @@ class Resolver(KojiService):
             if vals:
                 self.db.execute(rel.__table__.insert(), vals)
 
-    def fetch_dependencies_generator(self, packages):
-        fetch_dependencies_generator_time.start()
-        chunk_size = util.config['dependency']['dependency_fetch_chunk_size']
-        while packages:
-            current_packages = packages[:chunk_size]
-            builds = [self.get_build_for_comparison(package) for package
-                      in current_packages]
-            if builds:
-                build_to_package = {b.id: b.package_id for b in builds if b}
-                deps_per_package = defaultdict(list)
-                for dep in self.db.query(Dependency.build_id, *Dependency.nevra)\
-                        .filter(Dependency.build_id.in_(build_to_package.keys())):
-                    deps_per_package[build_to_package[dep.build_id]].append(dep)
-            fetch_dependencies_generator_time.stop()
-            for package in current_packages:
-                yield deps_per_package[package.id]
-            fetch_dependencies_generator_time.start()
-            packages = packages[chunk_size:]
-        fetch_dependencies_generator_time.stop()
-
     def generate_dependency_changes(self, sack, collection, packages, brs, repo_id):
         """
         Generates and persists dependency changes for given list of packages.
@@ -278,18 +318,22 @@ class Resolver(KojiService):
                for package, br in izip(packages, brs))
         queue_size = util.config['dependency']['resolver_queue_size']
         gen = util.parallel_generator(gen, queue_size=queue_size)
-        deps_fetcher = self.fetch_dependencies_generator(packages)
-        for (package, result), prev_deps in izip(gen, deps_fetcher):
+        for package, result in gen:
             generate_dependency_changes_time.start()
             resolved_map[package.id], curr_problems, curr_deps = result
             problems += [dict(package_id=package.id, problem=problem)
                          for problem in sorted(set(curr_problems))]
-            if curr_deps is not None and prev_deps:
-                create_dependency_changes_time.start()
-                changes += self.create_dependency_changes(
-                    prev_deps, curr_deps, package_id=package.id,
-                    prev_build_id=prev_deps[0].build_id)
-                create_dependency_changes_time.stop()
+            if curr_deps is not None:
+                prev_build = self.get_build_for_comparison(package)
+                if prev_build:
+                    prev_deps = self.dependency_cache.get_by_ids(
+                        self.db, prev_build.dependency_keys)
+                    if prev_deps:
+                        create_dependency_changes_time.start()
+                        changes += self.create_dependency_changes(
+                            prev_deps, curr_deps, package_id=package.id,
+                            prev_build_id=prev_build.id)
+                        create_dependency_changes_time.stop()
             if len(resolved_map) > util.config['dependency']['persist_chunk_size']:
                 persist()
                 resolved_map = {}
@@ -307,7 +351,6 @@ class Resolver(KojiService):
         """
         total_time.reset()
         generate_dependency_changes_time.reset()
-        fetch_dependencies_generator_time.reset()
         total_time.start()
         self.log.info("Generating new repo")
         repo_descriptor = self.create_repo_descriptor(repo_id)
@@ -317,7 +360,7 @@ class Resolver(KojiService):
             self.db.rollback()
             return
         self.repo_cache.prefetch_repo(repo_descriptor)
-        packages = self.get_packages(collection, require_build=True)
+        packages = self.get_packages(collection)
         brs = util.get_rpm_requires(self.koji_sessions['secondary'],
                                     [p.srpm_nvra for p in packages])
         brs = util.parallel_generator(brs, queue_size=None)
@@ -353,7 +396,6 @@ class Resolver(KojiService):
         total_time.stop()
         total_time.display()
         generate_dependency_changes_time.display()
-        fetch_dependencies_generator_time.display()
 
     def create_repo_descriptor(self, repo_id):
         return RepoDescriptor('secondary' if util.secondary_mode else 'primary',
@@ -362,9 +404,10 @@ class Resolver(KojiService):
     def process_build(self, sack, entry, curr_deps):
         self.log.info("Processing build {}".format(entry.id))
         prev = self.get_prev_build_for_comparison(entry)
-        self.store_deps(entry.id, curr_deps)
+        deps = self.store_deps(curr_deps)
         self.db.query(Build).filter_by(id=entry.id)\
-            .update({'deps_processed': True, 'deps_resolved': curr_deps is not None})
+            .update({'deps_processed': True, 'deps_resolved': curr_deps is not None,
+                     'dependency_keys': [dep.id for dep in deps]})
         if curr_deps is None and entry.id == entry.last_build_id:
             failed_prio = 3 * util.config['priorities']['failed_build_priority']
             self.db.query(Package).filter_by(id=entry.package_id)\
@@ -372,7 +415,7 @@ class Resolver(KojiService):
         if curr_deps is None:
             return
         if prev:
-            prev_deps = prev.dependencies
+            prev_deps = self.dependency_cache.get_by_ids(self.db, prev.dependency_keys)
             if prev_deps and curr_deps:
                 changes = self.create_dependency_changes(prev_deps, curr_deps,
                                                          build_id=entry.id,
@@ -384,9 +427,6 @@ class Resolver(KojiService):
             .filter(Build.id < entry.id)\
             .order_by(Build.id.desc())\
             .subquery()
-        self.db.query(Dependency)\
-               .filter(Dependency.build_id.in_(old_builds))\
-               .delete(synchronize_session=False)
 
     def process_builds(self):
         # pylint: disable=E1101

@@ -29,7 +29,7 @@ from mock import Mock, patch
 from koschei import util
 from koschei.models import (Dependency, UnappliedChange, AppliedChange, Package,
                             ResolutionProblem, BuildrootProblem)
-from koschei.resolver import Resolver
+from koschei.resolver import Resolver, DependencyCache
 
 FOO_DEPS = [
     ('A', 0, '1', '1.fc22', 'x86_64'),
@@ -40,6 +40,7 @@ FOO_DEPS = [
     ('F', 0, '1', '1.fc22', 'noarch'),
     ('R', 0, '3.3', '2.fc22', 'x86_64'), # in build group
 ]
+
 
 @contextmanager
 def get_sack(name):
@@ -57,6 +58,61 @@ def get_sack(name):
     sack = hawkey.Sack()
     sack.load_yum_repo(repo)
     yield sack
+
+
+class DependencyCacheTest(DBTest):
+    def __init__(self, *args, **kwargs):
+        super(DependencyCacheTest, self).__init__(*args, **kwargs)
+
+    def dep(self, i):
+        return (i, 'foo', 0, str(i), '1', 'x86_64')
+
+    def nevra(self, i):
+        return ('foo', 0, str(i), '1', 'x86_64')
+
+    def setUp(self):
+        super(DependencyCacheTest, self).setUp()
+        deps = [str(self.nevra(i)) for i in range(1,4)]
+        self.s.execute("INSERT INTO dependency(name,epoch,version,release,arch) VALUES {}"
+                       .format(','.join(deps)))
+        self.s.commit()
+
+    def test_get_ids(self):
+        cache = DependencyCache()
+        # from db
+        dep1, dep2 = cache.get_by_ids(self.s, [2, 3])
+        self.assertEquals(self.dep(2), dep1)
+        self.assertEquals(self.dep(3), dep2)
+        # from cache
+        dep1, dep2 = cache.get_by_ids(None, [2, 3])
+        self.assertEquals(self.dep(2), dep1)
+        self.assertEquals(self.dep(3), dep2)
+        # mixed
+        dep1, dep2 = cache.get_by_ids(self.s, [2, 1])
+        self.assertEquals(self.dep(2), dep1)
+        self.assertEquals(self.dep(1), dep2)
+
+    def test_get_nevras(self):
+        cache = DependencyCache()
+        # from db
+        dep1, dep2 = cache.get_or_create_nevras(self.s, [self.nevra(2), self.nevra(3)])
+        self.assertEquals(self.dep(2), dep1)
+        self.assertEquals(self.dep(3), dep2)
+        # from cache
+        dep1, dep2 = cache.get_or_create_nevras(None, [self.nevra(2), self.nevra(3)])
+        self.assertEquals(self.dep(2), dep1)
+        self.assertEquals(self.dep(3), dep2)
+        # insert
+        dep1, dep2 = cache.get_or_create_nevras(self.s, [self.nevra(4), self.nevra(5)])
+        self.assertEquals(self.dep(4), dep1)
+        self.assertEquals(self.dep(5), dep2)
+        # mixed
+        dep1, dep2, dep3 = cache.get_or_create_nevras(self.s, [self.nevra(6),
+                                                               self.nevra(4),
+                                                               self.nevra(2)])
+        self.assertEquals(self.dep(6), dep1)
+        self.assertEquals(self.dep(4), dep2)
+        self.assertEquals(self.dep(2), dep3)
 
 class ResolverTest(DBTest):
     def __init__(self, *args, **kwargs):
@@ -113,12 +169,11 @@ class ResolverTest(DBTest):
         with patch('koschei.util.get_build_group', return_value=['R']):
             with patch('koschei.util.get_rpm_requires', return_value=[['F', 'A']]):
                 self.resolver.process_builds()
-        expected_deps = [tuple([foo_build.id] + list(nevr)) for nevr in FOO_DEPS]
-        actual_deps = self.s.query(Dependency.build_id,
-                                   Dependency.name, Dependency.epoch,
+        actual_deps = self.s.query(Dependency.name, Dependency.epoch,
                                    Dependency.version, Dependency.release,
-                                   Dependency.arch).all()
-        self.assertItemsEqual(expected_deps, actual_deps)
+                                   Dependency.arch)\
+            .filter(Dependency.id.in_(foo_build.dependency_keys)).all()
+        self.assertItemsEqual(FOO_DEPS, actual_deps)
 
     @x86_64_only
     def test_virtual_in_group(self):
@@ -161,9 +216,13 @@ class ResolverTest(DBTest):
         old_deps[2] = ('C', 1, '2', '1.fc22', 'x86_64')
         del old_deps[4] # E
         package_id = old_build.package_id
+        dependency_keys = []
         for n, e, v, r, a in old_deps:
-            self.s.add(Dependency(build_id=old_build.id, arch=a,
-                                  name=n, epoch=e, version=v, release=r))
+            dep = Dependency(arch=a, name=n, epoch=e, version=v, release=r)
+            self.s.add(dep)
+            self.s.flush()
+            dependency_keys.append(dep.id)
+        old_build.dependency_keys = dependency_keys
         self.s.commit()
         return old_build
 

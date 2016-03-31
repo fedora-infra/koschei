@@ -1,15 +1,14 @@
 """Store dependencies as compressed many-to-many
 
 Revision ID: 18d4f8beaba6
-Revises: 5ac6e922818a
+Revises: 2ffebbebb9e5
 Create Date: 2016-02-21 20:23:40.722537
 
 """
 
 # revision identifiers, used by Alembic.
-# FIXME update on merge
 revision = '18d4f8beaba6'
-down_revision = '5ac6e922818a'
+down_revision = '2ffebbebb9e5'
 
 import struct, zlib
 from alembic import op
@@ -53,7 +52,7 @@ def upgrade():
     CREATE INDEX tmp ON dependency(name,epoch,version,release,arch);
     CREATE TABLE deptmp AS SELECT DISTINCT build_id, min(id) OVER (PARTITION BY name, epoch, version, release, arch) AS newid FROM dependency;
     ALTER TABLE build ADD COLUMN dependency_array integer[];
-    UPDATE BUILD SET dependency_array = a FROM (SELECT build_id, array_agg(newid) AS a FROM deptmp GROUP BY build_id ORDER BY newid) AS q WHERE q.build_id = build.id;
+    UPDATE build SET dependency_array = a FROM (SELECT build_id, array_agg(newid ORDER BY newid) AS a FROM deptmp GROUP BY build_id) AS q WHERE q.build_id = build.id;
     DROP INDEX tmp;
     DROP INDEX ix_dependency_build_id;
     CREATE TABLE deptmp2 AS SELECT DISTINCT newid FROM deptmp;
@@ -63,6 +62,7 @@ def upgrade():
     DROP TABLE deptmp;
     DROP TABLE deptmp2;
     ALTER TABLE build ADD COLUMN dependency_keys bytea;
+    CREATE UNIQUE INDEX ix_dependency_composite ON dependency(name, epoch, version, release, arch);
     """)
     connection = op.get_bind()
     build_table = sa.Table('build', sa.MetaData(),

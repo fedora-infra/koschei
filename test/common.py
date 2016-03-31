@@ -57,6 +57,8 @@ class DBTest(AbstractTest):
         conn = m.engine.connect()
         for table in tables.values():
             conn.execute(table.delete())
+            if hasattr(table.c, 'id'):
+                conn.execute("ALTER SEQUENCE {}_id_seq RESTART".format(table.name))
         conn.close()
         self.s = m.Session()
         self.s.add(self.collection)

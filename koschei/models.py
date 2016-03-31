@@ -30,7 +30,7 @@ from sqlalchemy.sql import insert
 from sqlalchemy.sql.expression import func, select, false, true
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import (sessionmaker, relationship, column_property,
-                            configure_mappers)
+                            configure_mappers, deferred)
 from sqlalchemy.engine.url import URL
 from sqlalchemy.event import listen
 from sqlalchemy.types import TypeDecorator
@@ -127,12 +127,14 @@ class CompressedKeyArray(TypeDecorator):
     def process_bind_param(self, value, _):
         if value is None:
             return None
+        value = sorted(value)
         offset = 0
         for i in range(len(value)):
             value[i] -= offset
             offset += value[i]
         array = bytearray()
         for item in value:
+            assert item > 0
             array += struct.pack(">I", item)
         return zlib.compress(str(array))
 
@@ -397,9 +399,7 @@ class Build(Base):
     # was the build done by koschei or was it real build done by packager
     real = Column(Boolean, nullable=False, server_default=false())
 
-    dependency_keys = Column(CompressedKeyArray)
-    dependencies = relationship('Dependency', backref='build',
-                                passive_deletes=True)
+    dependency_keys = deferred(Column(CompressedKeyArray))
 
     @property
     def state_string(self):
@@ -436,17 +436,15 @@ class ResolutionProblem(Base):
 class Dependency(Base):
     __tablename__ = 'dependency'
     id = Column(Integer, primary_key=True)
-    build_id = Column(ForeignKey('build.id', ondelete='CASCADE'), index=True,
-                      nullable=False)
     name = Column(String, nullable=False)
     epoch = Column(Integer)
     version = Column(String, nullable=False)
     release = Column(String, nullable=False)
     arch = Column(String, nullable=False)
-    distance = Column(Integer)
 
     nevr = (name, epoch, version, release)
     nevra = (name, epoch, version, release, arch)
+    inevra = (id, name, epoch, version, release, arch)
 
 
 Index('ix_build_running', Build.package_id, unique=True,
@@ -454,6 +452,7 @@ Index('ix_build_running', Build.package_id, unique=True,
 Index('ix_build_composite', Build.package_id, Build.id.desc())
 Index('ix_package_group_name', PackageGroup.namespace, PackageGroup.name,
       unique=True)
+Index('ix_dependency_composite', *Dependency.nevra, unique=True)
 
 
 class DependencyChange(object):
