@@ -325,15 +325,14 @@ class Resolver(KojiService):
                          for problem in sorted(set(curr_problems))]
             if curr_deps is not None:
                 prev_build = self.get_build_for_comparison(package)
-                if prev_build:
+                if prev_build and prev_build.dependency_keys:
                     prev_deps = self.dependency_cache.get_by_ids(
                         self.db, prev_build.dependency_keys)
-                    if prev_deps:
-                        create_dependency_changes_time.start()
-                        changes += self.create_dependency_changes(
-                            prev_deps, curr_deps, package_id=package.id,
-                            prev_build_id=prev_build.id)
-                        create_dependency_changes_time.stop()
+                    create_dependency_changes_time.start()
+                    changes += self.create_dependency_changes(
+                        prev_deps, curr_deps, package_id=package.id,
+                        prev_build_id=prev_build.id)
+                    create_dependency_changes_time.stop()
             if len(resolved_map) > util.config['dependency']['persist_chunk_size']:
                 persist()
                 resolved_map = {}
@@ -414,7 +413,7 @@ class Resolver(KojiService):
                 .update({'manual_priority': Package.manual_priority + failed_prio})
         if curr_deps is None:
             return
-        if prev:
+        if prev and prev.dependency_keys:
             prev_deps = self.dependency_cache.get_by_ids(self.db, prev.dependency_keys)
             if prev_deps and curr_deps:
                 changes = self.create_dependency_changes(prev_deps, curr_deps,
