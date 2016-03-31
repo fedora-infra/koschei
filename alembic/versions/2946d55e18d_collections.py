@@ -27,7 +27,7 @@ def upgrade():
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
     )
-    op.execute("INSERT INTO collection VALUES (DEFAULT, 'f24', 'Fedora Rawhide', 'f24', 'f24-build', 1.0, null, null)")
+    op.execute("INSERT INTO collection VALUES (DEFAULT, 'f25', 'Fedora Rawhide', 'f25', 'f25-build', 1.0, null, null)")
     op.add_column('buildroot_problem', sa.Column('collection_id', sa.Integer(), nullable=True))
     op.create_index('ix_buildroot_problem_collection_id', 'buildroot_problem', ['collection_id'], unique=False)
     op.drop_index('ix_buildroot_problem_repo_id', table_name='buildroot_problem')
