@@ -18,6 +18,7 @@
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 from itertools import izip, groupby
+from collections import OrderedDict
 
 import koji
 
@@ -54,9 +55,27 @@ class DependencyWithDistance(object):
 
 
 class DependencyCache(object):
-    def __init__(self):
+    def __init__(self, capacity):
+        self.capacity = capacity
         self.nevras = {}
-        self.ids = {}
+        self.ids = OrderedDict()
+
+    def _add(self, dep):
+        self.ids[dep.id] = dep
+        self.nevras[(dep.name, dep.epoch, dep.version, dep.release,
+                     dep.arch)] = dep
+        if len(self.ids) > self.capacity:
+            self._compact()
+
+    def _access(self, dep):
+        del self.ids[dep.id]
+        self.ids[dep.id] = dep
+
+    def _compact(self):
+        _, victim = self.ids.popitem(last=False)
+        # pylint: disable=no-member
+        del self.nevras[(victim.name, victim.epoch, victim.version,
+                         victim.release, victim.arch)]
 
     def _get_or_create(self, db, nevra):
         dep = self.nevras.get(nevra)
@@ -73,8 +92,9 @@ class DependencyCache(object):
                             release=nevra[3], arch=nevra[4])
                 dep = db.execute(insert(Dependency, [kwds],
                                         returning=Dependency.inevra)).fetchone()
-            self.nevras[nevra] = dep
-            self.ids[dep.id] = dep
+            self._add(dep)
+        else:
+            self._access(dep)
         return dep
 
     def get_or_create_nevras(self, db, nevras):
@@ -93,13 +113,13 @@ class DependencyCache(object):
                 missing.append(id)
             else:
                 res.append(dep)
+                self._access(dep)
         if missing:
             deps = db.query(*Dependency.inevra).filter(Dependency.id.in_(missing)).all()
             for dep in deps:
-                self.ids[dep.id] = dep
-                self.nevras[(dep.name, dep.epoch, dep.version, dep.release,
-                             dep.arch)] = dep
+                self._add(dep)
                 res.append(dep)
+        assert res
         return res
 
 
@@ -112,7 +132,8 @@ class Resolver(KojiService):
         self.backend = backend or Backend(koji_sessions=self.koji_sessions,
                                           log=self.log, db=self.db)
         self.build_groups = {}
-        self.dependency_cache = DependencyCache()
+        capacity = util.config['dependency']['dependency_cache_capacity']
+        self.dependency_cache = DependencyCache(capacity=capacity)
 
     def get_build_group(self, collection_or_id):
         collection_id = getattr(collection_or_id, 'id', collection_or_id)

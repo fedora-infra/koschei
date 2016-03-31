@@ -78,7 +78,7 @@ class DependencyCacheTest(DBTest):
         self.s.commit()
 
     def test_get_ids(self):
-        cache = DependencyCache()
+        cache = DependencyCache(10)
         # from db
         dep1, dep2 = cache.get_by_ids(self.s, [2, 3])
         self.assertEquals(self.dep(2), dep1)
@@ -93,7 +93,7 @@ class DependencyCacheTest(DBTest):
         self.assertEquals(self.dep(1), dep2)
 
     def test_get_nevras(self):
-        cache = DependencyCache()
+        cache = DependencyCache(10)
         # from db
         dep1, dep2 = cache.get_or_create_nevras(self.s, [self.nevra(2), self.nevra(3)])
         self.assertEquals(self.dep(2), dep1)
@@ -113,6 +113,26 @@ class DependencyCacheTest(DBTest):
         self.assertEquals(self.dep(6), dep1)
         self.assertEquals(self.dep(4), dep2)
         self.assertEquals(self.dep(2), dep3)
+
+    def test_lru(self):
+        cache = DependencyCache(2)
+        # from db
+        cache.get_by_ids(self.s, [2, 3])
+        # one more
+        cache.get_by_ids(self.s, [1])
+        print(cache.ids)
+        # from cache
+        cache.get_by_ids(None, [3])
+        print(cache.ids)
+        self.s.query(Dependency).filter_by(version="2").update({'name': 'bar'})
+        self.s.commit()
+        # refetch
+        dep = cache.get_by_ids(self.s, [2])[0]
+        print(cache.ids)
+        self.assertEquals('bar', dep.name)
+        # still cached
+        cache.get_by_ids(None, [3])
+
 
 class ResolverTest(DBTest):
     def __init__(self, *args, **kwargs):
