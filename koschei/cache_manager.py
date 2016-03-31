@@ -16,7 +16,8 @@
 #
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-from threading import RLock, Condition, Thread
+from contextlib import contextmanager
+from threading import RLock, Condition, Thread, current_thread
 
 
 # Print debug information to stderr
@@ -26,6 +27,68 @@ class _Logger(object):
         # sys.stderr.write(msg + "\n")
         pass
 _log = _Logger()
+
+
+class _Monitor(object):
+    def __init__(self):
+        self._lock = RLock()
+        self._worker_cond = Condition(self._lock)
+        self._consumer_cond = Condition(self._lock)
+        # Thread which holds lock, or None if not locked
+        self._lock_owner = None
+
+    def _acquire_lock(self):
+        assert self._lock_owner != current_thread()
+        self._lock.acquire()
+        assert not self._lock_owner
+        self._lock_owner = current_thread()
+
+    def _release_lock(self):
+        assert self._lock_owner == current_thread()
+        self._lock_owner = None
+        self._lock.release()
+
+    @contextmanager
+    def locked(self):
+        self._acquire_lock()
+        try:
+            yield
+        finally:
+            self._release_lock()
+
+    @contextmanager
+    def unlocked(self):
+        self._release_lock()
+        try:
+            yield
+        finally:
+            self._acquire_lock()
+
+    def worker_wait(self):
+        assert self._lock_owner == current_thread()
+        self._lock_owner = None
+        self._worker_cond.wait(1)
+        assert not self._lock_owner
+        self._lock_owner = current_thread()
+
+    def consumer_wait(self):
+        assert self._lock_owner == current_thread()
+        self._lock_owner = None
+        self._consumer_cond.wait(1)
+        assert not self._lock_owner
+        self._lock_owner = current_thread()
+
+    def notify_worker(self):
+        assert self._lock_owner == current_thread()
+        self._worker_cond.notify()
+
+    def notify_all_workers(self):
+        assert self._lock_owner == current_thread()
+        self._worker_cond.notify_all()
+
+    def notify_consumer(self):
+        assert self._lock_owner == current_thread()
+        self._consumer_cond.notify()
 
 
 class _CacheItem(object):
@@ -149,9 +212,7 @@ class CacheManager(object):
     """
 
     def __init__(self, max_threads):
-        self._lock = RLock()
-        self._work_avail = Condition(self._lock)
-        self._sack_avail = Condition(self._lock)
+        self._monitor = _Monitor()
         self._banks = []
         self._threads = []
         self._terminate = False
@@ -210,9 +271,9 @@ class CacheManager(object):
                     item._transition(_CacheItem.RELEASED, _CacheItem.PREPARED)
                     item._next = None
                     if bank._id == 1:
-                        self._sack_avail.notify()
+                        self._monitor.notify_consumer()
                     else:
-                        self._work_avail.notify()
+                        self._monitor.notify_worker()
                     break
                 while bank._count_soft() >= bank._capacity:
                     bank._discard_lru()
@@ -234,52 +295,45 @@ class CacheManager(object):
         return None
 
     def _thread_proc(self):
-        try:
-            self._lock.acquire()
+        with self._monitor.locked():
             _log.debug("Worker started")
             while not self._terminate:
                 self._add_requested_items()
                 item = self._get_item_to_process()
                 if not item:
                     _log.debug("Waiting for work...")
-                    self._work_avail.wait(1)
+                    self._monitor.worker_wait()
                     _log.debug("... done waiting for work")
                     continue
                 _log.debug("Processing %s..." % str(item._key))
                 item._transition(_CacheItem.REQUESTED, _CacheItem.PREPARING)
                 if item._next:
                     item._next._transition(_CacheItem.PREPARED, _CacheItem.ACQUIRED)
-                self._lock.release()
-                item._prepare()
-                self._lock.acquire()
+                with self._monitor.unlocked():
+                    item._prepare()
                 item._transition(_CacheItem.PREPARING, _CacheItem.PREPARED)
                 if item._next:
                     item._next._transition(_CacheItem.ACQUIRED, _CacheItem.RELEASED)
                     item._next = None
-                    self._work_avail.notify()
+                    self._monitor.notify_worker()
                 _log.debug("... done processing %s" % item._key)
                 if item._bank._id == 1:
-                    self._sack_avail.notify()
+                    self._monitor.notify_consumer()
                 else:
-                    self._work_avail.notify()
+                    self._monitor.notify_worker()
             _log.debug("Worker terminated")
-        finally:
-            _log.debug("Worker exited")
-            self._lock.release()
+        _log.debug("Worker exited")
 
     def prefetch(self, key):
         """
         Request item with specified key to be prefetched into L1 cache
         by background thread
         """
-        try:
-            self._lock.acquire()
+        with self._monitor.locked():
             _log.debug("prefetch(%s)" % str(key))
             self._prefetch_q.append(key)
-            self._work_avail.notify()
-        finally:
+            self._monitor.notify_worker()
             _log.debug("return prefetch(%s)" % str(key))
-            self._lock.release()
 
     def acquire(self, key):
         """
@@ -287,48 +341,39 @@ class CacheManager(object):
         in the cache. Deadlock will occur if item is not present and was not
         explicitly prefetched. Item will be kept in cache until released.
         """
-        try:
-            self._lock.acquire()
+        with self._monitor.locked():
             _log.debug("acquire(%s)" % str(key))
             item = self._banks[0]._lookup(key)
             while not item or item._state != _CacheItem.PREPARED:
                 _log.debug("Waiting on acquire...")
-                self._sack_avail.wait(1)
+                self._monitor.consumer_wait()
                 item = self._banks[0]._lookup(key)
             _log.debug("... done waiting on acquire")
             item._transition(_CacheItem.PREPARED, _CacheItem.ACQUIRED)
-            return item._value
-        finally:
             _log.debug("return acquire(%s)" % str(key))
-            self._lock.release()
+            return item._value
 
     def release(self, key):
         """
         Release item so that it can be removed from cache. Most recently used
         items will be kept in cache until space is needed for new items.
         """
-        try:
-            self._lock.acquire()
+        with self._monitor.locked():
             _log.debug("release(%s)" % str(key))
             item = self._banks[0]._lookup(key)
             item._transition(_CacheItem.ACQUIRED, _CacheItem.RELEASED)
             item._bank._access(item)
-            self._work_avail.notify()
-        finally:
+            self._monitor.notify_worker()
             _log.debug("return release(%s)" % str(key))
-            self._lock.release()
 
     def terminate(self):
         """
         Clean up: terminate all background threads and free all cached items
         (state: RELEASED).
         """
-        try:
-            self._lock.acquire()
+        with self._monitor.locked():
             self._terminate = True
-            self._work_avail.notify_all()
-        finally:
-            self._lock.release()
+            self._monitor.notify_all_workers()
         for thread in self._threads:
             thread.join()
         for bank in self._banks:
