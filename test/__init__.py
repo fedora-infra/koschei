@@ -42,8 +42,8 @@ elif use_postgres:
     conn.execute("CREATE DATABASE {0}".format(testdb))
     conn.close()
 
-from koschei import models
 if use_postgres or use_faitout:
+    from koschei import models
     models.Base.metadata.create_all(models.engine)
 
 
