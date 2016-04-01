@@ -215,7 +215,7 @@ class Package(Base):
     manual_priority = Column(Integer, nullable=False, default=0)
     added = Column(DateTime, nullable=False, default=datetime.now)
     collection_id = Column(Integer, ForeignKey(Collection.id, ondelete='CASCADE'),
-                           nullable=False, index=True)
+                           nullable=False)
     collection = None  # backref, shut up pylint
 
     arch_override = Column(String)
@@ -453,6 +453,8 @@ Index('ix_build_composite', Build.package_id, Build.id.desc())
 Index('ix_package_group_name', PackageGroup.namespace, PackageGroup.name,
       unique=True)
 Index('ix_dependency_composite', *Dependency.nevra, unique=True)
+Index('ix_package_collection_id', Package.collection_id, Package.tracked,
+      postgresql_where=(~Package.blocked))
 
 
 class DependencyChange(object):
