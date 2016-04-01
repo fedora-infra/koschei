@@ -402,40 +402,50 @@ class CacheManager(object):
                         set(xrange(len(bank._items))))
             is_last_bank = bank == self._banks[-1]
             for item in bank._items:
-                 assert item._bank == bank
-                 assert item._key
-                 assert item._state in _CacheItem.ALL_STATES;
-                 if item._state == _CacheItem.REQUESTED:
-                     assert not item._value
-                     assert is_last_bank or item._next
-                 elif item._state == _CacheItem.PREPARING:
-                     assert not item._value
-                     assert is_last_bank or item._next
-                 elif item._state == _CacheItem.PREPARED:
-                     assert not item._next
-                 elif item._state == _CacheItem.ACQUIRED:
-                     assert not item._next
-                 elif item._state == _CacheItem.RELEASED:
-                     assert not item._next
-                 else:
-                     assert None
-                 assert not item._next or item._next._bank._id == bank._id + 1
+                assert item._bank == bank
+                assert item._key
+                assert item._state in _CacheItem.ALL_STATES;
+                if item._state == _CacheItem.REQUESTED:
+                    assert not item._value
+                    assert is_last_bank or item._next
+                elif item._state == _CacheItem.PREPARING:
+                    assert not item._value
+                    assert is_last_bank or item._next
+                elif item._state == _CacheItem.PREPARED:
+                    assert not item._next
+                elif item._state == _CacheItem.ACQUIRED:
+                    assert not item._next
+                elif item._state == _CacheItem.RELEASED:
+                    assert not item._next
+                else:
+                    assert None
+                assert not item._next or item._next._bank._id == bank._id + 1
 
     def dump(self):
-        _log.debug("> len(banks)={len_banks}, len(prefetch_q)={len_pq}, terminate={terminate}"
+        _log.debug("> len(banks)={len_banks}, "
+                   "len(prefetch_q)={len_pq}, "
+                   "terminate={terminate}"
                    .format(len_banks=len(self._banks),
                            len_pq=len(self._prefetch_q),
                            terminate=self._terminate))
         if self._prefetch_q:
-            _log.debug("> prefetch_q: {}".format(', '.join(str(key) for key in self._prefetch_q)))
+            _log.debug("> prefetch_q: {}"
+                       .format(', '.join(str(key) for key in self._prefetch_q)))
         for bank in self._banks:
-            _log.debug(">   Bank id={id}, capacity={capacity}, max_threads={max_threads}, len(items)={len_items}"
+            _log.debug(">   Bank id={id}, "
+                       "capacity={capacity}, "
+                       "max_threads={max_threads}, "
+                       "len(items)={len_items}"
                        .format(id=bank._id,
                                capacity=bank._capacity,
                                max_threads=bank._max_threads,
                                len_items=len(bank._items)))
             for item in bank._items:
-                 _log.debug(">     Item state={state}, key={key}, value={value}, index={index}, next={next}"
+                 _log.debug(">     Item state={state}, "
+                            "key={key}, "
+                            "value={value}, "
+                            "index={index}, "
+                            "next={next}"
                             .format(state=item._state,
                                     key=item._key,
                                     value=(id(item._value) if item._value else None),
