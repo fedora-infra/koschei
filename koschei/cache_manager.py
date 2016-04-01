@@ -404,7 +404,7 @@ class CacheManager(object):
             for item in bank._items:
                 assert item._bank == bank
                 assert item._key
-                assert item._state in _CacheItem.ALL_STATES;
+                assert item._state in _CacheItem.ALL_STATES
                 if item._state == _CacheItem.REQUESTED:
                     assert not item._value
                     assert is_last_bank or item._next
@@ -441,16 +441,16 @@ class CacheManager(object):
                                max_threads=bank._max_threads,
                                len_items=len(bank._items)))
             for item in bank._items:
-                 _log.debug(">     Item state={state}, "
-                            "key={key}, "
-                            "value={value}, "
-                            "index={index}, "
-                            "next={next}"
-                            .format(state=item._state,
-                                    key=item._key,
-                                    value=(id(item._value) if item._value else None),
-                                    index=item._index,
-                                    next=("(state={state}, key={key})"
-                                          .format(state=item._next._state,
-                                                  key=item._next._key)
-                                          if item._next else None)))
+                _log.debug(">     Item state={state}, "
+                           "key={key}, "
+                           "value={value}, "
+                           "index={index}, "
+                           "next={next}"
+                           .format(state=item._state,
+                                   key=item._key,
+                                   value=(id(item._value) if item._value else None),
+                                   index=item._index,
+                                   next=("(state={state}, key={key})"
+                                         .format(state=item._next._state,
+                                                 key=item._next._key)
+                                         if item._next else None)))
