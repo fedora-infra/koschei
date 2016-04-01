@@ -10,12 +10,10 @@ from koschei import models as m
 
 workdir = '.workdir'
 
-def postgres_only(fn):
-    return unittest.skipIf(not use_postgres and not use_faitout,
-                           "Requires postgres")(fn)
 
 def x86_64_only(fn):
     return unittest.skipIf(not is_x86_64, "Requires x86_64 host")(fn)
+
 
 class AbstractTest(unittest.TestCase):
 
@@ -43,6 +41,8 @@ class AbstractTest(unittest.TestCase):
         with open(os.path.join(testdir, 'data', name)) as fo:
             return json.load(fo)
 
+
+@unittest.skipUnless(use_postgres or use_faitout, "Requires postgres")
 class DBTest(AbstractTest):
     def __init__(self, *args, **kwargs):
         super(DBTest, self).__init__(*args, **kwargs)
@@ -116,6 +116,7 @@ class DBTest(AbstractTest):
         name, version, release = string.rsplit('-', 2)
         return dict(epoch=epoch, name=name, version=version, release=release,
                     arch='x86_64')
+
 
 class KojiMock(Mock):
     def __init__(self, *args, **kwargs):

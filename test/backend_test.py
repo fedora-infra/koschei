@@ -19,7 +19,7 @@
 import koji
 import logging
 
-from common import DBTest, postgres_only, KojiMock
+from common import DBTest, KojiMock
 from mock import Mock, patch
 from koschei.backend import Backend
 from koschei import plugin, models as m
@@ -157,7 +157,6 @@ class BackendTest(DBTest):
         plugin.load_plugins(['fedmsg_publisher'])
 
 
-    @postgres_only
     def test_update_state(self):
         self.koji_session.getTaskInfo = Mock(return_value=rnv_task)
         self.koji_session.getTaskChildren = Mock(return_value=rnv_subtasks)
@@ -178,7 +177,6 @@ class BackendTest(DBTest):
             self.assertItemsEqual([(x['id'],) for x in rnv_subtasks],
                                   self.s.query(m.KojiTask.task_id))
 
-    @postgres_only
     def test_update_state_existing_task(self):
         self.koji_session.getTaskInfo = Mock(return_value=rnv_task)
         self.koji_session.getTaskChildren = Mock(return_value=rnv_subtasks)
@@ -203,7 +201,6 @@ class BackendTest(DBTest):
                                   self.s.query(m.KojiTask.task_id))
 
     # Regression test for https://github.com/msimacek/koschei/issues/27
-    @postgres_only
     def test_update_state_inconsistent(self):
         self.koji_session.getTaskInfo = Mock(return_value=rnv_task)
         self.koji_session.getTaskChildren = Mock(return_value=inconsistent_subtask)
@@ -222,7 +219,6 @@ class BackendTest(DBTest):
             event.assert_called_once_with('package_state_change', package=package,
                                           prev_state='failing', new_state='ok')
 
-    @postgres_only
     def test_refresh_latest_builds(self):
         self.secondary_koji.getTaskInfo = Mock(return_value=rnv_task)
         self.secondary_koji.getTaskChildren = Mock(return_value=rnv_subtasks)
@@ -241,7 +237,6 @@ class BackendTest(DBTest):
             self.assertItemsEqual([(x['id'],) for x in rnv_subtasks],
                                   self.s.query(m.KojiTask.task_id))
 
-    @postgres_only
     def test_refresh_latest_builds_already_present(self):
         self.secondary_koji.getTaskInfo = Mock(return_value=rnv_task)
         self.secondary_koji.getTaskChildren = Mock(return_value=rnv_subtasks)

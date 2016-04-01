@@ -41,11 +41,10 @@ elif use_postgres:
     conn.execute("COMMIT")
     conn.execute("CREATE DATABASE {0}".format(testdb))
     conn.close()
-else:
-    util.config['database_config']['drivername'] = 'sqlite'
 
 from koschei import models
-models.Base.metadata.create_all(models.engine)
+if use_postgres or use_faitout:
+    models.Base.metadata.create_all(models.engine)
 
 
 def teardown():

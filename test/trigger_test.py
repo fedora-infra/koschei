@@ -16,12 +16,11 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-from common import DBTest, postgres_only
+from common import DBTest
 from koschei.models import Build
 
 class TriggerTest(DBTest):
 
-    @postgres_only
     def test_new(self):
         [p, e] = self.prepare_packages(['rnv', 'eclipse'])
         [b] = self.prepare_builds(123, rnv=None)
@@ -32,7 +31,6 @@ class TriggerTest(DBTest):
         self.assertEqual(b.id, p.last_build_id)
         self.assertIsNone(e.last_build_id)
 
-    @postgres_only
     def test_update(self):
         [p, _] = self.prepare_packages(['rnv', 'eclipse'])
         [b] = self.prepare_builds(123, rnv=None)
@@ -43,7 +41,6 @@ class TriggerTest(DBTest):
         self.assertEqual(b.id, p.last_complete_build_id)
         self.assertEqual(b.state, p.last_complete_build_state)
 
-    @postgres_only
     def test_complete(self):
         [p, e] = self.prepare_packages(['rnv', 'eclipse'])
         [b] = self.prepare_builds(123, rnv=True)
@@ -54,7 +51,6 @@ class TriggerTest(DBTest):
         self.assertIsNone(e.last_complete_build_state)
         self.assertIsNone(e.last_build_id)
 
-    @postgres_only
     def test_failed(self):
         [p, e] = self.prepare_packages(['rnv', 'eclipse'])
         [b] = self.prepare_builds(123, eclipse=False)
@@ -63,7 +59,6 @@ class TriggerTest(DBTest):
         self.assertIsNone(p.last_complete_build_id)
         self.assertIsNone(p.last_complete_build_state)
 
-    @postgres_only
     def test_running(self):
         [p, e] = self.prepare_packages(['rnv', 'eclipse'])
         [be, br] = self.prepare_builds(123, eclipse=False, rnv=True)
@@ -76,7 +71,6 @@ class TriggerTest(DBTest):
         self.assertEqual(be.state, e.last_complete_build_state)
         self.assertEqual(b3.id, e.last_build_id)
 
-    @postgres_only
     def test_delete_new(self):
         [e] = self.prepare_packages(['eclipse'])
         [b1] = self.prepare_builds(123, eclipse=False)

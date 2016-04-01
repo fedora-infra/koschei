@@ -24,7 +24,7 @@ import koji
 import hawkey
 from unittest import skip
 from contextlib import contextmanager
-from common import DBTest, testdir, postgres_only, x86_64_only, KojiMock
+from common import DBTest, testdir, x86_64_only, KojiMock
 from mock import Mock, patch
 from koschei import util
 from koschei.models import (Dependency, UnappliedChange, AppliedChange, Package,
@@ -162,7 +162,6 @@ class ResolverTest(DBTest):
         self.s.commit()
         return foo_build
 
-    @postgres_only
     def test_dont_resolve_against_old_build_when_new_is_running(self):
         foo = self.prepare_packages(['foo'])[0]
         build = self.prepare_builds(foo=False, repo_id=2)[0]
@@ -171,7 +170,6 @@ class ResolverTest(DBTest):
         with patch('koschei.util.get_build_group', return_value=['gcc','bash']):
             self.assertIsNone(self.resolver.get_build_for_comparison(foo))
 
-    @postgres_only
     def test_skip_unresolved_failed_build(self):
         foo = self.prepare_packages(['foo'])[0]
         b1 = self.prepare_builds(foo=False, repo_id=2)[0]
@@ -213,7 +211,6 @@ class ResolverTest(DBTest):
         self.assertEquals(0, self.s.query(AppliedChange).count())
         self.assertTrue(foo_build.deps_processed)
 
-    @postgres_only
     def test_resolution_fail(self):
         self.prepare_packages(['bar'])
         b = self.prepare_builds(bar=True, repo_id=None)[0]
@@ -247,7 +244,6 @@ class ResolverTest(DBTest):
         return old_build
 
     @x86_64_only
-    @postgres_only
     def test_differences(self):
         self.prepare_old_build()
         build = self.prepare_foo_build(repo_id=666, version='4')
@@ -262,7 +258,6 @@ class ResolverTest(DBTest):
                                       c.prev_release, c.curr_release, c.distance).all()
         self.assertItemsEqual(expected_changes, actual_changes)
 
-    @postgres_only
     def test_repo_generation(self):
         self.prepare_old_build()
         with patch('koschei.util.get_build_group', return_value=['R']):
@@ -284,7 +279,6 @@ class ResolverTest(DBTest):
         self.assertTrue(self.collection.latest_repo_resolved)
         self.assertEqual(666, self.collection.latest_repo_id)
 
-    @postgres_only
     def test_broken_buildroot(self):
         self.prepare_old_build()
         self.prepare_packages(['bar'])

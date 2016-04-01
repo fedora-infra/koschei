@@ -1,6 +1,6 @@
 from datetime import timedelta, datetime
 from contextlib import contextmanager
-from common import DBTest, postgres_only
+from common import DBTest
 from sqlalchemy import Table, Column, Integer, MetaData
 from mock import Mock, patch
 
@@ -69,7 +69,6 @@ class SchedulerTest(DBTest):
         self.assertIn('priority', columns)
         self.assertEqual(2, len(columns))
 
-    @postgres_only
     def test_dependency_priority(self):
         pkg = self.prepare_depchanges()
         query = self.get_scheduler().get_dependency_priority_query()
@@ -81,7 +80,6 @@ class SchedulerTest(DBTest):
         self.assertIn((pkg.id, 2), res)
         self.assertEqual(4, len(res))
 
-    @postgres_only
     def test_time_priority(self):
         for days in [0, 2, 5, 7, 12]:
             pkg = m.Package(name='p{}'.format(days), collection_id=self.collection.id)
@@ -100,7 +98,6 @@ class SchedulerTest(DBTest):
         for item, exp in zip(res, expected_prios):
             self.assertAlmostEqual(exp, item.priority, places=-1)
 
-    @postgres_only
     def test_failed_build_priority(self):
         pkgs = self.prepare_packages(['rnv', 'eclipse', 'fop', 'freemind', 'i3'])
         self.prepare_builds(rnv=True, eclipse=False, i3=True, freemind=False)
