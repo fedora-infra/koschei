@@ -46,6 +46,7 @@ class _Monitor(object):
         self._mgr.sanity_check()
 
     def _release_lock(self):
+        self._mgr.dump()
         self._mgr.sanity_check()
         assert self._lock_owner == current_thread()
         self._lock_owner = None
@@ -419,3 +420,27 @@ class CacheManager(object):
                  else:
                      assert None
                  assert not item._next or item._next._bank._id == bank._id + 1
+
+    def dump(self):
+        _log.debug("> len(banks)={len_banks}, len(prefetch_q)={len_pq}, terminate={terminate}"
+                   .format(len_banks=len(self._banks),
+                           len_pq=len(self._prefetch_q),
+                           terminate=self._terminate))
+        if self._prefetch_q:
+            _log.debug("> prefetch_q: {}".format(', '.join(str(key) for key in self._prefetch_q)))
+        for bank in self._banks:
+            _log.debug(">   Bank id={id}, capacity={capacity}, max_threads={max_threads}, len(items)={len_items}"
+                       .format(id=bank._id,
+                               capacity=bank._capacity,
+                               max_threads=bank._max_threads,
+                               len_items=len(bank._items)))
+            for item in bank._items:
+                 _log.debug(">     Item state={state}, key={key}, value={value}, index={index}, next={next}"
+                            .format(state=item._state,
+                                    key=item._key,
+                                    value=(id(item._value) if item._value else None),
+                                    index=item._index,
+                                    next=("(state={state}, key={key})"
+                                          .format(state=item._next._state,
+                                                  key=item._next._key)
+                                          if item._next else None)))
