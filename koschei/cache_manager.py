@@ -415,10 +415,9 @@ class CacheManager(object):
                     assert not item._next
                 elif item._state == _CacheItem.ACQUIRED:
                     assert not item._next
-                elif item._state == _CacheItem.RELEASED:
-                    assert not item._next
                 else:
-                    assert None
+                    assert item._state == _CacheItem.RELEASED:
+                    assert not item._next
                 assert not item._next or item._next._bank._id == bank._id + 1
 
     def dump(self):
