@@ -160,7 +160,8 @@ class _CacheBank(object):
     def _access(self, mru):
         """ Mark specified item as MRU (most recently used) """
         for item in self._items:
-            item._index = item._index + 1
+            if item._index < mru._index:
+                item._index = item._index + 1
         mru._index = 0
 
     def _count_hard(self):
@@ -191,17 +192,20 @@ class _CacheBank(object):
         """ Remove least-recently used item with state RELEASED """
         lru = self._lru(_CacheItem.RELEASED)
         assert lru
+        self._items = [item for item in self._items if item._key != lru._key]
+        for item in self._items:
+            if item._index > lru._index:
+                item._index = item._index - 1
         lru._release()
         self._value = None
         lru._transition(_CacheItem.RELEASED, None)
-        self._items = [item for item in self._items if item._key != lru._key]
 
     def _add(self, key, state):
         """ Add new item with specified state """
         item = _CacheItem(key, self)
+        item._index = len(self._items)
         item._transition(None, state)
         self._items.append(item)
-        self._access(item)
         return item
 
 
@@ -238,6 +242,7 @@ class CacheManager(object):
             for key, value in initial_cache:
                 item = bank._add(key, _CacheItem.RELEASED)
                 item._value = value
+                bank._access(item)
             while bank._count_soft() > capacity:
                 bank._discard_lru()
 
