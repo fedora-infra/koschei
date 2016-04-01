@@ -122,11 +122,11 @@ class _CacheItem(object):
 
     def _prepare(self):
         try:
-            self._value = self._bank._factory.create(self._key, self._next._value
-                                                     if self._next else None)
+            return self._bank._factory.create(self._key, self._next._value
+                                              if self._next else None)
         # pylint: disable=W0702
         except:
-            self._value = None
+            return None
 
     def _release(self):
         try:
@@ -134,7 +134,6 @@ class _CacheItem(object):
         # pylint: disable=W0702
         except:
             pass
-        self._value = None
 
 
 class _CacheBank(object):
@@ -193,6 +192,7 @@ class _CacheBank(object):
         lru = self._lru(_CacheItem.RELEASED)
         assert lru
         lru._release()
+        self._value = None
         lru._transition(_CacheItem.RELEASED, None)
         self._items = [item for item in self._items if item._key != lru._key]
 
@@ -310,7 +310,8 @@ class CacheManager(object):
                 if item._next:
                     item._next._transition(_CacheItem.PREPARED, _CacheItem.ACQUIRED)
                 with self._monitor.unlocked():
-                    item._prepare()
+                    value = item._prepare()
+                self._value = value
                 item._transition(_CacheItem.PREPARING, _CacheItem.PREPARED)
                 if item._next:
                     item._next._transition(_CacheItem.ACQUIRED, _CacheItem.RELEASED)
