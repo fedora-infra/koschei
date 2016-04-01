@@ -416,7 +416,7 @@ class CacheManager(object):
                 elif item._state == _CacheItem.ACQUIRED:
                     assert not item._next
                 else:
-                    assert item._state == _CacheItem.RELEASED:
+                    assert item._state == _CacheItem.RELEASED
                     assert not item._next
                 assert not item._next or item._next._bank._id == bank._id + 1
 
