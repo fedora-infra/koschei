@@ -22,6 +22,7 @@ BuildRequires:       python-hawkey
 BuildRequires:       python-librepo
 BuildRequires:       rpm-python
 BuildRequires:       fedmsg
+BuildRequires:       python-psycopg2
 %endif
 
 Requires:       python-sqlalchemy
