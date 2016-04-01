@@ -6,8 +6,7 @@ import json
 from mock import Mock
 
 from test import use_postgres, use_faitout, testdir, is_x86_64
-
-m = None
+from koschei import models as m
 
 workdir = '.workdir'
 
@@ -49,8 +48,6 @@ class DBTest(AbstractTest):
         super(DBTest, self).__init__(*args, **kwargs)
         self.s = None
         self.task_id_counter = 1
-        global m
-        from koschei import models as m
         self.collection = m.Collection(name="foo", display_name="Foo", target_tag="tag",
                                        build_tag="build_tag", priority_coefficient=1.0)
 
