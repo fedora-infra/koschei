@@ -203,7 +203,7 @@ class _CacheBank(object):
             if item._index > lru._index:
                 item._index = item._index - 1
         lru._release()
-        self._value = None
+        lru._value = None
         lru._transition(_CacheItem.RELEASED, None)
 
     def _add(self, key, state):
@@ -322,7 +322,7 @@ class CacheManager(object):
                     item._next._transition(_CacheItem.PREPARED, _CacheItem.ACQUIRED)
                 with self._monitor.unlocked():
                     value = item._prepare()
-                self._value = value
+                item._value = value
                 item._transition(_CacheItem.PREPARING, _CacheItem.PREPARED)
                 if item._next:
                     item._next._transition(_CacheItem.ACQUIRED, _CacheItem.RELEASED)
