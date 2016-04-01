@@ -14,6 +14,9 @@ testdir = os.path.dirname(os.path.realpath(__file__))
 use_faitout = os.environ.get('TEST_WITH_FAITOUT')
 use_postgres = os.environ.get('TEST_WITH_POSTGRES')
 
+if not (use_postgres or use_faitout):
+    sys.modules['psycopg2'] = 'test'
+
 is_x86_64 = platform.machine() == 'x86_64'
 
 os.environ['KOSCHEI_CONFIG'] = '{0}/../config.cfg.template:{0}/test_config.cfg'\
