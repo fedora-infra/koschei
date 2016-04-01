@@ -303,14 +303,13 @@ def _get_best_selector(sack, dep):
     return sltr
 
 
-def run_goal(sack, group, br):
+def run_goal(sack, br, group):
     # pylint:disable=E1101
     goal = hawkey.Goal(sack)
     problems = []
     for name in group:
         sltr = _get_best_selector(sack, name)
-        if not sltr.matches():
-            problems.append("Package in base build group not found: {}".format(name))
+        # missing packages are silently skipped as in dnf
         goal.install(select=sltr)
     for r in br:
         sltr = _get_best_selector(sack, r)

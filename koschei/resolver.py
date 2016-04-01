@@ -159,7 +159,7 @@ class Resolver(KojiService):
     def resolve_dependencies(self, sack, br, build_group):
         resolve_dependencies_time.start()
         deps = None
-        resolved, problems, installs = util.run_goal(sack, build_group, br)
+        resolved, problems, installs = util.run_goal(sack, br, build_group)
         if resolved:
             problems = []
             deps = [DependencyWithDistance(name=pkg.name, epoch=pkg.epoch,
