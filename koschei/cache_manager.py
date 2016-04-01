@@ -382,7 +382,8 @@ class CacheManager(object):
             self._monitor.notify_all_workers()
         for thread in self._threads:
             thread.join()
-        for bank in self._banks:
-            while bank._count_soft() > 0:
-                bank._discard_lru()
-            assert not bank._items
+        with self._monitor.locked():
+            for bank in self._banks:
+                while bank._count_soft() > 0:
+                    bank._discard_lru()
+                assert not bank._items
