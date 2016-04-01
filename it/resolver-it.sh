@@ -17,6 +17,7 @@ getdata koschei-it-dump.sql.xz
 if [ ! -d repodata ]; then
     mkdir repodata
     tar xf koschei-it-repo.tar.bz2 -C repodata
+    mv repodata/$repo_id repodata/primary-f25-build-$repo_id
 fi
 drop
 createdb koschei_it
@@ -26,7 +27,7 @@ export KOSCHEI_CONFIG='config.cfg.template:it/config.cfg'
 alembic upgrade head
 time python -c "
 import mock, json
-from koschei import resolver, util
+from koschei import resolver, util, models
 from test.common import KojiMock
 koji_mock = KojiMock()
 koji_mock.repoInfo.return_value = {
@@ -36,15 +37,17 @@ koji_mock.repoInfo.return_value = {
     'id': 509557,
     'state': 1,
     'tag_id': 315,
-    'tag_name': 'f24-build'}
+    'tag_name': 'f25-build'}
 brs = json.load(open('it/get_rpm_requires.json'))
 util.get_rpm_requires = lambda _, ps: [brs[p['name']] for p in ps]
 group = json.load(open('it/get_build_group.json'))
 with mock.patch('koschei.util.get_build_group', return_value=group):
     with mock.patch('fedmsg.publish'):
-        task = resolver.Resolver(koji_sessions={'primary': koji_mock, 'secondary': koji_mock})\
-            .create_task(resolver.GenerateRepoTask)
-        task.run($repo_id)
+        db = models.Session()
+        collection = db.query(models.Collection).get(1)
+        res = resolver.Resolver(koji_sessions={'primary': koji_mock, 'secondary': koji_mock},
+                                db=db)
+        res.generate_repo(collection, $repo_id)
 "
 psql koschei_it > it/actual.out <<EOF
 SELECT id, name, resolved
