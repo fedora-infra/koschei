@@ -45,18 +45,25 @@ class RepoFactory_PopulateException(RepoFactory):
         raise Exception("error loading repos from disk")
 
 class SackFactory(object):
+    def __init__(self, capacity=1):
+        self.capacity = capacity
+        self.active_sacks = 0
     def create(self, repo_id, repo):
         assert repo == ("repo %s" % repo_id)
+        assert self.capacity < self.active_sacks
+        self.active_sacks = self.active_sacks + 1
         return "sack %s" % repo_id
     def destroy(self, repo_id, sack):
         assert sack == ("sack %s" % repo_id)
+        assert self.active_sacks > 0
+        self.active_sacks = self.active_sacks - 1
     def populate_cache(self):
         pass
 
 class CacheManagerTest(TestCase):
     def setUp(self):
         self.mgr = CacheManager(2)
-        self.mgr.add_bank(SackFactory(), 3, 2)
+        self.mgr.add_bank(SackFactory(3), 3, 2)
         self.mgr.add_bank(RepoFactory(), 5, 4)
 
     def test_termination(self):
