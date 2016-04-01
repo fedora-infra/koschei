@@ -30,7 +30,8 @@ _log = _Logger()
 
 
 class _Monitor(object):
-    def __init__(self):
+    def __init__(self, mgr):
+        self._mgr = mgr
         self._lock = RLock()
         self._worker_cond = Condition(self._lock)
         self._consumer_cond = Condition(self._lock)
@@ -42,8 +43,10 @@ class _Monitor(object):
         self._lock.acquire()
         assert not self._lock_owner
         self._lock_owner = current_thread()
+        self._mgr.sanity_check()
 
     def _release_lock(self):
+        self._mgr.sanity_check()
         assert self._lock_owner == current_thread()
         self._lock_owner = None
         self._lock.release()
@@ -105,6 +108,8 @@ class _CacheItem(object):
     PREPARED = "PREPARED"
     ACQUIRED = "ACQUIRED"
     RELEASED = "RELEASED"
+
+    ALL_STATES = (REQUESTED, PREPARING, PREPARED, ACQUIRED, RELEASED)
 
     def __init__(self, key, bank):
         self._key = key
@@ -216,7 +221,7 @@ class CacheManager(object):
     """
 
     def __init__(self, max_threads):
-        self._monitor = _Monitor()
+        self._monitor = _Monitor(self)
         self._banks = []
         self._threads = []
         self._terminate = False
@@ -387,3 +392,30 @@ class CacheManager(object):
                 while bank._count_soft() > 0:
                     bank._discard_lru()
                 assert not bank._items
+
+    def sanity_check(self):
+        for bank in self._banks:
+            assert len(bank._items) <= bank._capacity
+            # Item indices are be unique, consecutive integers
+            assert not (set(item._index for item in bank._items) ^
+                        set(xrange(len(bank._items))))
+            is_last_bank = bank == self._banks[-1]
+            for item in bank._items:
+                 assert item._bank == bank
+                 assert item._key
+                 assert item._state in _CacheItem.ALL_STATES;
+                 if item._state == _CacheItem.REQUESTED:
+                     assert not item._value
+                     assert is_last_bank or item._next
+                 elif item._state == _CacheItem.PREPARING:
+                     assert not item._value
+                     assert is_last_bank or item._next
+                 elif item._state == _CacheItem.PREPARED:
+                     assert not item._next
+                 elif item._state == _CacheItem.ACQUIRED:
+                     assert not item._next
+                 elif item._state == _CacheItem.RELEASED:
+                     assert not item._next
+                 else:
+                     assert None
+                 assert not item._next or item._next._bank._id == bank._id + 1
