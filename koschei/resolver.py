@@ -442,11 +442,10 @@ class Resolver(KojiService):
                                                          prev_build_id=prev.id)
                 if changes:
                     self.db.execute(AppliedChange.__table__.insert(), changes)
-        old_builds = self.db.query(Build.id)\
+        self.db.query(Build)\
             .filter_by(package_id=entry.package_id)\
-            .filter(Build.id < entry.id)\
-            .order_by(Build.id.desc())\
-            .subquery()
+            .filter(Build.repo_id < entry.repo_id)\
+            .update({'dependency_keys': None})
 
     def process_builds(self):
         # pylint: disable=E1101
