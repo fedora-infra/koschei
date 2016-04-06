@@ -84,14 +84,21 @@
                 <h3 class="notice">{{ notice }}</h3>
                 {% endfor %}
 
-                <div class="collection-bar">
-                    <ul class="collections">
-                        {% for collection in g.collections %}
-                        <li {% if collection.id == g.current_collection.id %}id="active"{% endif %}>
-                            <a href="?{{ page_args(collection=collection.name, page=None) }}">{{ collection }}</a>
-                        </li>
-                        {% endfor %}
-                    </ul>
+                <div class="collections">
+                    <form>
+                        <label for="collection">Package collection:</label>
+                        <select name="collection"
+                            select onchange="javascript: window.location = '?{{
+                            page_args(page=None, collection=None)
+                            }}&amp;collection=' + this.value;">
+                            {% for collection in g.collections %}
+                            <option value="{{ collection.name }}"
+                            {% if collection.id == g.current_collection.id %}selected="selected"{% endif %}>
+                            {{ collection }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </form>
                 </div>
 
                 <div id="content">

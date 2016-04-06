@@ -548,20 +548,7 @@ span#loginInfo {
     font-size: 1.3em;
 }
 
-#content {
-    padding-top: 8pt;
-}
-
-.collections li {
-    list-style-type: none;
-    float: left;
-    margin: 5pt;
-    border-style: solid;
-    border-color: #05D;
-    border-width: 2px;
-}
-
-.collections a {
+.collections {
     display: block;
-    padding: 5pt;
+    padding: 15pt 0pt 0pt 15pt;
 }
