@@ -210,7 +210,7 @@ class Backend(object):
             else:
                 self.sync_tasks([build], self.koji_sessions['primary'])
                 self.db.commit()
-        except (StaleDataError, ObjectDeletedError):
+        except (StaleDataError, ObjectDeletedError, IntegrityError):
             # build was deleted concurrently
             self.db.rollback()
 
