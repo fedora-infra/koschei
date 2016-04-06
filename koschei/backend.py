@@ -163,9 +163,6 @@ class Backend(object):
                 build_id = build.id
                 package_id = build.package_id
                 self.db.expire_all()
-                # lock package so there are no concurrent state changes
-                package = self.db.query(Package).filter_by(id=package_id)\
-                                 .with_lockmode('update').one()
                 # lock build
                 build = self.db.query(Build).filter_by(id=build_id)\
                                .with_lockmode('update').first()
@@ -198,11 +195,16 @@ class Backend(object):
                     self.db.commit()
                     return
                 self.db.expire(build.package)
+                # lock package so there are no concurrent state changes
+                package = self.db.query(Package).filter_by(id=package_id)\
+                                 .with_lockmode('update').one()
                 prev_state = package.msg_state_string
                 build.state = state
+                self.db.flush()
+                self.db.expire(package)
+                new_state = package.msg_state_string
                 # unlock
                 self.db.commit()
-                new_state = package.msg_state_string
                 if prev_state != new_state:
                     dispatch_event('package_state_change', package=package,
                                    prev_state=prev_state,
@@ -279,7 +281,6 @@ class Backend(object):
                                 if task['method'] == 'buildArch']
             for task in build_arch_tasks:
                 self.set_build_repo_id(build, task)
-                # db_task = get_or_create(self.db, KojiTask, task_id=task['id'])
                 db_task = existing_tasks.get(task['id'])
                 if not db_task:
                     db_task = KojiTask(task_id=task['id'])
