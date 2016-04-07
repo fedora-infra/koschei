@@ -3,7 +3,7 @@ set -e
 VERSION="$(python setup.py -V)"
 git archive HEAD --prefix="koschei-$VERSION/"| gzip >"koschei-${VERSION}".tar.gz
 mkdir -p build rpms
-cd build
+cd ./build
 rm -f *.src.rpm
 sed "s/^Release:[^%]*/&.0.jenkins$BUILD_NUMBER/" ../koschei.spec > koschei.spec
 rpmbuild -bs -D"_sourcedir $PWD/.." -D"_srcrpmdir $PWD" koschei.spec

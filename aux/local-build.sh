@@ -8,7 +8,7 @@ USERNAME="$(sed 's/@.*//' <<< "$EMAIL")"
 git archive HEAD --prefix="koschei-$VERSION/"| gzip >koschei-${VERSION}.tar.gz
 rm -r build
 mkdir build
-cd build
+cd ./build
 sed "s/^Release:[^%]*/&.$RELNO/" ../koschei.spec > koschei.spec
 rpmbuild -bs -D"_sourcedir $PWD/.." -D"_srcrpmdir $PWD" koschei.spec
 mock -r "$MOCK_CONFIG" -n koschei-${VERSION}-*.$RELNO.*.src.rpm --resultdir .
