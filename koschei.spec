@@ -25,33 +25,63 @@ BuildRequires:       fedmsg
 BuildRequires:       python-psycopg2
 %endif
 
+%description
+Service tracking dependency changes in Fedora and rebuilding packages whose
+dependencies change too much. It uses Koji scratch builds to do the rebuilds and
+provides a web interface to the results.
+
+
+%package common
+Summary:        Acutual python code for koschei backend and frontend
 Requires:       python-sqlalchemy
 Requires:       koji
 Requires:       fedmsg
 Requires:       python-fedmsg-meta-fedora-infrastructure
 Requires:       python-psycopg2
-Requires:       python-jinja2
-Requires:       python-hawkey
+Requires:       rpm-python
+Requires:       python-dogpile-cache
+
+%description common
+%{summary}.
+
+
+%package admin
+Summary:        Administration script and DB migrations for koschei
+Requires:       %{name}-common = %{version}-%{release}
 Requires:       python-alembic
+Requires:       postgresql
+
+
+%description admin
+%{summary}.
+
+%package frontend
+Summary:        Web frontend for koschei using mod_wsgi
+Requires:       %{name}-common = %{version}-%{release}
 Requires:       python-flask
 Requires:       python-flask-sqlalchemy
 Requires:       python-flask-openid
 Requires:       python-flask-wtf
+Requires:       python-jinja2
 Requires:       mod_wsgi
 Requires:       httpd
+
+%description frontend
+%{summary}.
+
+%package backend
+Summary:        Koschei backend services
+Requires:       %{name}-common = %{version}-%{release}
+Requires:       python-hawkey
 Requires:       python-librepo
-Requires:       rpm-python
-Requires:       postgresql
-Requires:       python-dogpile-cache
 Requires(pre):  shadow-utils
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
 
-%description
-Service tracking dependency changes in Fedora and rebuilding packages whose
-dependencies change too much. It uses Koji scratch builds to do the rebuilds and
-provides a web interface to the results.
+%description backend
+%{summary}.
+
 
 %prep
 %setup -q
@@ -134,18 +164,30 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %systemd_postun %{name}-polling.service
 %systemd_postun %{name}-resolver.service
 
-%files
-%doc LICENSE.txt
-%{_bindir}/%{name}-admin
-%{_datadir}/%{name}
-%{_libexecdir}/%{name}
-%attr(755, %{name}, %{name}) %{_localstatedir}/cache/%{name}
-%attr(755, %{name}, %{name}) %{_sharedstatedir}/%{name}
+%files common
+%license LICENSE.txt
 %{python2_sitelib}/*
+%dir %{_datadir}/%{name}
+%{_datadir}/%{name}/config.cfg
+%attr(755, %{name}, %{name}) %{_localstatedir}/cache/%{name}
 %dir %{_sysconfdir}/%{name}
+%attr(755, %{name}, %{name}) %dir %{_sharedstatedir}/%{name}
 %config(noreplace) %{_sysconfdir}/%{name}/config.cfg
+
+%files admin
+%{_bindir}/%{name}-admin
+%{_datadir}/%{name}/alembic/
+%{_datadir}/%{name}/alembic.ini
 %config(noreplace) %{_sysconfdir}/%{name}/config-admin.cfg
+
+%files frontend
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/%{name}.conf
+%{_datadir}/%{name}/static
+%{_datadir}/%{name}/templates
+%{_datadir}/%{name}/%{name}.wsgi
+
+%files backend
+%{_libexecdir}/%{name}
 %{_unitdir}/*
 
 %changelog
