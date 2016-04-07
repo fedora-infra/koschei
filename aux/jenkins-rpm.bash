@@ -5,7 +5,7 @@ git archive HEAD --prefix="koschei-$VERSION/"| gzip >"koschei-${VERSION}".tar.gz
 mkdir -p build rpms
 cd build
 rm -f *.src.rpm
-sed "s/^Release:[^%]*/&.jenkins$BUILD_NUMBER/" ../koschei.spec > koschei.spec
+sed "s/^Release:[^%]*/&.0.jenkins$BUILD_NUMBER/" ../koschei.spec > koschei.spec
 rpmbuild -bs -D"_sourcedir $PWD/.." -D"_srcrpmdir $PWD" koschei.spec
 mock -r fedora-23-x86_64 --rebuild koschei-*.src.rpm --resultdir ../rpms
 
