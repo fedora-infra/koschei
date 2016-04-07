@@ -40,6 +40,7 @@ Requires:       python-fedmsg-meta-fedora-infrastructure
 Requires:       python-psycopg2
 Requires:       rpm-python
 Requires:       python-dogpile-cache
+Requires(pre):  shadow-utils
 Obsoletes:      %{name} < 1.5.1
 
 %description common
@@ -75,7 +76,6 @@ Summary:        Koschei backend services
 Requires:       %{name}-common = %{version}-%{release}
 Requires:       python-hawkey
 Requires:       python-librepo
-Requires(pre):  shadow-utils
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
@@ -134,7 +134,7 @@ ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-resolver
 %{__python2} setup.py test
 %endif
 
-%pre
+%pre common
 getent group %{name} >/dev/null || groupadd -r %{name}
 # services and koschei-admin script is supposed to be run as this user
 getent passwd %{name} >/dev/null || \
@@ -143,23 +143,23 @@ getent passwd %{name} >/dev/null || \
 exit 0
 
 # Workaround for RPM bug #646523 - can't change symlink to directory
-%pretrans -p <lua>
+%pretrans frontend -p <lua>
 dir = "%{_datadir}/%{name}/static"
 dummy = posix.readlink(dir) and os.remove(dir)
 
-%post
+%post backend
 %systemd_post %{name}-scheduler.service
 %systemd_post %{name}-watcher.service
 %systemd_post %{name}-polling.service
 %systemd_post %{name}-resolver.service
 
-%preun
+%preun backend
 %systemd_preun %{name}-scheduler.service
 %systemd_preun %{name}-watcher.service
 %systemd_preun %{name}-polling.service
 %systemd_preun %{name}-resolver.service
 
-%postun
+%postun backend
 %systemd_postun %{name}-scheduler.service
 %systemd_postun %{name}-watcher.service
 %systemd_postun %{name}-polling.service
