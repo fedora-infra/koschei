@@ -13,6 +13,7 @@ testdir = os.path.dirname(os.path.realpath(__file__))
 
 use_faitout = os.environ.get('TEST_WITH_FAITOUT')
 use_postgres = os.environ.get('TEST_WITH_POSTGRES')
+postgres_host = os.environ.get('POSTGRES_HOST')
 
 is_x86_64 = platform.machine() == 'x86_64'
 
@@ -31,9 +32,12 @@ elif use_postgres:
     testdb = 'koschei_testdb'
     util.config['database_config']['drivername'] = 'postgres'
     util.config['database_config']['database'] = testdb
+    if postgres_host:
+        util.config['database_config']['host'] = postgres_host
     cfg = util.config['database_config'].copy()
     cfg['database'] = 'postgres'
     url = sqlalchemy.engine.url.URL(**cfg)
+    util.config['database_url'] = url
     engine = sqlalchemy.create_engine(url, poolclass=sqlalchemy.pool.NullPool)
     conn = engine.connect()
     conn.execute("COMMIT")
