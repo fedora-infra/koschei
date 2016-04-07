@@ -88,9 +88,9 @@
                     <form>
                         <label for="collection">Package collection:</label>
                         <select name="collection"
-                            select onchange="javascript: window.location = '?{{
-                            page_args(page=None, collection=None)
-                            }}&amp;collection=' + this.value;">
+                            select onchange="javascript: window.location = '{{
+                            page_args(page=None, collection='...')
+                            }}';">
                             {% for collection in g.collections %}
                             <option value="{{ collection.name }}"
                             {% if collection.id == g.current_collection.id %}selected="selected"{% endif %}>

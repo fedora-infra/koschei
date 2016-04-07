@@ -36,7 +36,7 @@ def create_backend():
                                           'secondary': koji_session})
 
 
-def page_args(**kwargs):
+def page_args(clear=False, **kwargs):
     def proc_order(order):
         new_order = []
         for item in order:
@@ -46,10 +46,15 @@ def page_args(**kwargs):
         return ','.join(new_order)
     if 'order_by' in kwargs:
         kwargs['order_by'] = proc_order(kwargs['order_by'])
+    if kwargs.get('collection') == g.default_collection.name:
+        kwargs.pop('collection')
     # the supposedly unnecessary call to items() is needed
-    args = {k: v for k, v in dict(request.args.items(), **kwargs).items()
-            if v is not None}
-    return urllib.urlencode(args)
+    unfiltered = kwargs if clear else dict(request.args.items(), **kwargs)
+    args = {k: v for k, v in unfiltered.items() if v is not None}
+    encoded = urllib.urlencode(args).replace('...', "' + this.value + '")
+    if encoded:
+        return '?' + encoded
+    return ''
 
 
 def format_evr(epoch, version, release):
@@ -228,6 +233,7 @@ def get_collections():
         .all()
     if not g.collections:
         abort(500, "No collections setup")
+    g.default_collection = g.collections[0]
     if collection_name:
         for collection in g.collections:
             if collection.name == collection_name:
@@ -236,7 +242,7 @@ def get_collections():
         else:
             abort(404, "Collection not found")
     else:
-        g.current_collection = g.collections[0]
+        g.current_collection = g.default_collection
 
 
 @app.route('/')
