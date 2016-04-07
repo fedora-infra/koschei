@@ -40,6 +40,7 @@ Requires:       python-fedmsg-meta-fedora-infrastructure
 Requires:       python-psycopg2
 Requires:       rpm-python
 Requires:       python-dogpile-cache
+Obsoletes:      %{name} < 1.5.1
 
 %description common
 %{summary}.
