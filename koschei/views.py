@@ -229,7 +229,7 @@ def inject_fedmenu():
 def get_collections():
     collection_name = request.args.get('collection')
     g.collections = db.query(Collection)\
-        .order_by(Collection.order, Collection.name)\
+        .order_by(Collection.order, Collection.name.desc())\
         .all()
     if not g.collections:
         abort(500, "No collections setup")
