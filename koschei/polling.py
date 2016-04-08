@@ -50,7 +50,7 @@ class Polling(KojiService):
                 self.log.debug('Polling task {id} ({name}): task_info={info}'
                                .format(id=build.task_id, name=name,
                                        info=task_info))
-                state = koji.TASK_STATES.getvalue(task_info['state'])
+                state = koji.TASK_STATES[task_info['state']]
                 self.backend.update_build_state(build, state)
             except (StaleDataError, ObjectDeletedError):
                 # build was deleted concurrently
