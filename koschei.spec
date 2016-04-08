@@ -1,8 +1,8 @@
 %bcond_without tests
 
 Name:           koschei
-Version:        1.5.1
-Release:        1%{?dist}
+Version:        1.5
+Release:        2%{?dist}
 Summary:        Continuous integration for Fedora packages
 License:        GPLv2+
 URL:            https://github.com/msimacek/%{name}
@@ -197,3 +197,6 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %{_unitdir}/*
 
 %changelog
+* Fri Apr 08 2016 Michael Simacek <msimacek@redhat.com> 1.5-2
+- Build with tito
+
