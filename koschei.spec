@@ -200,3 +200,53 @@ dummy = posix.readlink(dir) and os.remove(dir)
 * Fri Apr 08 2016 Michael Simacek <msimacek@redhat.com> 1.5-2
 - Build with tito
 
+* Thu Apr 07 2016 Michael Simacek <msimacek@redhat.com> - 1.5-1
+- Update to upstream version 1.5
+
+* Fri Mar 11 2016 Mikolaj Izdebski <mizdebsk@redhat.com> - 1.4.3-1
+- Update to upstream version 1.4.3
+
+* Mon Mar  7 2016 Mikolaj Izdebski <mizdebsk@redhat.com> - 1.4.2-1
+- Update to upstream version 1.4.2
+
+* Wed Mar 02 2016 Michael Simacek <msimacek@redhat.com> - 1.4.1-1
+- Update to upstream release 1.4.1
+
+* Fri Feb 26 2016 Mikolaj Izdebski <mizdebsk@redhat.com> - 1.4-1
+- Update to upstream version 1.4
+
+* Thu Feb 04 2016 Fedora Release Engineering <releng@fedoraproject.org> - 1.3-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_24_Mass_Rebuild
+
+* Fri Oct  2 2015 Mikolaj Izdebski <mizdebsk@redhat.com> - 1.3-1
+- Update to upstream version 1.3
+
+* Wed Sep 23 2015 Michael Simacek <msimacek@redhat.com> - 1.2-2
+- Backport fix for group editing permissions
+
+* Tue Sep 22 2015 Mikolaj Izdebski <mizdebsk@redhat.com> - 1.2-1
+- Update to upstream version 1.2
+
+* Wed Jun 17 2015 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.1-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_23_Mass_Rebuild
+
+* Tue Jun 02 2015 Michael Simacek <msimacek@redhat.com> - 1.1-1
+- Update to version 1.1
+
+* Wed May 20 2015 Mikolaj Izdebski <mizdebsk@redhat.com> - 1.0-1
+- Update to upstream version 1.0
+
+* Fri Mar 27 2015 Mikolaj Izdebski <mizdebsk@redhat.com> - 0.2-2
+- Add workaround for RPM bug #646523
+
+* Thu Mar 12 2015 Michael Simacek <msimacek@redhat.com> - 0.2-1
+- Update to version 0.2
+
+* Mon Sep 01 2014 Michael Simacek <msimacek@redhat.com> - 0.1-2
+- Fixed BR python-devel -> python2-devel
+- Fixed changelog format
+- Added noreplace to httpd config
+- Replaced name occurences with macro
+
+* Fri Jun 13 2014 Michael Simacek <msimacek@redhat.com> - 0.1-1
+- Initial version
