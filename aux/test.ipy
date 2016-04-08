@@ -1,0 +1,25 @@
+import sys
+sys.argv[0]='ipython'
+from sqlalchemy import *
+from sqlalchemy.orm import *
+from koschei import util
+from koschei.models import *
+from koschei.scheduler import *
+from koschei.frontend import *
+from koschei.resolver import *
+from koschei import plugin
+from koschei.backend import *
+from koschei.main import *
+from koschei.polling import *
+load_globals()
+from datetime import datetime
+import cProfile
+import logging
+logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
+db=s=Session()
+k=koji_session=util.KojiSession(anonymous=True)
+self=backend=Backend(db=db, koji_sessions={'primary':k, 'secondary':k}, log=logging.getLogger('koschei'))
+p=s.query(Package).filter_by(name='rnv').order_by(Package.collection_id).first()
+b=s.query(Build).filter_by(package_id=p.id).order_by(desc(Build.started)).first()
+g=s.query(PackageGroup).filter_by(name='java').one()
