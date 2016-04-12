@@ -388,6 +388,8 @@ class Build(Base):
     release = Column(String)
     repo_id = Column(Integer)
 
+    cancel_requested = Column(Boolean, nullable=False, server_default=false())
+
     # deps_processed means we tried to resolve them, deps_resolved means we
     # succeeded
     deps_processed = Column(Boolean, nullable=False, server_default=false())
