@@ -16,6 +16,7 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+import datetime
 import koji
 import logging
 
@@ -249,3 +250,13 @@ class BackendTest(DBTest):
         with patch('koschei.backend.dispatch_event') as event:
             self.backend.refresh_latest_builds()
             self.assertEquals(1, self.s.query(m.Build).count())
+
+    def test_cancel_timed_out(self):
+        self.prepare_packages(['rnv'])
+        running_build = self.prepare_builds(rnv=None)[0]
+        running_build.started = datetime.datetime.now() - datetime.timedelta(999)
+        self.s.commit()
+        self.koji_session.cancelTask = Mock(side_effect=koji.GenericError)
+        self.backend.update_build_state(running_build, 'FREE')
+        self.koji_session.cancelTask.assert_called_once_with(running_build.task_id)
+        self.assertEquals(0, self.s.query(m.Build).count())

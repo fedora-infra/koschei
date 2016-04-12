@@ -27,6 +27,9 @@ config = {
         },
         "load_threshold": 0.5,
         "task_priority": 30,
+        # time in seconds after Koji tasks are canceled by Koschei
+        # (should be longer than internal Koji task timeout)
+        "task_timeout": 48*3600,
         "multicall_chunk_size": 100,
         "repo_url": "http://kojipkgs.fedoraproject.org/repos/{build_tag}/{repo_id}/{arch}",
     },

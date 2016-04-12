@@ -19,7 +19,7 @@
 import koji
 
 from itertools import izip
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy.sql import insert
 from sqlalchemy.exc import IntegrityError
@@ -153,11 +153,22 @@ class Backend(object):
     def update_build_state(self, build, state):
         """
         Updates state of the build in db to new state (Koji state name).
+        Cancels builds running too long.
         Deletes canceled builds.
         Sends fedmsg when the build is complete.
         Commits the transaction.
         """
         try:
+            task_timeout = timedelta(0, util.primary_koji_config['task_timeout'])
+            time_threshold = datetime.now() - task_timeout
+            self.log.error('Started={0}, thresh={1}'.format(build.started, time_threshold))
+            if state not in Build.KOJI_STATE_MAP and build.started < time_threshold:
+                self.log.info('Canceling build {0} due to timeout'.format(build))
+                try:
+                    self.koji_sessions['primary'].cancelTask(build.task_id)
+                except koji.GenericError:
+                    pass
+                state = 'CANCELED'
             if state in Build.KOJI_STATE_MAP:
                 state = Build.KOJI_STATE_MAP[state]
                 build_id = build.id
