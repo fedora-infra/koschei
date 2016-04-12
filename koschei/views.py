@@ -308,14 +308,17 @@ def build_detail(build_id):
 @auth.login_required()
 def cancel_build(build_id):
     if not g.user.admin:
-        abort(400)
+        abort(403)
     build = db.query(Build).filter_by(id=build_id).first_or_404()
     if EmptyForm().validate_or_flash():
-        try:
-            util.KojiSession(anonymous=False).cancelTask(build.task_id)
+        if build.state != Build.RUNNING:
+            flash("Only running builds can be canceled.")
+        elif build.cancel_requested:
+            flash("Build already has pending cancelation request.")
+        else:
             flash("Cancelation request sent.")
-        except Exception:
-            flash("Error in communication with Koji. Please try again later.")
+            build.cancel_requested = True
+            db.commit()
     return redirect(url_for('package_detail', name=build.package.name))
 
 
