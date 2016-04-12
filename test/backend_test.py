@@ -260,3 +260,12 @@ class BackendTest(DBTest):
         self.backend.update_build_state(running_build, 'FREE')
         self.koji_session.cancelTask.assert_called_once_with(running_build.task_id)
         self.assertEquals(0, self.s.query(m.Build).count())
+
+    def test_cancel_requested(self):
+        self.prepare_packages(['rnv'])
+        running_build = self.prepare_builds(rnv=None)[0]
+        running_build.cancel_requested = True
+        self.s.commit()
+        self.backend.update_build_state(running_build, 'ASSIGNED')
+        self.koji_session.cancelTask.assert_called_once_with(running_build.task_id)
+        self.assertEquals(0, self.s.query(m.Build).count())
