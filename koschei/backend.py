@@ -161,7 +161,6 @@ class Backend(object):
         try:
             task_timeout = timedelta(0, util.primary_koji_config['task_timeout'])
             time_threshold = datetime.now() - task_timeout
-            self.log.error('Started={0}, thresh={1}'.format(build.started, time_threshold))
             if state not in Build.KOJI_STATE_MAP and build.started < time_threshold:
                 self.log.info('Canceling build {0} due to timeout'.format(build))
                 try:
