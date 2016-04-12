@@ -18,7 +18,7 @@ from wtforms.validators import Regexp, ValidationError
 from .models import (Package, Build, PackageGroup, PackageGroupRelation,
                      AdminNotice, User, BuildrootProblem,
                      GroupACL, Collection, get_or_create)
-from . import util, auth, backend, main, plugin
+from . import util, auth, main, plugin
 from .frontend import app, db, frontend_config
 
 log = logging.getLogger('koschei.views')
@@ -27,13 +27,6 @@ packages_per_page = frontend_config['packages_per_page']
 builds_per_page = frontend_config['builds_per_page']
 
 main.load_globals()
-
-
-def create_backend():
-    koji_session = util.KojiSession(anonymous=True)
-    return backend.Backend(db=db, log=log,
-                           koji_sessions={'primary': koji_session,
-                                          'secondary': koji_session})
 
 
 def page_args(clear=False, **kwargs):
@@ -536,15 +529,16 @@ if not frontend_config['auto_tracking']:
     def add_packages():
         form = AddPackagesForm()
         if request.method == 'POST':
-            be = create_backend()
             if not form.validate_or_flash():
                 return render_template("add-packages.html", form=form)
             names = set(form.packages.data)
-            try:
-                added = be.add_packages(names)
-            except backend.PackagesDontExist as e:
-                flash("Packages don't exist: " + ','.join(e.names))
+            existing = db.query(Package).filter(Package.name.in_(names)).all()
+            nonexistent = set(names) - {p.name for p in existing}
+            if nonexistent:
+                flash("Packages don't exist: " + ','.join(nonexistent))
                 return render_template("add-packages.html", form=form)
+            added = db.query(Package).filter(Package.name.in_(names))\
+                                     .update({'tracked': True})
             if form.group.data:
                 name, _, namespace = reversed(form.group.data.partition('/'))
                 group = db.query(PackageGroup)\
