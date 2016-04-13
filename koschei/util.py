@@ -352,11 +352,9 @@ def get_koji_load(koji_session):
     return max_load
 
 
-def epoch_to_str(epoch):
-    return str(epoch) if epoch is not None else None
-
-
 def compare_evr(evr1, evr2):
+    def epoch_to_str(epoch):
+        return str(epoch) if epoch is not None else None
     evr1, evr2 = ((epoch_to_str(e), v, r) for (e, v, r) in (evr1, evr2))
     return labelCompare(evr1, evr2)
 
