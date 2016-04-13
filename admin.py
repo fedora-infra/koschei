@@ -17,7 +17,7 @@ if 'KOSCHEI_CONFIG' not in os.environ:
 from koschei.models import (engine, Base, Package, PackageGroup, Session,
                             AdminNotice, Collection)
 from koschei.backend import Backend, PackagesDontExist
-from koschei import util
+from koschei import util, koji_util
 
 
 class Command(object):
@@ -45,8 +45,8 @@ def main():
     kwargs = vars(args)
     del kwargs['cmd']
     if cmd.needs_backend:
-        primary = util.KojiSession(anonymous=True)
-        secondary = util.KojiSession(anonymous=True, koji_id='secondary')
+        primary = koji_util.KojiSession(anonymous=True)
+        secondary = koji_util.KojiSession(anonymous=True, koji_id='secondary')
         backend = Backend(db=Session(), log=logging.getLogger(),
                           koji_sessions={'primary': primary, 'secondary': secondary})
         kwargs['backend'] = backend

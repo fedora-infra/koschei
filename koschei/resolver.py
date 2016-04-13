@@ -26,15 +26,16 @@ from sqlalchemy.sql import insert
 from sqlalchemy.orm import joinedload, undefer
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
-from koschei.models import (Package, Dependency, UnappliedChange,
-                            AppliedChange, Collection, ResolutionProblem,
-                            Build, BuildrootProblem, RepoMapping)
-from koschei import util
-from koschei.util import Stopwatch
-from koschei.service import KojiService
-from koschei.repo_cache import RepoCache, RepoDescriptor
-from koschei.backend import Backend
-from koschei.plugin import dispatch_event
+from .models import (Package, Dependency, UnappliedChange,
+                      AppliedChange, Collection, ResolutionProblem,
+                      Build, BuildrootProblem, RepoMapping)
+from . import util, koji_util
+from .util import Stopwatch
+from .service import KojiService
+from .repo_cache import RepoCache, RepoDescriptor
+from .backend import Backend
+from .plugin import dispatch_event
+from .koji_util import itercall
 
 
 total_time = Stopwatch("Total repo generation")
@@ -140,9 +141,9 @@ class Resolver(KojiService):
         group = self.build_groups.get(collection_id)
         if group is None:
             collection = self.db.query(Collection).get(collection_id)
-            group = util.get_build_group(self.koji_sessions['primary'],
-                                         collection.build_tag,
-                                         collection.build_group)
+            group = koji_util.get_build_group(self.koji_sessions['primary'],
+                                              collection.build_tag,
+                                              collection.build_group)
             self.build_groups[collection.id] = group
         assert group
         return group
@@ -214,8 +215,8 @@ class Resolver(KojiService):
     def set_descriptor_tags(self, descriptors):
         def koji_call(koji_session, desc):
             koji_session.repoInfo(desc.repo_id)
-        result_gen = util.itercall(self.koji_sessions['secondary'],
-                                   descriptors, koji_call)
+        result_gen = itercall(self.koji_sessions['secondary'],
+                              descriptors, koji_call)
         for desc, repo_info in izip(descriptors, result_gen):
             if repo_info['state'] in (koji.REPO_STATES['READY'],
                                       koji.REPO_STATES['EXPIRED']):
@@ -381,8 +382,8 @@ class Resolver(KojiService):
             return
         self.repo_cache.prefetch_repo(repo_descriptor)
         packages = self.get_packages(collection)
-        brs = util.get_rpm_requires(self.koji_sessions['secondary'],
-                                    [p.srpm_nvra for p in packages])
+        brs = koji_util.get_rpm_requires(self.koji_sessions['secondary'],
+                                        [p.srpm_nvra for p in packages])
         brs = util.parallel_generator(brs, queue_size=None)
         try:
             with self.repo_cache.get_sack(repo_descriptor) as sack:
@@ -475,10 +476,10 @@ class Resolver(KojiService):
             self.db.commit()
         for descriptor, _ in groupby(repos_to_process, lambda desc: desc):
             self.repo_cache.prefetch_repo(descriptor)
-        buildrequires = util.get_rpm_requires(self.koji_sessions['secondary'],
-                                              [dict(name=b.name, version=b.version,
+        buildrequires = koji_util.get_rpm_requires(self.koji_sessions['secondary'],
+                                                   [dict(name=b.name, version=b.version,
                                                     release=b.release, arch='src')
-                                               for b in builds_to_process])
+                                                    for b in builds_to_process])
         if len(builds) > 100:
             buildrequires = util.parallel_generator(buildrequires, queue_size=None)
         for repo_descriptor, group in groupby(izip(repos_to_process,
@@ -510,8 +511,8 @@ class Resolver(KojiService):
     def main(self):
         self.process_builds()
         for collection in self.db.query(Collection).all():
-            curr_repo = util.get_latest_repo(self.koji_sessions['secondary'],
-                                             collection.build_tag)
+            curr_repo = koji_util.get_latest_repo(self.koji_sessions['secondary'],
+                                                  collection.build_tag)
             if curr_repo and util.secondary_mode:
                 self.backend.refresh_repo_mappings()
                 mapping = self.db.query(RepoMapping)\

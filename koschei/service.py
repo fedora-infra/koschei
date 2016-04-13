@@ -21,6 +21,7 @@ import time
 
 from . import util
 from .models import Session
+from .koji_util import KojiSession
 
 
 class Service(object):
@@ -65,10 +66,10 @@ class KojiService(Service):
         if koji_sessions:
             self.koji_sessions = koji_sessions
         else:
-            primary_koji = util.KojiSession(anonymous=self.koji_anonymous)
+            primary_koji = KojiSession(anonymous=self.koji_anonymous)
             secondary_koji = primary_koji
             if util.secondary_koji_config != util.primary_koji_config:
-                secondary_koji = util.KojiSession(koji_id='secondary')
+                secondary_koji = KojiSession(koji_id='secondary')
 
             self.koji_sessions = {
                 'primary': primary_koji,

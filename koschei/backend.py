@@ -25,12 +25,12 @@ from sqlalchemy.sql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
-from koschei import util
-from koschei.util import itercall
-from koschei.models import (Build, UnappliedChange, KojiTask, Package,
-                            PackageGroup, PackageGroupRelation,
-                            Collection, RepoMapping)
-from koschei.plugin import dispatch_event
+from . import util, koji_util
+from .koji_util import itercall
+from .models import (Build, UnappliedChange, KojiTask, Package,
+                      PackageGroup, PackageGroupRelation,
+                      Collection, RepoMapping)
+from .plugin import dispatch_event
 
 
 class PackagesDontExist(Exception):
@@ -63,12 +63,12 @@ class Backend(object):
         tag = package.collection.target_tag
         # SRPMs are taken from secondary, primary needs to be able to build
         # from relative URL constructed against secondary (internal redirect)
-        srpm_res = util.get_last_srpm(self.koji_sessions['secondary'], tag, name)
+        srpm_res = koji_util.get_last_srpm(self.koji_sessions['secondary'], tag, name)
         if srpm_res:
             srpm, srpm_url = srpm_res
             package.manual_priority = 0
-            build.task_id = util.koji_scratch_build(self.koji_sessions['primary'],
-                                                    tag, name, srpm_url, build_opts)
+            build.task_id = koji_util.koji_scratch_build(self.koji_sessions['primary'],
+                                                         tag, name, srpm_url, build_opts)
             build.started = datetime.now()
             build.epoch = srpm['epoch']
             build.version = srpm['version']
@@ -189,7 +189,7 @@ class Backend(object):
                     self.db.commit()
                     return
                 assert state in (Build.COMPLETE, Build.FAILED)
-                if util.is_koji_fault(self.koji_sessions['primary'], build.task_id):
+                if koji_util.is_koji_fault(self.koji_sessions['primary'], build.task_id):
                     self.log.info('Deleting build {0} because it ended with Koji fault'
                                   .format(build))
                     self.db.delete(build)

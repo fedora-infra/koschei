@@ -1,7 +1,7 @@
 import koji
 import logging
 
-from koschei import util
+from koschei import koji_util
 from koschei.models import Collection, RepoMapping
 from koschei.plugin import listen_event
 
@@ -15,7 +15,7 @@ def poll_secondary_repo(backend):
     primary = backend.koji_sessions['primary']
     secondary = backend.koji_sessions['secondary']
     for collection in db.query(Collection).all():
-        remote_repo = util.get_latest_repo(secondary, collection.build_tag)
+        remote_repo = koji_util.get_latest_repo(secondary, collection.build_tag)
         mapping = db.query(RepoMapping)\
             .filter_by(secondary_id=remote_repo['id'])\
             .first()

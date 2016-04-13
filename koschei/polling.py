@@ -22,10 +22,11 @@ import koji
 
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
-from . import util, plugin
+from . import plugin
 from .models import Build
 from .service import KojiService
 from .backend import Backend
+from .koji_util import itercall
 
 
 class Polling(KojiService):
@@ -41,8 +42,8 @@ class Polling(KojiService):
         running_builds = self.db.query(Build)\
                                 .filter_by(state=Build.RUNNING)
 
-        infos = util.itercall(self.koji_sessions['primary'], running_builds,
-                              lambda k, b: k.getTaskInfo(b.task_id))
+        infos = itercall(self.koji_sessions['primary'], running_builds,
+                         lambda k, b: k.getTaskInfo(b.task_id))
 
         for task_info, build in zip(infos, running_builds):
             try:

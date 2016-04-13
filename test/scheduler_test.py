@@ -145,7 +145,7 @@ class SchedulerTest(DBTest):
             self.s.commit()
 
     def assert_scheduled(self, tables, scheduled, koji_load=0.3):
-        with patch('koschei.util.get_koji_load',
+        with patch('koschei.koji_util.get_koji_load',
                    Mock(return_value=koji_load)):
             sched = self.get_scheduler()
             def get_prio_q():

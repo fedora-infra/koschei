@@ -25,7 +25,7 @@ from sqlalchemy import (func, union_all, extract, cast, Integer, case, null,
                         literal_column)
 from sqlalchemy.sql.functions import coalesce
 
-from . import util
+from . import util, koji_util
 from .models import Package, Build, UnappliedChange, Collection
 from .service import KojiService
 from .backend import Backend
@@ -148,7 +148,7 @@ class Scheduler(KojiService):
             self.log.debug("Not scheduling: {} incomplete builds"
                            .format(incomplete_builds))
             return
-        koji_load = util.get_koji_load(self.koji_sessions['primary'])
+        koji_load = koji_util.get_koji_load(self.koji_sessions['primary'])
         if koji_load > self.load_threshold:
             self.log.debug("Not scheduling: {} koji load"
                            .format(koji_load))
