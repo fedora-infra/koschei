@@ -35,12 +35,7 @@ provides a web interface to the results.
 %package common
 Summary:        Acutual python code for koschei backend and frontend
 Requires:       python-sqlalchemy
-Requires:       koji
-Requires:       fedmsg
-Requires:       python-fedmsg-meta-fedora-infrastructure
 Requires:       python-psycopg2
-Requires:       rpm-python
-Requires:       python-dogpile-cache
 Requires(pre):  shadow-utils
 Obsoletes:      %{name} < 1.5.1
 
@@ -75,8 +70,13 @@ Requires:       httpd
 %package backend
 Summary:        Koschei backend services
 Requires:       %{name}-common = %{version}-%{release}
+Requires:       fedmsg
+Requires:       koji
+Requires:       python-dogpile-cache
+Requires:       python-fedmsg-meta-fedora-infrastructure
 Requires:       python-hawkey
 Requires:       python-librepo
+Requires:       rpm-python
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
