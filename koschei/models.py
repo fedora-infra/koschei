@@ -43,10 +43,6 @@ db_url = config.get('database_url') or URL(**config['database_config'])
 engine = create_engine(db_url, echo=False, pool_size=10)
 
 
-def external_id():
-    raise AssertionError("ID needs to be supplied")
-
-
 class Query(sqlalchemy.orm.Query):
     # TODO move get_or_create here
     # def get_or_create(self):
