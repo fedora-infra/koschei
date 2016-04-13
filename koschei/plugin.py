@@ -13,12 +13,13 @@ listeners = defaultdict(list)
 
 
 def load_plugins(endpoint, only=None):
-    if not loaded:
+    if endpoint not in loaded:
+        loaded[endpoint] = {}
         plugin_dir = os.path.join(os.path.dirname(__file__), endpoint, 'plugins')
         for name in only if only is not None else util.config['plugins']:
             descriptor = imp.find_module(name, [plugin_dir])
             log.info('Loading %s plugin', name)
-            loaded[name] = imp.load_module(name, *descriptor)
+            loaded[endpoint][name] = imp.load_module(name, *descriptor)
 
 
 def listen_event(name):

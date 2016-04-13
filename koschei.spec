@@ -29,6 +29,7 @@ BuildRequires:       python-flask-sqlalchemy
 BuildRequires:       python-flask-openid
 BuildRequires:       python-flask-wtf
 BuildRequires:       python-jinja2
+BuildRequires:       python-dogpile-cache
 %endif
 
 %description
@@ -237,6 +238,8 @@ dummy = posix.readlink(dir) and os.remove(dir)
 
 %files frontend-fedora
 %{python2_sitelib}/*/frontend/plugins/pkgdb.py*
+# FIXME remove after config refactoring
+%{python2_sitelib}/*/frontend/plugins/fedmsg_publisher.py*
 
 %files backend-fedora
 %{_libexecdir}/%{name}/*watcher*
