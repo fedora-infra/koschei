@@ -14,7 +14,7 @@ setup(
     author='',
     author_email='',
     url='',
-    packages=find_packages(),
+    packages=find_packages(exclude=["test"]),
     include_package_data=True,
     test_suite='nose.collector',
 )
