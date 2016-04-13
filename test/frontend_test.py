@@ -18,6 +18,8 @@
 
 import koschei.frontend
 import koschei.frontend.views
+import koschei.frontend.auth
+import koschei.models as m
 
 from .common import DBTest
 
@@ -25,10 +27,12 @@ from .common import DBTest
 class FrontendTest(DBTest):
     def setUp(self):
         super(FrontendTest, self).setUp()
-        self.app = koschei.frontend.app.test_client()
+        koschei.frontend.app.config['TESTING'] = True
+        koschei.frontend.app.config['WTF_CSRF_ENABLED'] = False
+        self.client = koschei.frontend.app.test_client()
 
     def test_main_page(self):
-        reply = self.app.get('/')
+        reply = self.client.get('/')
         self.assertEqual(200, reply.status_code)
         self.assertEqual('text/html; charset=utf-8', reply.content_type)
         normalized_data = ' '.join(reply.data.split())
@@ -36,10 +40,55 @@ class FrontendTest(DBTest):
         self.assertIn('Packages from 1 to 0 from total 0', normalized_data)
 
     def test_404(self):
-        reply = self.app.get('/xyzzy')
+        reply = self.client.get('/xyzzy')
         self.assertEqual(404, reply.status_code)
 
     def test_static(self):
-         reply = self.app.get('/static/koschei.css')
+         reply = self.client.get('/static/koschei.css')
          self.assertEqual(200, reply.status_code)
          self.assertEqual('text/css; charset=utf-8', reply.content_type)
+
+    def test_cancel_build(self):
+        self.prepare_user(name='jdoe', admin=True)
+        self.prepare_packages(['groovy'])
+        build = self.prepare_builds(groovy=None)[0]
+        url = 'build/{0}/cancel'.format(build.id)
+        reply = self.client.post(url, follow_redirects=True)
+        self.assertEqual(200, reply.status_code)
+        self.assertIn('Cancelation request sent.', reply.data)
+        self.s.expunge(build)
+        self.assertTrue(self.s.query(m.Build).filter_by(id=build.id).first().cancel_requested)
+
+    def test_cancel_build_unauthorized(self):
+        self.prepare_user(name='jdoe', admin=False)
+        self.prepare_packages(['groovy'])
+        build = self.prepare_builds(groovy=None)[0]
+        url = 'build/{0}/cancel'.format(build.id)
+        reply = self.client.post(url, follow_redirects=True)
+        self.assertEqual(403, reply.status_code)
+        self.s.expunge(build)
+        self.assertFalse(self.s.query(m.Build).filter_by(id=build.id).first().cancel_requested)
+
+    def test_cancel_build_not_running(self):
+        self.prepare_user(name='jdoe', admin=True)
+        self.prepare_packages(['groovy'])
+        build = self.prepare_builds(groovy=True)[0]
+        url = 'build/{0}/cancel'.format(build.id)
+        reply = self.client.post(url, follow_redirects=True)
+        self.assertEqual(200, reply.status_code)
+        self.assertIn('Only running builds can be canceled.', reply.data)
+        self.s.expunge(build)
+        self.assertFalse(self.s.query(m.Build).filter_by(id=build.id).first().cancel_requested)
+
+    def test_cancel_build_pending(self):
+        self.prepare_user(name='jdoe', admin=True)
+        self.prepare_packages(['groovy'])
+        build = self.prepare_builds(groovy=None)[0]
+        build.cancel_requested = True
+        self.s.commit()
+        url = 'build/{0}/cancel'.format(build.id)
+        reply = self.client.post(url, follow_redirects=True)
+        self.assertEqual(200, reply.status_code)
+        self.assertIn('Build already has pending cancelation request.', reply.data)
+        self.s.expunge(build)
+        self.assertTrue(self.s.query(m.Build).filter_by(id=build.id).first().cancel_requested)

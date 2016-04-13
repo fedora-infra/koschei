@@ -108,6 +108,12 @@ class DBTest(AbstractTest):
         self.s.commit()
         return new_builds
 
+    def prepare_user(self, **kwargs):
+        user = m.User(**kwargs)
+        self.s.add(user)
+        self.s.commit()
+        return user
+
     @staticmethod
     def parse_pkg(string):
         epoch = None
