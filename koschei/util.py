@@ -22,17 +22,13 @@ from __future__ import print_function
 import os
 import re
 import koji
-import logging
 import logging.config
 import hawkey
-import errno
-import fcntl
 import time
 import socket
 
 from Queue import Queue
 from threading import Thread
-from contextlib import contextmanager
 from rpm import labelCompare, RPMSENSE_LESS, RPMSENSE_GREATER, RPMSENSE_EQUAL
 
 
@@ -131,32 +127,6 @@ def itercall(koji_session, args, koji_call):
         args = args[chunk_size:]
 
 
-def selective_itercall(session_provider, args, koji_call):
-    """
-    Version of itercall that is able to use multiple Koji sessions and return
-    results in the same order as inputs while using minimal amount of multicalls
-
-    :param session_provider: function that is called on each argument to
-    determine Koji session to use
-    :param args: list of items to be processed by the call
-    :param koji_call: function that gets a Koji session and single item and
-    performs a Koji call on it
-    :returns: list of multicall results
-    """
-    sessions = map(session_provider, args)
-    results = [None] * len(args)
-    for session in set(sessions):
-        items = []
-        indices = []
-        for i, item in enumerate(args):
-            if sessions[i] is session:
-                items.append(item)
-                indices.append(i)
-        for i, item in zip(indices, itercall(session, items, koji_call)):
-            results[i] = item
-    return results
-
-
 class parallel_generator(object):
     sentinel = object()
 
@@ -237,14 +207,6 @@ def is_koji_fault(session, task_id):
         return False
     except koji.Fault:
         return True
-
-
-def mkdir_if_absent(path):
-    try:
-        os.makedirs(path)
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            raise
 
 
 def _get_best_selector(sack, dep):
@@ -390,21 +352,6 @@ def get_koji_load(koji_session):
     return max_load
 
 
-def download_task_output(koji_session, task_id, file_name, out_path):
-    offset = 0
-    # TODO
-    chunk_size = primary_koji_config.get('chunk_size', 1024 * 1024)
-    with open(out_path, 'w') as out_file:
-        while True:
-            out = koji_session.downloadTaskOutput(task_id, file_name,
-                                                  size=chunk_size,
-                                                  offset=offset)
-            if not out:
-                return
-            offset += len(out)
-            out_file.write(out)
-
-
 def epoch_to_str(epoch):
     return str(epoch) if epoch is not None else None
 
@@ -417,13 +364,6 @@ def compare_evr(evr1, evr2):
 def set_difference(s1, s2, key):
     compset = {key(x) for x in s2}
     return {x for x in s1 if key(x) not in compset}
-
-
-@contextmanager
-def lock(lock_path):
-    with open(lock_path, 'a+') as lock_file:
-        fcntl.lockf(lock_file.fileno(), fcntl.LOCK_EX)
-        yield
 
 
 def get_latest_repo(koji_session, build_tag):
