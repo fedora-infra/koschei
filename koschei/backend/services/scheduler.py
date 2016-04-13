@@ -25,10 +25,10 @@ from sqlalchemy import (func, union_all, extract, cast, Integer, case, null,
                         literal_column)
 from sqlalchemy.sql.functions import coalesce
 
-from . import util, koji_util
-from .models import Package, Build, UnappliedChange, Collection
-from .service import KojiService
-from .backend import Backend
+from koschei import util
+from koschei.backend import Backend, koji_util
+from koschei.backend.service import KojiService
+from koschei.models import Package, Build, UnappliedChange, Collection
 
 
 def hours_since(what):

@@ -17,17 +17,19 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 from __future__ import print_function
 
-import sys
-import signal
 import logging
+import signal
+import sys
 
-from . import plugin, service
+from koschei import plugin
+from koschei.backend import service
 
 
 # TODO: move this to plugins requiring fedmsg
 def init_fedmsg():
     try:
         import fedmsg
+        import fedmsg.meta
         fedmsg_config = fedmsg.config.load_config()
         fedmsg.meta.make_processors(**fedmsg_config)
     except ImportError:
@@ -41,7 +43,7 @@ if __name__ == '__main__':
         print("Requires service name", file=sys.stderr)
         sys.exit(2)
     name = sys.argv[1]
-    plugin.load_plugins()
+    plugin.load_plugins('backend')
     init_fedmsg()
     service = service.load_service(name)
     if not service:

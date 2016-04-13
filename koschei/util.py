@@ -21,7 +21,7 @@ from __future__ import print_function
 
 import logging.config
 import os
-import socket
+import rpm
 import time
 from Queue import Queue
 from threading import Thread
@@ -119,6 +119,14 @@ def set_difference(s1, s2, key):
     return {x for x in s1 if key(x) not in compset}
 
 
+def compare_evr(evr1, evr2):
+    def epoch_to_str(epoch):
+        return str(epoch) if epoch is not None else None
+
+    evr1, evr2 = ((epoch_to_str(e), v, r) for (e, v, r) in (evr1, evr2))
+    return rpm.labelCompare(evr1, evr2)
+
+
 # Utility class for time measurement
 class Stopwatch(object):
     def __init__(self, name, parent=None, start=False):
@@ -170,16 +178,3 @@ class Stopwatch(object):
 
         for child in self._children:
             child.display()
-
-
-def sd_notify(msg):
-    sock_path = os.environ.get('NOTIFY_SOCKET', None)
-    if not sock_path:
-        raise RuntimeError("NOTIFY_SOCKET not set")
-    if sock_path[0] == '@':
-        sock_path = '\0' + sock_path[1:]
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-    try:
-        sock.sendto(msg, sock_path)
-    finally:
-        sock.close()

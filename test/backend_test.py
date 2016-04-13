@@ -155,7 +155,7 @@ class BackendTest(DBTest):
         self.backend = Backend(db=self.s, koji_sessions={'primary': self.koji_session,
                                                          'secondary': self.secondary_koji},
                                log=logging.getLogger('koschei.backend'))
-        plugin.load_plugins(['fedmsg_publisher'])
+        plugin.load_plugins('backend', ['fedmsg_publisher'])
 
 
     def test_update_state(self):

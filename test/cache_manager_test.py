@@ -16,9 +16,11 @@
 #
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-from unittest import TestCase, skip
 from time import sleep
-from koschei.cache_manager import CacheManager
+from unittest import TestCase
+
+from koschei.backend.cache_manager import CacheManager
+
 
 class RepoFactory(object):
     def create(self, repo_id, ignored):

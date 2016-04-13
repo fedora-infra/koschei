@@ -4,7 +4,7 @@ After=syslog.target network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/libexec/koschei/koschei-resolver -m koschei.main resolver
+ExecStart=/usr/libexec/koschei/koschei-resolver -m koschei.backend.main resolver
 User=koschei
 Group=koschei
 Nice=5

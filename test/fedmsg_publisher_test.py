@@ -6,7 +6,7 @@ from koschei.models import PackageGroup, PackageGroupRelation
 class FedmsgSenderTest(DBTest):
     def setUp(self):
         super(FedmsgSenderTest, self).setUp()
-        plugin.load_plugins(['fedmsg_publisher'])
+        plugin.load_plugins('backend', ['fedmsg_publisher'])
 
     def prepare_package(self):
         pkg = self.prepare_basic_data()[0]

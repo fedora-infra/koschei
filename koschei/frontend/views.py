@@ -1,32 +1,31 @@
+import logging
 import re
 import urllib
-import logging
-
 from datetime import datetime
-from textwrap import dedent
 from functools import wraps
+from textwrap import dedent
 
 from flask import abort, render_template, request, url_for, redirect, g, flash
+from flask_wtf import Form
+from jinja2 import Markup, escape
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload, subqueryload, undefer, contains_eager
 from sqlalchemy.sql import exists, func
-from sqlalchemy.exc import IntegrityError
-from jinja2 import Markup, escape
-from flask_wtf import Form
 from wtforms import StringField, TextAreaField
 from wtforms.validators import Regexp, ValidationError
 
-from .models import (Package, Build, PackageGroup, PackageGroupRelation,
-                     AdminNotice, User, BuildrootProblem,
-                     GroupACL, Collection, get_or_create)
-from . import util, auth, plugin
-from .frontend import app, db, frontend_config
+from koschei import util, plugin
+from koschei.frontend import app, db, frontend_config, auth
+from koschei.models import (Package, Build, PackageGroup, PackageGroupRelation,
+                            AdminNotice, User, BuildrootProblem,
+                            GroupACL, Collection, get_or_create)
 
 log = logging.getLogger('koschei.views')
 
 packages_per_page = frontend_config['packages_per_page']
 builds_per_page = frontend_config['builds_per_page']
 
-plugin.load_plugins()
+plugin.load_plugins('frontend')
 
 
 def page_args(clear=False, **kwargs):

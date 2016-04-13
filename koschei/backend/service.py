@@ -19,19 +19,20 @@
 import imp
 import logging
 import os
+import socket
 import time
 
-from . import util
-from .models import Session
+from koschei import util
+from koschei.models import Session
 from .koji_util import KojiSession
 
 
 def load_service(name):
-    # service_dir = os.path.join(os.path.dirname(__file__), 'services')
-    service_dir = os.path.dirname(__file__)
+    service_dir = os.path.join(os.path.dirname(__file__), 'services')
     descriptor = imp.find_module(name, [service_dir])
     imp.load_module(name, *descriptor)
     return Service.find_service(name)
+
 
 class Service(object):
 
@@ -84,3 +85,16 @@ class KojiService(Service):
                 'primary': primary_koji,
                 'secondary': secondary_koji
             }
+
+
+def sd_notify(msg):
+    sock_path = os.environ.get('NOTIFY_SOCKET', None)
+    if not sock_path:
+        raise RuntimeError("NOTIFY_SOCKET not set")
+    if sock_path[0] == '@':
+        sock_path = '\0' + sock_path[1:]
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    try:
+        sock.sendto(msg, sock_path)
+    finally:
+        sock.close()

@@ -17,26 +17,24 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-from itertools import izip, groupby
 from collections import OrderedDict
+from itertools import izip, groupby
 
 import koji
-
-from sqlalchemy.sql import insert
+from koschei.backend.koji_util import itercall
+from koschei.backend.service import KojiService
 from sqlalchemy.orm import joinedload, undefer
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
+from sqlalchemy.sql import insert
 
-from .models import (Package, Dependency, UnappliedChange,
-                      AppliedChange, Collection, ResolutionProblem,
-                      Build, BuildrootProblem, RepoMapping)
-from . import util, koji_util, depsolve
-from .util import Stopwatch
-from .service import KojiService
-from .repo_cache import RepoCache, RepoDescriptor
-from .backend import Backend
-from .plugin import dispatch_event
-from .koji_util import itercall
-
+from koschei import util
+from koschei.backend import Backend, koji_util, depsolve
+from koschei.backend.repo_cache import RepoCache, RepoDescriptor
+from koschei.models import (Package, Dependency, UnappliedChange,
+                            AppliedChange, Collection, ResolutionProblem,
+                            Build, BuildrootProblem, RepoMapping)
+from koschei.plugin import dispatch_event
+from koschei.util import Stopwatch
 
 total_time = Stopwatch("Total repo generation")
 resolution_time = Stopwatch("Dependency resolution", total_time)
@@ -383,7 +381,7 @@ class Resolver(KojiService):
         self.repo_cache.prefetch_repo(repo_descriptor)
         packages = self.get_packages(collection)
         brs = koji_util.get_rpm_requires(self.koji_sessions['secondary'],
-                                        [p.srpm_nvra for p in packages])
+                                         [p.srpm_nvra for p in packages])
         brs = util.parallel_generator(brs, queue_size=None)
         try:
             with self.repo_cache.get_sack(repo_descriptor) as sack:
@@ -478,7 +476,7 @@ class Resolver(KojiService):
             self.repo_cache.prefetch_repo(descriptor)
         buildrequires = koji_util.get_rpm_requires(self.koji_sessions['secondary'],
                                                    [dict(name=b.name, version=b.version,
-                                                    release=b.release, arch='src')
+                                                         release=b.release, arch='src')
                                                     for b in builds_to_process])
         if len(builds) > 100:
             buildrequires = util.parallel_generator(buildrequires, queue_size=None)

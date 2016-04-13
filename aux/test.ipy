@@ -4,13 +4,13 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 from koschei import util
 from koschei.models import *
-from koschei.scheduler import *
+from koschei.backend.services.scheduler import *
 from koschei.frontend import *
-from koschei.resolver import *
+from koschei.backend.services.resolver import *
 from koschei import plugin
 from koschei.backend import *
-from koschei.main import *
-from koschei.polling import *
+from koschei.backend.main import *
+from koschei.backend.services.polling import *
 load_globals()
 from datetime import datetime
 import cProfile

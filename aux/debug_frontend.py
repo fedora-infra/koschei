@@ -6,8 +6,8 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 
 from koschei.frontend import app as application
-import koschei.views
-import koschei.auth
+import koschei.frontend.views
+import koschei.frontend.auth
 
 logger = logging.getLogger("koschei.sql")
 logger.setLevel(logging.DEBUG)

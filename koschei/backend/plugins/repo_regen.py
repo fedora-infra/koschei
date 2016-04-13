@@ -1,7 +1,8 @@
-import koji
 import logging
 
-from koschei import koji_util
+import koji
+
+from koschei.backend import koji_util
 from koschei.models import Collection, RepoMapping
 from koschei.plugin import listen_event
 

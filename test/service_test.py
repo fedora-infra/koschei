@@ -17,8 +17,10 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 from mock import Mock, patch, call
+
 from common import AbstractTest
-from koschei.service import Service
+from koschei.backend.service import Service
+
 
 class MyException(Exception):
     pass
@@ -34,7 +36,7 @@ class ServiceTest(AbstractTest):
         self.assertRaises(NotImplementedError, s.main)
 
     def test_create_session(self):
-        with patch('koschei.service.Session') as create:
+        with patch('koschei.backend.service.Session') as create:
             s = MyService(log=Mock())
             create.assert_called_once_with()
 

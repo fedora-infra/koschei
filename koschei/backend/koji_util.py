@@ -23,7 +23,7 @@ import koji
 
 from rpm import RPMSENSE_LESS, RPMSENSE_GREATER, RPMSENSE_EQUAL
 
-from .util import koji_configs, primary_koji_config, log
+from koschei.util import koji_configs, primary_koji_config, log
 
 
 class KojiSession(object):

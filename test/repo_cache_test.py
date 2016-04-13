@@ -1,12 +1,12 @@
-import os
-import librepo
 import contextlib
-import unittest
+import os
 
-from mock import PropertyMock, Mock, patch, call
+import librepo
+from mock import patch
+
 from common import DBTest
-from koschei import repo_cache
-from koschei import models as m
+from koschei.backend import repo_cache
+
 
 @contextlib.contextmanager
 def mocks():

@@ -16,8 +16,8 @@ if 'KOSCHEI_CONFIG' not in os.environ:
 
 from koschei.models import (engine, Base, Package, PackageGroup, Session,
                             AdminNotice, Collection)
-from koschei.backend import Backend, PackagesDontExist
-from koschei import util, koji_util
+from koschei.backend import Backend, PackagesDontExist, koji_util
+from koschei import util
 
 
 class Command(object):

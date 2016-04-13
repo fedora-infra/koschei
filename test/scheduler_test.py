@@ -1,11 +1,12 @@
-from datetime import timedelta, datetime
 from contextlib import contextmanager
-from common import DBTest
-from sqlalchemy import Table, Column, Integer, MetaData
-from mock import Mock, patch
+from datetime import timedelta, datetime
 
+from mock import Mock, patch
+from sqlalchemy import Table, Column, Integer, MetaData
+
+from common import DBTest
 from koschei import models as m
-from koschei.scheduler import Scheduler
+from koschei.backend.services.scheduler import Scheduler
 
 
 class SchedulerTest(DBTest):
@@ -145,7 +146,7 @@ class SchedulerTest(DBTest):
             self.s.commit()
 
     def assert_scheduled(self, tables, scheduled, koji_load=0.3):
-        with patch('koschei.koji_util.get_koji_load',
+        with patch('koschei.backend.koji_util.get_koji_load',
                    Mock(return_value=koji_load)):
             sched = self.get_scheduler()
             def get_prio_q():

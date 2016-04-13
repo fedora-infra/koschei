@@ -1,10 +1,7 @@
-import time
-import signal
-
 from mock import Mock, patch
-from common import DBTest
 
-from koschei.watcher import Watcher
+from common import DBTest
+from koschei.backend.services.watcher import Watcher
 
 test_topic = 'org.fedoraproject.test.buildsys'
 

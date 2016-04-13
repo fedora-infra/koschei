@@ -17,19 +17,19 @@
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 # Author: Michael Simacek <msimacek@redhat.com>
 
-import os
-import librepo
-import shutil
 import logging
-import hawkey
-
+import os
+import shutil
 from collections import deque
 from contextlib import contextmanager
 from functools import total_ordering
-from koschei.cache_manager import CacheManager
-from koschei.models import Session, Collection
+
+import hawkey
+import librepo
 
 from koschei import util
+from koschei.backend.cache_manager import CacheManager
+from koschei.models import Session, Collection
 
 log = logging.getLogger('koschei.repo_cache')
 

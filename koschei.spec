@@ -36,6 +36,7 @@ provides a web interface to the results.
 Summary:        Acutual python code for koschei backend and frontend
 Requires:       python-sqlalchemy
 Requires:       python-psycopg2
+Requires:       rpm-python
 Requires(pre):  shadow-utils
 Obsoletes:      %{name} < 1.5.1
 
@@ -73,7 +74,6 @@ Requires:       %{name}-common = %{version}-%{release}
 Requires:       koji
 Requires:       python-hawkey
 Requires:       python-librepo
-Requires:       rpm-python
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd

@@ -17,12 +17,11 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 import koji
-
 from mock import Mock, call
-from common import DBTest
 
+from common import DBTest
 from koschei import models as m
-from koschei.polling import Polling
+from koschei.backend.services.polling import Polling
 
 class PollingTest(DBTest):
     def prepare_builds(self, **kwargs):

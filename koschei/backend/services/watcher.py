@@ -20,10 +20,10 @@
 import fedmsg
 import requests
 
-from . import util, plugin
-from .backend import Backend
-from .service import KojiService
-from .models import Build, Package
+from koschei import util, plugin
+from koschei.backend import Backend, service
+from koschei.backend.service import KojiService
+from koschei.models import Build, Package
 
 
 class Watcher(KojiService):
@@ -67,7 +67,7 @@ class Watcher(KojiService):
     def notify_watchdog(self):
         if not self.watchdog:
             return
-        util.sd_notify("WATCHDOG=1")
+        service.sd_notify("WATCHDOG=1")
 
     def main(self):
         try:

@@ -16,22 +16,21 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-import koji
-import rpm
-
-from itertools import izip
 from datetime import datetime, timedelta
+from itertools import izip
 
-from sqlalchemy.sql import insert
+import koji
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
+from sqlalchemy.sql import insert
 
-from . import util, koji_util
+from koschei import util
+from koschei.backend import koji_util
+from koschei.models import (Build, UnappliedChange, KojiTask, Package,
+                            PackageGroup, PackageGroupRelation,
+                            Collection, RepoMapping)
+from koschei.plugin import dispatch_event
 from .koji_util import itercall
-from .models import (Build, UnappliedChange, KojiTask, Package,
-                      PackageGroup, PackageGroupRelation,
-                      Collection, RepoMapping)
-from .plugin import dispatch_event
 
 
 class PackagesDontExist(Exception):
@@ -46,14 +45,6 @@ def check_package_state(package, prev_state):
         dispatch_event('package_state_change', package=package,
                        prev_state=prev_state,
                        new_state=new_state)
-
-
-def compare_evr(evr1, evr2):
-    def epoch_to_str(epoch):
-        return str(epoch) if epoch is not None else None
-
-    evr1, evr2 = ((epoch_to_str(e), v, r) for (e, v, r) in (evr1, evr2))
-    return rpm.labelCompare(evr1, evr2)
 
 
 class Backend(object):
@@ -100,12 +91,12 @@ class Backend(object):
             return info
 
     def is_build_newer(self, current_build, task_info):
-        return compare_evr((current_build.epoch,
-                            current_build.version,
-                            current_build.release),
-                           (task_info['epoch'],
-                            task_info['version'],
-                            task_info['release'])) < 0
+        return util.compare_evr((current_build.epoch,
+                                 current_build.version,
+                                 current_build.release),
+                                (task_info['epoch'],
+                                 task_info['version'],
+                                 task_info['release'])) < 0
 
     def register_real_builds(self, package_build_infos):
         """
