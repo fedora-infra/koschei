@@ -30,9 +30,6 @@ log = logging.getLogger('koschei.pkgdb_plugin')
 
 pkgdb_config = config['pkgdb']
 
-user_cache = dogpile.cache.make_region()
-user_cache.configure(**pkgdb_config['cache'])
-
 
 # TODO share this with frontend plugin
 def query_pkgdb(url):
@@ -57,6 +54,9 @@ def user_key(collection_id, username):
 
 
 if pkgdb_config['enabled']:
+
+    user_cache = dogpile.cache.make_region()
+    user_cache.configure(**pkgdb_config['cache'])
 
     topic_re = re.compile(pkgdb_config['topic_re'])
 
