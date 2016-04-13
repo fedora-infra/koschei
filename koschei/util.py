@@ -28,8 +28,6 @@ import time
 from Queue import Queue
 from threading import Thread
 
-from rpm import labelCompare
-
 
 def merge_dict(d1, d2):
     ret = d1.copy()
@@ -217,13 +215,6 @@ def compute_dependency_distances(sack, br, deps):
                    for req in pkg.requires}
         visited.update(pkgs_on_level)
         pkgs_on_level = set(hawkey.Query(sack).filter(provides=reldeps))
-
-
-def compare_evr(evr1, evr2):
-    def epoch_to_str(epoch):
-        return str(epoch) if epoch is not None else None
-    evr1, evr2 = ((epoch_to_str(e), v, r) for (e, v, r) in (evr1, evr2))
-    return labelCompare(evr1, evr2)
 
 
 def set_difference(s1, s2, key):
