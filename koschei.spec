@@ -70,10 +70,7 @@ Requires:       httpd
 %package backend
 Summary:        Koschei backend services
 Requires:       %{name}-common = %{version}-%{release}
-Requires:       fedmsg
 Requires:       koji
-Requires:       python-dogpile-cache
-Requires:       python-fedmsg-meta-fedora-infrastructure
 Requires:       python-hawkey
 Requires:       python-librepo
 Requires:       rpm-python
@@ -83,6 +80,17 @@ Requires(postun): systemd
 
 %description backend
 %{summary}.
+
+%package fedora-plugins
+Summary:        Fedora-specific Koschei plugins
+Requires:       %{name}-backend = %{version}-%{release}
+Requires:       fedmsg
+Requires:       python-dogpile-cache
+Requires:       python-fedmsg-meta-fedora-infrastructure
+
+%description fedora-plugins
+Contains Koschei plugins which provide integration with services
+specific to Fedora infrastructure, such as fedmsg and PackageDB.
 
 
 %prep
@@ -195,6 +203,8 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %files backend
 %{_libexecdir}/%{name}
 %{_unitdir}/*
+
+%files fedora-plugins
 
 %changelog
 * Fri Apr 08 2016 Michael Simacek <msimacek@redhat.com> 1.5-2
