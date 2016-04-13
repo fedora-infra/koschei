@@ -10,15 +10,17 @@ from koschei.backend.services.resolver import *
 from koschei import plugin
 from koschei.backend import *
 from koschei.backend.main import *
+from koschei.backend.koji_util import *
 from koschei.backend.services.polling import *
-load_globals()
+init_fedmsg()
+plugin.load_plugins('backend')
 from datetime import datetime
 import cProfile
 import logging
 logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 db=s=Session()
-k=koji_session=util.KojiSession(anonymous=True)
+k=koji_session=KojiSession(anonymous=True)
 self=backend=Backend(db=db, koji_sessions={'primary':k, 'secondary':k}, log=logging.getLogger('koschei'))
 p=s.query(Package).filter_by(name='rnv').order_by(Package.collection_id).first()
 b=s.query(Build).filter_by(package_id=p.id).order_by(desc(Build.started)).first()
