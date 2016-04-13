@@ -18,7 +18,7 @@ from wtforms.validators import Regexp, ValidationError
 from .models import (Package, Build, PackageGroup, PackageGroupRelation,
                      AdminNotice, User, BuildrootProblem,
                      GroupACL, Collection, get_or_create)
-from . import util, auth, main, plugin
+from . import util, auth, plugin
 from .frontend import app, db, frontend_config
 
 log = logging.getLogger('koschei.views')
@@ -26,7 +26,7 @@ log = logging.getLogger('koschei.views')
 packages_per_page = frontend_config['packages_per_page']
 builds_per_page = frontend_config['builds_per_page']
 
-main.load_globals()
+plugin.load_plugins()
 
 
 def page_args(clear=False, **kwargs):
