@@ -29,7 +29,7 @@ from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 from .models import (Package, Dependency, UnappliedChange,
                       AppliedChange, Collection, ResolutionProblem,
                       Build, BuildrootProblem, RepoMapping)
-from . import util, koji_util
+from . import util, koji_util, depsolve
 from .util import Stopwatch
 from .service import KojiService
 from .repo_cache import RepoCache, RepoDescriptor
@@ -160,14 +160,14 @@ class Resolver(KojiService):
     def resolve_dependencies(self, sack, br, build_group):
         resolve_dependencies_time.start()
         deps = None
-        resolved, problems, installs = util.run_goal(sack, br, build_group)
+        resolved, problems, installs = depsolve.run_goal(sack, br, build_group)
         if resolved:
             problems = []
             deps = [DependencyWithDistance(name=pkg.name, epoch=pkg.epoch,
                                            version=pkg.version, release=pkg.release,
                                            arch=pkg.arch)
                     for pkg in installs if pkg.arch != 'src']
-            util.compute_dependency_distances(sack, br, deps)
+            depsolve.compute_dependency_distances(sack, br, deps)
         resolve_dependencies_time.stop()
         return (resolved, problems, deps)
 
