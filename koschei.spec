@@ -81,14 +81,17 @@ Requires(postun): systemd
 %description backend
 %{summary}.
 
-%package fedora-plugins
+%package fedora
 Summary:        Fedora-specific Koschei plugins
 Requires:       %{name}-backend = %{version}-%{release}
 Requires:       fedmsg
 Requires:       python-dogpile-cache
 Requires:       python-fedmsg-meta-fedora-infrastructure
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
 
-%description fedora-plugins
+%description fedora
 Contains Koschei plugins which provide integration with services
 specific to Fedora infrastructure, such as fedmsg and PackageDB.
 
@@ -162,21 +165,27 @@ dummy = posix.readlink(dir) and os.remove(dir)
 
 %post backend
 %systemd_post %{name}-scheduler.service
-%systemd_post %{name}-watcher.service
 %systemd_post %{name}-polling.service
 %systemd_post %{name}-resolver.service
 
 %preun backend
 %systemd_preun %{name}-scheduler.service
-%systemd_preun %{name}-watcher.service
 %systemd_preun %{name}-polling.service
 %systemd_preun %{name}-resolver.service
 
 %postun backend
 %systemd_postun %{name}-scheduler.service
-%systemd_postun %{name}-watcher.service
 %systemd_postun %{name}-polling.service
 %systemd_postun %{name}-resolver.service
+
+%post fedora
+%systemd_post %{name}-watcher.service
+
+%preun fedora
+%systemd_preun %{name}-watcher.service
+
+%postun fedora
+%systemd_postun %{name}-watcher.service
 
 %files common
 %license LICENSE.txt
@@ -203,8 +212,12 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %files backend
 %{_libexecdir}/%{name}
 %{_unitdir}/*
+%exclude %{_libexecdir}/%{name}/*watcher*
+%exclude %{_unitdir}/*watcher*
 
-%files fedora-plugins
+%files fedora
+%{_libexecdir}/%{name}/*watcher*
+%{_unitdir}/*watcher*
 
 %changelog
 * Fri Apr 08 2016 Michael Simacek <msimacek@redhat.com> 1.5-2
