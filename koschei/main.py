@@ -20,33 +20,30 @@ from __future__ import print_function
 import sys
 import signal
 import logging
-import fedmsg
-import fedmsg.config
-import fedmsg.meta
+
+from . import plugin, service
 
 
-def load_globals():
-    from . import plugin
-    plugin.load_plugins()
-    fedmsg_config = fedmsg.config.load_config()
-    fedmsg.meta.make_processors(**fedmsg_config)
+# TODO: move this to plugins requiring fedmsg
+def init_fedmsg():
+    try:
+        import fedmsg
+        fedmsg_config = fedmsg.config.load_config()
+        fedmsg.meta.make_processors(**fedmsg_config)
+    except ImportError:
+        print("Unable to initialize fedmsg", file=sys.stderr)
 
 
 if __name__ == '__main__':
-    from .service import Service
-
-    # Importing all modules that define services
-    # pylint: disable=W0611
-    from . import scheduler, resolver, polling, watcher
-
     log = logging.getLogger('koschei.main')
 
     if len(sys.argv) < 2:
         print("Requires service name", file=sys.stderr)
         sys.exit(2)
     name = sys.argv[1]
-    load_globals()
-    service = Service.find_service(name)
+    plugin.load_plugins()
+    init_fedmsg()
+    service = service.load_service(name)
     if not service:
         print("No such service", file=sys.stderr)
         sys.exit(2)

@@ -16,13 +16,22 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+import imp
 import logging
+import os
 import time
 
 from . import util
 from .models import Session
 from .koji_util import KojiSession
 
+
+def load_service(name):
+    # service_dir = os.path.join(os.path.dirname(__file__), 'services')
+    service_dir = os.path.dirname(__file__)
+    descriptor = imp.find_module(name, [service_dir])
+    imp.load_module(name, *descriptor)
+    return Service.find_service(name)
 
 class Service(object):
 
