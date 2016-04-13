@@ -24,6 +24,11 @@ BuildRequires:       rpm-python
 BuildRequires:       fedmsg
 BuildRequires:       python-psycopg2
 BuildRequires:       postgresql-server
+BuildRequires:       python-flask
+BuildRequires:       python-flask-sqlalchemy
+BuildRequires:       python-flask-openid
+BuildRequires:       python-flask-wtf
+BuildRequires:       python-jinja2
 %endif
 
 %description
