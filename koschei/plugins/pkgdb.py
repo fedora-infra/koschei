@@ -63,8 +63,8 @@ def query_monitored_packages():
         return packages['packages']
 
 
-def user_key(collection, username):
-    return "{}###{}".format(collection.id, username)
+def user_key(collection_id, username):
+    return "{}###{}".format(collection_id, username)
 
 
 if pkgdb_config['enabled']:
@@ -81,7 +81,7 @@ if pkgdb_config['enabled']:
                     .filter(Package.collection_id == current_collection.id)\
                     .all_flat()
 
-        return user_cache.get_or_create(user_key(current_collection, username), create)
+        return user_cache.get_or_create(user_key(current_collection.id, username), create)
 
     @listen_event('fedmsg_event')
     def consume_fedmsg(topic, msg, db, **kwargs):
