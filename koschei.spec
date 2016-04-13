@@ -81,8 +81,16 @@ Requires(postun): systemd
 %description backend
 %{summary}.
 
-%package fedora
-Summary:        Fedora-specific Koschei plugins
+%package frontend-fedora
+Summary:        Fedora-specific Koschei frontend plugins
+Requires:       %{name}-frontend = %{version}-%{release}
+Requires:       python-dogpile-cache
+
+%description frontend-fedora
+%{summary}.
+
+%package backend-fedora
+Summary:        Fedora-specific Koschei backend plugins
 Requires:       %{name}-backend = %{version}-%{release}
 Requires:       fedmsg
 Requires:       python-dogpile-cache
@@ -91,9 +99,8 @@ Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
 
-%description fedora
-Contains Koschei plugins which provide integration with services
-specific to Fedora infrastructure, such as fedmsg and PackageDB.
+%description backend-fedora
+%{summary}.
 
 
 %prep
@@ -178,18 +185,20 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %systemd_postun %{name}-polling.service
 %systemd_postun %{name}-resolver.service
 
-%post fedora
+%post backend-fedora
 %systemd_post %{name}-watcher.service
 
-%preun fedora
+%preun backend-fedora
 %systemd_preun %{name}-watcher.service
 
-%postun fedora
+%postun backend-fedora
 %systemd_postun %{name}-watcher.service
 
 %files common
 %license LICENSE.txt
 %{python2_sitelib}/*
+%exclude %{python2_sitelib}/*/frontend
+%exclude %{python2_sitelib}/*/backend
 %dir %{_datadir}/%{name}
 %{_datadir}/%{name}/config.cfg
 %attr(755, %{name}, %{name}) %{_localstatedir}/cache/%{name}
@@ -208,16 +217,28 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %{_datadir}/%{name}/static
 %{_datadir}/%{name}/templates
 %{_datadir}/%{name}/%{name}.wsgi
+%{python2_sitelib}/*/frontend
+%exclude %{python2_sitelib}/*/frontend/plugins/pkgdb.py*
 
 %files backend
 %{_libexecdir}/%{name}
 %{_unitdir}/*
 %exclude %{_libexecdir}/%{name}/*watcher*
 %exclude %{_unitdir}/*watcher*
+%{python2_sitelib}/*/backend
+%exclude %{python2_sitelib}/*/backend/plugins/fedmsg_publisher.py*
+%exclude %{python2_sitelib}/*/backend/plugins/pkgdb.py*
+%exclude %{python2_sitelib}/*/backend/services/watcher.py*
 
-%files fedora
+%files frontend-fedora
+%{python2_sitelib}/*/frontend/plugins/pkgdb.py*
+
+%files backend-fedora
 %{_libexecdir}/%{name}/*watcher*
 %{_unitdir}/*watcher*
+%{python2_sitelib}/*/backend/plugins/fedmsg_publisher.py*
+%{python2_sitelib}/*/backend/plugins/pkgdb.py*
+%{python2_sitelib}/*/backend/services/watcher.py*
 
 %changelog
 * Fri Apr 08 2016 Michael Simacek <msimacek@redhat.com> 1.5-2
