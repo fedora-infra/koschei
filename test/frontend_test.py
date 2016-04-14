@@ -28,6 +28,7 @@ class FrontendTest(DBTest):
     def setUp(self):
         super(FrontendTest, self).setUp()
         koschei.frontend.app.config['TESTING'] = True
+        koschei.frontend.app.config['CSRF_ENABLED'] = False
         koschei.frontend.app.config['WTF_CSRF_ENABLED'] = False
         self.client = koschei.frontend.app.test_client()
 
