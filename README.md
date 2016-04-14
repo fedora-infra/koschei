@@ -34,55 +34,74 @@ Infrastructure:
 - fedmsg (optional)
 - systemd (optional)
 
+Configuration
+-------------
+The configuration is formed by merging default configuration values and the
+local configuration in `/etc/koschei/`. The backend, frontend and admin script
+have separate configuration files in `/etc/koschei`, named `config-backend.cfg`,
+`config-frontend.cfg` and `config-admin.cfg`, respectively. The cfg files are
+regular Python files that expect assignment to `config` dictionary variable. The
+default configuration file is stored at `/usr/share/koschei/config.cfg` and
+contains comments documenting possible configuration options. Keep in mind that
+the merging of configurations is recursive, it merges all dictionaries, not
+just the top-level ones.
+
 
 Deployment
 ----------
-For production deployment install koschei RPM package.
+For production deployment install koschei RPM packages.
 Development snapshots are available at
-https://msimacek.fedorapeople.org/koschei/repo/.
+https://copr.fedorainfracloud.org/coprs/msimacek/koschei/
+
+Koschei is split into multiple components that can function independently
+- backend, frontend and admin. Each are installed as separate RPM,
+configured separately and can be deployed on different machines.
 
 Setting up the database:
-- Install PostgreSQL server with `yum install postgresql-server`. Other
+- Install PostgreSQL server with `dnf install postgresql-server`. Other
   database servers are not supported and won't work.
-- Execute `postgresql-setup --initdb`
+- Execute `postgresql-setup --initdb` to initialize the database
 - Enable the service with `systemctl enable postgresql-server`
   and start it with `systemctl start postgresq-server`
 - Create the database with `createdb koschei`
-- In case your DB instance is on another machine or uses different
-  authentication method than the default `ident`, you'll need to configure the
-  connection in koschei configuration file. See below.
+- If your database is on separate host or you didn't follow the steps here
+  exactly, you'll need to configure the database connection in respective
+  configuration files of backend, frontend and admin (see configuration section).
 - Populate DB schema with `koschei-admin create-db`
+- Create at least one package collection using `koschei-admin create-collection`
+  (see its help for parameters)
 
-Koschei consists of multiple systemd services that can be started separately.
+
+Koschei administration script `koschei-admin` is shipped in koschei-admin RPM
+package and can be installed independently from other services. It is used to
+perform various administration tasks such as adding packages or creating
+collections. See its help (`-h` option) for list of commands and help of
+individual commands (such as `koschei-admin create-collection -h`).
+
+Koschei backend consists of multiple systemd services that can be started
+separately.
 For fully working instance you'll want to start all of them, for passive
 instance that doesn't submit builds, you'll want to skip koschei-scheduler.
 For submiting builds, you need to install a koji certificate at
-/home/koschei/.fedora.cert (and also the CA and server CA certificates). The
+`/home/koschei/.fedora.cert` (and also the CA and server CA certificates). The
 cert files have the same layout as when generated using fedora-cert and using
-fedpkg or koji client.
+fedpkg or koji client. If you want to use different locations, you can specify
+them in the `config-backend.cfg` file.
 
-The web interface is a WSGi application, which can be run within Apache Server.
-The koschei RPM package ships httpd configuration file that should work
-out-of-the-box as you start httpd.
+The web frontend is a WSGi application, which can be run within Apache Server.
+The `koschei-frontend` RPM package ships httpd configuration file that should work
+out-of-the-box as you start httpd. You should override the
+application secret used for authentication in `/etc/koschei/config-frontend.cfg`.
 
 
 Updating
 --------
 After a koschei package update to a newer version, you need to manually stop
 the services (including httpd) and execute DB migrations. Migrations are
-executed by `alembic -c /usr/share/koschei/alembic.ini upgrade head`. Then the
-services can be started again.
-
-
-Configuration
--------------
-The configuration is formed by merging default configuration values and the
-local configuration in /etc/koschei/config.cfg. The cfg files are regular
-Python files that expect assignment to config dictionary variable. The default
-config is stored at /usr/share/koschei/config.cfg and can serve as
-a documentation of which values are possible. Keep in mind that the merging of
-configurations is recursive, it merges all dictionaries, not just the top-level
-ones.
+executed by `alembic -c /usr/share/koschei/alembic.ini upgrade head` on the
+machine where `koschei-admin` is installed (it's using
+/etc/koschei/config-admin.cfg configuration). Then the services can be started
+again.
 
 
 Copying
