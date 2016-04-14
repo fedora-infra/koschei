@@ -136,7 +136,8 @@ config = {
         },
     },
     # which plugins are loaded (name is their filename without extension)
-    "plugins": ['fedmsg_publisher', 'pkgdb'],
+    # "plugins": ['fedmsg_publisher', 'pkgdb'],
+    "plugins": [],
     # fedora message bus configuration
     "fedmsg": {
         # which topic to subscribe to for koji messages
