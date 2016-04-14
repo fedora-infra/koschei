@@ -1,44 +1,68 @@
 # -*- python -*-
 # vim: ft=python
 config = {
+    # database connection properties
     "database_config": {
         "drivername": "postgres",
+        "database": "koschei",
+        "username": "koschei",
+        # "password": "",
+        # "port": 5432,
     },
     # koschei can use separate koji instances for different tasks:
     # - primary - for building packages (and getting results), downloading
     #   repos and getting build group
     # - secondary - for getting real builds, package list, buildrequires and
     #   SRPMs
+
+    # primary instance:
     "koji_config": {
-        # primary instance
         "server": "http://koji.fedoraproject.org/kojihub",
         "topurl": "http://kojipkgs.fedoraproject.org",
         "weburl": "http://koji.fedoraproject.org/koji",
         "srpm_relative_path_root": "..",
+        # name of login method on KojiSession
         "login_method": "ssl_login",
+        # arguments passed to the login method
         "login_args": {
             "cert": "/etc/koschei/fedora.cert",
             "ca": "/etc/koschei/fedora-server-ca.cert",
             "serverca": "/etc/koschei/fedora-server-ca.cert",
         },
+        # maximum number of koschei builds running at the same time
         "max_builds": 30,
+        # architectures which are considered during Koji load calculation
         "build_arches": ['i386', 'x86_64', 'armhfp'],
+        # build options passed to KojiSession.build
         "build_opts": {
         },
+        # koji load value is computed from load values of all hosts of enabled
+        # architectures in default channel. If the value is higher than
+        # load_thresholds, no builds will be submitted
         "load_threshold": 0.5,
+        # koji task priority (to make it lower than tasks of regular users)
         "task_priority": 30,
         # time in seconds after Koji tasks are canceled by Koschei
         # (should be longer than internal Koji task timeout)
         "task_timeout": 48*3600,
+        # maximum number of items in single koji multicall. Too low values may
+        # cause poor performance, too high values may cause timeouts.
         "multicall_chunk_size": 100,
+        # URL used to download repo files for dependency resolution. Must
+        # contain {build_tag}, {repo_id} and {arch} placeholders
         "repo_url": "http://kojipkgs.fedoraproject.org/repos/{build_tag}/{repo_id}/{arch}",
     },
+    # secondary koji instance configuration, leave empty if you want default
+    # primary mode
     "secondary_koji_config": {
-        # secondary instance
-        # inherits configuration from primary
+        # secondary inherits configuration from primary ("koji_config"), here
+        # you can override it, which will cause activation of secondary mode
     },
 
+    # configuration of dependency resolution
     "dependency": {
+        # whether to tell libsolv to ignore weak dependencies. Installed
+        # version of hawkey and libsolv must support the option.
         "ignore_weak_deps": False,
 
         # Number of package resolution changes (state, depchanges, problems) to
@@ -75,37 +99,68 @@ config = {
         # greater than cache_l1_threads+cache_l2_threads wouldn't make sense.
         "cache_threads_max": 2,
     },
+
+    # configuration of scheduling
     "priorities": {
-        "newly_added": 3000, # should be higher than the threshold
+        # priority of newly added package
+        # should be higher than build_threshold
+        "newly_added": 3000,
+        # minimal priority value a package needs to have in order to be queued
+        # for rebuild
         "build_threshold": 256,
+        # a value which is added to package priority for each direct dependency
+        # change. Dependency changes at farther distances add fractions of this
+        # value.
         "package_update": 256,
+        # value that is added to package priority after a failed build that was
+        # preceded by successful build (i.e. the package started to fail)
         "failed_build_priority": 200,
+        # values used for time priority calculation. See the source for the
+        # exact formula
         "t0": 6,
         "t1": 7 * 24,
+        # how often are the priorities persisted to database
         "calculation_interval": 300, # seconds
     },
+
+    # configuration of individual services
     "services": {
         "watcher": {
+            # turns on periodic notifications to systemd watchdog. Disable when
+            # not launching using systemd
             "watchdog": True,
         },
         "polling": {
-            "interval": 20 * 60,
+            # how often polling is run
+            "interval": 20 * 60, # seconds
         },
     },
+    # which plugins are loaded (name is their filename without extension)
     "plugins": ['fedmsg_publisher', 'pkgdb'],
+    # fedora message bus configuration
     "fedmsg": {
+        # which topic to subscribe to for koji messages
         "topic": "org.fedoraproject.prod.buildsys",
+        # which koji instance to watch
         "instance": "primary"
     },
+    # fedmsg publishing plugin
     "fedmsg-publisher": {
-        "enabled": False,
+        # which modname to publish to
         "modname": "koschei",
     },
+    # fedora pkgdb plugin
     "pkgdb": {
-        "enabled": True,
+        # URL to used pkgdb instance
         "pkgdb_url": 'https://admin.fedoraproject.org/pkgdb/api',
+        # which topic to subscribe to in fedmsg for pkgdb changes
         "topic_re": r'\.prod\.pkgdb\.',
+        # whether to synchronize package tracked status from pkgdb
         "sync_tracked": False,
+        # pkgdb plugin uses dogpile.cache to cache pkgdb query results
+        # the default uses a local file, but it's possible to use other
+        # backends, such as memcached. The configuration is passed directly to
+        # dogpile.cache, for possible values see its documentation
         "cache": {
             "backend": "dogpile.cache.dbm",
             "expiration_time": 600,
@@ -114,18 +169,27 @@ config = {
             },
         },
     },
+    # which directories to use. Don't override unless necessary
     "directories": {
+        # caches
         "cachedir": "@CACHEDIR@",
+        # html templates
         "templates": "@DATADIR@/templates",
+        # static files
         "static_folder": "@DATADIR@/static",
+        # URL where static resources are available
         "static_url": "/static",
     },
     "flask": {
+        # secret key for authentication, you want to override this
         "SECRET_KEY": "isecretlylovebabymetal",
     },
     "frontend": {
+        # pagination values
         "packages_per_page": 100,
         "builds_per_page": 15,
+        # if pkgdb plugin is set to automatically synchronize tracked packages,
+        # you'll want to set this to True to disable manual adding of packages
         "auto_tracking": False,
 
         # Production copies for fedmenu
@@ -137,12 +201,16 @@ config = {
         #"fedmenu_data_url": "http://threebean.org/fedmenu/dev-data.js",
     },
     "alembic": {
+        # path to alembic.ini
         "alembic_ini": "@DATADIR@/alembic.ini"
     },
+    # openid authentication configuration
     "openid": {
         "openid_provider": "id.fedoraproject.org",
         "openid_store": "@STATEDIR@/openid",
     },
+    # logging configuration, passed directly to logging.config.dictConfig
+    # see python logging documentation for possible values
     "logging": {
         "version": 1,
         "loggers": {
@@ -158,6 +226,7 @@ config = {
             },
         },
     },
+    # links to other applications displayed in the frontend
     "links": {
         "bugzilla": "https://bugzilla.redhat.com",
         "dist-git": "http://pkgs.fedoraproject.org",
@@ -165,6 +234,7 @@ config = {
         "bodhi": "https://bodhi.fedoraproject.org/updates",
         "packages": "https://apps.fedoraproject.org/packages",
     },
+    # template for bugreports for "File new FTBFS bug" link
     "bugreport": {
         "url": "https://bugzilla.redhat.com/enter_bug.cgi?%s",
         "template": {
