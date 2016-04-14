@@ -127,9 +127,9 @@ mkdir -p %{buildroot}%{_datadir}/%{name}
 mkdir -p %{buildroot}%{_sysconfdir}/%{name}
 mkdir -p %{buildroot}%{_sysconfdir}/httpd/conf.d
 
-cp -p empty_config.cfg %{buildroot}%{_sysconfdir}/%{name}/config-backend.cfg
-cp -p empty_config.cfg %{buildroot}%{_sysconfdir}/%{name}/config-frontend.cfg
-cp -p empty_admin_config.cfg %{buildroot}%{_sysconfdir}/%{name}/config-admin.cfg
+cp -p config-backend.cfg %{buildroot}%{_sysconfdir}/%{name}/config-backend.cfg
+cp -p config-frontend.cfg %{buildroot}%{_sysconfdir}/%{name}/config-frontend.cfg
+cp -p config-admin.cfg %{buildroot}%{_sysconfdir}/%{name}/config-admin.cfg
 cp -p config.cfg %{buildroot}%{_datadir}/koschei/
 
 install -dm 755 %{buildroot}%{_unitdir}
