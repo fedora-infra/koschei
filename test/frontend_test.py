@@ -93,3 +93,21 @@ class FrontendTest(DBTest):
         self.assertIn('Build already has pending cancelation request.', reply.data)
         self.s.expunge(build)
         self.assertTrue(self.s.query(m.Build).filter_by(id=build.id).first().cancel_requested)
+
+    def test_add_package_nonexistent(self):
+        reply = self.client.post('add_packages',
+                                 data=dict(packages='SimplyHTML'),
+                                 follow_redirects=True)
+        self.assertEqual(200, reply.status_code)
+        self.assertIn('Packages don&#39;t exist: SimplyHTML', reply.data)
+
+    def test_add_package(self):
+        pkg = self.prepare_packages(['xpp3'])[0]
+        pkg.tracked = False
+        self.s.commit()
+        reply = self.client.post('add_packages',
+                                 data=dict(packages='xpp3'),
+                                 follow_redirects=True)
+        self.assertEqual(200, reply.status_code)
+        self.assertIn('Packages added: xpp3', reply.data)
+        self.assertTrue(pkg.tracked)
