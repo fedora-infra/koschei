@@ -1,0 +1,2 @@
+#!/bin/bash
+pep8 --config=aux/pep8.cfg `find koschei/ admin.py -name '*.py'` "$@"
