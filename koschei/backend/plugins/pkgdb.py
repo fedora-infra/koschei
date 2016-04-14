@@ -37,6 +37,7 @@ def get_cache():
         return __cache
     __cache = dogpile.cache.make_region()
     __cache.configure(**get_config('pkgdb.cache'))
+    return __cache
 
 
 # TODO share this with frontend plugin
