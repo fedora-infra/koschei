@@ -16,7 +16,7 @@
 #
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-import koschei.frontend
+from koschei.frontend import app
 import koschei.frontend.views
 import koschei.frontend.auth
 import koschei.models as m
@@ -27,10 +27,10 @@ from .common import DBTest
 class FrontendTest(DBTest):
     def setUp(self):
         super(FrontendTest, self).setUp()
-        koschei.frontend.app.config['TESTING'] = True
-        koschei.frontend.app.config['CSRF_ENABLED'] = False
-        koschei.frontend.app.config['WTF_CSRF_ENABLED'] = False
-        self.client = koschei.frontend.app.test_client()
+        app.config['TESTING'] = True
+        app.config['CSRF_ENABLED'] = False  # older versions of flask-wtf (EPEL 7)
+        app.config['WTF_CSRF_ENABLED'] = False  # newer versions of flask-wtf (Fedora)
+        self.client = app.test_client()
 
     def test_main_page(self):
         reply = self.client.get('/')
