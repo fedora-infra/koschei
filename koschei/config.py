@@ -37,6 +37,17 @@ def merge_dict(d1, d2):
 
 
 def load_config(config_paths, ignore_env=False):
+    """
+    Loads configuration from given files and merges the recursively into one
+    dictionary, that is then accesible using get_config function. This function
+    should be called exacly once during application lifetime.
+
+    :param: config_paths
+            list of paths to config files. They must exist.
+    :param: ignore_env
+            whether to enable overriding the paths by environment
+            variable
+    """
     def parse_config(config_path):
         if os.path.exists(config_path):
             with open(config_path) as config_file:
@@ -71,6 +82,17 @@ NO_DEFAULT = object()
 
 
 def get_config(key, default=NO_DEFAULT):
+    """
+    Gets a value from configuration.
+
+    :param: key
+            a dot separated path of configuration keys from the top level.
+            (i.e. "database_config.username")
+    :param: default
+            value to be returned if key is not found
+    :raises: KeyError if key is not found and no default was supplied
+    :return: configuration value
+    """
     if not __config:
         raise RuntimeError("No configuration loaded")
     ret = __config
@@ -88,6 +110,14 @@ def get_config(key, default=NO_DEFAULT):
 
 
 def get_koji_config(koji_id, key):
+    """
+    Wrapper around get_config that first selects particular koji configuration
+
+    :param: koji_id
+            name of koji instance, currently only "primary" and "secondary"
+    :param: key
+            as in get_config, but relative to given koji_config
+    """
     if koji_id == 'primary':
         return get_config('koji_config.{}'.format(key))
     elif koji_id == 'secondary':
