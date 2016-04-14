@@ -22,6 +22,7 @@ import signal
 import sys
 
 from koschei import plugin
+from koschei.config import load_config
 from koschei.backend import service
 
 
@@ -37,6 +38,7 @@ def init_fedmsg():
 
 
 if __name__ == '__main__':
+    load_config(['/usr/share/koschei/config.cfg', '/etc/koschei/config-backend.cfg'])
     log = logging.getLogger('koschei.main')
 
     if len(sys.argv) < 2:

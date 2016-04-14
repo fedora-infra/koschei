@@ -19,57 +19,12 @@
 
 from __future__ import print_function
 
-import logging.config
-import os
+import logging
 import rpm
 import time
+
 from Queue import Queue
 from threading import Thread
-
-
-def merge_dict(d1, d2):
-    ret = d1.copy()
-    for k, v in d2.items():
-        if k in ret and isinstance(v, dict) and isinstance(ret[k], dict):
-            ret[k] = merge_dict(ret[k], v)
-        else:
-            ret[k] = v
-    return ret
-
-
-DEFAULT_CONFIGS = '/usr/share/koschei/config.cfg:/etc/koschei/config.cfg'
-config = {}
-
-
-def load_config():
-    def parse_config(config_path):
-        global config
-        if os.path.exists(config_path):
-            with open(config_path) as config_file:
-                code = compile(config_file.read(), config_path, 'exec')
-                conf_locals = {}
-                exec code in conf_locals
-                if 'config' in conf_locals:
-                    config = merge_dict(config, conf_locals['config'])
-    config_paths = os.environ.get('KOSCHEI_CONFIG', DEFAULT_CONFIGS)
-    for config_path in config_paths.split(':'):
-        parse_config(config_path)
-
-load_config()
-assert config != {}
-
-logging.config.dictConfig(config['logging'])
-log = logging.getLogger('koschei.util')
-
-primary_koji_config = config['koji_config']
-secondary_koji_config = dict(primary_koji_config)
-secondary_koji_config.update(config['secondary_koji_config'])
-koji_configs = {
-    'primary': primary_koji_config,
-    'secondary': secondary_koji_config,
-}
-
-secondary_mode = bool(config['secondary_koji_config'])
 
 
 def chunks(seq, chunk_size=100):
@@ -174,7 +129,7 @@ class Stopwatch(object):
                 s = str(t % 60) + " h " + s
             return s
 
-        log.debug('{} time: {}'.format(self._name, human_readable_time(self._time)))
+        logging.debug('{} time: {}'.format(self._name, human_readable_time(self._time)))
 
         for child in self._children:
             child.display()

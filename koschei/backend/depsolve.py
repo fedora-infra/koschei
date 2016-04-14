@@ -22,7 +22,7 @@ from __future__ import print_function
 import re
 import hawkey
 
-from koschei.util import config
+from koschei.config import get_config
 
 
 def _get_best_selector(sack, dep):
@@ -98,7 +98,7 @@ def run_goal(sack, br, group):
             goal.install(select=sltr)
     if not problems:
         kwargs = {}
-        if config['dependency']['ignore_weak_deps']:
+        if get_config('dependency.ignore_weak_deps'):
             kwargs = {'ignore_weak_deps': True}
         resolved = goal.run(**kwargs)
         return resolved, goal.problems, goal.list_installs() if resolved else None

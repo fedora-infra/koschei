@@ -19,29 +19,27 @@
 import fedmsg
 import logging
 
-from koschei.util import config
+from koschei.config import get_config
 from koschei.plugin import listen_event
 
 log = logging.getLogger('koschei.fedmsg_publisher')
 
-fedmsg_config = config['fedmsg-publisher']
 
-if fedmsg_config['enabled']:
-    @listen_event('package_state_change')
-    def emit_package_state_update(package, prev_state, new_state):
-        if prev_state == new_state:
-            return
-        group_names = [group.full_name for group in package.groups]
-        message = dict(topic='package.state.change',
-                       modname=fedmsg_config['modname'],
-                       msg={'name': package.name,
-                            'old': prev_state,
-                            'new': new_state,
-                            'koji_instance': config['fedmsg']['instance'],
-                            # compat
-                            'repo': package.collection.target_tag,
-                            'collection': package.collection.name,
-                            'collection_name': package.collection.display_name,
-                            'groups': group_names})
-        log.info('Publishing fedmsg:\n' + str(message))
-        fedmsg.publish(**message)
+@listen_event('package_state_change')
+def emit_package_state_update(package, prev_state, new_state):
+    if prev_state == new_state:
+        return
+    group_names = [group.full_name for group in package.groups]
+    message = dict(topic='package.state.change',
+                   modname=get_config('fedmsg-publisher.modname'),
+                   msg={'name': package.name,
+                        'old': prev_state,
+                        'new': new_state,
+                        'koji_instance': get_config('fedmsg.instance'),
+                        # compat
+                        'repo': package.collection.target_tag,
+                        'collection': package.collection.name,
+                        'collection_name': package.collection.display_name,
+                        'groups': group_names})
+    log.info('Publishing fedmsg:\n' + str(message))
+    fedmsg.publish(**message)

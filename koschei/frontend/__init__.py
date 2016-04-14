@@ -20,16 +20,16 @@ from flask import Flask, abort, request
 from flask_sqlalchemy import BaseQuery, Pagination
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-from koschei.util import config
-from koschei.models import engine, Query
+from koschei.config import get_config, load_config
+from koschei.models import get_engine, Query
 
-dirs = config['directories']
+dirs = get_config('directories')
 app = Flask('koschei', template_folder=dirs['templates'],
             static_folder=dirs['static_folder'],
             static_url_path=dirs['static_url'])
-app.config.update(config['flask'])
+app.config.update(get_config('flask'))
 
-frontend_config = config['frontend']
+frontend_config = get_config('frontend')
 
 
 class FrontendQuery(Query, BaseQuery):
@@ -51,7 +51,7 @@ class FrontendQuery(Query, BaseQuery):
             total = self.order_by(None).count()
         return Pagination(self, page, items_per_page, total, items)
 
-db = scoped_session(sessionmaker(autocommit=False, bind=engine,
+db = scoped_session(sessionmaker(autocommit=False, bind=get_engine(),
                                  query_cls=FrontendQuery))
 
 # Following will make pylint shut up about missing query method

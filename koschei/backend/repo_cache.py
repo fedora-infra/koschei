@@ -27,7 +27,7 @@ from functools import total_ordering
 import hawkey
 import librepo
 
-from koschei import util
+from koschei.config import get_config, get_koji_config
 from koschei.backend.cache_manager import CacheManager
 from koschei.models import Session, Collection
 
@@ -45,7 +45,7 @@ class RepoDescriptor(object):
 
     @property
     def remote_url(self):
-        remote_url = util.koji_configs[self.koji_id]['repo_url']
+        remote_url = get_koji_config(self.koji_id, 'repo_url')
         assert '{build_tag}' in remote_url
         assert '{repo_id}' in remote_url
         assert '{arch}' in remote_url
@@ -215,15 +215,16 @@ class SackManager(AbstractManager):
 
 
 class RepoCache(object):
-    def __init__(self,
-                 repo_dir=os.path.join(util.config['directories']['cachedir'],
-                                       'repodata')):
+    def __init__(self, repo_dir=None):
+        if not repo_dir:
+            repo_dir = os.path.join(get_config('directories.cachedir'), 'repodata')
 
-        cache_l1_capacity = util.config['dependency']['cache_l1_capacity']
-        cache_l2_capacity = util.config['dependency']['cache_l2_capacity']
-        cache_l1_threads = util.config['dependency']['cache_l1_threads']
-        cache_l2_threads = util.config['dependency']['cache_l2_threads']
-        cache_threads_max = util.config['dependency']['cache_threads_max']
+        dep_config = get_config('dependency')
+        cache_l1_capacity = dep_config['cache_l1_capacity']
+        cache_l2_capacity = dep_config['cache_l2_capacity']
+        cache_l1_threads = dep_config['cache_l1_threads']
+        cache_l2_threads = dep_config['cache_l2_threads']
+        cache_threads_max = dep_config['cache_threads_max']
 
         sack_manager = SackManager()
         repo_manager = RepoManager(repo_dir)

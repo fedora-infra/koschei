@@ -4,7 +4,7 @@ import logging
 
 from collections import defaultdict
 
-from koschei import util
+from koschei.config import get_config
 
 loaded = {}
 log = logging.getLogger('koschei.plugin')
@@ -16,7 +16,7 @@ def load_plugins(endpoint, only=None):
     if endpoint not in loaded:
         loaded[endpoint] = {}
         plugin_dir = os.path.join(os.path.dirname(__file__), endpoint, 'plugins')
-        for name in only if only is not None else util.config['plugins']:
+        for name in only if only is not None else get_config('plugins'):
             descriptor = imp.find_module(name, [plugin_dir])
             log.info('Loading %s plugin', name)
             loaded[endpoint][name] = imp.load_module(name, *descriptor)

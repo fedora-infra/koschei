@@ -21,17 +21,25 @@ import requests
 import dogpile.cache
 
 from koschei.models import Package
-from koschei.util import config
+from koschei.config import get_config
 from koschei.plugin import listen_event
 
 log = logging.getLogger('koschei.pkgdb_plugin')
 
-pkgdb_config = config['pkgdb']
+__cache = None
+
+
+def get_cache():
+    global __cache
+    if __cache:
+        return __cache
+    __cache = dogpile.cache.make_region()
+    __cache.configure(**get_config('pkgdb.cache'))
 
 
 # TODO share this with backend plugin
 def query_pkgdb(url):
-    baseurl = pkgdb_config['pkgdb_url']
+    baseurl = get_config('pkgdb.pkgdb_url')
     req = requests.get(baseurl + '/' + url)
     if req.status_code != 200:
         log.info("pkgdb query failed %s, status=%d",
@@ -56,19 +64,14 @@ def user_key(collection_id, username):
     return "{}###{}".format(collection_id, username)
 
 
-if pkgdb_config['enabled']:
+@listen_event('get_user_packages')
+def get_user_packages(db, username, current_collection):
+    def create():
+        names = query_users_packages(username, current_collection.branch)
+        if names:
+            return db.query(Package.id)\
+                .filter(Package.name.in_(names))\
+                .filter(Package.collection_id == current_collection.id)\
+                .all_flat()
 
-    user_cache = dogpile.cache.make_region()
-    user_cache.configure(**pkgdb_config['cache'])
-
-    @listen_event('get_user_packages')
-    def get_user_packages(db, username, current_collection):
-        def create():
-            names = query_users_packages(username, current_collection.branch)
-            if names:
-                return db.query(Package.id)\
-                    .filter(Package.name.in_(names))\
-                    .filter(Package.collection_id == current_collection.id)\
-                    .all_flat()
-
-        return user_cache.get_or_create(user_key(current_collection.id, username), create)
+    return get_cache().get_or_create(user_key(current_collection.id, username), create)

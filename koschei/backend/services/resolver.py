@@ -28,6 +28,7 @@ from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 from sqlalchemy.sql import insert
 
 from koschei import util
+from koschei.config import get_config
 from koschei.backend import Backend, koji_util, depsolve
 from koschei.backend.repo_cache import RepoCache, RepoDescriptor
 from koschei.models import (Package, Dependency, UnappliedChange,
@@ -131,7 +132,7 @@ class Resolver(KojiService):
         self.backend = backend or Backend(koji_sessions=self.koji_sessions,
                                           log=self.log, db=self.db)
         self.build_groups = {}
-        capacity = util.config['dependency']['dependency_cache_capacity']
+        capacity = get_config('dependency.dependency_cache_capacity')
         self.dependency_cache = DependencyCache(capacity=capacity)
 
     def get_build_group(self, collection_or_id):
@@ -319,6 +320,7 @@ class Resolver(KojiService):
             if vals:
                 self.db.execute(rel.__table__.insert(), vals)
 
+    # pylint: disable=too-many-locals
     def generate_dependency_changes(self, sack, collection, packages, brs, repo_id):
         """
         Generates and persists dependency changes for given list of packages.
@@ -336,7 +338,7 @@ class Resolver(KojiService):
         build_group = self.get_build_group(collection)
         gen = ((package, self.resolve_dependencies(sack, br, build_group))
                for package, br in izip(packages, brs))
-        queue_size = util.config['dependency']['resolver_queue_size']
+        queue_size = get_config('dependency.resolver_queue_size')
         gen = util.parallel_generator(gen, queue_size=queue_size)
         for package, result in gen:
             generate_dependency_changes_time.start()
@@ -353,7 +355,7 @@ class Resolver(KojiService):
                         prev_deps, curr_deps, package_id=package.id,
                         prev_build_id=prev_build.id)
                     create_dependency_changes_time.stop()
-            if len(resolved_map) > util.config['dependency']['persist_chunk_size']:
+            if len(resolved_map) > get_config('dependency.persist_chunk_size'):
                 persist()
                 resolved_map = {}
                 problems = []
@@ -417,8 +419,8 @@ class Resolver(KojiService):
         generate_dependency_changes_time.display()
 
     def create_repo_descriptor(self, repo_id):
-        return RepoDescriptor('secondary' if util.secondary_mode else 'primary',
-                              None, repo_id)
+        return RepoDescriptor('secondary' if get_config('secondary_mode') else
+                              'primary', None, repo_id)
 
     def process_build(self, sack, entry, curr_deps):
         self.log.info("Processing build {}".format(entry.id))
@@ -428,7 +430,7 @@ class Resolver(KojiService):
             .update({'deps_processed': True, 'deps_resolved': curr_deps is not None,
                      'dependency_keys': [dep.id for dep in deps]})
         if curr_deps is None and entry.id == entry.last_build_id:
-            failed_prio = 3 * util.config['priorities']['failed_build_priority']
+            failed_prio = 3 * get_config('priorities.failed_build_priority')
             self.db.query(Package).filter_by(id=entry.package_id)\
                 .update({'manual_priority': Package.manual_priority + failed_prio})
         if curr_deps is None:
@@ -511,7 +513,7 @@ class Resolver(KojiService):
         for collection in self.db.query(Collection).all():
             curr_repo = koji_util.get_latest_repo(self.koji_sessions['secondary'],
                                                   collection.build_tag)
-            if curr_repo and util.secondary_mode:
+            if curr_repo and get_config('secondary_mode'):
                 self.backend.refresh_repo_mappings()
                 mapping = self.db.query(RepoMapping)\
                     .filter_by(secondary_id=curr_repo['id'])\

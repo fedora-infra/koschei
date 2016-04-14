@@ -15,6 +15,7 @@ from wtforms import StringField, TextAreaField
 from wtforms.validators import Regexp, ValidationError
 
 from koschei import util, plugin
+from koschei.config import get_config
 from koschei.frontend import app, db, frontend_config, auth
 from koschei.models import (Package, Build, PackageGroup, PackageGroupRelation,
                             AdminNotice, User, BuildrootProblem,
@@ -91,14 +92,15 @@ def require_login():
     return " " if g.user else ' disabled="true" '
 
 
-app.jinja_env.globals.update(primary_koji_url=util.primary_koji_config['weburl'],
-                             secondary_koji_url=util.secondary_koji_config['weburl'],
-                             inext=next, iter=iter,
-                             min=min, max=max, page_args=page_args,
-                             get_global_notices=get_global_notices,
-                             require_login=require_login,
-                             Package=Package, Build=Build,
-                             auto_tracking=frontend_config['auto_tracking'])
+app.jinja_env.globals.update(
+    primary_koji_url=get_config('koji_config.weburl'),
+    secondary_koji_url=get_config('secondary_koji_config.weburl'),
+    inext=next, iter=iter,
+    min=min, max=max, page_args=page_args,
+    get_global_notices=get_global_notices,
+    require_login=require_login,
+    Package=Package, Build=Build,
+    auto_tracking=frontend_config['auto_tracking'])
 
 app.jinja_env.filters.update(columnize=columnize,
                              format_depchange=format_depchange)
@@ -203,7 +205,7 @@ def inject_times():
 
 @app.context_processor
 def inject_links():
-    return {'links': util.config['links']}
+    return {'links': get_config('links')}
 
 
 @app.context_processor
@@ -617,9 +619,9 @@ def bugreport(name):
                 .options(joinedload(Package.last_complete_build))\
                 .first() or abort(404)
     srpm = package.srpm_nvra or abort(404)
-    template = util.config['bugreport']['template']
+    template = get_config('bugreport.template')
     bug = {key: template[key].format(**srpm) for key in template.keys()}
     bug['comment'] = dedent(bug['comment']).strip()
     query = urllib.urlencode(bug)
-    bugreport_url = util.config['bugreport']['url'] % query
+    bugreport_url = get_config('bugreport.url') % query
     return redirect(bugreport_url)

@@ -20,29 +20,25 @@
 import fedmsg
 import requests
 
-from koschei import util, plugin
+from koschei import plugin
+from koschei.config import get_config
 from koschei.backend import Backend, service
 from koschei.backend.service import KojiService
 from koschei.models import Build, Package
 
 
 class Watcher(KojiService):
-
-    topic_name = util.config['fedmsg']['topic']
-    instance = util.config['fedmsg']['instance']
-    watchdog = util.config['services']['watcher']['watchdog']
-
     def __init__(self, backend=None, *args, **kwargs):
         super(Watcher, self).__init__(*args, **kwargs)
         self.backend = backend or Backend(log=self.log, db=self.db,
                                           koji_sessions=self.koji_sessions)
 
     def get_topic(self, name):
-        return '{}.{}'.format(self.topic_name, name)
+        return '{}.{}'.format(get_config('fedmsg.topic'), name)
 
     def consume(self, topic, msg):
         content = msg['msg']
-        if content.get('instance') == self.instance:
+        if content.get('instance') == get_config('fedmsg.instance'):
             self.log.info('consuming ' + topic)
             if topic == self.get_topic('task.state.change'):
                 self.update_build_state(content)
@@ -65,7 +61,7 @@ class Watcher(KojiService):
                 self.backend.register_real_build(pkg, newer_build)
 
     def notify_watchdog(self):
-        if not self.watchdog:
+        if not get_config('services.watcher.watchdog'):
             return
         service.sd_notify("WATCHDOG=1")
 
@@ -74,7 +70,7 @@ class Watcher(KojiService):
             for _, _, topic, msg in fedmsg.tail_messages():
                 self.notify_watchdog()
                 try:
-                    if topic.startswith(self.topic_name + '.'):
+                    if topic.startswith(get_config('fedmsg.topic') + '.'):
                         self.consume(topic, msg)
                     plugin.dispatch_event('fedmsg_event', topic, msg, db=self.db,
                                           koji_sessions=self.koji_sessions)

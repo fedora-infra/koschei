@@ -54,7 +54,7 @@ class DBTest(AbstractTest):
     def setUp(self):
         super(DBTest, self).setUp()
         tables = m.Base.metadata.tables
-        conn = m.engine.connect()
+        conn = m.get_engine().connect()
         for table in tables.values():
             conn.execute(table.delete())
             if hasattr(table.c, 'id'):

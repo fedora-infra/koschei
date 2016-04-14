@@ -25,12 +25,13 @@ from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 from sqlalchemy.sql import insert
 
 from koschei import util
+from koschei.config import get_config
 from koschei.backend import koji_util
+from koschei.backend.koji_util import itercall
 from koschei.models import (Build, UnappliedChange, KojiTask, Package,
                             PackageGroup, PackageGroupRelation,
                             Collection, RepoMapping)
 from koschei.plugin import dispatch_event
-from .koji_util import itercall
 
 
 class PackagesDontExist(Exception):
@@ -159,11 +160,11 @@ class Backend(object):
         Commits the transaction.
         """
         try:
-            task_timeout = timedelta(0, util.primary_koji_config['task_timeout'])
+            task_timeout = timedelta(0, get_config('koji_config.task_timeout'))
             time_threshold = datetime.now() - task_timeout
             if (state not in Build.KOJI_STATE_MAP and
-                (build.started and build.started < time_threshold or
-                 build.cancel_requested)):
+                    (build.started and build.started < time_threshold or
+                     build.cancel_requested)):
                 self.log.info('Canceling build {0}'.format(build))
                 try:
                     self.koji_sessions['primary'].cancelTask(build.task_id)
@@ -254,7 +255,7 @@ class Backend(object):
         except KeyError:
             return
         if repo_id:
-            if util.secondary_mode and not build.real:
+            if get_config('secondary_mode') and not build.real:
                 self.refresh_repo_mappings()
                 # need to map the repo_id to primary
                 mapping = self.db.query(RepoMapping)\

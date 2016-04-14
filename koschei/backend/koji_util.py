@@ -20,16 +20,18 @@
 from __future__ import print_function
 
 import koji
+import logging
 
 from rpm import RPMSENSE_LESS, RPMSENSE_GREATER, RPMSENSE_EQUAL
 
-from koschei.util import koji_configs, primary_koji_config, log
+from koschei.config import get_config
 
 
 class KojiSession(object):
     def __init__(self, koji_id='primary', anonymous=True):
         self.koji_id = koji_id
-        self.config = koji_configs[koji_id]
+        self.config = get_config('koji_config' if koji_id == 'primary' else
+                                 'secondary_koji_config')
         self.__anonymous = anonymous
         self.__proxied = self.__new_session()
 
@@ -59,8 +61,7 @@ class KojiSession(object):
 
 
 def itercall(koji_session, args, koji_call):
-    # TODO
-    chunk_size = primary_koji_config['multicall_chunk_size']
+    chunk_size = get_config('koji_config.multicall_chunk_size')
     while args:
         koji_session.multicall = True
         for arg in args[:chunk_size]:
@@ -71,7 +72,7 @@ def itercall(koji_session, args, koji_call):
 
 
 def prepare_build_opts(opts=None):
-    build_opts = primary_koji_config.get('build_opts', {}).copy()
+    build_opts = get_config('koji_config').get('build_opts', {}).copy()
     if opts:
         build_opts.update(opts)
     build_opts['scratch'] = True
@@ -79,7 +80,7 @@ def prepare_build_opts(opts=None):
 
 
 def get_last_srpm(koji_session, tag, name):
-    rel_pathinfo = koji.PathInfo(topdir=primary_koji_config['srpm_relative_path_root'])
+    rel_pathinfo = koji.PathInfo(topdir=get_config('koji_config.srpm_relative_path_root'))
     info = koji_session.listTagged(tag, latest=True,
                                    package=name, inherit=True)
     if info:
@@ -93,13 +94,13 @@ def get_last_srpm(koji_session, tag, name):
 
 def koji_scratch_build(session, target_tag, name, source, build_opts):
     build_opts = prepare_build_opts(build_opts)
-    log.info('Intiating koji build for %(name)s:\n\tsource=%(source)s\
-              \n\ttarget=%(target)s\n\tbuild_opts=%(build_opts)s',
-             dict(name=name, target=target_tag, source=source,
-                  build_opts=build_opts))
+    logging.info('Intiating koji build for %(name)s:\n\tsource=%(source)s\
+                 \n\ttarget=%(target)s\n\tbuild_opts=%(build_opts)s',
+                 dict(name=name, target=target_tag, source=source,
+                      build_opts=build_opts))
     task_id = session.build(source, target_tag, build_opts,
-                            priority=primary_koji_config['task_priority'])
-    log.info('Submitted koji scratch build for %s, task_id=%d', name, task_id)
+                            priority=get_config('koji_config.task_priority'))
+    logging.info('Submitted koji scratch build for %s, task_id=%d', name, task_id)
     return task_id
 
 
@@ -145,7 +146,7 @@ def get_rpm_requires(koji_session, nvras):
 
 def get_koji_load(koji_session):
     channel = koji_session.getChannel('default')
-    build_arches = primary_koji_config.get('build_arches')
+    build_arches = get_config('koji_config').get('build_arches')
     hosts = koji_session.listHosts(build_arches, channel['id'], enabled=True)
     max_load = 0
     assert build_arches

@@ -22,9 +22,9 @@ import os
 import socket
 import time
 
-from koschei import util
+from koschei.config import get_config
 from koschei.models import Session
-from .koji_util import KojiSession
+from koschei.backend.koji_util import KojiSession
 
 
 def load_service(name):
@@ -46,8 +46,7 @@ class Service(object):
 
     def run_service(self):
         name = self.__class__.__name__.lower()
-        service_config = util.config.get('services', {})\
-                                    .get(name, {})
+        service_config = get_config('services').get(name, {})
         interval = service_config.get('interval', 3)
         self.log.info("{name} started".format(name=name))
         while True:
@@ -78,7 +77,7 @@ class KojiService(Service):
         else:
             primary_koji = KojiSession(anonymous=self.koji_anonymous)
             secondary_koji = primary_koji
-            if util.secondary_koji_config != util.primary_koji_config:
+            if get_config('secondary_mode'):
                 secondary_koji = KojiSession(koji_id='secondary')
 
             self.koji_sessions = {

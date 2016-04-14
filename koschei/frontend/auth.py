@@ -21,13 +21,13 @@ import flask
 import functools
 from flask_openid import OpenID
 
-from koschei.util import config
+from koschei.config import get_config
 from koschei.models import User, get_or_create
 from koschei.frontend import app, db
 
 
-provider = config['openid']['openid_provider']
-openid = OpenID(app, config['openid']['openid_store'], safe_roots=[])
+provider = get_config('openid.openid_provider')
+openid = OpenID(app, get_config('openid.openid_store'), safe_roots=[])
 
 
 class TypeURIMismatchFilter(logging.Filter):
@@ -76,8 +76,8 @@ def lookup_current_user():
     if "openid" in flask.session:
         username = openid_to_username(flask.session["openid"])
         flask.g.user = db.query(User).filter_by(name=username).first()
-    if config.get('bypass_login'):
-        flask.g.user = get_or_create(db, User, name=config['bypass_login'])
+    if get_config('bypass_login'):
+        flask.g.user = get_or_create(db, User, name=get_config('bypass_login'))
 
 
 @app.route("/logout")

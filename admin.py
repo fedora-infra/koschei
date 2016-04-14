@@ -8,16 +8,13 @@ import sys
 import argparse
 import logging
 
-# FIXME we should have some nicer solution to override configs
-if 'KOSCHEI_CONFIG' not in os.environ:
-    os.environ['KOSCHEI_CONFIG'] = ('/usr/share/koschei/config.cfg:'
-                                    '/etc/koschei/config.cfg:'
-                                    '/etc/koschei/config-admin.cfg')
-
-from koschei.models import (engine, Base, Package, PackageGroup, Session,
+from koschei.models import (get_engine, Base, Package, PackageGroup, Session,
                             AdminNotice, Collection)
 from koschei.backend import Backend, PackagesDontExist, koji_util
-from koschei import util
+from koschei.config import load_config, get_config
+
+
+load_config(['/usr/share/koschei/config.cfg', '/etc/koschei/config-admin.cfg'])
 
 
 class Command(object):
@@ -64,8 +61,8 @@ class CreateDb(Command):
     def execute(self):
         from alembic.config import Config
         from alembic import command
-        Base.metadata.create_all(engine)
-        alembic_cfg = Config(util.config['alembic']['alembic_ini'])
+        Base.metadata.create_all(get_engine())
+        alembic_cfg = Config(get_config('alembic.alembic_ini'))
         command.stamp(alembic_cfg, "head")
 
 
@@ -96,7 +93,7 @@ class Cleanup(Command):
             conn.execute("VACUUM FULL ANALYZE")
             print("Vacuum full analyze done")
         if reindex:
-            conn.execute("REINDEX DATABASE {}".format(engine.url.database))
+            conn.execute("REINDEX DATABASE {}".format(get_engine().url.database))
             print("Reindexed")
 
 
@@ -328,6 +325,7 @@ class Psql(Command):
                             help="Arguments passed to psql")
 
     def execute(self, args):
+        engine = get_engine()
         cmd = ['psql', '-d', engine.url.database] + args
         if engine.url.username:
             cmd += ['-U', engine.url.username]

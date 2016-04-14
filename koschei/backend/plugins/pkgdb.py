@@ -23,17 +23,23 @@ import fedmsg.meta
 import dogpile.cache
 
 from koschei.models import Package, Collection
-from koschei.util import config
+from koschei.config import get_config
 from koschei.plugin import listen_event
 
 log = logging.getLogger('koschei.pkgdb_plugin')
 
-pkgdb_config = config['pkgdb']
+__cache = None
 
+def get_cache():
+    global __cache
+    if __cache:
+        return __cache
+    __cache = dogpile.cache.make_region()
+    __cache.configure(**get_config('pkgdb.cache'))
 
 # TODO share this with frontend plugin
 def query_pkgdb(url):
-    baseurl = pkgdb_config['pkgdb_url']
+    baseurl = get_config('pkgdb.pkgdb_url')
     req = requests.get(baseurl + '/' + url)
     if req.status_code != 200:
         log.info("pkgdb query failed %s, status=%d",
@@ -53,39 +59,34 @@ def user_key(collection_id, username):
     return "{}###{}".format(collection_id, username)
 
 
-if pkgdb_config['enabled']:
+@listen_event('fedmsg_event')
+def consume_fedmsg(topic, msg, db, **kwargs):
+    topic_re = re.compile(get_config('pkgdb.topic_re'))
+    if topic_re.search(topic):
+        if topic.endswith('.pkgdb.package.koschei.update'):
+            package = msg['msg']['package']
+            name = package['name']
+            tracked = package['koschei_monitor']
+            log.debug('Setting tracking flag for package %s to %r',
+                      name, tracked)
+            db.query(Package)\
+              .filter_by(name=name)\
+              .update({'tracked': tracked}, synchronize_session=False)
+            db.expire_all()
+            db.commit()
+        collection_ids = db.query(Collection.id).all_flat()
+        for username in fedmsg.meta.msg2usernames(msg):
+            for collection_id in collection_ids:
+                get_cache().delete(user_key(collection_id, username))
 
-    user_cache = dogpile.cache.make_region()
-    user_cache.configure(**pkgdb_config['cache'])
 
-    topic_re = re.compile(pkgdb_config['topic_re'])
-
-    @listen_event('fedmsg_event')
-    def consume_fedmsg(topic, msg, db, **kwargs):
-        if topic_re.search(topic):
-            if topic.endswith('.pkgdb.package.koschei.update'):
-                package = msg['msg']['package']
-                name = package['name']
-                tracked = package['koschei_monitor']
-                log.debug('Setting tracking flag for package %s to %r',
-                          name, tracked)
-                db.query(Package)\
-                  .filter_by(name=name)\
-                  .update({'tracked': tracked}, synchronize_session=False)
-                db.expire_all()
-                db.commit()
-            collection_ids = db.query(Collection.id).all_flat()
-            for username in fedmsg.meta.msg2usernames(msg):
-                for collection_id in collection_ids:
-                    user_cache.delete(user_key(collection_id, username))
-
-    @listen_event('polling_event')
-    def refresh_monitored_packages(backend):
-        try:
-            if pkgdb_config['sync_tracked']:
-                log.debug('Polling monitored packages...')
-                packages = query_monitored_packages()
-                if packages is not None:
-                    backend.sync_tracked(packages)
-        except requests.ConnectionError:
-            log.exception("Polling monitored packages failed, skipping cycle")
+@listen_event('polling_event')
+def refresh_monitored_packages(backend):
+    try:
+        if get_config('pkgdb.sync_tracked'):
+            log.debug('Polling monitored packages...')
+            packages = query_monitored_packages()
+            if packages is not None:
+                backend.sync_tracked(packages)
+    except requests.ConnectionError:
+        log.exception("Polling monitored packages failed, skipping cycle")

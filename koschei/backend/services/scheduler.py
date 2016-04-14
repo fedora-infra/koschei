@@ -25,7 +25,7 @@ from sqlalchemy import (func, union_all, extract, cast, Integer, case, null,
                         literal_column)
 from sqlalchemy.sql.functions import coalesce
 
-from koschei import util
+from koschei.config import get_config
 from koschei.backend import Backend, koji_util
 from koschei.backend.service import KojiService
 from koschei.models import Package, Build, UnappliedChange, Collection
@@ -38,13 +38,6 @@ def hours_since(what):
 class Scheduler(KojiService):
     koji_anonymous = False
 
-    priority_conf = util.config['priorities']
-    priority_threshold = priority_conf['build_threshold']
-    failed_priority = priority_conf['failed_build_priority']
-    max_builds = util.primary_koji_config['max_builds']
-    load_threshold = util.primary_koji_config['load_threshold']
-    calculation_interval = util.config['priorities']['calculation_interval']
-
     def __init__(self, backend=None, *args, **kwargs):
         super(Scheduler, self).__init__(*args, **kwargs)
         self.backend = backend or Backend(log=self.log, db=self.db,
@@ -52,7 +45,7 @@ class Scheduler(KojiService):
         self.calculation_timestamp = 0
 
     def get_dependency_priority_query(self):
-        update_weight = self.priority_conf['package_update']
+        update_weight = get_config('priorities.package_update')
         # pylint: disable=E1120
         distance = coalesce(UnappliedChange.distance, 8)
         # inner join with package last build to get rid of outdated dependency changes
@@ -63,9 +56,9 @@ class Scheduler(KojiService):
                             Package.last_build_id == UnappliedChange.prev_build_id)
 
     def get_time_priority_query(self):
-        t0 = self.priority_conf['t0']
-        t1 = self.priority_conf['t1']
-        a = self.priority_threshold / (math.log10(t1) - math.log10(t0))
+        t0 = get_config('priorities.t0')
+        t1 = get_config('priorities.t1')
+        a = get_config('priorities.build_threshold') / (math.log10(t1) - math.log10(t0))
         b = -a * math.log10(t0)
         log_arg = func.greatest(0.000001, hours_since(func.max(Build.started)))
         time_expr = func.greatest(a * func.log(log_arg) + b, -30)
@@ -81,7 +74,8 @@ class Scheduler(KojiService):
                                 Package.id == Build.package_id)\
                      .subquery()
         return self.db.query(sub.c.pkg_id,
-                             literal_column(str(self.failed_priority))
+                             literal_column(
+                                 str(get_config('priorities.failed_build_priority')))
                              .label('priority'))\
                       .filter(((sub.c.rank == 1) & (sub.c.state == 5)) |
                               ((sub.c.rank == 2) & (sub.c.state != 5)))\
@@ -141,21 +135,22 @@ class Scheduler(KojiService):
     def main(self):
         prioritized = self.get_priorities()
         self.db.rollback()  # no-op, ends the transaction
-        if time.time() - self.calculation_timestamp > self.calculation_interval:
+        if (time.time() - self.calculation_timestamp
+                > get_config('priorities.calculation_interval')):
             self.persist_priorities(prioritized)
         incomplete_builds = self.get_incomplete_builds_query().count()
-        if incomplete_builds >= self.max_builds:
+        if incomplete_builds >= get_config('koji_config.max_builds'):
             self.log.debug("Not scheduling: {} incomplete builds"
                            .format(incomplete_builds))
             return
         koji_load = koji_util.get_koji_load(self.koji_sessions['primary'])
-        if koji_load > self.load_threshold:
+        if koji_load > get_config('koji_config.load_threshold'):
             self.log.debug("Not scheduling: {} koji load"
                            .format(koji_load))
             return
 
         for package_id, priority in prioritized:
-            if priority < self.priority_threshold:
+            if priority < get_config('priorities.build_threshold'):
                 self.log.debug("Not scheduling: no package above threshold")
                 return
             package = self.db.query(Package).get(package_id)

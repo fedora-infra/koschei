@@ -35,12 +35,10 @@ from sqlalchemy.event import listen
 from sqlalchemy.types import TypeDecorator
 from sqlalchemy.dialects.postgresql import BYTEA
 
-from .util import config, primary_koji_config, secondary_koji_config
+from .config import get_config
+
 
 Base = declarative_base()
-
-db_url = config.get('database_url') or URL(**config['database_config'])
-engine = create_engine(db_url, echo=False, pool_size=10)
 
 
 class Query(sqlalchemy.orm.Query):
@@ -100,8 +98,30 @@ class KoscheiDbSession(sqlalchemy.orm.session.Session):
             self.expire_all()
 
 
-Session = sessionmaker(bind=engine, autocommit=False, class_=KoscheiDbSession,
-                       query_cls=Query)
+__engine = None
+__sessionmaker = None
+
+
+def get_engine():
+    global __engine
+    if __engine:
+        return __engine
+    db_url = get_config('db_url', None) or URL(**get_config('database_config'))
+    __engine = create_engine(db_url, echo=False, pool_size=10)
+    return __engine
+
+
+def get_sessionmaker():
+    global __sessionmaker
+    if __sessionmaker:
+        return __sessionmaker
+    __sessionmaker = sessionmaker(bind=get_engine(), autocommit=False,
+                                  class_=KoscheiDbSession, query_cls=Query)
+    return __sessionmaker
+
+
+def Session(*args, **kwargs):
+    return get_sessionmaker()(*args, **kwargs)
 
 
 def get_or_create(db, table, **cond):
@@ -301,7 +321,9 @@ class KojiTask(Base):
     @property
     def _koji_config(self):
         # pylint:disable=no-member
-        return secondary_koji_config if self.build.real else primary_koji_config
+        if self.build.real:
+            return get_config('koji_config')
+        return get_config('secondary_koji_config')
 
     @property
     def results_url(self):
@@ -416,7 +438,10 @@ class Build(Base):
 
     @property
     def taskinfo_url(self):
-        koji_config = secondary_koji_config if self.real else primary_koji_config
+        if self.real:
+            koji_config = get_config('koji_config')
+        else:
+            koji_config = get_config('secondary_koji_config')
         return '{}/taskinfo?taskID={}'.format(koji_config['weburl'], self.task_id)
 
     def __repr__(self):
@@ -590,7 +615,7 @@ listen(Base.metadata, 'after_create', trigger.execute_if(dialect='postgresql'))
 
 
 def grant_db_access(_, conn, *args, **kwargs):
-    user = config.get('unpriv_db_username')
+    user = get_config('unpriv_db_username', None)
     if user:
         conn.execute("""
                      GRANT SELECT, INSERT, UPDATE, DELETE
