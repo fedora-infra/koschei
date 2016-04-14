@@ -534,12 +534,12 @@ if not frontend_config['auto_tracking']:
                 return render_template("add-packages.html", form=form)
             names = set(form.packages.data)
             existing = db.query(Package).filter(Package.name.in_(names)).all()
-            nonexistent = set(names) - {p.name for p in existing}
+            nonexistent = names - {p.name for p in existing}
             if nonexistent:
                 flash("Packages don't exist: " + ','.join(nonexistent))
                 return render_template("add-packages.html", form=form)
-            added = db.query(Package).filter(Package.name.in_(names))\
-                                     .update({'tracked': True})
+            db.query(Package).filter(Package.name.in_(names))\
+                             .update({'tracked': True})
             if form.group.data:
                 name, _, namespace = reversed(form.group.data.partition('/'))
                 group = db.query(PackageGroup)\
@@ -550,10 +550,9 @@ if not frontend_config['auto_tracking']:
                 rels = [dict(group_id=group.id, package_name=name) for name in names]
                 if rels:
                     db.execute(PackageGroupRelation.__table__.insert(), rels)
-            if added:
-                added = ' '.join(x.name for x in added)
-                log.info("%s added %s", g.user.name, added)
-                flash("Packages added: %s", added)
+            added = ' '.join(names)
+            log.info("%s added %s", g.user.name, added)
+            flash("Packages added: {}".format(added))
             db.commit()
             return redirect(request.form.get('next') or url_for('frontpage'))
         return render_template("add-packages.html", form=form)
