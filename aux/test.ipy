@@ -19,10 +19,7 @@ from koschei.backend.main import *
 
 init_fedmsg()
 
-if 'KOSCHEI_CONFIG' in os.environ:
-    load_config(os.environ['KOSCHEI_CONFIG'].split(':'))
-else:
-    load_config(['config.cfg.template', 'aux/test-config.cfg'])
+load_config(['config.cfg.template', 'aux/test-config.cfg'])
 logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 plugin.load_plugins('backend')
 db=Session()

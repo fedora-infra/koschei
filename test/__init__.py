@@ -10,6 +10,7 @@ testdir = os.path.dirname(os.path.realpath(__file__))
 is_x86_64 = platform.machine() == 'x86_64'
 
 load_config(['{0}/../config.cfg.template'.format(testdir),
-             '{0}/test_config.cfg'.format(testdir)])
+             '{0}/test_config.cfg'.format(testdir)],
+            ignore_env=True)
 
 config = get_config(None)

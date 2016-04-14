@@ -36,7 +36,7 @@ def merge_dict(d1, d2):
     return ret
 
 
-def load_config(config_paths):
+def load_config(config_paths, ignore_env=False):
     def parse_config(config_path):
         if os.path.exists(config_path):
             with open(config_path) as config_file:
@@ -48,6 +48,8 @@ def load_config(config_paths):
         else:
             raise RuntimeError("Config file not found: {}".format(config_path))
     config = {}
+    if not ignore_env and 'KOSCHEI_CONFIG' in os.environ:
+        config_paths = os.environ['KOSCHEI_CONFIG'].split(':')
     for config_path in config_paths:
         print("Loading config from {}".format(config_path), file=sys.stderr)
         config = merge_dict(config, parse_config(config_path))
