@@ -76,7 +76,7 @@ def lookup_current_user():
     if "openid" in flask.session:
         username = openid_to_username(flask.session["openid"])
         flask.g.user = db.query(User).filter_by(name=username).first()
-    if get_config('bypass_login'):
+    if get_config('bypass_login', None):
         flask.g.user = get_or_create(db, User, name=get_config('bypass_login'))
 
 
