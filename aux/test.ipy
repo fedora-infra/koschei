@@ -1,5 +1,6 @@
 #!/usr/bin/ipython -i
 
+import os
 import sys
 import logging
 from datetime import datetime
@@ -17,7 +18,11 @@ from koschei.backend.services.polling import *
 from koschei.backend.main import *
 
 init_fedmsg()
-load_config(['config.cfg.template', 'aux/test-config.cfg'])
+
+if 'KOSCHEI_CONFIG' in os.environ:
+    load_config(os.environ['KOSCHEI_CONFIG'].split(':'))
+else:
+    load_config(['config.cfg.template', 'aux/test-config.cfg'])
 logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 plugin.load_plugins('backend')
 db=Session()
