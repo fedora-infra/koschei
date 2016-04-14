@@ -53,8 +53,8 @@ For production deployment install koschei RPM packages.
 Development snapshots are available at
 https://copr.fedorainfracloud.org/coprs/msimacek/koschei/
 
-Koschei is split into multiple components that can function independently
-- backend, frontend and admin. Each are installed as separate RPM,
+Koschei is split into multiple components that can function independently -
+backend, frontend and admin. Each are installed as separate RPM,
 configured separately and can be deployed on different machines.
 
 Setting up the database:
