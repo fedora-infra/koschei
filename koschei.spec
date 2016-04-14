@@ -157,11 +157,12 @@ ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-resolver
 
 %if %{with tests}
 %check
-DB=$PWD/test/db
-pg_ctl -s -w -D $DB init -o "-A trust"
-pg_ctl -s -w -D $DB start -o "-F -h '' -k $DB"
-trap 'pg_ctl -s -w -D $DB stop -m immediate' 0
-TEST_WITH_POSTGRES=1 POSTGRES_HOST=$DB %{__python2} setup.py test
+export PGDATA=$PWD/test/db
+export PGHOST=$PGDATA
+pg_ctl -s -w init -o "-A trust"
+pg_ctl -s -w start -o "-F -h '' -k $PGDATA"
+trap 'pg_ctl -s -w stop -m immediate' 0
+%{__python2} setup.py test
 %endif
 
 %pre common

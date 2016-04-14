@@ -1,12 +1,17 @@
+from __future__ import print_function
+
 import os
+import sys
 import unittest
 import shutil
 import json
+import psycopg2
 
 from mock import Mock
 
-from test import use_postgres, use_faitout, testdir, is_x86_64
+from test import testdir, is_x86_64
 from koschei import models as m
+from . import config
 
 workdir = '.workdir'
 
@@ -42,8 +47,36 @@ class AbstractTest(unittest.TestCase):
             return json.load(fo)
 
 
-@unittest.skipUnless(use_postgres or use_faitout, "Requires postgres")
 class DBTest(AbstractTest):
+    POSTGRES_OPTS = {
+        # Enable faster, but unsafe operation.
+        # (COMMIT statements return before WAL is written to disk.)
+        'synchronous_commit': 'off',
+        # Log all SQL statements.
+        'log_statement': 'all',
+        # Use sequential scanning only when absolutely necessary. Also enable logging
+        # of statement execution plans. With these two options combined, logs can be
+        # searched for sequential scans to find missing indexes.
+        'enable_seqscan': 'off',
+        'debug_print_plan': 'on',
+    }
+    postgres_initialized = None
+
+    @staticmethod
+    def init_postgres():
+        print("Initializing test database...", file=sys.stderr)
+        dbname = config['database_config']['database']
+        with psycopg2.connect(dbname='postgres') as conn:
+            conn.autocommit = True
+            with conn.cursor() as cur:
+                cur.execute("DROP DATABASE IF EXISTS {0}".format(dbname))
+                cur.execute("CREATE DATABASE {0}".format(dbname))
+                for option, value in DBTest.POSTGRES_OPTS.iteritems():
+                    cur.execute("ALTER DATABASE {0} SET {1} TO '{2}'".format(dbname,
+                                                                             option,
+                                                                             value))
+        m.Base.metadata.create_all(m.get_engine())
+
     def __init__(self, *args, **kwargs):
         super(DBTest, self).__init__(*args, **kwargs)
         self.s = None
@@ -51,7 +84,18 @@ class DBTest(AbstractTest):
         self.collection = m.Collection(name="foo", display_name="Foo", target_tag="tag",
                                        build_tag="build_tag", priority_coefficient=1.0)
 
+    @classmethod
+    def setUpClass(cls):
+        super(DBTest, cls).setUpClass()
+        if DBTest.postgres_initialized is None:
+            DBTest.postgres_initialized = False
+            if not os.environ.get('TEST_WITHOUT_POSTGRES'):
+                DBTest.init_postgres()
+                DBTest.postgres_initialized = True
+
     def setUp(self):
+        if not DBTest.postgres_initialized:
+            self.skipTest("requires PostgreSQL")
         super(DBTest, self).setUp()
         tables = m.Base.metadata.tables
         conn = m.get_engine().connect()
