@@ -57,8 +57,8 @@ class FrontendTest(DBTest):
         reply = self.client.post(url, follow_redirects=True)
         self.assertEqual(200, reply.status_code)
         self.assertIn('Cancelation request sent.', reply.data)
-        self.s.expunge(build)
-        self.assertTrue(self.s.query(m.Build).filter_by(id=build.id).first().cancel_requested)
+        self.s.expire(build)
+        self.assertTrue(build.cancel_requested)
 
     def test_cancel_build_unauthorized(self):
         self.prepare_user(name='jdoe', admin=False)
@@ -67,8 +67,8 @@ class FrontendTest(DBTest):
         url = 'build/{0}/cancel'.format(build.id)
         reply = self.client.post(url, follow_redirects=True)
         self.assertEqual(403, reply.status_code)
-        self.s.expunge(build)
-        self.assertFalse(self.s.query(m.Build).filter_by(id=build.id).first().cancel_requested)
+        self.s.expire(build)
+        self.assertFalse(build.cancel_requested)
 
     def test_cancel_build_not_running(self):
         self.prepare_user(name='jdoe', admin=True)
@@ -78,8 +78,8 @@ class FrontendTest(DBTest):
         reply = self.client.post(url, follow_redirects=True)
         self.assertEqual(200, reply.status_code)
         self.assertIn('Only running builds can be canceled.', reply.data)
-        self.s.expunge(build)
-        self.assertFalse(self.s.query(m.Build).filter_by(id=build.id).first().cancel_requested)
+        self.s.expire(build)
+        self.assertFalse(build.cancel_requested)
 
     def test_cancel_build_pending(self):
         self.prepare_user(name='jdoe', admin=True)
@@ -91,8 +91,8 @@ class FrontendTest(DBTest):
         reply = self.client.post(url, follow_redirects=True)
         self.assertEqual(200, reply.status_code)
         self.assertIn('Build already has pending cancelation request.', reply.data)
-        self.s.expunge(build)
-        self.assertTrue(self.s.query(m.Build).filter_by(id=build.id).first().cancel_requested)
+        self.s.expire(build)
+        self.assertTrue(build.cancel_requested)
 
     def test_add_package_nonexistent(self):
         reply = self.client.post('add_packages',
