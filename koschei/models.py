@@ -315,6 +315,7 @@ class KojiTask(Base):
     def state_string(self):
         # return [state for state, num in koji.TASK_STATES.items()
         #         if num == self.state][0].lower()
+        # pylint:disable=invalid-sequence-index
         states = ['free', 'open', 'closed', 'canceled', 'assigned', 'failed']
         return states[self.state]
 

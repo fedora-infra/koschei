@@ -30,12 +30,14 @@ log = logging.getLogger('koschei.pkgdb_plugin')
 
 __cache = None
 
+
 def get_cache():
     global __cache
     if __cache:
         return __cache
     __cache = dogpile.cache.make_region()
     __cache.configure(**get_config('pkgdb.cache'))
+
 
 # TODO share this with frontend plugin
 def query_pkgdb(url):
