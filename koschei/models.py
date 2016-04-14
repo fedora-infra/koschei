@@ -16,7 +16,6 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-import koji
 import struct
 import zlib
 
@@ -298,8 +297,10 @@ class KojiTask(Base):
 
     @property
     def state_string(self):
-        return [state for state, num in koji.TASK_STATES.items()
-                if num == self.state][0].lower()
+        # return [state for state, num in koji.TASK_STATES.items()
+        #         if num == self.state][0].lower()
+        states = ['free', 'open', 'closed', 'canceled', 'assigned', 'failed']
+        return states[self.state]
 
     @property
     def _koji_config(self):
@@ -308,8 +309,10 @@ class KojiTask(Base):
 
     @property
     def results_url(self):
-        pathinfo = koji.PathInfo(topdir=self._koji_config['topurl'])
-        return pathinfo.task(self.task_id)
+        # pathinfo = koji.PathInfo(topdir=self._koji_config['topurl'])
+        # return pathinfo.task(self.task_id)
+        return '{}/work/tasks/{}/{}'.format(self._koji_config['topurl'],
+                                            self.task_id % 10000, self.task_id)
 
     @property
     def taskinfo_url(self):
