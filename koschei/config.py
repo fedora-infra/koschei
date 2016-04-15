@@ -19,7 +19,6 @@
 from __future__ import print_function
 
 import os
-import sys
 import logging
 import logging.config
 
@@ -62,7 +61,6 @@ def load_config(config_paths, ignore_env=False):
     if not ignore_env and 'KOSCHEI_CONFIG' in os.environ:
         config_paths = os.environ['KOSCHEI_CONFIG'].split(':')
     for config_path in config_paths:
-        print("Loading config from {}".format(config_path), file=sys.stderr)
         config = merge_dict(config, parse_config(config_path))
 
     assert config
