@@ -323,8 +323,8 @@ class KojiTask(Base):
     def _koji_config(self):
         # pylint:disable=no-member
         if self.build.real:
-            return get_config('koji_config')
-        return get_config('secondary_koji_config')
+            return get_config('secondary_koji_config')
+        return get_config('koji_config')
 
     @property
     def results_url(self):
@@ -440,9 +440,9 @@ class Build(Base):
     @property
     def taskinfo_url(self):
         if self.real:
-            koji_config = get_config('koji_config')
-        else:
             koji_config = get_config('secondary_koji_config')
+        else:
+            koji_config = get_config('koji_config')
         return '{}/taskinfo?taskID={}'.format(koji_config['weburl'], self.task_id)
 
     def __repr__(self):
