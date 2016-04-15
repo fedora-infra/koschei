@@ -4,8 +4,8 @@ config = {
     # database connection properties
     "database_config": {
         "drivername": "postgres",
-        "database": "koschei",
-        "username": "koschei",
+        # "database": "koschei",
+        # "username": "koschei",
         # "password": "",
         # "port": 5432,
     },
