@@ -241,8 +241,6 @@ dummy = posix.readlink(dir) and os.remove(dir)
 
 %files frontend-fedora
 %{python2_sitelib}/*/frontend/plugins/pkgdb.py*
-# FIXME remove after config refactoring
-%{python2_sitelib}/*/frontend/plugins/fedmsg_publisher.py*
 
 %files backend-fedora
 %{_libexecdir}/%{name}/*watcher*
