@@ -105,6 +105,8 @@ def get_config(key, default=NO_DEFAULT):
         else:
             raise KeyError("Configuration value not found: {}".format(key))
     return ret
+    # pylint: disable=unreachable
+    return key  # makes pylint stop thinking the return type must be a dict
 
 
 def get_koji_config(koji_id, key):

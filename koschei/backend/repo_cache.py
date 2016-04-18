@@ -76,7 +76,6 @@ class RepoDescriptor(object):
         return self.repo_id < other.repo_id
 
     def make_url(self, arch):
-        # pylint: disable=no-member
         return self.remote_url.format(build_tag=self.build_tag,
                                       repo_id=self.repo_id, arch=arch)
 
