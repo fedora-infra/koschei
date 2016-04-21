@@ -193,6 +193,20 @@ config = {
         # you'll want to set this to True to disable manual adding of packages
         "auto_tracking": False,
 
+        # authentication settings
+        "auth": {
+            # Regular expression used to match user identity (OpenID
+            # identifier, KRB5 principal etc.) to user name.  Identity
+            # must match this regex as a whole, user name is is
+            # content of group.
+            # Password-based auth or no auth
+            "user_re": "(.+)",
+            # Fedora OpenID
+            #"user_re": "http://(.+)\\.id\\.fedoraproject\\.org/",
+            # Kerberos
+            #"user_re": "(.+)@EXAMPLE\\.COM",
+        }
+
         # Production copies for fedmenu
         #"fedmenu_url": "https://apps.fedoraproject.org/fedmenu",
         #"fedmenu_data_url": "https://apps.fedoraproject.org/js/data.js",
@@ -204,11 +218,6 @@ config = {
     "alembic": {
         # path to alembic.ini
         "alembic_ini": "@DATADIR@/alembic.ini"
-    },
-    # openid authentication configuration
-    "openid": {
-        "openid_provider": "id.fedoraproject.org",
-        "openid_store": "@STATEDIR@/openid",
     },
     # logging configuration, passed directly to logging.config.dictConfig
     # see python logging documentation for possible values

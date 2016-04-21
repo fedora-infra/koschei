@@ -1,4 +1,4 @@
-# Copyright (C) 2014  Red Hat, Inc.
+# Copyright (C) 2014-2016 Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,85 +15,67 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 # Author: Michael Simacek <msimacek@redhat.com>
+# Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-import logging
-import flask
+import re
 import functools
-from flask_openid import OpenID
+from flask import abort, flash, request, session, redirect, url_for, g
 
 from koschei.config import get_config
-from koschei.models import User, get_or_create
 from koschei.frontend import app, db
+import koschei.models as m
+
+bypass_login = get_config('bypass_login', None)
+user_re = get_config('frontend.auth.user_re')
+user_re = re.compile('^{}$'.format(user_re))
 
 
-provider = get_config('openid.openid_provider')
-openid = OpenID(app, get_config('openid.openid_store'), safe_roots=[])
-
-
-class TypeURIMismatchFilter(logging.Filter):
-    def filter(self, record):
-        return 'TypeURIMismatch' not in record.getMessage()
-
-
-logging.getLogger().addFilter(TypeURIMismatchFilter())
-
-
-def username_to_openid(name):
-    return "http://{}.{}/".format(name, provider)
-
-
-def openid_to_username(oid):
-    return oid.replace(".{}/".format(provider), "")\
-              .replace("http://", "")
-
-
-@app.route("/login", methods=["GET", "POST"])
-@openid.loginhandler
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    if flask.g.user is not None:
-        return flask.redirect(openid.get_next_url())
+    if bypass_login:
+        identity = "none"
+        user_name = bypass_login
     else:
-        return openid.try_login("https://{}/".format(provider),
-                                ask_for=["email", "timezone"])
-
-
-@openid.after_login
-def create_or_login(response):
-    flask.session["openid"] = response.identity_url
-    username = openid_to_username(response.identity_url)
-    user = get_or_create(db, User, name=username)
-    user.email = response.email
-    user.timezone = response.timezone
-    db.commit()
-    flask.g.user = user
-
-    return flask.redirect(openid.get_next_url())
+        identity = request.environ.get('REMOTE_USER') or abort(501)
+        user_name = re.match(user_re, identity).group(1)
+    user = db.query(m.User).filter_by(name=user_name).first()
+    if not user:
+        user = m.User(name=user_name, admin=bool(bypass_login))
+        db.add(user)
+        db.commit()
+        flash('New user "{}" was registered.'.format(user_name))
+    session['user'] = user_name
+    flash('Logged in as user "{}" with identity "{}".'
+          .format(user_name, identity))
+    if user.admin:
+        flash('You have admin privileges.')
+    next_url = request.values.get("next", request.referrer) or url_for('frontpage')
+    return redirect(next_url)
 
 
 @app.before_request
 def lookup_current_user():
-    flask.g.user = None
-    if "openid" in flask.session:
-        username = openid_to_username(flask.session["openid"])
-        flask.g.user = db.query(User).filter_by(name=username).first()
-    if get_config('bypass_login', None):
-        flask.g.user = get_or_create(db, User, name=get_config('bypass_login'))
+    g.user = None
+    user_name = session.get('user', None)
+    if user_name:
+        g.user = db.query(m.User).filter_by(name=user_name).one()
 
 
-@app.route("/logout")
+@app.route('/logout')
 def logout():
-    flask.session.pop("openid", None)
-    return flask.redirect(openid.get_next_url())
+    if session.pop('user', None):
+        flash('Successfully logged out.')
+    else:
+        flash('You were not logged in.')
+    return redirect(url_for('frontpage'))
 
 
 def login_required():
     def decorator(func):
         @functools.wraps(func)
         def decorated(*args, **kwargs):
-            if flask.g.user is None:
-                return flask.redirect(flask.url_for("login",
-                                                    next=flask.request.url))
-
+            if g.user is None:
+                return redirect(url_for('login', next=request.url))
             return func(*args, **kwargs)
         return decorated
     return decorator

@@ -13,7 +13,6 @@ Python code dependencies:
 - alembic
 - fedmsg
 - flask
-- flask-openid
 - flask-sqlalchemy
 - hawkey
 - jinja2

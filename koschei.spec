@@ -27,7 +27,6 @@ BuildRequires:       python-psycopg2
 BuildRequires:       postgresql-server
 BuildRequires:       python-flask
 BuildRequires:       python-flask-sqlalchemy
-BuildRequires:       python-flask-openid
 BuildRequires:       python-flask-wtf
 BuildRequires:       python-jinja2
 BuildRequires:       python-dogpile-cache
@@ -66,7 +65,6 @@ Summary:        Web frontend for koschei using mod_wsgi
 Requires:       %{name}-common = %{version}-%{release}
 Requires:       python-flask
 Requires:       python-flask-sqlalchemy
-Requires:       python-flask-openid
 Requires:       python-flask-wtf
 Requires:       python-jinja2
 Requires:       mod_wsgi
