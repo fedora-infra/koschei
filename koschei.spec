@@ -1,4 +1,5 @@
 %bcond_without tests
+%global upstreamrel 1
 
 Name:           koschei
 Version:        1.6
@@ -6,7 +7,7 @@ Release:        1%{?dist}
 Summary:        Continuous integration for Fedora packages
 License:        GPLv2+
 URL:            https://github.com/msimacek/%{name}
-Source0:        https://github.com/msimacek/%{name}/archive/%{version}.tar.gz#/%{name}-%{version}.tar.gz
+Source0:        https://github.com/msimacek/%{name}/archive/%{name}-%{version}-%{upstreamrel}.tar.gz
 BuildArch:      noarch
 
 BuildRequires:  python2-devel
@@ -110,7 +111,7 @@ Requires(postun): systemd
 
 
 %prep
-%setup -q
+%setup -q -n %{name}-%{name}-%{version}-%{upstreamrel}
 
 sed 's|@CACHEDIR@|%{_localstatedir}/cache/%{name}|g
      s|@DATADIR@|%{_datadir}/%{name}|g
