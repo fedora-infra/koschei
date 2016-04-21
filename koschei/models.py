@@ -172,12 +172,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
-    email = Column(String)
-    timezone = Column(String)
     admin = Column(Boolean, nullable=False, server_default=false())
-
-    # Whether packages for this user were retrieved. Setting to false invalidates cache
-    packages_retrieved = Column(Boolean, nullable=False, server_default=false())
 
 
 class Collection(Base):
