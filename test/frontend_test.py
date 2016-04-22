@@ -53,6 +53,7 @@ class FrontendTest(DBTest):
         normalized_data = ' '.join(reply.data.split())
         self.assertIn('<!DOCTYPE html>', normalized_data)
         self.assertIn('Packages from 1 to 0 from total 0', normalized_data)
+        self.assertIn('Package summary', normalized_data)
 
     def test_404(self):
         reply = self.client.get('/xyzzy')
@@ -62,6 +63,11 @@ class FrontendTest(DBTest):
          reply = self.client.get('/static/koschei.css')
          self.assertEqual(200, reply.status_code)
          self.assertEqual('text/css; charset=utf-8', reply.content_type)
+
+    def test_documentation(self):
+        reply = self.client.get('documentation')
+        self.assertEqual(200, reply.status_code)
+        self.assertIn('How it works?', reply.data)
 
     def test_login(self):
         reply = self.client.get('login')
