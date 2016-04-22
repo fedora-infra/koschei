@@ -59,7 +59,7 @@ configured separately and can be deployed on different machines.
 Setting up the database:
 - Install PostgreSQL server with `dnf install postgresql-server`. Other
   database servers are not supported and won't work.
-- Execute `postgresql-setup --initdb` to initialize the database
+- Execute `postgresql-setup initdb` to initialize the database
 - Enable the service with `systemctl enable postgresql-server`
   and start it with `systemctl start postgresq-server`
 - Create the database with `createdb koschei`
