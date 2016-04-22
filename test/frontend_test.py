@@ -16,12 +16,26 @@
 #
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
+from functools import wraps
+
 from koschei.frontend import app
 import koschei.frontend.views
 import koschei.frontend.auth
 import koschei.models as m
 
 from .common import DBTest
+
+
+def authenticate(admin=False):
+    def decorator(fn):
+        @wraps(fn)
+        def decorated(*args, **kwargs):
+            self = args[0]
+            self.prepare_user(name='jdoe', admin=admin)
+            self.client.get('login')
+            return fn(*args, **kwargs)
+        return decorated
+    return decorator
 
 
 class FrontendTest(DBTest):
@@ -54,8 +68,8 @@ class FrontendTest(DBTest):
         self.assertEqual(302, reply.status_code)
         self.assertEqual('http://localhost/', reply.location)
 
+    @authenticate(admin=True)
     def test_cancel_build(self):
-        self.prepare_user(name='jdoe', admin=True)
         self.prepare_packages(['groovy'])
         build = self.prepare_builds(groovy=None)[0]
         url = 'build/{0}/cancel'.format(build.id)
@@ -65,8 +79,8 @@ class FrontendTest(DBTest):
         self.s.expire(build)
         self.assertTrue(build.cancel_requested)
 
+    @authenticate(admin=False)
     def test_cancel_build_unauthorized(self):
-        self.prepare_user(name='jdoe', admin=False)
         self.prepare_packages(['groovy'])
         build = self.prepare_builds(groovy=None)[0]
         url = 'build/{0}/cancel'.format(build.id)
@@ -75,8 +89,8 @@ class FrontendTest(DBTest):
         self.s.expire(build)
         self.assertFalse(build.cancel_requested)
 
+    @authenticate(admin=True)
     def test_cancel_build_not_running(self):
-        self.prepare_user(name='jdoe', admin=True)
         self.prepare_packages(['groovy'])
         build = self.prepare_builds(groovy=True)[0]
         url = 'build/{0}/cancel'.format(build.id)
@@ -86,8 +100,8 @@ class FrontendTest(DBTest):
         self.s.expire(build)
         self.assertFalse(build.cancel_requested)
 
+    @authenticate(admin=True)
     def test_cancel_build_pending(self):
-        self.prepare_user(name='jdoe', admin=True)
         self.prepare_packages(['groovy'])
         build = self.prepare_builds(groovy=None)[0]
         build.cancel_requested = True
@@ -99,6 +113,7 @@ class FrontendTest(DBTest):
         self.s.expire(build)
         self.assertTrue(build.cancel_requested)
 
+    @authenticate
     def test_add_package_nonexistent(self):
         reply = self.client.post('add_packages',
                                  data=dict(packages='SimplyHTML'),
@@ -106,6 +121,7 @@ class FrontendTest(DBTest):
         self.assertEqual(200, reply.status_code)
         self.assertIn('Packages don&#39;t exist: SimplyHTML', reply.data)
 
+    @authenticate
     def test_add_package(self):
         pkg = self.prepare_packages(['xpp3'])[0]
         pkg.tracked = False
