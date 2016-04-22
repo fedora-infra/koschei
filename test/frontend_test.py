@@ -49,6 +49,11 @@ class FrontendTest(DBTest):
          self.assertEqual(200, reply.status_code)
          self.assertEqual('text/css; charset=utf-8', reply.content_type)
 
+    def test_login(self):
+        reply = self.client.get('login')
+        self.assertEqual(302, reply.status_code)
+        self.assertEqual('http://localhost/', reply.location)
+
     def test_cancel_build(self):
         self.prepare_user(name='jdoe', admin=True)
         self.prepare_packages(['groovy'])
