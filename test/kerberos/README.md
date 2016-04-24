@@ -37,7 +37,7 @@ Ensure keytab is secure, but readable by httpd.
     chown apache:apache /etc/krb5.keytab
     systemctl reload httpd
 
-Start KDC daemon (it will run in background, unless -n is giver).
+Start KDC daemon (it will run in background, unless -n is given).
 
     krb5kdc
 
