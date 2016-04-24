@@ -1,3 +1,24 @@
-*~
+# Binaries
 *.pyc
 *.pyo
+/build/
+/dist/
+/koschei.egg-info/
+/koschei-*.tar.gz
+
+# Non-volatile test resources
+/test/db/
+/test/kdc/
+
+# Emacs
+*~
+
+# PyCharm
+/.idea/
+
+# PyDev
+/*.pydevproject
+/.project
+/.classpath
+/.settings/
+/.metadata/
