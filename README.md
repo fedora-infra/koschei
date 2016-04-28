@@ -33,6 +33,33 @@ Infrastructure:
 - fedmsg (optional)
 - systemd (optional)
 
+
+Development
+-----------
+Koschei git repository includes a Vagrantfile, which can be used to provision
+a VM with the following:
+- initialized empty database with rawhide collection
+- the source attached at `/vagrant`
+- everything necessary symlinked to be able to run admin script, backend
+  services and frontend out-of-the-box
+- httpd running with the frontend on port 5000 on your machine
+
+How to use it:
+- Install vagrant and run `vagrant up`
+- Frontend is already running on port 80, mapped to port 5000 on your local
+  machine
+- The admin script can be run as `koschei-admin` (it's symlink to the actual
+  source file in `/vagrant`)
+- Backend services can be run with `python -m koschei.backend.main
+  service_name`. If you need to run services that need a Koji certificate,
+  you'll need to scp your certificates into `/etc/koschei` in the machine.
+- There is a helper script `koschei-ipython` that drops you into ipython shell
+  with koschei backend initialized and database and koji sessions bound to
+  variables `db` and `k`, respectively. This can be useful for development since
+  you don't need to run full service to test a particular function or code
+  snippet
+
+
 Configuration
 -------------
 The configuration is formed by merging default configuration values and the
