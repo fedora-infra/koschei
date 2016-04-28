@@ -191,6 +191,10 @@ class Collection(Base):
     # PkgDB branch name
     branch = Column(String)
 
+    # bugzilla template fields. If null, bug filling will be disabled
+    bugzilla_product = Column(String)
+    bugzilla_version = Column(String)
+
     # priority of packages in given collection is multiplied by this
     priority_coefficient = Column(Float, nullable=False, server_default='1')
 

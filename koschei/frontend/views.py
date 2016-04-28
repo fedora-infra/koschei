@@ -617,10 +617,13 @@ def bugreport(name):
                 .filter(Package.last_complete_build_id != None)\
                 .options(joinedload(Package.last_complete_build))\
                 .first() or abort(404)
-    srpm = package.srpm_nvra or abort(404)
+    variables = package.srpm_nvra or abort(404)
+    variables['package'] = package
+    variables['collection'] = package.collection
+    variables['url'] = request.url_root + url_for('package_detail', name=package.name)
     template = get_config('bugreport.template')
-    bug = {key: template[key].format(**srpm) for key in template.keys()}
+    bug = {key: template[key].format(**variables) for key in template.keys()}
     bug['comment'] = dedent(bug['comment']).strip()
     query = urllib.urlencode(bug)
-    bugreport_url = get_config('bugreport.url') % query
+    bugreport_url = get_config('bugreport.url').format(query=query)
     return redirect(bugreport_url)

@@ -269,6 +269,10 @@ class CollectionCommandParser(object):
         parser.add_argument('--poll-untracked',
                             help="Whether to poll builds for untracked packages. "
                             "Defaults to true")
+        parser.add_argument('--bugzilla-product',
+                            help="Product used in bugzilla template and links")
+        parser.add_argument('--bugzilla-version',
+                            help="Product version used in bugzilla template")
 
 
 class CreateCollection(CollectionCommandParser, Command):

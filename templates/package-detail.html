@@ -99,12 +99,14 @@
             <a href="{{ links['packages'] }}/{{ enc_name }}">Packages</a>
         </td>
     </tr>
+    {% if g.current_collection.bugzilla_product and g.current_collection.bugzilla_version %}
     <tr>
         <th>Bug reports</th>
         <td>
             <a href="{{ url_for('bugreport', name=package.name) }}">File new FTBFS bug</a>
         </td>
     </tr>
+    {% endif %}
     {% if g.user %}
     <tr>
         <td>
