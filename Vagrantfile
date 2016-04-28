@@ -3,7 +3,8 @@
 #
 $SCRIPT = <<-SHELL
 # install deps
-yum -y install epel-release yum-utils
+yum -y install epel-release
+yum -y install vim /usr/bin/ipython
 sed -n '/%{name}/d;/^Requires:\\s*/s///p' /vagrant/koschei.spec | sort -u | xargs yum -y install
 # setup config, dirs and symlinks
 mkdir -p /home/vagrant/cache /usr/share/koschei /etc/koschei
@@ -36,6 +37,11 @@ koschei-admin create-collection f25 -d 'Fedora Rawhide' --branch master -b f25-b
 setenforce 0
 # start httpd
 systemctl start httpd
+# setup helpers
+cat > /usr/bin/koschei-ipython << EOF
+export KOSCHEI_CONFIG=/usr/share/koschei/config.cfg:/etc/koschei/config-backend.cfg
+ipython -i /vagrant/aux/test.ipy
+EOF
 SHELL
 
 Vagrant.configure(2) do |config|
