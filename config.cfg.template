@@ -236,14 +236,27 @@ config = {
             },
         },
     },
-    # links to other applications displayed in the frontend
-    "links": {
-        "bugzilla": "https://bugzilla.redhat.com",
-        "dist-git": "http://pkgs.fedoraproject.org",
-        "pkgdb": "https://admin.fedoraproject.org/pkgdb",
-        "bodhi": "https://bodhi.fedoraproject.org/updates",
-        "packages": "https://apps.fedoraproject.org/packages",
-    },
+    # Links to other applications displayed in the frontend,
+    # expects a list of dictionaries with "name" and "url" keys.
+    # Package ORM object will be interpolated into the URL as {package}, it's
+    # members are available using dot notation, e.g. {package.name}.
+    # The variables will be URL-encoded before interpolation.
+    # If a variable cannot be interpolated or is None, the link won't be
+    # displayed
+    "links": [
+        {"name": "Packages",
+         "url": "https://apps.fedoraproject.org/packages/{package.name}"},
+        {"name": "Bugzilla",
+         "url": "https://bugzilla.redhat.com/buglist.cgi?product={package.collection.bugzilla_product}&component={package.name}"},
+        {"name": "PkgDB",
+         "url": "https://admin.fedoraproject.org/pkgdb/package/{package.name}"},
+        {"name": "Bodhi",
+         "url": "https://bodhi.fedoraproject.org/updates?packages={package.name}"},
+        {"name": "Dist-git",
+         "url": "http://pkgs.fedoraproject.org/cgit/{package.name}.git"},
+        {"name": "Koji",
+         "url": "http://koji.fedoraproject.org/koji/packageinfo?packageID={package.name}"}
+    ],
     # template for bugreports for "File new FTBFS bug" link
     "bugreport": {
         # URL to bugzilla instance enter_bug endpoint. Query string is

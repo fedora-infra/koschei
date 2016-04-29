@@ -69,6 +69,29 @@ def format_depchange(change):
     return [''] * 4
 
 
+def generate_links(package):
+    output = []
+    for link_dict in get_config('links'):
+        name = link_dict['name']
+        url = link_dict['url']
+        try:
+            for interp in re.findall(r'\{([^}]+)\}', url):
+                if not re.match(r'package\.?', interp):
+                    raise RuntimeError("Only 'package' variable can be "
+                                       "interpolated into link url")
+                value = package
+                for part in interp.split('.')[1:]:
+                    value = getattr(value, part)
+                if value is None:
+                    raise AttributeError()  # continue the outer loop
+                url = url.replace('{' + interp + '}',
+                                  escape(urllib.quote_plus(str(value))))
+            output.append('<a href="{url}">{name}</a>'.format(name=name, url=url))
+        except AttributeError:
+            continue
+    return Markup('\n'.join(output))
+
+
 def columnize(what, css_class=None):
     attrs = ' class="{}"'.format(css_class) if css_class else ''
     return Markup('\n'.join('<td{}>{}</td>'.format(attrs, escape(item))
@@ -95,6 +118,7 @@ def require_login():
 app.jinja_env.globals.update(
     primary_koji_url=get_config('koji_config.weburl'),
     secondary_koji_url=get_config('secondary_koji_config.weburl'),
+    generate_links=generate_links,
     inext=next, iter=iter,
     min=min, max=max, page_args=page_args,
     get_global_notices=get_global_notices,
@@ -201,11 +225,6 @@ def date_filter(date):
 @app.context_processor
 def inject_times():
     return {'since': datetime.min, 'until': datetime.now()}
-
-
-@app.context_processor
-def inject_links():
-    return {'links': get_config('links')}
 
 
 @app.context_processor
