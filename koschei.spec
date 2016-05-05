@@ -118,6 +118,8 @@ sed 's|@CACHEDIR@|%{_localstatedir}/cache/%{name}|g
 %build
 %{__python2} setup.py build
 
+aux/gen-bash-completion.py >koschei-admin.bash
+
 %install
 %{__python2} setup.py install --skip-build --root %{buildroot}
 
@@ -153,6 +155,9 @@ ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-scheduler
 ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-watcher
 ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-polling
 ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-resolver
+
+install -dm 755 %{buildroot}%{_sysconfdir}/bash_completion.d/
+install -p -m 644 koschei-admin.bash %{buildroot}%{_sysconfdir}/bash_completion.d/
 
 %if %{with tests}
 %check
@@ -215,6 +220,7 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %{_bindir}/%{name}-admin
 %{_datadir}/%{name}/alembic/
 %{_datadir}/%{name}/alembic.ini
+%{_sysconfdir}/bash_completion.d
 %config(noreplace) %{_sysconfdir}/%{name}/config-admin.cfg
 
 %files frontend
