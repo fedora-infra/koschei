@@ -52,5 +52,5 @@ pg_reload()
 
 pg_status()
 {
-    pg_ctl -s -w reload
+    pg_ctl -s -w status
 }
