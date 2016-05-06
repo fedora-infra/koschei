@@ -178,6 +178,7 @@ class ResolverTest(DBTest):
         b1.deps_processed = b1.deps_resolved = True
         b2 = self.prepare_builds(foo=False, repo_id=None)[0]
         b2.deps_processed = True
+        b2.deps_resolved = False
         self.s.commit()
         with patch('koschei.backend.koji_util.get_build_group', return_value=['gcc','bash']):
             self.assertEqual(b1, self.resolver.get_build_for_comparison(foo))
@@ -226,7 +227,6 @@ class ResolverTest(DBTest):
                 self.resolver.process_builds()
         self.assertTrue(b.deps_processed)
         self.assertFalse(b.deps_resolved)
-        self.assertEquals(600, b.package.manual_priority)
 
     def prepare_old_build(self):
         old_build = self.prepare_foo_build(repo_id=555, version='3')

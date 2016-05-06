@@ -429,10 +429,6 @@ class Resolver(KojiService):
         self.db.query(Build).filter_by(id=entry.id)\
             .update({'deps_processed': True, 'deps_resolved': curr_deps is not None,
                      'dependency_keys': [dep.id for dep in deps]})
-        if curr_deps is None and entry.id == entry.last_build_id:
-            failed_prio = 3 * get_config('priorities.failed_build_priority')
-            self.db.query(Package).filter_by(id=entry.package_id)\
-                .update({'manual_priority': Package.manual_priority + failed_prio})
         if curr_deps is None:
             return
         if prev and prev.dependency_keys:

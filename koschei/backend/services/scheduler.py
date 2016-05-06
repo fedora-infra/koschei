@@ -69,18 +69,19 @@ class Scheduler(KojiService):
     def get_failed_build_priority_query(self):
         rank = func.rank().over(partition_by=Package.id,
                                 order_by=Build.id.desc()).label('rank')
-        sub = self.db.query(Package.id.label('pkg_id'), Build.state, rank)\
+        sub = self.db.query(Package.id.label('pkg_id'), Build.state,
+                            Build.deps_resolved, rank)\
                      .outerjoin(Build,
                                 Package.id == Build.package_id)\
                      .subquery()
-        return self.db.query(sub.c.pkg_id,
-                             literal_column(
-                                 str(get_config('priorities.failed_build_priority')))
-                             .label('priority'))\
-                      .filter(((sub.c.rank == 1) & (sub.c.state == 5)) |
-                              ((sub.c.rank == 2) & (sub.c.state != 5)))\
-                      .group_by(sub.c.pkg_id)\
-                      .having(func.count(sub.c.pkg_id) == 2)
+        failed_prio = get_config('priorities.failed_build_priority')
+        return self.db.query(
+            sub.c.pkg_id,
+            literal_column(str(failed_prio)).label('priority')
+        ).filter(
+            ((sub.c.rank == 1) & ((sub.c.state == 5) | (sub.c.deps_resolved == False))) |
+            ((sub.c.rank == 2) & (sub.c.state != 5))
+        ).group_by(sub.c.pkg_id).having(func.count(sub.c.pkg_id) == 2)
 
     def get_priority_queries(self):
         prio = (('manual', Package.manual_priority),

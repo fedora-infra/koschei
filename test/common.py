@@ -155,6 +155,8 @@ class DBTest(AbstractTest):
     def prepare_builds(self, repo_id=1, **builds):
         new_builds = []
         for pkg_name, state in sorted(builds.items()):
+            if pkg_name.endswith('_resolved'):
+                continue
             states = {
                 True: m.Build.COMPLETE,
                 False: m.Build.FAILED,
@@ -164,7 +166,8 @@ class DBTest(AbstractTest):
                 state = states[state]
             package_id = self.s.query(m.Package.id).filter_by(name=pkg_name).scalar()
             build = m.Build(package_id=package_id, state=state, repo_id=repo_id,
-                            task_id=self.task_id_counter)
+                            task_id=self.task_id_counter,
+                            deps_resolved=builds.get(pkg_name + '_resolved', True))
             self.task_id_counter += 1
             self.s.add(build)
             new_builds.append(build)
