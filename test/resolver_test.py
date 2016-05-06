@@ -20,7 +20,7 @@
 import os
 import shutil
 from contextlib import contextmanager
-from unittest import skip
+from unittest import skipIf
 
 import hawkey
 import koji
@@ -323,7 +323,7 @@ class ResolverTest(DBTest):
 
     # qt-x11 requires (sni-qt(x86-64) if plasma-workspace)
     # since plasma-workspace is not installed, sni-qt should not be instaled either
-    @skip
+    @skipIf(hawkey.VERSION < '0.7', 'Weak deps are not supported by this hawkey version')
     @x86_64_only
     def test_rich_deps(self):
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
@@ -336,7 +336,7 @@ class ResolverTest(DBTest):
 
     # qt-x11 requires (sni-qt(x86-64) if plasma-workspace)
     # since plasma-workspace is installed, sni-qt should be instaled too
-    @skip
+    @skipIf(hawkey.VERSION < '0.7', 'Weak deps are not supported by this hawkey version')
     @x86_64_only
     def test_rich_deps2(self):
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
