@@ -22,7 +22,7 @@ from datetime import timedelta, datetime
 from mock import Mock, patch
 from sqlalchemy import Table, Column, Integer, MetaData
 
-from common import DBTest
+from test.common import DBTest
 from koschei import models as m
 from koschei.backend.services.scheduler import Scheduler
 

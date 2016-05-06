@@ -17,7 +17,7 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 from mock import patch
-from common import DBTest
+from test.common import DBTest
 from koschei import plugin
 from koschei.models import PackageGroup, PackageGroupRelation
 

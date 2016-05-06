@@ -28,7 +28,7 @@ import librepo
 from mock import Mock, patch
 
 import koschei.backend.koji_util
-from common import DBTest, testdir, x86_64_only, KojiMock
+from test.common import DBTest, testdir, x86_64_only, KojiMock
 from koschei.backend.services.resolver import Resolver, DependencyCache
 from koschei.models import (Dependency, UnappliedChange, AppliedChange, Package,
                             ResolutionProblem, BuildrootProblem)

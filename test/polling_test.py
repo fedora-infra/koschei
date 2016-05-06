@@ -19,7 +19,7 @@
 import koji
 from mock import Mock, call
 
-from common import DBTest
+from test.common import DBTest
 from koschei import models as m
 from koschei.backend.services.polling import Polling
 

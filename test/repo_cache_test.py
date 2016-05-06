@@ -22,7 +22,7 @@ import os
 import librepo
 from mock import patch
 
-from common import DBTest
+from test.common import DBTest
 from koschei.backend import repo_cache
 
 

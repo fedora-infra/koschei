@@ -16,7 +16,7 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-from common import DBTest
+from test.common import DBTest
 from koschei.models import Build
 
 class TriggerTest(DBTest):

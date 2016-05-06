@@ -20,7 +20,7 @@ import datetime
 import koji
 import logging
 
-from common import DBTest, KojiMock
+from test.common import DBTest, KojiMock
 from mock import Mock, patch
 from koschei.backend import Backend
 from koschei import plugin, models as m

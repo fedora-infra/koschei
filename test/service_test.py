@@ -18,7 +18,7 @@
 
 from mock import Mock, patch, call
 
-from common import AbstractTest
+from test.common import AbstractTest
 from koschei.backend.service import Service
 
 

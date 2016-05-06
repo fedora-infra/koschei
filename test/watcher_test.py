@@ -18,7 +18,7 @@
 
 from mock import Mock, patch
 
-from common import DBTest
+from test.common import DBTest
 from koschei.backend.services.watcher import Watcher
 
 test_topic = 'org.fedoraproject.test.buildsys'
