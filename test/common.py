@@ -28,15 +28,11 @@ import psycopg2
 
 from mock import Mock
 
-from test import testdir, is_x86_64
+from test import testdir
 from koschei import models as m
 from . import config
 
 workdir = '.workdir'
-
-
-def x86_64_only(fn):
-    return unittest.skipIf(not is_x86_64, "Requires x86_64 host")(fn)
 
 
 class AbstractTest(unittest.TestCase):

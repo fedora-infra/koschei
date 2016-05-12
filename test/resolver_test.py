@@ -28,7 +28,7 @@ import librepo
 from mock import Mock, patch
 
 import koschei.backend.koji_util
-from test.common import DBTest, testdir, x86_64_only, KojiMock
+from test.common import DBTest, testdir, KojiMock
 from koschei.backend.services.resolver import Resolver, DependencyCache
 from koschei.models import (Dependency, UnappliedChange, AppliedChange, Package,
                             ResolutionProblem, BuildrootProblem)
@@ -185,7 +185,6 @@ class ResolverTest(DBTest):
         with patch('koschei.backend.koji_util.get_build_group', return_value=['gcc','bash']):
             self.assertEqual(b1, self.resolver.get_build_for_comparison(foo))
 
-    @x86_64_only
     def test_resolve_build(self):
         foo_build = self.prepare_foo_build()
         package_id = foo_build.package_id
@@ -198,7 +197,6 @@ class ResolverTest(DBTest):
             .filter(Dependency.id.in_(foo_build.dependency_keys)).all()
         self.assertItemsEqual(FOO_DEPS, actual_deps)
 
-    @x86_64_only
     def test_virtual_in_group(self):
         foo_build = self.prepare_foo_build()
         with patch('koschei.backend.koji_util.get_build_group', return_value=['virtual']):
@@ -247,7 +245,6 @@ class ResolverTest(DBTest):
         self.s.commit()
         return old_build
 
-    @x86_64_only
     def test_differences(self):
         self.prepare_old_build()
         build = self.prepare_foo_build(repo_id=666, version='4')
@@ -313,7 +310,6 @@ class ResolverTest(DBTest):
         koji_mock.getRPMDeps.assert_called_once_with(inp, koji.DEP_REQUIRE)
         self.assertEqual(res, [['maven-local', 'jetty-toolchain']])
 
-    @x86_64_only
     def test_virtual_file_provides(self):
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
             with get_sack('x86_64') as sack:
@@ -327,7 +323,6 @@ class ResolverTest(DBTest):
     # since plasma-workspace is not installed, sni-qt should not be instaled either
     @skipIf(hawkey.VERSION < MINIMAL_HAWKEY_VERSION,
             'Rich deps are not supported by this hawkey version')
-    @x86_64_only
     def test_rich_deps(self):
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
             with get_sack('x86_64') as sack:
@@ -341,7 +336,6 @@ class ResolverTest(DBTest):
     # since plasma-workspace is installed, sni-qt should be instaled too
     @skipIf(hawkey.VERSION < MINIMAL_HAWKEY_VERSION,
             'Rich deps are not supported by this hawkey version')
-    @x86_64_only
     def test_rich_deps2(self):
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
             with get_sack('x86_64') as sack:
