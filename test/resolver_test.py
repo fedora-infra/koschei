@@ -59,7 +59,7 @@ def get_sack(name):
     repo = hawkey.Repo('test')
     repo.repomd_fn = repodata['repomd']
     repo.primary_fn = repodata['primary']
-    sack = hawkey.Sack()
+    sack = hawkey.Sack(arch='x86_64')
     sack.load_yum_repo(repo)
     yield sack
 
