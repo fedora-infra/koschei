@@ -1,7 +1,7 @@
 %bcond_without tests
 
 Name:           koschei
-Version:        1.6
+Version:        1.6.1
 Release:        1%{?dist}
 Summary:        Continuous integration for Fedora packages
 License:        GPLv2+
@@ -250,6 +250,9 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %{python2_sitelib}/*/backend/services/watcher.py*
 
 %changelog
+* Thu May 12 2016 Michael Simacek <msimacek@redhat.com> 1.6.1-1
+- Fix registering real buids via watcher
+
 * Thu Apr 21 2016 Michael Simacek <msimacek@redhat.com> 1.6-1
 - Update to upstream release 1.6
 
