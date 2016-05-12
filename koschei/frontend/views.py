@@ -387,7 +387,8 @@ def user_packages(name):
     try:
         for res in plugin.dispatch_event('get_user_packages', db=db, username=name,
                                          current_collection=g.current_collection):
-            ids += res
+            if res:
+                ids += res
     except Exception:
         flash("Error retrieving user's packages")
         log.exception("Error retrieving user's packages")
