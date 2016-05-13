@@ -49,7 +49,7 @@ def login():
           .format(user_name, identity))
     if user.admin:
         flash('You have admin privileges.')
-    next_url = request.values.get("next", request.referrer) or url_for('frontpage')
+    next_url = request.values.get("next", url_for('frontpage'))
     return redirect(next_url)
 
 

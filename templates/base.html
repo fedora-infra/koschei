@@ -66,7 +66,7 @@
                     <span>Logged in as {{ g.user.name }}</span>
                     <a href="{{ url_for('logout') }}">logout</a>
                     {% else %}
-                    <a href="{{ url_for('login') }}">login</a>
+                    <a href="{{ url_for('login', next=request.url) }}">login</a>
                     {% endif %}
                 </span>
 
