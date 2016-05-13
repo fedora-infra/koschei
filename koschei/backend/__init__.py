@@ -92,6 +92,8 @@ class Backend(object):
             return info
 
     def is_build_newer(self, current_build, task_info):
+        if current_build is None:
+            return True
         return util.compare_evr((current_build.epoch,
                                  current_build.version,
                                  current_build.release),
