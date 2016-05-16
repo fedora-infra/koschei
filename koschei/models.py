@@ -94,6 +94,7 @@ class KoscheiDbSession(sqlalchemy.orm.session.Session):
                 assert type(obj) == cls
                 dicts.append({c.name: getattr(obj, c.name) for c in table.c if not
                               c.primary_key})
+            self.flush()
             self.execute(insert(table), dicts)
             self.expire_all()
 
