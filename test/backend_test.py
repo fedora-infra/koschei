@@ -240,8 +240,11 @@ class BackendTest(DBTest):
         self.secondary_koji.getTaskInfo = Mock(return_value=rnv_task)
         self.secondary_koji.getTaskChildren = Mock(return_value=rnv_subtasks)
         package = self.prepare_packages(['rnv'])[0]
-        b = self.prepare_builds(rnv=False)[0]
-        b.repo_id = 1
+        build = self.prepare_builds(rnv=False)[0]
+        build.repo_id = 1
+        build.epoch = None
+        build.version = "1.7.11"
+        build.release = "9.fc24"
         self.secondary_koji.listTagged = Mock(return_value=rnv_build_info)
         self.s.commit()
         with patch('koschei.backend.dispatch_event') as event:
@@ -260,9 +263,30 @@ class BackendTest(DBTest):
         self.secondary_koji.getTaskInfo = Mock(return_value=rnv_task)
         self.secondary_koji.getTaskChildren = Mock(return_value=rnv_subtasks)
         package = self.prepare_packages(['rnv'])[0]
-        [build] = self.prepare_builds(rnv=False)
+        build = self.prepare_builds(rnv=False)[0]
         build.real = True
+        build.repo_id = 460889
+        build.epoch = None
+        build.version = "1.7.11"
+        build.release = "9.fc24"
         build.task_id = rnv_build_info[0]['task_id']
+        self.secondary_koji.listTagged = Mock(return_value=rnv_build_info)
+        self.s.commit()
+        with patch('koschei.backend.dispatch_event') as event:
+            self.backend.refresh_latest_builds()
+            self.assertEquals(1, self.s.query(m.Build).count())
+
+    def test_refresh_latest_builds_skip_old(self):
+        self.secondary_koji.getTaskInfo = Mock(return_value=rnv_task)
+        self.secondary_koji.getTaskChildren = Mock(return_value=rnv_subtasks)
+        package = self.prepare_packages(['rnv'])[0]
+        build = self.prepare_builds(rnv=False)[0]
+        build.real = True
+        build.epoch = None
+        build.version = "1.7.11"
+        build.release = "11.fc24"
+        build.repo_id = 460889
+        build.task_id = 12345678
         self.secondary_koji.listTagged = Mock(return_value=rnv_build_info)
         self.s.commit()
         with patch('koschei.backend.dispatch_event') as event:

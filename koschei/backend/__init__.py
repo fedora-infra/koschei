@@ -21,6 +21,7 @@ from itertools import izip
 
 import koji
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 from sqlalchemy.sql import insert
 
@@ -364,16 +365,22 @@ class Backend(object):
                                     .all_flat())
             to_add = [info for info in infos if info['task_id'] not in existing_task_ids]
             if to_add:
-                query = self.db.query(Package.id, Package.name)\
+                query = self.db.query(Package)\
                     .filter(Package.collection_id == collection.id)\
-                    .filter(Package.name.in_(i['package_name'] for i in to_add))
+                    .filter(Package.name.in_(i['package_name'] for i in to_add))\
+                    .options(joinedload(Package.last_build))
                 if not collection.poll_untracked:
                     query = query.filter_by(tracked=True)
-                name_mapping = {pkg.name: pkg.id for pkg in query}
-                package_build_infos = \
-                    [(name_mapping[info['package_name']], info) for info in to_add
-                     if info['package_name'] in name_mapping]
-                self.register_real_builds(package_build_infos)
+                name_mapping = {pkg.name: pkg for pkg in query}
+                package_build_infos = []
+                for info in to_add:
+                    package = name_mapping.get(info['package_name'])
+                    if package and self.is_build_newer(package.last_build, info):
+                        package_build_infos.append(
+                            (name_mapping[info['package_name']].id, info)
+                        )
+                if package_build_infos:
+                    self.register_real_builds(package_build_infos)
 
     def add_packages(self, names, collection_id=None):
         query = self.db.query(Package).filter(Package.name.in_(names))
