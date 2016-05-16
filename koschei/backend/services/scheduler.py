@@ -161,8 +161,6 @@ class Scheduler(KojiService):
                 continue
             newer_build = self.backend.get_newer_build_if_exists(package)
             if newer_build:
-                self.backend.register_real_build(package, newer_build)
-                self.db.commit()
                 self.log.debug("Skipping {} due to real build"
                                .format(package))
                 continue
