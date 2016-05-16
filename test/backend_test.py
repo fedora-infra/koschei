@@ -59,9 +59,14 @@ rnv_subtasks = [{'arch': 'armhfp',
                  'owner': 2645,
                  'parent': 9107738,
                  'priority': 49,
+                 'request': ['../packages/rnv/1.7.11/7.fc22/src/rnv-1.7.11-7.fc22.src.rpm',
+                             299,
+                             'armv7hl',
+                             True,
+                             {'repo_id': 460889}],
                  'start_time': '2015-03-01 13:39:41.486608',
                  'start_ts': 1425217181.48661,
-                 'state': koji.TASK_STATES['CLOSED'],
+                 'state': 2,
                  'waiting': None,
                  'weight': 1.64134472187},
                 {'arch': 'i386',
@@ -78,9 +83,14 @@ rnv_subtasks = [{'arch': 'armhfp',
                  'owner': 2645,
                  'parent': 9107738,
                  'priority': 49,
+                 'request': ['../packages/rnv/1.7.11/7.fc22/src/rnv-1.7.11-7.fc22.src.rpm',
+                             299,
+                             'i686',
+                             False,
+                             {'repo_id': 460889}],
                  'start_time': '2015-03-01 13:39:46.519139',
                  'start_ts': 1425217186.51914,
-                 'state': koji.TASK_STATES['CLOSED'],
+                 'state': 2,
                  'waiting': None,
                  'weight': 1.64134472187},
                 {'arch': 'x86_64',
@@ -97,11 +107,17 @@ rnv_subtasks = [{'arch': 'armhfp',
                  'owner': 2645,
                  'parent': 9107738,
                  'priority': 49,
+                 'request': ['../packages/rnv/1.7.11/7.fc22/src/rnv-1.7.11-7.fc22.src.rpm',
+                             299,
+                             'x86_64',
+                             False,
+                             {'repo_id': 460889}],
                  'start_time': '2015-03-01 13:39:41.574641',
                  'start_ts': 1425217181.57464,
-                 'state': koji.TASK_STATES['CLOSED'],
+                 'state': 2,
                  'waiting': None,
                  'weight': 1.64134472187}]
+
 
 inconsistent_subtask = [{'arch': 'armhfp',
                          'awaited': False,
@@ -224,7 +240,8 @@ class BackendTest(DBTest):
         self.secondary_koji.getTaskInfo = Mock(return_value=rnv_task)
         self.secondary_koji.getTaskChildren = Mock(return_value=rnv_subtasks)
         package = self.prepare_packages(['rnv'])[0]
-        self.prepare_builds(rnv=False)
+        b = self.prepare_builds(rnv=False)[0]
+        b.repo_id = 1
         self.secondary_koji.listTagged = Mock(return_value=rnv_build_info)
         self.s.commit()
         with patch('koschei.backend.dispatch_event') as event:
@@ -233,6 +250,7 @@ class BackendTest(DBTest):
             self.secondary_koji.getTaskChildren.assert_called_once_with(rnv_build_info[0]['task_id'],
                                                                         request=True)
             self.assertEqual('ok', package.state_string)
+            self.assertEquals(460889, package.last_complete_build.repo_id)
             # event.assert_called_once_with('package_state_change', package=package,
             #                               prev_state='failing', new_state='ok')
             self.assertItemsEqual([(x['id'],) for x in rnv_subtasks],
