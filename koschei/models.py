@@ -24,8 +24,7 @@ from datetime import datetime
 import sqlalchemy
 
 from sqlalchemy import (create_engine, Table, Column, Integer, String, Boolean,
-                        ForeignKey, DateTime, Index, DDL, Float)
-from sqlalchemy.sql import insert
+                        ForeignKey, DateTime, Index, DDL, Float, CheckConstraint)
 from sqlalchemy.sql.expression import func, select, false, true
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import (sessionmaker, relationship, column_property,
@@ -306,12 +305,13 @@ class Package(Base):
 
 class KojiTask(Base):
     __tablename__ = 'koji_task'
+    __table_args__ = (CheckConstraint('state BETWEEN 0 AND 5', name='koji_task_state_check'),)
 
     id = Column(Integer, primary_key=True)
     build_id = Column(ForeignKey('build.id', ondelete='CASCADE'),
                       nullable=False, index=True)
     task_id = Column(Integer, nullable=False)
-    arch = Column(String(16))
+    arch = Column(String, nullable=False)
     state = Column(Integer)
     started = Column(DateTime)
     finished = Column(DateTime)
@@ -385,6 +385,13 @@ class PackageGroup(Base):
 
 class Build(Base):
     __tablename__ = 'build'
+    __table_args__ = (
+        CheckConstraint('state IN (2, 3, 5)', name='build_state_check'),
+        CheckConstraint('state = 2 OR repo_id IS NOT NULL', name='build_repo_id_check'),
+        CheckConstraint('state = 2 OR version IS NOT NULL', name='build_version_check'),
+        CheckConstraint('state = 2 OR release IS NOT NULL', name='build_release_check'),
+        CheckConstraint('NOT real OR state <> 2', name='build_real_complete_check'),
+    )
 
     STATE_MAP = {'running': 2,
                  'complete': 3,
@@ -407,7 +414,7 @@ class Build(Base):
     package_id = Column(Integer, ForeignKey('package.id', ondelete='CASCADE'))
     package = None  # backref
     state = Column(Integer, nullable=False, default=RUNNING)
-    task_id = Column(Integer)
+    task_id = Column(Integer, nullable=False)
     started = Column(DateTime)
     finished = Column(DateTime)
     epoch = Column(Integer)
