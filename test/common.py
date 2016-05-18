@@ -160,6 +160,7 @@ class DBTest(AbstractTest):
         package_id = self.s.query(m.Package.id).filter_by(name=pkg_name).scalar()
         build = m.Build(package_id=package_id, state=state,
                         repo_id=repo_id or (1 if state != m.Build.RUNNING else None),
+                        version='1', release='1.fc25',
                         task_id=self.task_id_counter,
                         deps_resolved=resolved)
         self.task_id_counter += 1

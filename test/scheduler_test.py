@@ -104,7 +104,9 @@ class SchedulerTest(DBTest):
             self.s.add(pkg)
             self.s.flush()
             build = m.Build(package_id=pkg.id,
-                            started=datetime.now() - timedelta(days, hours=1))
+                            started=datetime.now() - timedelta(days, hours=1),
+                            version='1', release='1.fc25',
+                            task_id=days + 1)
             self.s.add(build)
         self.s.commit()
         query = self.get_scheduler().get_time_priority_query()
@@ -167,7 +169,10 @@ class SchedulerTest(DBTest):
                 pkgs.append((name, pkg))
                 if name in builds:
                     self.s.add(m.Build(package_id=pkg.id, state=builds[name],
+                                       task_id=self.task_id_counter,
+                                       version='1', release='1.fc25',
                                        repo_id=1 if builds[name] != m.Build.RUNNING else None))
+                    self.task_id_counter += 1
             conn.execute(table.insert(), [{'pkg_id': pkg.id, 'priority': priorities[name]}
                                           for name, pkg in pkgs])
             self.s.commit()

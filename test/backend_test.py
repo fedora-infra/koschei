@@ -202,6 +202,7 @@ class BackendTest(DBTest):
         running_build = self.prepare_build('rnv')
         running_build.task_id = rnv_task['id']
         koji_task = m.KojiTask(task_id=rnv_subtasks[0]['id'],
+                               arch='noarch',
                                build_id=running_build.id)
         self.s.add(koji_task)
         self.s.commit()
