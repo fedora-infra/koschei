@@ -119,6 +119,7 @@ class Backend(object):
                   for package_id, build_info in package_build_infos]
         registered = []
         for chunk in util.chunks(builds, 100):  # TODO configurable
+            retries = 10
             while True:
                 try:
                     build_tasks = self.sync_tasks(chunk,
@@ -132,6 +133,9 @@ class Backend(object):
                     registered += chunk
                     break
                 except IntegrityError:
+                    retries -= 1
+                    if not retries:
+                        raise
                     self.db.rollback()
                     self.log.info("Retrying real build insertion")
                     existing_ids = self.db.query(Build.task_id)\
