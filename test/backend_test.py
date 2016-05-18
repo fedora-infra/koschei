@@ -20,6 +20,8 @@ import datetime
 import koji
 import logging
 
+from copy import deepcopy
+
 from test.common import DBTest, KojiMock
 from mock import Mock, patch
 from koschei.backend import Backend
@@ -271,6 +273,26 @@ class BackendTest(DBTest):
         build.version = "1.7.11"
         build.release = "9.fc24"
         build.task_id = rnv_build_info[0]['task_id']
+        self.secondary_koji.listTagged = Mock(return_value=rnv_build_info)
+        self.s.commit()
+        with patch('koschei.backend.dispatch_event') as event:
+            self.backend.refresh_latest_builds()
+            self.assertEquals(1, self.s.query(m.Build).count())
+
+    def test_refresh_latest_builds_no_repo_id(self):
+        self.secondary_koji.getTaskInfo = Mock(return_value=rnv_task)
+        subtasks = deepcopy(rnv_subtasks)
+        for subtask in subtasks:
+            del subtask['request']
+        self.secondary_koji.getTaskChildren = Mock(return_value=subtasks)
+        package = self.prepare_packages(['rnv'])[0]
+        build = self.prepare_build('rnv', False)
+        build.real = True
+        build.repo_id = 460889
+        build.epoch = None
+        build.version = "1.7.11"
+        build.release = "9.fc24"
+        build.task_id = 1234
         self.secondary_koji.listTagged = Mock(return_value=rnv_build_info)
         self.s.commit()
         with patch('koschei.backend.dispatch_event') as event:
