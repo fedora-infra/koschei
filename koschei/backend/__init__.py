@@ -89,7 +89,7 @@ class Backend(object):
         [info] = self.koji_sessions['secondary']\
             .listTagged(package.collection.target_tag, latest=True,
                         package=package.name, inherit=True) or [None]
-        if self.is_build_newer(package.last_build, info):
+        if info and self.is_build_newer(package.last_build, info):
             return info
 
     def is_build_newer(self, current_build, task_info):
