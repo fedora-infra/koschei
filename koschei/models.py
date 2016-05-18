@@ -80,22 +80,27 @@ class KoscheiDbSession(sqlalchemy.orm.session.Session):
     def bulk_insert(self, objects):
         """
         Inserts ORM objects using sqla-core bulk insert. Only handles simple flat
-        objects, no relationships.
+        objects, no relationships. Assumes the primary key is generated
+        sequence and the attribute is named "id". Sets object ids.
 
         :param: objects List of ORM objects to be persisted. All objects must be of
-                        the same type.
+                        the same type. Column list is determined from first object.
         """
         # pylint:disable=unidiomatic-typecheck
         if objects:
             cls = type(objects[0])
             table = cls.__table__
+            cols = [col for col in objects[0].__dict__.keys() if not
+                    col.startswith('_')]
             dicts = []
             for obj in objects:
                 assert type(obj) == cls
-                dicts.append({c.name: getattr(obj, c.name) for c in table.c if not
-                              c.primary_key})
+                dicts.append({col: getattr(obj, col) for col in cols})
             self.flush()
-            self.execute(insert(table), dicts)
+            res = self.execute(table.insert(dicts, returning=[table.c.id]))
+            ids = sorted(x[0] for x in res)
+            for obj, obj_id in zip(objects, ids):
+                obj.id = obj_id
             self.expire_all()
 
 

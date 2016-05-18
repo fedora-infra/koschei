@@ -112,21 +112,21 @@ class Backend(object):
         # TODO send fedmsg for real builds?
         state_map = {koji.BUILD_STATES['COMPLETE']: Build.COMPLETE,
                      koji.BUILD_STATES['FAILED']: Build.FAILED}
-        builds = [dict(task_id=build_info['task_id'], real=True,
-                       version=build_info['version'], epoch=build_info['epoch'],
-                       release=build_info['release'], package_id=package_id,
-                       state=state_map[build_info['state']])
+        builds = [Build(task_id=build_info['task_id'], real=True,
+                        version=build_info['version'], epoch=build_info['epoch'],
+                        release=build_info['release'], package_id=package_id,
+                        state=state_map[build_info['state']])
                   for package_id, build_info in package_build_infos]
         registered = []
         for chunk in util.chunks(builds, 100):  # TODO configurable
             while True:
                 try:
-                    self.db.execute(insert(Build), chunk)
-                    orm_chunk = self.db.query(Build)\
-                        .filter_by(real=True)\
-                        .filter(Build.task_id.in_(b['task_id'] for b in chunk))\
-                        .all()
-                    self.sync_tasks(orm_chunk, self.koji_sessions['secondary'])
+                    build_tasks = self.sync_tasks(chunk, self.koji_sessions['secondary'])
+                    self.db.bulk_insert(chunk)
+                    for build, tasks in zip(chunk, build_tasks):
+                        for task in tasks:
+                            task.build_id = build.id
+                    self.insert_koji_tasks(build_tasks)
                     self.db.commit()
                     registered += chunk
                     break
@@ -135,24 +135,24 @@ class Backend(object):
                     self.log.info("Retrying real build insertion")
                     existing_ids = self.db.query(Build.task_id)\
                         .filter_by(real=True)\
-                        .filter(Build.task_id.in_(b['task_id'] for b in chunk))\
+                        .filter(Build.task_id.in_(b.task_id for b in chunk))\
                         .all()
                     existing_ids = {b.task_id for [b] in existing_ids}
-                    chunk = [b for b in chunk if b['task_id'] not in existing_ids]
+                    chunk = [b for b in chunk if b.task_id not in existing_ids]
 
         if registered:
             # pylint:disable=unused-variable
             # used via sqla cache
             pkgs = self.db.query(Package)\
-                .filter(Package.id.in_(b['package_id'] for b in registered))\
+                .filter(Package.id.in_(b.package_id for b in registered))\
                 .all()
             for build in registered:
-                package = self.db.query(Package).get(build['package_id'])
+                package = self.db.query(Package).get(build.package_id)
                 self.log.info(
                     'Registering real build {}-{}-{} for collection {} (task_id {})'
-                    .format(package.name, build['version'], build['release'],
+                    .format(package.name, build.version, build.release,
                             self.db.query(Collection).get(package.collection_id),
-                            build['task_id']))
+                            build.task_id))
 
     def update_build_state(self, build, state):
         """
@@ -202,7 +202,7 @@ class Backend(object):
                 self.log.info('Setting build {build} state to {state}'
                               .format(build=build,
                                       state=Build.REV_STATE_MAP[state]))
-                self.sync_tasks([build], self.koji_sessions['primary'], complete=True)
+                tasks = self.sync_tasks([build], self.koji_sessions['primary'], complete=True)
                 if build.repo_id is None:
                     # Koji problem, no need to bother packagers with this
                     self.log.info('Deleting build {0} because it has no repo_id'
@@ -210,6 +210,7 @@ class Backend(object):
                     self.db.delete(build)
                     self.db.commit()
                     return
+                self.insert_koji_tasks(tasks)
                 self.db.expire(build.package)
                 # lock package so there are no concurrent state changes
                 package = self.db.query(Package).filter_by(id=package_id)\
@@ -226,7 +227,8 @@ class Backend(object):
                                    prev_state=prev_state,
                                    new_state=new_state)
             else:
-                self.sync_tasks([build], self.koji_sessions['primary'])
+                tasks = self.sync_tasks([build], self.koji_sessions['primary'])
+                self.insert_koji_tasks(tasks)
                 self.db.commit()
         except (StaleDataError, ObjectDeletedError, IntegrityError):
             # build was deleted concurrently
@@ -271,14 +273,13 @@ class Backend(object):
 
     def sync_tasks(self, builds, koji_session, complete=False):
         """
-        Synchronizes task and subtask info from Koji for given builds.
-        Can raise IntegrityError on concurrent access to koji_tasks.
+        Synchronizes task and subtask data from Koji.
+        Sets properties on build objects passed in and return KojiTask objects.
         Uses koji_session passed as argument.
+        Returns list of list of tasks grouped by build.
         """
         call = itercall(koji_session, builds, lambda k, b: k.getTaskInfo(b.task_id))
-        build_ids = []
         for build, task_info in izip(builds, call):
-            build_ids.append(build.id)
             try:
                 build.started = datetime.fromtimestamp(task_info['create_ts'])
                 build.finished = datetime.fromtimestamp(task_info['completion_ts'])
@@ -289,18 +290,14 @@ class Backend(object):
                 build.finished = datetime.now()
         call = itercall(koji_session, builds,
                         lambda k, b: k.getTaskChildren(b.task_id, request=True))
-        existing_tasks = {t.task_id: t for t in self.db.query(KojiTask)
-                          .filter(KojiTask.build_id.in_(build_ids))}
-        to_insert = []
+        build_tasks = []
         for build, subtasks in izip(builds, call):
+            tasks = []
             build_arch_tasks = [task for task in subtasks
                                 if task['method'] == 'buildArch']
             for task in build_arch_tasks:
                 self.set_build_repo_id(build, task)
-                db_task = existing_tasks.get(task['id'])
-                if not db_task:
-                    db_task = KojiTask(task_id=task['id'])
-                    to_insert.append(db_task)
+                db_task = KojiTask(task_id=task['id'])
                 db_task.build_id = build.id
                 db_task.state = task['state']
                 db_task.arch = task['arch']
@@ -309,7 +306,28 @@ class Backend(object):
                     db_task.finished = datetime.fromtimestamp(task['completion_ts'])
                 except (KeyError, TypeError, ValueError):
                     pass
-        self.db.bulk_insert(to_insert)
+                tasks.append(db_task)
+            build_tasks.append(tasks)
+        return build_tasks
+
+    def insert_koji_tasks(self, tasks):
+        tasks = [task for build_task in tasks for task in build_task]
+        build_ids = [t.build_id for t in tasks]
+        if build_ids:
+            assert all(build_ids)
+            existing_tasks = {t.task_id: t for t in self.db.query(KojiTask)
+                              .filter(KojiTask.build_id.in_(build_ids))}
+            to_insert = []
+            for task in tasks:
+                if task.task_id in existing_tasks:
+                    existing_task = existing_tasks[task.task_id]
+                    existing_task.state = task.state
+                    existing_task.started = task.started
+                    existing_task.finished = task.finished
+                else:
+                    to_insert.append(task)
+            self.db.flush()
+            self.db.bulk_insert(to_insert)
 
     def add_group(self, group, pkgs):
         group_obj = self.db.query(PackageGroup)\
