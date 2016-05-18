@@ -121,7 +121,8 @@ class Backend(object):
         for chunk in util.chunks(builds, 100):  # TODO configurable
             while True:
                 try:
-                    build_tasks = self.sync_tasks(chunk, self.koji_sessions['secondary'])
+                    build_tasks = self.sync_tasks(chunk,
+                                                  self.koji_sessions['secondary'])
                     self.db.bulk_insert(chunk)
                     for build, tasks in zip(chunk, build_tasks):
                         for task in tasks:
@@ -202,7 +203,7 @@ class Backend(object):
                 self.log.info('Setting build {build} state to {state}'
                               .format(build=build,
                                       state=Build.REV_STATE_MAP[state]))
-                tasks = self.sync_tasks([build], self.koji_sessions['primary'], complete=True)
+                tasks = self.sync_tasks([build], self.koji_sessions['primary'])
                 if build.repo_id is None:
                     # Koji problem, no need to bother packagers with this
                     self.log.info('Deleting build {0} because it has no repo_id'
@@ -271,7 +272,7 @@ class Backend(object):
             else:
                 build.repo_id = repo_id
 
-    def sync_tasks(self, builds, koji_session, complete=False):
+    def sync_tasks(self, builds, koji_session):
         """
         Synchronizes task and subtask data from Koji.
         Sets properties on build objects passed in and return KojiTask objects.
@@ -280,12 +281,11 @@ class Backend(object):
         """
         call = itercall(koji_session, builds, lambda k, b: k.getTaskInfo(b.task_id))
         for build, task_info in izip(builds, call):
-            try:
+            if task_info.get('create_ts'):
                 build.started = datetime.fromtimestamp(task_info['create_ts'])
+            if task_info.get('completion_ts'):
                 build.finished = datetime.fromtimestamp(task_info['completion_ts'])
-            except (KeyError, TypeError, ValueError):
-                pass
-            if not build.finished and complete:
+            elif build.state != Build.RUNNING:
                 # When fedmsg delivery is fast, the time is not set yet
                 build.finished = datetime.now()
         call = itercall(koji_session, builds,
@@ -301,11 +301,10 @@ class Backend(object):
                 db_task.build_id = build.id
                 db_task.state = task['state']
                 db_task.arch = task['arch']
-                try:
+                if task.get('create_ts'):
                     db_task.started = datetime.fromtimestamp(task['create_ts'])
+                if task.get('completion_ts'):
                     db_task.finished = datetime.fromtimestamp(task['completion_ts'])
-                except (KeyError, TypeError, ValueError):
-                    pass
                 tasks.append(db_task)
             build_tasks.append(tasks)
         return build_tasks
