@@ -23,7 +23,7 @@ class TriggerTest(DBTest):
 
     def test_new(self):
         [p, e] = self.prepare_packages(['rnv', 'eclipse'])
-        [b] = self.prepare_builds(123, rnv=None)
+        b = self.prepare_build('rnv')
         self.assertIsNone(p.last_complete_build_id)
         self.assertIsNone(p.last_complete_build_state)
         self.assertIsNone(e.last_complete_build_id)
@@ -33,7 +33,7 @@ class TriggerTest(DBTest):
 
     def test_update(self):
         [p, _] = self.prepare_packages(['rnv', 'eclipse'])
-        [b] = self.prepare_builds(123, rnv=None)
+        b = self.prepare_build('rnv')
         self.assertEqual(b.id, p.last_build_id)
         b.state = Build.FAILED
         self.s.commit()
@@ -43,7 +43,7 @@ class TriggerTest(DBTest):
 
     def test_complete(self):
         [p, e] = self.prepare_packages(['rnv', 'eclipse'])
-        [b] = self.prepare_builds(123, rnv=True)
+        b = self.prepare_build('rnv', True)
         self.assertEqual(b.id, p.last_complete_build_id)
         self.assertEqual(b.state, p.last_complete_build_state)
         self.assertEqual(b.id, p.last_build_id)
@@ -53,7 +53,7 @@ class TriggerTest(DBTest):
 
     def test_failed(self):
         [p, e] = self.prepare_packages(['rnv', 'eclipse'])
-        [b] = self.prepare_builds(123, eclipse=False)
+        b = self.prepare_build('eclipse', False)
         self.assertEqual(b.id, e.last_complete_build_id)
         self.assertEqual(b.state, e.last_complete_build_state)
         self.assertIsNone(p.last_complete_build_id)
@@ -61,8 +61,9 @@ class TriggerTest(DBTest):
 
     def test_running(self):
         [p, e] = self.prepare_packages(['rnv', 'eclipse'])
-        [be, br] = self.prepare_builds(123, eclipse=False, rnv=True)
-        [b3] = self.prepare_builds(126, eclipse=None)
+        be = self.prepare_build('eclipse', False)
+        br = self.prepare_build('rnv', True)
+        b3 = self.prepare_build('eclipse')
 
         self.assertEqual(br.id, p.last_complete_build_id)
         self.assertEqual(br.state, p.last_complete_build_state)
@@ -73,9 +74,9 @@ class TriggerTest(DBTest):
 
     def test_delete_new(self):
         [e] = self.prepare_packages(['eclipse'])
-        [b1] = self.prepare_builds(123, eclipse=False)
-        [b2] = self.prepare_builds(126, eclipse=True)
-        [b3] = self.prepare_builds(127, eclipse=None)
+        b1 = self.prepare_build('eclipse', False)
+        b2 = self.prepare_build('eclipse', True)
+        b3 = self.prepare_build('eclipse', None)
         self.assertEqual(b3.id, e.last_build_id)
         self.s.delete(b1)
         self.s.commit()

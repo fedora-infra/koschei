@@ -20,31 +20,22 @@ import koji
 from mock import Mock, call
 
 from test.common import DBTest
-from koschei import models as m
 from koschei.backend.services.polling import Polling
 
+
 class PollingTest(DBTest):
-    def prepare_builds(self, **kwargs):
-        builds = {}
-        for i, (name, state) in enumerate(sorted(kwargs.items())):
-            pkg = m.Package(name=name, collection_id=self.collection.id)
-            self.s.add(pkg)
-            self.s.flush()
-            build = m.Build(package_id=pkg.id, task_id=i + 1, state=state)
-            self.s.add(build)
-            builds[name] = build
-        self.s.commit()
-        return builds
 
     def get_koji_mock(self, state='CLOSED'):
         koji_mock = Mock()
+
         def multiCall():
             return [[{'state': koji.TASK_STATES[state]}]] * 2
         koji_mock.multiCall = multiCall
         return koji_mock
 
     def test_poll_none(self):
-        self.prepare_builds(rnv=m.Build.COMPLETE, eclipse=m.Build.FAILED)
+        self.prepare_build('rnv', True)
+        self.prepare_build('eclipse', False)
         koji_mock = self.get_koji_mock()
         backend_mock = Mock()
         polling = Polling(db=self.s, koji_sessions={'primary': koji_mock,
@@ -55,18 +46,19 @@ class PollingTest(DBTest):
         self.assertFalse(backend_mock.update_build_state.called)
 
     def test_poll_complete(self):
-        builds = self.prepare_builds(rnv=m.Build.RUNNING)
+        build = self.prepare_build('rnv')
         backend_mock = Mock()
         koji_mock = self.get_koji_mock()
         polling = Polling(db=self.s, koji_sessions={'primary': koji_mock,
                                                     'secondary': koji_mock},
                           backend=backend_mock)
         polling.poll_builds()
-        backend_mock.update_build_state.assert_called_once_with(builds['rnv'], 'CLOSED')
+        backend_mock.update_build_state.assert_called_once_with(build, 'CLOSED')
 
     def test_poll_multiple(self):
-        builds = self.prepare_builds(rnv=m.Build.RUNNING, eclipse=m.Build.RUNNING,
-                                     expat=m.Build.FAILED)
+        rnv_build = self.prepare_build('rnv')
+        eclipse_build = self.prepare_build('eclipse')
+        self.prepare_build('expat', False)
         backend_mock = Mock()
         koji_mock = self.get_koji_mock(state='FAILED')
         polling = Polling(db=self.s, koji_sessions={'primary': koji_mock,
@@ -74,6 +66,6 @@ class PollingTest(DBTest):
                           backend=backend_mock)
         polling.poll_builds()
         backend_mock.update_build_state.assert_has_calls(
-                [call(builds['rnv'], 'FAILED'),
-                 call(builds['eclipse'], 'FAILED')],
-                any_order=True)
+            [call(rnv_build, 'FAILED'),
+             call(eclipse_build, 'FAILED')],
+            any_order=True)

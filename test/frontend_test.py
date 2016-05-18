@@ -77,7 +77,7 @@ class FrontendTest(DBTest):
     @authenticate(admin=True)
     def test_cancel_build(self):
         self.prepare_packages(['groovy'])
-        build = self.prepare_builds(groovy=None)[0]
+        build = self.prepare_build('groovy')
         url = 'build/{0}/cancel'.format(build.id)
         reply = self.client.post(url, follow_redirects=True)
         self.assertEqual(200, reply.status_code)
@@ -88,7 +88,7 @@ class FrontendTest(DBTest):
     @authenticate(admin=False)
     def test_cancel_build_unauthorized(self):
         self.prepare_packages(['groovy'])
-        build = self.prepare_builds(groovy=None)[0]
+        build = self.prepare_build('groovy')
         url = 'build/{0}/cancel'.format(build.id)
         reply = self.client.post(url, follow_redirects=True)
         self.assertEqual(403, reply.status_code)
@@ -98,7 +98,7 @@ class FrontendTest(DBTest):
     @authenticate(admin=True)
     def test_cancel_build_not_running(self):
         self.prepare_packages(['groovy'])
-        build = self.prepare_builds(groovy=True)[0]
+        build = self.prepare_build('groovy', True)
         url = 'build/{0}/cancel'.format(build.id)
         reply = self.client.post(url, follow_redirects=True)
         self.assertEqual(200, reply.status_code)
@@ -109,7 +109,7 @@ class FrontendTest(DBTest):
     @authenticate(admin=True)
     def test_cancel_build_pending(self):
         self.prepare_packages(['groovy'])
-        build = self.prepare_builds(groovy=None)[0]
+        build = self.prepare_build('groovy')
         build.cancel_requested = True
         self.s.commit()
         url = 'build/{0}/cancel'.format(build.id)

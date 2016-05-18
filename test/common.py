@@ -132,7 +132,7 @@ class DBTest(AbstractTest):
         self.s.add(pkg)
         self.s.flush()
         build = m.Build(package_id=pkg.id, state=m.Build.RUNNING,
-                        task_id=666)
+                        task_id=666, repo_id=1)
         self.s.add(build)
         self.s.commit()
         return pkg, build
@@ -148,27 +148,24 @@ class DBTest(AbstractTest):
         self.s.commit()
         return pkgs
 
-    def prepare_builds(self, repo_id=1, **builds):
-        new_builds = []
-        for pkg_name, state in sorted(builds.items()):
-            if pkg_name.endswith('_resolved'):
-                continue
-            states = {
-                True: m.Build.COMPLETE,
-                False: m.Build.FAILED,
-                None: m.Build.RUNNING,
-            }
-            if isinstance(state, bool):
-                state = states[state]
-            package_id = self.s.query(m.Package.id).filter_by(name=pkg_name).scalar()
-            build = m.Build(package_id=package_id, state=state, repo_id=repo_id,
-                            task_id=self.task_id_counter,
-                            deps_resolved=builds.get(pkg_name + '_resolved', True))
-            self.task_id_counter += 1
-            self.s.add(build)
-            new_builds.append(build)
+    def prepare_build(self, pkg_name, state=None, repo_id=None, resolved=True):
+        states = {
+            True: m.Build.COMPLETE,
+            False: m.Build.FAILED,
+            None: m.Build.RUNNING,
+        }
+        if isinstance(state, bool):
+            state = states[state]
+        self.prepare_packages([pkg_name])
+        package_id = self.s.query(m.Package.id).filter_by(name=pkg_name).scalar()
+        build = m.Build(package_id=package_id, state=state,
+                        repo_id=repo_id or (1 if state != m.Build.RUNNING else None),
+                        task_id=self.task_id_counter,
+                        deps_resolved=resolved)
+        self.task_id_counter += 1
+        self.s.add(build)
         self.s.commit()
-        return new_builds
+        return build
 
     def prepare_user(self, **kwargs):
         user = m.User(**kwargs)

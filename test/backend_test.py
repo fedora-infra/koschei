@@ -178,8 +178,8 @@ class BackendTest(DBTest):
         self.koji_session.getTaskInfo = Mock(return_value=rnv_task)
         self.koji_session.getTaskChildren = Mock(return_value=rnv_subtasks)
         package = self.prepare_packages(['rnv'])[0]
-        self.prepare_builds(rnv=False)
-        running_build = self.prepare_builds(rnv=None)[0]
+        self.prepare_build('rnv', False)
+        running_build = self.prepare_build('rnv')
         running_build.task_id = rnv_task['id']
         self.s.commit()
         self.assertEqual('failing', package.state_string)
@@ -198,8 +198,8 @@ class BackendTest(DBTest):
         self.koji_session.getTaskInfo = Mock(return_value=rnv_task)
         self.koji_session.getTaskChildren = Mock(return_value=rnv_subtasks)
         package = self.prepare_packages(['rnv'])[0]
-        self.prepare_builds(rnv=False)
-        running_build = self.prepare_builds(rnv=None)[0]
+        self.prepare_build('rnv', False)
+        running_build = self.prepare_build('rnv')
         running_build.task_id = rnv_task['id']
         koji_task = m.KojiTask(task_id=rnv_subtasks[0]['id'],
                                build_id=running_build.id)
@@ -222,8 +222,8 @@ class BackendTest(DBTest):
         self.koji_session.getTaskInfo = Mock(return_value=rnv_task)
         self.koji_session.getTaskChildren = Mock(return_value=inconsistent_subtask)
         package = self.prepare_packages(['rnv'])[0]
-        self.prepare_builds(rnv=False)
-        running_build = self.prepare_builds(rnv=None)[0]
+        self.prepare_build('rnv', False)
+        running_build = self.prepare_build('rnv')
         running_build.task_id = rnv_task['id']
         self.s.commit()
         self.assertEqual('failing', package.state_string)
@@ -240,7 +240,7 @@ class BackendTest(DBTest):
         self.secondary_koji.getTaskInfo = Mock(return_value=rnv_task)
         self.secondary_koji.getTaskChildren = Mock(return_value=rnv_subtasks)
         package = self.prepare_packages(['rnv'])[0]
-        build = self.prepare_builds(rnv=False)[0]
+        build = self.prepare_build('rnv', False)
         build.repo_id = 1
         build.epoch = None
         build.version = "1.7.11"
@@ -263,7 +263,7 @@ class BackendTest(DBTest):
         self.secondary_koji.getTaskInfo = Mock(return_value=rnv_task)
         self.secondary_koji.getTaskChildren = Mock(return_value=rnv_subtasks)
         package = self.prepare_packages(['rnv'])[0]
-        build = self.prepare_builds(rnv=False)[0]
+        build = self.prepare_build('rnv', False)
         build.real = True
         build.repo_id = 460889
         build.epoch = None
@@ -280,7 +280,7 @@ class BackendTest(DBTest):
         self.secondary_koji.getTaskInfo = Mock(return_value=rnv_task)
         self.secondary_koji.getTaskChildren = Mock(return_value=rnv_subtasks)
         package = self.prepare_packages(['rnv'])[0]
-        build = self.prepare_builds(rnv=False)[0]
+        build = self.prepare_build('rnv', False)
         build.real = True
         build.epoch = None
         build.version = "1.7.11"
@@ -295,7 +295,7 @@ class BackendTest(DBTest):
 
     def test_cancel_timed_out(self):
         self.prepare_packages(['rnv'])
-        running_build = self.prepare_builds(rnv=None)[0]
+        running_build = self.prepare_build('rnv')
         running_build.started = datetime.datetime.now() - datetime.timedelta(999)
         self.s.commit()
         self.koji_session.cancelTask = Mock(side_effect=koji.GenericError)
@@ -305,7 +305,7 @@ class BackendTest(DBTest):
 
     def test_cancel_requested(self):
         self.prepare_packages(['rnv'])
-        running_build = self.prepare_builds(rnv=None)[0]
+        running_build = self.prepare_build('rnv')
         running_build.cancel_requested = True
         self.s.commit()
         self.backend.update_build_state(running_build, 'ASSIGNED')

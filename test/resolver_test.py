@@ -160,7 +160,7 @@ class ResolverTest(DBTest):
 
     def prepare_foo_build(self, repo_id=666, version='4'):
         self.prepare_packages(['foo'])
-        foo_build = self.prepare_builds(foo=True, repo_id=repo_id)[0]
+        foo_build = self.prepare_build('foo', True, repo_id=repo_id)
         foo_build.version = version
         foo_build.release = '1.fc22'
         self.s.commit()
@@ -168,17 +168,17 @@ class ResolverTest(DBTest):
 
     def test_dont_resolve_against_old_build_when_new_is_running(self):
         foo = self.prepare_packages(['foo'])[0]
-        build = self.prepare_builds(foo=False, repo_id=2)[0]
+        build = self.prepare_build('foo', False, repo_id=2)
         build.deps_processed = build.deps_resolved = True
-        self.prepare_builds(foo=None, repo_id=None)
+        self.prepare_build('foo', None, repo_id=None)
         with patch('koschei.backend.koji_util.get_build_group', return_value=['gcc','bash']):
             self.assertIsNone(self.resolver.get_build_for_comparison(foo))
 
     def test_skip_unresolved_failed_build(self):
         foo = self.prepare_packages(['foo'])[0]
-        b1 = self.prepare_builds(foo=False, repo_id=2)[0]
+        b1 = self.prepare_build('foo', False, repo_id=2)
         b1.deps_processed = b1.deps_resolved = True
-        b2 = self.prepare_builds(foo=False, repo_id=None)[0]
+        b2 = self.prepare_build('foo', False, repo_id=3)
         b2.deps_processed = True
         b2.deps_resolved = False
         self.s.commit()
@@ -204,20 +204,9 @@ class ResolverTest(DBTest):
                 self.resolver.process_builds()
         self.assertTrue(foo_build.deps_resolved)
 
-    def test_none_repo_id(self):
-        foo_build = self.prepare_foo_build()
-        foo_build.repo_id = None
-        self.s.commit()
-        with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
-            with patch('koschei.backend.koji_util.get_rpm_requires', return_value=[['F', 'A']]):
-                self.resolver.process_builds()
-        self.assertEquals(0, self.s.query(AppliedChange).count())
-        self.assertTrue(foo_build.deps_processed)
-
     def test_resolution_fail(self):
         self.prepare_packages(['bar'])
-        b = self.prepare_builds(bar=True, repo_id=None)[0]
-        b.repo_id = 666
+        b = self.prepare_build('bar', True, repo_id=666)
         b.epoch = 1
         b.version = '2'
         b.release = '2'

@@ -37,12 +37,11 @@ class SchedulerTest(DBTest):
         return sched
 
     def prepare_depchanges(self):
-        pkg, build1 = self.prepare_basic_data()
-        build1.state = m.Build.COMPLETE
-        build2 = self.prepare_builds(1, rnv=None)[0]
+        build1 = self.prepare_build('rnv', True)
+        build2 = self.prepare_build('rnv', None)
         chngs = []
         # update, value 20
-        chngs.append(m.UnappliedChange(package_id=pkg.id, dep_name='expat',
+        chngs.append(m.UnappliedChange(package_id=build1.package_id, dep_name='expat',
                                        prev_version='2', curr_version='2',
                                        prev_release='rc1', curr_release='rc2',
                                        prev_build_id=build2.id,
@@ -53,25 +52,25 @@ class SchedulerTest(DBTest):
                                      prev_release='1', curr_release='rc1',
                                      distance=1, build_id=build2.id))
         # downgrade, value 10
-        chngs.append(m.UnappliedChange(package_id=pkg.id, dep_name='gcc',
+        chngs.append(m.UnappliedChange(package_id=build1.package_id, dep_name='gcc',
                                        prev_version='11', curr_version='9',
                                        prev_release='19', curr_release='18',
                                        prev_build_id=build2.id,
                                        distance=2))
         # appearance, value 5
-        chngs.append(m.UnappliedChange(package_id=pkg.id, dep_name='python',
+        chngs.append(m.UnappliedChange(package_id=build1.package_id, dep_name='python',
                                        prev_version=None, curr_version='3.3',
                                        prev_release=None, curr_release='11',
                                        prev_build_id=build2.id,
                                        distance=4))
         # null distance, value 2
-        chngs.append(m.UnappliedChange(package_id=pkg.id, dep_name='python-lxml',
+        chngs.append(m.UnappliedChange(package_id=build1.package_id, dep_name='python-lxml',
                                        prev_version=None, curr_version='3.3',
                                        prev_release=None, curr_release='11',
                                        prev_build_id=build2.id,
                                        distance=None))
         # not from current build
-        chngs.append(m.UnappliedChange(package_id=pkg.id, dep_name='expat',
+        chngs.append(m.UnappliedChange(package_id=build1.package_id, dep_name='expat',
                                        prev_version='2', curr_version='2',
                                        prev_release='rc1', curr_release='rc2',
                                        prev_build_id=build1.id,
@@ -80,7 +79,7 @@ class SchedulerTest(DBTest):
         for chng in chngs:
             self.s.add(chng)
         self.s.commit()
-        return pkg
+        return build1.package
 
     def assert_priority_query(self, query):
         columns = query.subquery().c
@@ -120,12 +119,21 @@ class SchedulerTest(DBTest):
     def test_failed_build_priority(self):
         pkgs = self.prepare_packages(['rnv', 'eclipse', 'fop', 'freemind', 'i3',
                                       'maven', 'firefox'])
-        self.prepare_builds(rnv=True, eclipse=False, i3=True, freemind=False,
-                            maven=True, firefox=True)
-        self.prepare_builds(rnv=False, eclipse=False, fop=False, freemind=False,
-                            maven=False, maven_resolved=False)
-        self.prepare_builds(freemind=False, firefox=True, firefox_resolved=False,
-                            maven=False, maven_resolved=False)
+        self.prepare_build('rnv', True)
+        self.prepare_build('eclipse', False)
+        self.prepare_build('i3', True)
+        self.prepare_build('freemind', False)
+        self.prepare_build('maven', True)
+        self.prepare_build('firefox', True)
+        self.prepare_build('rnv', False)
+        self.prepare_build('eclipse', False)
+        self.prepare_build('fop', False)
+        self.prepare_build('freemind', False)
+        self.prepare_build('maven', False)
+        self.prepare_build('maven_resolved', False)
+        self.prepare_build('freemind', False)
+        self.prepare_build('firefox', True, resolved=False)
+        self.prepare_build('maven', False, resolved=False)
         query = self.get_scheduler().get_failed_build_priority_query()
         # fop has 1 failed build with no previous one, should it be prioritized?
         # self.assertItemsEqual([(pkgs[0].id, 200), (pkgs[1].id, 200)],
@@ -158,7 +166,8 @@ class SchedulerTest(DBTest):
                         pkg.resolved = states.get(name) != 'unresolved'
                 pkgs.append((name, pkg))
                 if name in builds:
-                    self.s.add(m.Build(package_id=pkg.id, state=builds[name]))
+                    self.s.add(m.Build(package_id=pkg.id, state=builds[name],
+                                       repo_id=1 if builds[name] != m.Build.RUNNING else None))
             conn.execute(table.insert(), [{'pkg_id': pkg.id, 'priority': priorities[name]}
                                           for name, pkg in pkgs])
             self.s.commit()
@@ -166,7 +175,7 @@ class SchedulerTest(DBTest):
         finally:
             self.s.rollback()
             conn = self.s.connection()
-            table.drop(bind=conn)
+            table.drop(bind=conn, checkfirst=True)
             self.s.commit()
 
     def assert_scheduled(self, tables, scheduled, koji_load=0.3):
