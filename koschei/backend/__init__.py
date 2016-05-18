@@ -124,8 +124,12 @@ class Backend(object):
                 try:
                     build_tasks = self.sync_tasks(chunk,
                                                   self.koji_sessions['secondary'])
+                    for build, tasks in build_tasks.items():
+                        if not build.repo_id:
+                            del build_tasks[build]
+                    chunk = build_tasks.keys()
                     self.db.bulk_insert(chunk)
-                    for build, tasks in zip(chunk, build_tasks):
+                    for build, tasks in build_tasks.items():
                         for task in tasks:
                             task.build_id = build.id
                     self.insert_koji_tasks(build_tasks)
@@ -281,7 +285,7 @@ class Backend(object):
         Synchronizes task and subtask data from Koji.
         Sets properties on build objects passed in and return KojiTask objects.
         Uses koji_session passed as argument.
-        Returns list of list of tasks grouped by build.
+        Returns map of build to list of tasks
         """
         call = itercall(koji_session, builds, lambda k, b: k.getTaskInfo(b.task_id))
         for build, task_info in izip(builds, call):
@@ -294,7 +298,7 @@ class Backend(object):
                 build.finished = datetime.now()
         call = itercall(koji_session, builds,
                         lambda k, b: k.getTaskChildren(b.task_id, request=True))
-        build_tasks = []
+        build_tasks = {}
         for build, subtasks in izip(builds, call):
             tasks = []
             build_arch_tasks = [task for task in subtasks
@@ -310,11 +314,11 @@ class Backend(object):
                 if task.get('completion_ts'):
                     db_task.finished = datetime.fromtimestamp(task['completion_ts'])
                 tasks.append(db_task)
-            build_tasks.append(tasks)
+            build_tasks[build] = tasks
         return build_tasks
 
     def insert_koji_tasks(self, tasks):
-        tasks = [task for build_task in tasks for task in build_task]
+        tasks = [task for build_task in tasks.values() for task in build_task]
         build_ids = [t.build_id for t in tasks]
         if build_ids:
             assert all(build_ids)
