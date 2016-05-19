@@ -181,7 +181,9 @@ class SackManager(AbstractManager):
             for_arch, arches = self.get_arch_desc(repo_descriptor)
             if not for_arch:
                 return
-            sack = hawkey.Sack(arch=for_arch, cachedir=cache_dir, make_cache_dir=True)
+            if build_cache:
+                os.mkdir(cache_dir)
+            sack = hawkey.Sack(arch=for_arch, cachedir=cache_dir)
             for arch in arches:
                 log.debug('Loading repo {} for arch {} from disk into memory'.
                           format(repo_descriptor, arch))
