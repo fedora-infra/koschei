@@ -348,3 +348,17 @@ class BackendTest(DBTest):
         self.assertItemsEqual(content,
                               self.s.query(m.PackageGroupRelation.package_name)
                               .filter_by(group_id=group.id).all_flat())
+
+    def test_append_group_content(self):
+        group = m.PackageGroup(name='foo')
+        self.s.add(group)
+        self.s.flush()
+        rel = m.PackageGroupRelation(group_id=group.id, package_name='bar')
+        self.s.add(rel)
+        self.s.commit()
+        content = ['a1', 'a2', 'a3']
+        self.backend.set_group_content(group, content, append=True)
+
+        self.assertItemsEqual(content + ['bar'],
+                              self.s.query(m.PackageGroupRelation.package_name)
+                              .filter_by(group_id=group.id).all_flat())

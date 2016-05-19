@@ -348,11 +348,15 @@ class Backend(object):
                                        package_id=pkg.id)
             self.db.add(rel)
 
-    def set_group_content(self, group, contents):
+    def set_group_content(self, group, contents, append=False):
+        existing_names = set(self.db.query(PackageGroupRelation.package_name)\
+                             .filter_by(group_id=group.id).all_flat())
         rels = []
         for name in contents:
-            rels.append(dict(group_id=group.id, package_name=name))
-        self.db.query(PackageGroupRelation).filter_by(group_id=group.id).delete()
+            if not append or name not in existing_names:
+                rels.append(dict(group_id=group.id, package_name=name))
+        if not append:
+            self.db.query(PackageGroupRelation).filter_by(group_id=group.id).delete()
         self.db.execute(insert(PackageGroupRelation, rels))
 
     def refresh_packages(self):
