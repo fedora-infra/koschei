@@ -132,7 +132,7 @@ class RepoManager(AbstractManager):
                 # pylint:disable=no-member
                 h.repotype = librepo.LR_YUMREPO
                 h.urls = [repo_descriptor.make_url(arch)]
-                h.yumdlist = ['primary', 'filelists', 'group']
+                h.yumdlist = ['primary', 'filelists', 'group', 'group_gz']
                 h.perform(librepo.Result())
             os.rename(temp_dir, repo_dir)
             log.debug('Repo {} successfully downloaded to disk'.format(repo_descriptor))
