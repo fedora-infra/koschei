@@ -348,6 +348,13 @@ class Backend(object):
                                        package_id=pkg.id)
             self.db.add(rel)
 
+    def set_group_content(self, group, contents):
+        rels = []
+        for name in contents:
+            rels.append(dict(group_id=group.id, package_name=name))
+        self.db.query(PackageGroupRelation).filter_by(group_id=group.id).delete()
+        self.db.execute(insert(PackageGroupRelation, rels))
+
     def refresh_packages(self):
         """
         Refresh packages from Koji: add packages not yet known by Koschei

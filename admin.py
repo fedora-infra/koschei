@@ -238,8 +238,16 @@ class EditGroup(Command):
         parser.add_argument('--make-global',
                             action='store_true',
                             help="Sets group as global (unsets namespace)")
+        parser.add_argument('--content-from-file',
+                            help="Overwrites the list of packages in group with "
+                            "contents of given file. Use - for standard input.")
 
-    def execute(self, backend, current_name, new_name, new_namespace, make_global):
+    def set_group_content(self, backend, group, fo):
+        content = filter(None, fo.read().split())
+        backend.set_group_content(group, content)
+
+    def execute(self, backend, current_name, new_name, new_namespace,
+                make_global, content_from_file):
         ns, _, name = current_name.partition('/')
         if not name:
             ns, name = name, ns
@@ -253,6 +261,11 @@ class EditGroup(Command):
             group.namespace = new_namespace
         if make_global:
             group.namespace = None
+        if content_from_file == '-':
+            self.set_group_content(backend, group, sys.stdin)
+        elif content_from_file:
+            with open(content_from_file) as fo:
+                self.set_group_content(backend, group, fo)
         backend.db.commit()
 
 

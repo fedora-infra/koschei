@@ -334,3 +334,17 @@ class BackendTest(DBTest):
         self.backend.update_build_state(running_build, 'ASSIGNED')
         self.koji_session.cancelTask.assert_called_once_with(running_build.task_id)
         self.assertEquals(0, self.s.query(m.Build).count())
+
+    def test_set_group_contents(self):
+        group = m.PackageGroup(name='foo')
+        self.s.add(group)
+        self.s.flush()
+        rel = m.PackageGroupRelation(group_id=group.id, package_name='bar')
+        self.s.add(rel)
+        self.s.commit()
+        content = ['a1', 'a2', 'a3']
+        self.backend.set_group_content(group, content)
+
+        self.assertItemsEqual(content,
+                              self.s.query(m.PackageGroupRelation.package_name)
+                              .filter_by(group_id=group.id).all_flat())
