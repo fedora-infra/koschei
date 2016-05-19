@@ -352,7 +352,7 @@ class Backend(object):
         existing_names = set(self.db.query(PackageGroupRelation.package_name)\
                              .filter_by(group_id=group.id).all_flat())
         rels = []
-        for name in contents:
+        for name in set(contents):
             if not append or name not in existing_names:
                 rels.append(dict(group_id=group.id, package_name=name))
         if not append:
