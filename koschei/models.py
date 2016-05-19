@@ -90,7 +90,7 @@ class KoscheiDbSession(sqlalchemy.orm.session.Session):
             cls = type(objects[0])
             table = cls.__table__
             cols = [col for col in objects[0].__dict__.keys() if not
-                    col.startswith('_')]
+                    col.startswith('_') and col != 'id']
             dicts = []
             for obj in objects:
                 assert type(obj) == cls
