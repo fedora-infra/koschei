@@ -176,10 +176,12 @@ class SackManager(AbstractManager):
         if not repo_dir:
             return
         try:
+            cache_dir = os.path.join(repo_dir, 'cache')
+            build_cache = not os.path.exists(cache_dir)
             for_arch, arches = self.get_arch_desc(repo_descriptor)
             if not for_arch:
                 return
-            sack = hawkey.Sack(arch=for_arch)
+            sack = hawkey.Sack(arch=for_arch, cachedir=cache_dir, make_cache_dir=True)
             for arch in arches:
                 log.debug('Loading repo {} for arch {} from disk into memory'.
                           format(repo_descriptor, arch))
@@ -195,12 +197,16 @@ class SackManager(AbstractManager):
                 repo.repomd_fn = repodata['repomd']
                 repo.primary_fn = repodata['primary']
                 repo.filelists_fn = repodata['filelists']
-                sack.load_yum_repo(repo, load_filelists=True)
+                sack.load_yum_repo(repo, load_filelists=True, build_cache=build_cache)
             log.debug('Repo {} successfully loaded into memory'
                       .format(repo_descriptor))
+            build_cache = False
             return sack
         except (librepo.LibrepoException, IOError):
             log.debug('Repo {} could not be loaded'.format(repo_descriptor))
+        finally:
+            if build_cache and os.path.exists(cache_dir):
+                shutil.rmtree(cache_dir)
 
     # @Override
     # Release sack
