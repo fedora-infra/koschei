@@ -36,6 +36,13 @@ from koschei.config import load_config, get_config
 load_config(['/usr/share/koschei/config.cfg', '/etc/koschei/config-admin.cfg'])
 
 
+def parse_group_name(name):
+    if '/' not in name:
+        return None, name
+    ns, _, name = name.partition('/')
+    return ns, name
+
+
 class Command(object):
     needs_backend = True
 
@@ -225,7 +232,53 @@ class SetArchOverride(Command):
             pkg.arch_override = arch_override
 
 
-class EditGroup(Command):
+class GroupCommandParser(object):
+    def setup_parser(self, parser):
+        parser.add_argument('--content-from-file',
+                            help="Sets the list of packages in group to "
+                            "contents of given file. Removes already existing if "
+                            "--apend not given. Use - for standard input.")
+        parser.add_argument('--append',
+                            action='store_true',
+                            help="Appends to existing list of packages instead "
+                            "of overwriting it")
+
+    def set_group_content(self, backend, group, content_from_file, append):
+
+        def from_fo(fo):
+            content = filter(None, fo.read().split())
+            backend.set_group_content(group, content, append)
+
+        if content_from_file == '-':
+            from_fo(sys.stdin)
+        elif content_from_file:
+            with open(content_from_file) as fo:
+                from_fo(fo)
+
+
+class CreateGroup(GroupCommandParser, Command):
+    """ Creates new package group """
+
+    def setup_parser(self, parser):
+        parser.add_argument('name',
+                            help="New group name. In format namespace/name, or "
+                            "just name for global groups")
+        super(CreateGroup, self).setup_parser(parser)
+
+    def execute(self, backend, name, content_from_file, append):
+        ns, name = parse_group_name(name)
+        group = backend.db.query(PackageGroup)\
+            .filter_by(name=name, namespace=ns or None).first()
+        if group:
+            sys.exit("Group already exists")
+        group = PackageGroup(name=name, namespace=ns)
+        backend.db.add(group)
+        backend.db.flush()
+        self.set_group_content(backend, group, content_from_file, append)
+        backend.db.commit()
+
+
+class EditGroup(GroupCommandParser, Command):
     """ Sets package group attributes """
 
     def setup_parser(self, parser):
@@ -238,22 +291,11 @@ class EditGroup(Command):
         parser.add_argument('--make-global',
                             action='store_true',
                             help="Sets group as global (unsets namespace)")
-        parser.add_argument('--content-from-file',
-                            help="Sets the list of packages in group to "
-                            "contents of given file. Removes already existing if "
-                            "--apend not given. Use - for standard input.")
-        parser.add_argument('--append',
-                            action='store_true',
-                            help="Appends to existing list of packages instead "
-                            "of overwriting it")
-
-    def set_group_content(self, backend, group, fo, append):
-        content = filter(None, fo.read().split())
-        backend.set_group_content(group, content, append)
+        super(EditGroup, self).setup_parser(parser)
 
     def execute(self, backend, current_name, new_name, new_namespace,
                 make_global, content_from_file, append):
-        ns, _, name = current_name.partition('/')
+        ns, name = parse_group_name(current_name)
         if not name:
             ns, name = name, ns
         group = backend.db.query(PackageGroup)\
@@ -266,11 +308,24 @@ class EditGroup(Command):
             group.namespace = new_namespace
         if make_global:
             group.namespace = None
-        if content_from_file == '-':
-            self.set_group_content(backend, group, sys.stdin, append)
-        elif content_from_file:
-            with open(content_from_file) as fo:
-                self.set_group_content(backend, group, fo, append)
+        self.set_group_content(backend, group, content_from_file, append)
+        backend.db.commit()
+
+
+class DeleteGroup(Command):
+    """ Deletes package group """
+
+    def setup_parser(self, parser):
+        parser.add_argument('current_name',
+                            help="Current group full name - ns/name")
+
+    def execute(self, backend, current_name):
+        ns, name = parse_group_name(current_name)
+        group = backend.db.query(PackageGroup)\
+            .filter_by(name=name, namespace=ns or None).first()
+        if not group:
+            sys.exit("Group {} not found".format(current_name))
+        backend.db.delete(group)
         backend.db.commit()
 
 
