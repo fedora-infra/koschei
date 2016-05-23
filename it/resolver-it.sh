@@ -12,15 +12,14 @@ getdata() {
 repo_id=509557
 itdir=`dirname "$0"`
 cd "$itdir"
-DUMP=koschei-it-dump-2.sql.xz
-REPO=koschei-it-repo.tar.bz2
+DATA_REV=2
+DUMP=koschei-it-dump-$DATA_REV.sql.xz
+REPO=koschei-it-repo-$DATA_REV.tar.bz2
 getdata $REPO
 getdata $DUMP
-if [ ! -d repodata ]; then
-    mkdir repodata
-    tar xf koschei-it-repo.tar.bz2 -C repodata
-    mv repodata/$repo_id repodata/primary-f25-build-$repo_id
-fi
+rm -r repodata
+mkdir repodata
+tar xf $REPO -C repodata
 drop
 createdb koschei_it
 xzcat $DUMP | sed 's/DATABASE koschei/&_it/;s/\\connect koschei/&_it/;' | psql koschei_it
