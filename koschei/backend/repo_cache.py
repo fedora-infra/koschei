@@ -29,7 +29,6 @@ import librepo
 
 from koschei.config import get_config, get_koji_config
 from koschei.backend.cache_manager import CacheManager
-from koschei.models import Session, Collection
 
 log = logging.getLogger('koschei.repo_cache')
 
@@ -80,24 +79,7 @@ class RepoDescriptor(object):
                                       repo_id=self.repo_id, arch=arch)
 
 
-class AbstractManager(object):
-    def get_arch_desc(self, repo_descriptor):
-        # separate thread needs own session
-        db = Session()
-        try:
-            collection = db.query(Collection)\
-                .filter_by(build_tag=repo_descriptor.build_tag)\
-                .first()
-            if not collection:
-                log.info('Collection for build tag "{}" not found'
-                         .format(repo_descriptor.build_tag))
-                return None, None
-            return collection.resolve_for_arch, collection.resolution_arches.split(',')
-        finally:
-            db.close()
-
-
-class RepoManager(AbstractManager):
+class RepoManager(object):
     def __init__(self, repo_dir):
         self._repo_dir = repo_dir
 
@@ -119,21 +101,18 @@ class RepoManager(AbstractManager):
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
         try:
-            _, arches = self.get_arch_desc(repo_descriptor)
-            if not arches:
-                return
-            for arch in arches:
-                log.debug('Downloading repo {} for arch {} from Koji to disk'.
-                          format(repo_descriptor, arch))
-                h = librepo.Handle()
-                arch_repo_dir = os.path.join(temp_dir, arch)
-                os.makedirs(arch_repo_dir)
-                h.destdir = arch_repo_dir
-                # pylint:disable=no-member
-                h.repotype = librepo.LR_YUMREPO
-                h.urls = [repo_descriptor.make_url(arch)]
-                h.yumdlist = ['primary', 'filelists', 'group', 'group_gz']
-                h.perform(librepo.Result())
+            arch = get_config('dependency.repo_arch')
+            log.debug('Downloading repo {} from Koji to disk'.
+                      format(repo_descriptor))
+            h = librepo.Handle()
+            arch_repo_dir = os.path.join(temp_dir, arch)
+            os.makedirs(arch_repo_dir)
+            h.destdir = arch_repo_dir
+            # pylint:disable=no-member
+            h.repotype = librepo.LR_YUMREPO
+            h.urls = [repo_descriptor.make_url(arch)]
+            h.yumdlist = ['primary', 'filelists', 'group', 'group_gz']
+            h.perform(librepo.Result())
             os.rename(temp_dir, repo_dir)
             log.debug('Repo {} successfully downloaded to disk'.format(repo_descriptor))
             return repo_dir
@@ -169,7 +148,7 @@ class RepoManager(AbstractManager):
         return repos
 
 
-class SackManager(AbstractManager):
+class SackManager(object):
     # @Override
     def create(self, repo_descriptor, repo_dir):
         """ Load repo from disk into memory as sack """
@@ -178,28 +157,26 @@ class SackManager(AbstractManager):
         try:
             cache_dir = os.path.join(repo_dir, 'cache')
             build_cache = not os.path.exists(cache_dir)
-            for_arch, arches = self.get_arch_desc(repo_descriptor)
-            if not for_arch:
-                return
+            for_arch = get_config('dependency.resolve_for_arch')
+            arch = get_config('dependency.repo_arch')
             if build_cache:
                 os.mkdir(cache_dir)
             sack = hawkey.Sack(arch=for_arch, cachedir=cache_dir)
-            for arch in arches:
-                log.debug('Loading repo {} for arch {} from disk into memory'.
-                          format(repo_descriptor, arch))
-                arch_repo_dir = os.path.join(repo_dir, arch)
-                h = librepo.Handle()
-                h.local = True
-                # pylint:disable=no-member
-                h.repotype = librepo.LR_YUMREPO
-                h.urls = [arch_repo_dir]
-                h.yumdlist = ['primary', 'filelists', 'group']
-                repodata = h.perform(librepo.Result()).yum_repo
-                repo = hawkey.Repo('{}-{}'.format(repo_descriptor, arch))
-                repo.repomd_fn = repodata['repomd']
-                repo.primary_fn = repodata['primary']
-                repo.filelists_fn = repodata['filelists']
-                sack.load_yum_repo(repo, load_filelists=True, build_cache=build_cache)
+            log.debug('Loading repo {} from disk into memory'.
+                      format(repo_descriptor))
+            arch_repo_dir = os.path.join(repo_dir, arch)
+            h = librepo.Handle()
+            h.local = True
+            # pylint:disable=no-member
+            h.repotype = librepo.LR_YUMREPO
+            h.urls = [arch_repo_dir]
+            h.yumdlist = ['primary', 'filelists', 'group']
+            repodata = h.perform(librepo.Result()).yum_repo
+            repo = hawkey.Repo('{}-{}'.format(repo_descriptor, arch))
+            repo.repomd_fn = repodata['repomd']
+            repo.primary_fn = repodata['primary']
+            repo.filelists_fn = repodata['filelists']
+            sack.load_yum_repo(repo, load_filelists=True, build_cache=build_cache)
             log.debug('Repo {} successfully loaded into memory'
                       .format(repo_descriptor))
             build_cache = False

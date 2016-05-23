@@ -55,10 +55,9 @@ class RepoCacheTest(DBTest):
                 # pylint:disable=no-member
                 self.assertIs(librepo.LR_YUMREPO, librepo_mock.repotype)
                 self.assertEqual(['primary', 'filelists', 'group'], librepo_mock.yumdlist)
-                self.assertIn(librepo_mock.urls[0],
-                              ['./repodata/primary-build_tag-666/x86_64',
-                               './repodata/primary-build_tag-666/i386'])
-                self.assertEqual(2, librepo_mock.perform.call_count)
+                self.assertEqual('./repodata/primary-build_tag-666/x86_64',
+                                 librepo_mock.urls[0])
+                self.assertEqual(1, librepo_mock.perform.call_count)
                 self.assertIs(sack_mock, sack)
 
     def test_download(self):
@@ -66,7 +65,7 @@ class RepoCacheTest(DBTest):
             cache = repo_cache.RepoCache()
             cache.prefetch_repo(repo_cache.RepoDescriptor('primary', 'build_tag', 1))
             with cache.get_sack(repo_cache.RepoDescriptor('primary', 'build_tag', 1)):
-                self.assertEqual(4, librepo_mock.perform.call_count)
+                self.assertEqual(2, librepo_mock.perform.call_count)
 
     def test_reuse(self):
         cache = repo_cache.RepoCache()

@@ -98,6 +98,13 @@ config = {
         # Total number of threads used for cache prefetching.  Making it
         # greater than cache_l1_threads+cache_l2_threads wouldn't make sense.
         "cache_threads_max": 2,
+
+        # The architecture for which dependencies are resolved with hawkey
+        "resolve_for_arch": "x86_64",
+
+        # The architecture name to use for downloading repo. This should be the
+        # same architecture as above, but it may named differently
+        "repo_arch": "x86_64",
     },
 
     # configuration of scheduling
