@@ -12,8 +12,10 @@ getdata() {
 repo_id=509557
 itdir=`dirname "$0"`
 cd "$itdir"
-getdata koschei-it-repo.tar.bz2
-getdata koschei-it-dump.sql.xz
+DUMP=koschei-it-dump-2.sql.xz
+REPO=koschei-it-repo.tar.bz2
+getdata $REPO
+getdata $DUMP
 if [ ! -d repodata ]; then
     mkdir repodata
     tar xf koschei-it-repo.tar.bz2 -C repodata
@@ -21,13 +23,15 @@ if [ ! -d repodata ]; then
 fi
 drop
 createdb koschei_it
-xzcat koschei-it-dump.sql.xz | sed 's/DATABASE koschei/&_it/;s/\\connect koschei/&_it/;' | psql koschei_it
+xzcat $DUMP | sed 's/DATABASE koschei/&_it/;s/\\connect koschei/&_it/;' | psql koschei_it
 cd ..
 export KOSCHEI_CONFIG='config.cfg.template:it/config.cfg'
 alembic upgrade head
 time python -c "
 import mock, json
-from koschei import resolver, util, models
+from koschei import models, config
+from koschei.backend import koji_util
+from koschei.backend.services import resolver
 from test.common import KojiMock
 koji_mock = KojiMock()
 koji_mock.repoInfo.return_value = {
@@ -39,9 +43,10 @@ koji_mock.repoInfo.return_value = {
     'tag_id': 315,
     'tag_name': 'f25-build'}
 brs = json.load(open('it/get_rpm_requires.json'))
-util.get_rpm_requires = lambda _, ps: [brs[p['name']] for p in ps]
+koji_util.get_rpm_requires = lambda _, ps: [brs[p['name']] for p in ps]
 group = json.load(open('it/get_build_group.json'))
-with mock.patch('koschei.util.get_build_group', return_value=group):
+config.load_config([])
+with mock.patch('koschei.backend.koji_util.get_build_group', return_value=group):
     with mock.patch('fedmsg.publish'):
         db = models.Session()
         collection = db.query(models.Collection).get(1)
