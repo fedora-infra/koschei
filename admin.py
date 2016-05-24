@@ -349,11 +349,6 @@ class CollectionCommandParser(object):
         parser.add_argument('-o', '--order',
                             help="Order when displaying. "
                             "First collection becomes the default")
-        parser.add_argument('--resolution-arches',
-                            help="Comma separated list of arches which should "
-                            "be included in resolution sack")
-        parser.add_argument('--resolve-for-arch',
-                            help="Architecture for which resolution will be done")
         parser.add_argument('--build-group',
                             help="Build group name")
         parser.add_argument('--branch',
