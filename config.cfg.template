@@ -48,9 +48,6 @@ config = {
         # maximum number of items in single koji multicall. Too low values may
         # cause poor performance, too high values may cause timeouts.
         "multicall_chunk_size": 100,
-        # URL used to download repo files for dependency resolution. Must
-        # contain {build_tag}, {repo_id} and {arch} placeholders
-        "repo_url": "http://kojipkgs.fedoraproject.org/repos/{build_tag}/{repo_id}/{arch}",
     },
     # secondary koji instance configuration, leave empty if you want default
     # primary mode

@@ -42,14 +42,6 @@ class RepoDescriptor(object):
         self.build_tag = build_tag
         self.repo_id = repo_id
 
-    @property
-    def remote_url(self):
-        remote_url = get_koji_config(self.koji_id, 'repo_url')
-        assert '{build_tag}' in remote_url
-        assert '{repo_id}' in remote_url
-        assert '{arch}' in remote_url
-        return remote_url
-
     @staticmethod
     def from_string(name):
         parts = name.split('-')
@@ -75,8 +67,10 @@ class RepoDescriptor(object):
         return self.repo_id < other.repo_id
 
     def make_url(self, arch):
-        return self.remote_url.format(build_tag=self.build_tag,
-                                      repo_id=self.repo_id, arch=arch)
+        topurl = get_koji_config(self.koji_id, 'topurl')
+        url = '{topurl}/repos/{build_tag}/{repo_id}/{arch}'
+        return url.format(topurl=topurl, build_tag=self.build_tag,
+                          repo_id=self.repo_id, arch=arch)
 
 
 class RepoManager(object):
