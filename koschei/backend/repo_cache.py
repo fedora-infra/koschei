@@ -94,14 +94,13 @@ class RepoManager(object):
         temp_dir = repo_dir + ".tmp"
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
+        os.mkdir(temp_dir)
         try:
             arch = get_config('dependency.repo_arch')
             log.debug('Downloading repo {} from Koji to disk'.
                       format(repo_descriptor))
             h = librepo.Handle()
-            arch_repo_dir = os.path.join(temp_dir, arch)
-            os.makedirs(arch_repo_dir)
-            h.destdir = arch_repo_dir
+            h.destdir = temp_dir
             # pylint:disable=no-member
             h.repotype = librepo.LR_YUMREPO
             h.urls = [repo_descriptor.make_url(arch)]
@@ -158,12 +157,11 @@ class SackManager(object):
             sack = hawkey.Sack(arch=for_arch, cachedir=cache_dir)
             log.debug('Loading repo {} from disk into memory'.
                       format(repo_descriptor))
-            arch_repo_dir = os.path.join(repo_dir, arch)
             h = librepo.Handle()
             h.local = True
             # pylint:disable=no-member
             h.repotype = librepo.LR_YUMREPO
-            h.urls = [arch_repo_dir]
+            h.urls = [repo_dir]
             h.yumdlist = ['primary', 'filelists', 'group']
             repodata = h.perform(librepo.Result()).yum_repo
             repo = hawkey.Repo('{}-{}'.format(repo_descriptor, arch))

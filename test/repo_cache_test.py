@@ -55,7 +55,7 @@ class RepoCacheTest(DBTest):
                 # pylint:disable=no-member
                 self.assertIs(librepo.LR_YUMREPO, librepo_mock.repotype)
                 self.assertEqual(['primary', 'filelists', 'group'], librepo_mock.yumdlist)
-                self.assertEqual('./repodata/primary-build_tag-666/x86_64',
+                self.assertEqual('./repodata/primary-build_tag-666',
                                  librepo_mock.urls[0])
                 self.assertEqual(1, librepo_mock.perform.call_count)
                 self.assertIs(sack_mock, sack)

@@ -47,13 +47,13 @@ FOO_DEPS = [
 
 
 @contextmanager
-def get_sack(name):
+def get_sack():
     # hawkey sacks cannot be easily populated from within python and mocking
     # hawkey queries would be too complicated, therefore using real repos
     h = librepo.Handle()
     h.local = True
     h.repotype = librepo.LR_YUMREPO
-    h.urls = [os.path.join('repo', name)]
+    h.urls = ['repo']
     h.yumdlist = ['primary']
     repodata = h.perform(librepo.Result()).yum_repo
     repo = hawkey.Repo('test')
@@ -147,7 +147,7 @@ class ResolverTest(DBTest):
         super(ResolverTest, self).setUp()
         shutil.copytree(os.path.join(testdir, 'test_repo'), 'repo')
         self.repo_mock = Mock()
-        self.repo_mock.get_sack.return_value = get_sack('x86_64')
+        self.repo_mock.get_sack.return_value = get_sack()
         self.koji_mock = KojiMock()
         self.koji_mock.repoInfo.return_value = {'id': 123, 'tag_name': 'f24-build',
                                                 'state': koji.REPO_STATES['READY']}
@@ -301,7 +301,7 @@ class ResolverTest(DBTest):
 
     def test_virtual_file_provides(self):
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
-            with get_sack('x86_64') as sack:
+            with get_sack() as sack:
                 (resolved, problems, deps) = self.resolver.resolve_dependencies(sack, ['/bin/csh'], ['R'])
                 self.assertItemsEqual([], problems)
                 self.assertTrue(resolved)
@@ -314,7 +314,7 @@ class ResolverTest(DBTest):
             'Rich deps are not supported by this hawkey version')
     def test_rich_deps(self):
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
-            with get_sack('x86_64') as sack:
+            with get_sack() as sack:
                 (resolved, problems, deps) = self.resolver.resolve_dependencies(sack, ['qt-x11'], ['R'])
                 self.assertItemsEqual([], problems)
                 self.assertTrue(resolved)
@@ -327,7 +327,7 @@ class ResolverTest(DBTest):
             'Rich deps are not supported by this hawkey version')
     def test_rich_deps2(self):
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
-            with get_sack('x86_64') as sack:
+            with get_sack() as sack:
                 (resolved, problems, deps) = self.resolver.resolve_dependencies(sack, ['qt-x11', 'plasma-workspace'], ['R'])
                 self.assertItemsEqual([], problems)
                 self.assertTrue(resolved)
