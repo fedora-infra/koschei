@@ -27,6 +27,18 @@
             {% endif %}
         </td>
     </tr>
+    {% if package.state_string == 'unresolved' and package.resolution_problems %}
+    <tr>
+        <th>Dependency problems</th>
+        <td class="problem">{{ package.resolution_problems[0].problem }}</td>
+    </tr>
+    {% for problem in package.resolution_problems[1:] %}
+    <tr>
+        <td></td>
+        <td class="problem">{{ problem.problem }}</td>
+    </tr>
+    {% endfor %}
+    {% endif %}
     <tr>
         <th>Current priority</th>
         <td>
@@ -107,18 +119,6 @@
             <button type="submit">Submit modifications</button>
         </td>
     </tr>
-    {% endif %}
-    {% if package.state_string == 'unresolved'  and package.resolution_problems %}
-    <tr>
-        <th>Dependency problems</th>
-        <td>{{ package.resolution_problems[0].problem }}</td>
-    </tr>
-    {% for problem in package.resolution_problems[1:] %}
-    <tr>
-        <td></td>
-        <td>{{ problem.problem }}</td>
-    </tr>
-    {% endfor %}
     {% endif %}
 
     {{ macros.depchange_table(package.unapplied_changes) }}

@@ -567,3 +567,7 @@ span#loginInfo {
     display: block;
     padding: 15pt 0pt 0pt 15pt;
 }
+
+.problem {
+    color: #c00;
+}
