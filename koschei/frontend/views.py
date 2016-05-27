@@ -58,8 +58,6 @@ def page_args(clear=False, **kwargs):
         return ','.join(new_order)
     if 'order_by' in kwargs:
         kwargs['order_by'] = proc_order(kwargs['order_by'])
-    if kwargs.get('collection') == g.default_collection.name:
-        kwargs.pop('collection')
     # the supposedly unnecessary call to items() is needed
     unfiltered = kwargs if clear else dict(request.args.items(), **kwargs)
     args = {k: v for k, v in unfiltered.items() if v is not None}
@@ -120,7 +118,7 @@ def columnize(what, css_class=None):
 def get_global_notices():
     notices = [n.content for n in
                db.query(AdminNotice.content).filter_by(key="global_notice")]
-    if g.current_collection.latest_repo_resolved is False:
+    if g.current_collection and g.current_collection.latest_repo_resolved is False:
         problems = db.query(BuildrootProblem)\
             .filter_by(collection_id=g.current_collection.id).all()
         notices.append("Base buildroot for {} is not installable. "
@@ -134,6 +132,32 @@ def require_login():
     return " " if g.user else ' disabled="true" '
 
 
+def state_icons(package_row):
+    state_array = package_row.states
+    packages = {}
+    if len(state_array) > 4:
+        # format is like this {"(2,,3)","(1,f,3)"}
+        state_array = state_array[2:-2].split('","')
+        for state in state_array:
+            collection_id, resolved, build_state = state[1:-1].split(',')
+            resolved = None if resolved == '' else (resolved == 't')
+            build_state = None if build_state == '' else int(build_state)
+            package = Package(name=package_row.name, blocked=False,
+                              tracked=True,
+                              last_complete_build_state=build_state,
+                              resolved=resolved)
+            packages[int(collection_id)] = package
+
+    out = ""
+    for collection in g.collections:
+        package = packages.get(collection.id)
+        out += '<td>'
+        if package:
+            out += '<img src="{icon}"/>'.format(icon=state_icon(package))
+        out += '</td>'
+    return Markup(out)
+
+
 app.jinja_env.globals.update(
     primary_koji_url=get_config('koji_config.weburl'),
     secondary_koji_url=get_config('secondary_koji_config.weburl'),
@@ -143,6 +167,7 @@ app.jinja_env.globals.update(
     get_global_notices=get_global_notices,
     require_login=require_login,
     Package=Package, Build=Build,
+    state_icons=state_icons,
     auto_tracking=frontend_config['auto_tracking'])
 
 app.jinja_env.filters.update(columnize=columnize,
@@ -160,7 +185,7 @@ class Reversed(object):
         return self.content.desc()
 
 
-class PriorityOrder(Reversed):
+class NullsLastOrder(Reversed):
     def asc(self):
         return self.content.desc().nullslast()
 
@@ -180,8 +205,17 @@ def get_order(order_map, order_spec):
     return components, orders
 
 
-def package_view(package_query, template, **template_args):
-    package_query = package_query.filter(Package.collection_id == g.current_collection.id)
+def package_view(template, query_fn=None, **template_args):
+    if g.current_collection:
+        return collection_package_view(template, query_fn, **template_args)
+    return unified_package_view(template, query_fn, **template_args)
+
+
+def collection_package_view(template, query_fn=None, **template_args):
+    collection = g.current_collection or g.default_collection
+    package_query = db.query(Package).filter(Package.collection_id == collection.id)
+    if query_fn:
+        package_query = query_fn(package_query)
     untracked = request.args.get('untracked') == '1'
     order_name = request.args.get('order_by', 'running,state,name')
     # pylint: disable=E1101
@@ -190,7 +224,7 @@ def package_view(package_query, template, **template_args):
                  'running': [Package.last_complete_build_id == Package.last_build_id],
                  'task_id': [Build.task_id],
                  'started': [Build.started],
-                 'current_priority': [PriorityOrder(Package.current_priority)]}
+                 'current_priority': [NullsLastOrder(Package.current_priority)]}
     order_names, order = get_order(order_map, order_name)
 
     if not untracked:
@@ -201,7 +235,8 @@ def package_view(package_query, template, **template_args):
                         .order_by(*order)
     page = pkgs.paginate(packages_per_page)
     return render_template(template, packages=page.items, page=page,
-                           order=order_names, **template_args)
+                           order=order_names, collection=collection,
+                           **template_args)
 
 
 def state_icon(package):
@@ -274,20 +309,55 @@ def get_collections():
         else:
             abort(404, "Collection not found")
     else:
-        g.current_collection = g.default_collection
+        g.current_collection = None
+
+
+def unified_package_view(template, query_fn=None, **template_args):
+    untracked = request.args.get('untracked') == '1'
+    order_name = request.args.get('order_by', 'running,state,name')
+    # pylint: disable=E1101
+    subq = db.query(Package.name,
+                    func.array_agg(func.row(Package.collection_id,
+                                            Package.resolved,
+                                            Package.last_complete_build_state))
+                    .label("states"),
+                    func.bool_or(Package.resolved).label("resolved"),
+                    func.bool_or(Package.last_complete_build_state == Build.FAILED)
+                    .label("failing"),
+                    func.bool_or(Package.last_complete_build_id != Package.last_build_id)
+                    .label("has_running_build"))\
+        .filter(Package.blocked == False)\
+        .group_by(Package.name)
+    if not untracked:
+        subq = subq.filter(Package.tracked == True)
+    if query_fn:
+        subq = query_fn(subq)
+    subq = subq.subquery()
+
+    order_map = {
+        'name': [subq.c.name],
+        'running': [NullsLastOrder(subq.c.has_running_build)],
+    }
+    order_names, order = get_order(order_map, order_name)
+
+    package_query = db.query(subq.c.name, subq.c.states, subq.c.has_running_build)
+    page = package_query.order_by(*order).paginate(packages_per_page)
+    return render_template(template, packages=page.items, page=page,
+                           order=order_names, collection=None, **template_args)
 
 
 @app.route('/')
 @tab('Packages')
 def frontpage():
-    return package_view(db.query(Package), "frontpage.html")
+    return package_view("frontpage.html")
 
 
 @app.route('/package/<name>')
 @tab('Packages', slave=True)
 def package_detail(name):
+    collection = g.current_collection or g.default_collection
     package = db.query(Package)\
-                .filter_by(name=name, collection_id=g.current_collection.id)\
+                .filter_by(name=name, collection_id=collection.id)\
                 .options(subqueryload(Package.unapplied_changes))\
                 .first_or_404()
     package.global_groups = db.query(PackageGroup)\
@@ -371,13 +441,12 @@ def group_detail(name=None, namespace=None):
     group = db.query(PackageGroup)\
               .filter_by(name=name, namespace=namespace).first_or_404()
 
-    query = db.query(Package)\
-              .outerjoin(PackageGroupRelation,
-                         PackageGroupRelation.package_name == Package.name)\
-              .filter(Package.collection_id == g.current_collection.id)\
-              .filter(PackageGroupRelation.group_id == group.id)
+    def query_fn(query):
+        return query.outerjoin(PackageGroupRelation,
+                               PackageGroupRelation.package_name == Package.name)\
+            .filter(PackageGroupRelation.group_id == group.id)
 
-    return package_view(query, "group-detail.html", group=group)
+    return package_view("group-detail.html", query_fn=query_fn, group=group)
 
 
 @app.route('/user/<name>')

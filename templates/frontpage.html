@@ -6,5 +6,5 @@ Package rebuilds {% if since.year > 2000 %}since {{ since|date }}{% endif %} unt
 {% block content %}
   <div class="pageHeader">Package summary</div>
   <div class="dataHeader noPaginate" id="buildlist">All packages</div>
-  {{ macros.package_table(packages, page, order, untracked_toggle=False) }}
+  {{ macros.package_table(packages, page, order, collection=collection, untracked_toggle=False) }}
 {% endblock %}

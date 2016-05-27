@@ -2,5 +2,5 @@
 {% import "macros.html" as macros %}
 {% block title %}Koschei - {{ username }}'s packages{% endblock %}
 {% block content %}
-{{ macros.package_table(packages, page, order) }}
+{{ macros.package_table(packages, page, order, collection=collection) }}
 {% endblock %}
