@@ -247,6 +247,8 @@ class GroupCommandParser(object):
 
         def from_fo(fo):
             content = filter(None, fo.read().split())
+            if not content:
+                sys.exit("Group content empty")
             backend.set_group_content(group, content, append)
 
         if content_from_file == '-':

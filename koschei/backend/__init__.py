@@ -357,7 +357,8 @@ class Backend(object):
                 rels.append(dict(group_id=group.id, package_name=name))
         if not append:
             self.db.query(PackageGroupRelation).filter_by(group_id=group.id).delete()
-        self.db.execute(insert(PackageGroupRelation, rels))
+        if rels:
+            self.db.execute(insert(PackageGroupRelation, rels))
 
     def refresh_packages(self):
         """
