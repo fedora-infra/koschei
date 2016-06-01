@@ -66,7 +66,8 @@ class RepoDescriptor(object):
     def __lt__(self, other):
         return self.repo_id < other.repo_id
 
-    def make_url(self, arch):
+    def make_url(self):
+        arch = get_config('dependency.repo_arch')
         topurl = get_koji_config(self.koji_id, 'topurl')
         url = '{topurl}/repos/{build_tag}/{repo_id}/{arch}'
         return url.format(topurl=topurl, build_tag=self.build_tag,
@@ -96,14 +97,13 @@ class RepoManager(object):
             shutil.rmtree(temp_dir)
         os.mkdir(temp_dir)
         try:
-            arch = get_config('dependency.repo_arch')
             log.debug('Downloading repo {} from Koji to disk'.
                       format(repo_descriptor))
             h = librepo.Handle()
             h.destdir = temp_dir
             # pylint:disable=no-member
             h.repotype = librepo.LR_YUMREPO
-            h.urls = [repo_descriptor.make_url(arch)]
+            h.urls = [repo_descriptor.make_url()]
             h.yumdlist = ['primary', 'filelists', 'group', 'group_gz']
             h.perform(librepo.Result())
             os.rename(temp_dir, repo_dir)
