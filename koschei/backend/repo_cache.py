@@ -189,19 +189,13 @@ class RepoCache(object):
         self.sack_manager = SackManager()
         self.repo_manager = RepoManager(repo_dir)
 
-        self.prefetch_order = deque()
-
         self.repos = OrderedDict(sorted(self.repo_manager.populate_cache()))
         while len(self.repos) > self.cache_l2_capacity:
             repo_descriptor, repo_path = self.repos.popitem(last=False)
             self.repo_manager.destroy(repo_descriptor, repo_path)
 
-    def prefetch_repo(self, repo_descriptor):
-        self.prefetch_order.append(repo_descriptor)
-
     @contextmanager
     def get_sack(self, repo_descriptor):
-        assert self.prefetch_order.popleft() == repo_descriptor
         try:
             repo_path = self.repos.get(repo_descriptor)
             if repo_path:

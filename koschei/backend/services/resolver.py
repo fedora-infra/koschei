@@ -380,7 +380,6 @@ class Resolver(KojiService):
             self.log.error('Cannot generate repo: {}'.format(repo_id))
             self.db.rollback()
             return
-        self.repo_cache.prefetch_repo(repo_descriptor)
         packages = self.get_packages(collection)
         brs = koji_util.get_rpm_requires(self.koji_sessions['secondary'],
                                          [p.srpm_nvra for p in packages])
@@ -470,8 +469,6 @@ class Resolver(KojiService):
                 .filter(Build.id.in_(unavailable_build_ids))\
                 .update({'deps_processed': True}, synchronize_session=False)
             self.db.commit()
-        for descriptor, _ in groupby(repos_to_process, lambda desc: desc):
-            self.repo_cache.prefetch_repo(descriptor)
         buildrequires = koji_util.get_rpm_requires(self.koji_sessions['secondary'],
                                                    [dict(name=b.name, version=b.version,
                                                          release=b.release, arch='src')
