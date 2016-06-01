@@ -83,13 +83,11 @@ class RepoManager(object):
     def _get_repo_dir(self, repo_descriptor):
         return os.path.join(self._repo_dir, str(repo_descriptor))
 
-    # @Override
     def destroy(self, repo_descriptor, _):
         repo_dir = self._get_repo_dir(repo_descriptor)
         if os.path.exists(repo_dir):
             shutil.rmtree(repo_dir)
 
-    # @Override
     # Download given repo_id from Koji to disk
     def create(self, repo_descriptor, _):
         self.destroy(repo_descriptor, None)
@@ -118,7 +116,6 @@ class RepoManager(object):
                 return None
             raise
 
-    # @Override
     def populate_cache(self):
         repos = []
         log.debug('Reading cached repos from disk...')
@@ -144,7 +141,6 @@ class RepoManager(object):
 
 
 class SackManager(object):
-    # @Override
     def create(self, repo_descriptor, repo_dir):
         """ Load repo from disk into memory as sack """
         if not repo_dir:
@@ -180,17 +176,6 @@ class SackManager(object):
         finally:
             if build_cache and os.path.exists(cache_dir):
                 shutil.rmtree(cache_dir)
-
-    # @Override
-    # Release sack
-    def destroy(self, repo_id, sack):
-        # Nothing to do - sack will be garbage-collected automatically.
-        pass
-
-    # @Override
-    # Initially there are no sacks cached
-    def populate_cache(self):
-        return None
 
 
 class RepoCache(object):
@@ -231,6 +216,3 @@ class RepoCache(object):
             yield self.sack_manager.create(repo_descriptor, repo_path)
         finally:
             pass
-
-    def cleanup(self):
-        pass
