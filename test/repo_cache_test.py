@@ -76,4 +76,5 @@ class RepoCacheTest(DBTest):
         with mocks() as (librepo_mock, _):
             cache.prefetch_repo(repo_cache.RepoDescriptor('primary', 'build_tag', 1))
             with cache.get_sack(repo_cache.RepoDescriptor('primary', 'build_tag', 1)):
-                self.assertEqual(0, librepo_mock.perform.call_count)
+                # In-memory caching of sacks is not supported any longer
+                self.assertEqual(1, librepo_mock.perform.call_count)

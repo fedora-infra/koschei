@@ -20,7 +20,7 @@
 import logging
 import os
 import shutil
-from collections import deque
+from collections import deque, OrderedDict
 from contextlib import contextmanager
 from functools import total_ordering
 
@@ -28,7 +28,6 @@ import hawkey
 import librepo
 
 from koschei.config import get_config, get_koji_config
-from koschei.backend.cache_manager import CacheManager
 
 log = logging.getLogger('koschei.repo_cache')
 
@@ -51,6 +50,9 @@ class RepoDescriptor(object):
 
     def __str__(self):
         return '{}-{}-{}'.format(self.koji_id, self.build_tag, self.repo_id)
+
+    def __hash__(self):
+        return hash((self.koji_id, self.build_tag, self.repo_id))
 
     def __eq__(self, other):
         try:
@@ -197,32 +199,38 @@ class RepoCache(object):
             repo_dir = os.path.join(get_config('directories.cachedir'), 'repodata')
 
         dep_config = get_config('dependency')
-        cache_l1_capacity = dep_config['cache_l1_capacity']
-        cache_l2_capacity = dep_config['cache_l2_capacity']
-        cache_l1_threads = dep_config['cache_l1_threads']
-        cache_l2_threads = dep_config['cache_l2_threads']
-        cache_threads_max = dep_config['cache_threads_max']
+        self.cache_l2_capacity = dep_config['cache_l2_capacity']
 
-        sack_manager = SackManager()
-        repo_manager = RepoManager(repo_dir)
-
-        self.mgr = CacheManager(cache_threads_max)
-        self.mgr.add_bank(sack_manager, cache_l1_capacity, cache_l1_threads)
-        self.mgr.add_bank(repo_manager, cache_l2_capacity, cache_l2_threads)
+        self.sack_manager = SackManager()
+        self.repo_manager = RepoManager(repo_dir)
 
         self.prefetch_order = deque()
 
+        self.repos = OrderedDict(sorted(self.repo_manager.populate_cache()))
+        while len(self.repos) > self.cache_l2_capacity:
+            repo_descriptor, repo_path = self.repos.popitem(last=False)
+            self.repo_manager.destroy(repo_descriptor, repo_path)
+
     def prefetch_repo(self, repo_descriptor):
         self.prefetch_order.append(repo_descriptor)
-        self.mgr.prefetch(repo_descriptor)
 
     @contextmanager
     def get_sack(self, repo_descriptor):
         assert self.prefetch_order.popleft() == repo_descriptor
         try:
-            yield self.mgr.acquire(repo_descriptor)
+            repo_path = self.repos.get(repo_descriptor)
+            if repo_path:
+                del self.repos[repo_descriptor]
+            else:
+                assert len(self.repos) <= self.cache_l2_capacity
+                while len(self.repos) >= self.cache_l2_capacity:
+                    repo_descriptor, repo_path = self.repos.popitem(last=False)
+                    self.repo_manager.destroy(repo_descriptor, repo_path)
+                repo_path = self.repo_manager.create(repo_descriptor, None)
+            self.repos[repo_descriptor] = repo_path
+            yield self.sack_manager.create(repo_descriptor, repo_path)
         finally:
-            self.mgr.release(repo_descriptor)
+            pass
 
     def cleanup(self):
-        return self.mgr.terminate()
+        pass
