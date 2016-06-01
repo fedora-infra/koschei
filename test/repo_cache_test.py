@@ -49,28 +49,27 @@ class RepoCacheTest(DBTest):
     def test_read_from_disk(self):
         with mocks() as (librepo_mock, sack_mock):
             cache = repo_cache.RepoCache()
-            with cache.get_sack(self.descriptors[666]) as sack:
-                self.assertIs(True, librepo_mock.local)
-                # pylint:disable=no-member
-                self.assertIs(librepo.LR_YUMREPO, librepo_mock.repotype)
-                self.assertEqual(['primary', 'filelists', 'group'], librepo_mock.yumdlist)
-                self.assertEqual('./repodata/primary-build_tag-666',
-                                 librepo_mock.urls[0])
-                self.assertEqual(1, librepo_mock.perform.call_count)
-                self.assertIs(sack_mock, sack)
+            sack = cache.get_sack(self.descriptors[666])
+            self.assertIs(True, librepo_mock.local)
+            # pylint:disable=no-member
+            self.assertIs(librepo.LR_YUMREPO, librepo_mock.repotype)
+            self.assertEqual(['primary', 'filelists', 'group'], librepo_mock.yumdlist)
+            self.assertEqual('./repodata/primary-build_tag-666',
+                             librepo_mock.urls[0])
+            self.assertEqual(1, librepo_mock.perform.call_count)
+            self.assertIs(sack_mock, sack)
 
     def test_download(self):
         with mocks() as (librepo_mock, _):
             cache = repo_cache.RepoCache()
-            with cache.get_sack(repo_cache.RepoDescriptor('primary', 'build_tag', 1)):
-                self.assertEqual(2, librepo_mock.perform.call_count)
+            cache.get_sack(repo_cache.RepoDescriptor('primary', 'build_tag', 1))
+            self.assertEqual(2, librepo_mock.perform.call_count)
 
     def test_reuse(self):
         cache = repo_cache.RepoCache()
         with mocks() as (librepo_mock, _):
-            with cache.get_sack(repo_cache.RepoDescriptor('primary', 'build_tag', 1)):
-                pass
+            cache.get_sack(repo_cache.RepoDescriptor('primary', 'build_tag', 1))
         with mocks() as (librepo_mock, _):
-            with cache.get_sack(repo_cache.RepoDescriptor('primary', 'build_tag', 1)):
-                # In-memory caching of sacks is not supported any longer
-                self.assertEqual(1, librepo_mock.perform.call_count)
+            cache.get_sack(repo_cache.RepoDescriptor('primary', 'build_tag', 1))
+            # In-memory caching of sacks is not supported any longer
+            self.assertEqual(1, librepo_mock.perform.call_count)

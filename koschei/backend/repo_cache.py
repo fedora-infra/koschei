@@ -20,8 +20,7 @@
 import logging
 import os
 import shutil
-from collections import deque, OrderedDict
-from contextlib import contextmanager
+from collections import OrderedDict
 from functools import total_ordering
 
 import hawkey
@@ -194,19 +193,15 @@ class RepoCache(object):
             repo_descriptor, repo_path = self.repos.popitem(last=False)
             self.repo_manager.destroy(repo_descriptor, repo_path)
 
-    @contextmanager
     def get_sack(self, repo_descriptor):
-        try:
-            repo_path = self.repos.get(repo_descriptor)
-            if repo_path:
-                del self.repos[repo_descriptor]
-            else:
-                assert len(self.repos) <= self.cache_l2_capacity
-                while len(self.repos) >= self.cache_l2_capacity:
-                    repo_descriptor, repo_path = self.repos.popitem(last=False)
-                    self.repo_manager.destroy(repo_descriptor, repo_path)
-                repo_path = self.repo_manager.create(repo_descriptor, None)
-            self.repos[repo_descriptor] = repo_path
-            yield self.sack_manager.create(repo_descriptor, repo_path)
-        finally:
-            pass
+        repo_path = self.repos.get(repo_descriptor)
+        if repo_path:
+            del self.repos[repo_descriptor]
+        else:
+            assert len(self.repos) <= self.cache_l2_capacity
+            while len(self.repos) >= self.cache_l2_capacity:
+                repo_descriptor, repo_path = self.repos.popitem(last=False)
+                self.repo_manager.destroy(repo_descriptor, repo_path)
+            repo_path = self.repo_manager.create(repo_descriptor, None)
+        self.repos[repo_descriptor] = repo_path
+        return self.sack_manager.create(repo_descriptor, repo_path)

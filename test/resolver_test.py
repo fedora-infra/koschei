@@ -19,7 +19,6 @@
 
 import os
 import shutil
-from contextlib import contextmanager
 from unittest import skipIf
 
 import hawkey
@@ -46,7 +45,6 @@ FOO_DEPS = [
 ]
 
 
-@contextmanager
 def get_sack():
     # hawkey sacks cannot be easily populated from within python and mocking
     # hawkey queries would be too complicated, therefore using real repos
@@ -61,7 +59,7 @@ def get_sack():
     repo.primary_fn = repodata['primary']
     sack = hawkey.Sack(arch='x86_64')
     sack.load_yum_repo(repo)
-    yield sack
+    return sack
 
 
 class DependencyCacheTest(DBTest):
@@ -301,12 +299,12 @@ class ResolverTest(DBTest):
 
     def test_virtual_file_provides(self):
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
-            with get_sack() as sack:
-                (resolved, problems, deps) = self.resolver.resolve_dependencies(sack, ['/bin/csh'], ['R'])
-                self.assertItemsEqual([], problems)
-                self.assertTrue(resolved)
-                self.assertIsNotNone(deps)
-                self.assertItemsEqual(['B', 'C', 'R'], [dep.name for dep in deps])
+            sack = get_sack()
+            (resolved, problems, deps) = self.resolver.resolve_dependencies(sack, ['/bin/csh'], ['R'])
+            self.assertItemsEqual([], problems)
+            self.assertTrue(resolved)
+            self.assertIsNotNone(deps)
+            self.assertItemsEqual(['B', 'C', 'R'], [dep.name for dep in deps])
 
     # qt-x11 requires (sni-qt(x86-64) if plasma-workspace)
     # since plasma-workspace is not installed, sni-qt should not be instaled either
@@ -314,12 +312,12 @@ class ResolverTest(DBTest):
             'Rich deps are not supported by this hawkey version')
     def test_rich_deps(self):
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
-            with get_sack() as sack:
-                (resolved, problems, deps) = self.resolver.resolve_dependencies(sack, ['qt-x11'], ['R'])
-                self.assertItemsEqual([], problems)
-                self.assertTrue(resolved)
-                self.assertIsNotNone(deps)
-                self.assertItemsEqual(['qt-x11', 'R'], [dep.name for dep in deps])
+            sack = get_sack()
+            (resolved, problems, deps) = self.resolver.resolve_dependencies(sack, ['qt-x11'], ['R'])
+            self.assertItemsEqual([], problems)
+            self.assertTrue(resolved)
+            self.assertIsNotNone(deps)
+            self.assertItemsEqual(['qt-x11', 'R'], [dep.name for dep in deps])
 
     # qt-x11 requires (sni-qt(x86-64) if plasma-workspace)
     # since plasma-workspace is installed, sni-qt should be instaled too
@@ -327,9 +325,9 @@ class ResolverTest(DBTest):
             'Rich deps are not supported by this hawkey version')
     def test_rich_deps2(self):
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
-            with get_sack() as sack:
-                (resolved, problems, deps) = self.resolver.resolve_dependencies(sack, ['qt-x11', 'plasma-workspace'], ['R'])
-                self.assertItemsEqual([], problems)
-                self.assertTrue(resolved)
-                self.assertIsNotNone(deps)
-                self.assertItemsEqual(['qt-x11', 'plasma-workspace', 'sni-qt', 'R'], [dep.name for dep in deps])
+            sack = get_sack()
+            (resolved, problems, deps) = self.resolver.resolve_dependencies(sack, ['qt-x11', 'plasma-workspace'], ['R'])
+            self.assertItemsEqual([], problems)
+            self.assertTrue(resolved)
+            self.assertIsNotNone(deps)
+            self.assertItemsEqual(['qt-x11', 'plasma-workspace', 'sni-qt', 'R'], [dep.name for dep in deps])
