@@ -137,7 +137,7 @@ class RepoCache(object):
         h.urls = [repo_path]
         h.yumdlist = ['primary', 'filelists', 'group']
         repodata = h.perform(librepo.Result()).yum_repo
-        repo = hawkey.Repo(repo_descriptor)
+        repo = hawkey.Repo(str(repo_descriptor))
         repo.repomd_fn = repodata['repomd']
         repo.primary_fn = repodata['primary']
         repo.filelists_fn = repodata['filelists']
