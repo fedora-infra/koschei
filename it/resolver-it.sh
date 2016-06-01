@@ -1,4 +1,7 @@
 #!/bin/bash
+DUMP_REV=2
+REPO_REV=3
+
 set -e
 drop() {
     dropdb koschei_it --if-exists &>/dev/null
@@ -12,12 +15,11 @@ getdata() {
 repo_id=509557
 itdir=`dirname "$0"`
 cd "$itdir"
-DATA_REV=2
-DUMP=koschei-it-dump-$DATA_REV.sql.xz
-REPO=koschei-it-repo-$DATA_REV.tar.bz2
+DUMP=koschei-it-dump-$DUMP_REV.sql.xz
+REPO=koschei-it-repo-$REPO_REV.tar.bz2
 getdata $REPO
 getdata $DUMP
-rm -r repodata
+rm -rf repodata
 mkdir repodata
 tar xf $REPO -C repodata
 drop
