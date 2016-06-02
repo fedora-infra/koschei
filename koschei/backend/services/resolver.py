@@ -17,7 +17,7 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 from itertools import izip, groupby
 
 import koji
@@ -42,6 +42,10 @@ resolution_time = Stopwatch("Dependency resolution", total_time)
 resolve_dependencies_time = Stopwatch("resolve_dependencies", resolution_time)
 create_dependency_changes_time = Stopwatch("create_dependency_changes", resolution_time)
 generate_dependency_changes_time = Stopwatch("generate_dependency_changes")
+
+
+DepTuple = namedtuple('DepTuple', ['id', 'name', 'epoch', 'version', 'release',
+                                   'arch'])
 
 
 class DependencyWithDistance(object):
@@ -90,8 +94,10 @@ class DependencyCache(object):
             if dep is None:
                 kwds = dict(name=nevra[0], epoch=nevra[1], version=nevra[2],
                             release=nevra[3], arch=nevra[4])
-                dep = db.execute(insert(Dependency, [kwds],
-                                        returning=Dependency.inevra)).fetchone()
+                dep_id = db.execute(insert(Dependency, [kwds],
+                                           returning=(Dependency.id,)))\
+                    .fetchone().id
+                dep = DepTuple(id=dep_id, **kwds)
             self._add(dep)
         else:
             self._access(dep)

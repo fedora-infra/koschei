@@ -85,14 +85,20 @@ class DependencyCacheTest(DBTest):
         dep1, dep2 = cache.get_by_ids(self.s, [2, 3])
         self.assertEquals(self.dep(2), dep1)
         self.assertEquals(self.dep(3), dep2)
+        hash(dep1)
+        hash(dep2)
         # from cache
         dep1, dep2 = cache.get_by_ids(None, [2, 3])
         self.assertEquals(self.dep(2), dep1)
         self.assertEquals(self.dep(3), dep2)
+        hash(dep1)
+        hash(dep2)
         # mixed
         dep1, dep2 = cache.get_by_ids(self.s, [2, 1])
         self.assertEquals(self.dep(2), dep1)
         self.assertEquals(self.dep(1), dep2)
+        hash(dep1)
+        hash(dep2)
 
     def test_get_nevras(self):
         cache = DependencyCache(10)
@@ -100,14 +106,20 @@ class DependencyCacheTest(DBTest):
         dep1, dep2 = cache.get_or_create_nevras(self.s, [self.nevra(2), self.nevra(3)])
         self.assertEquals(self.dep(2), dep1)
         self.assertEquals(self.dep(3), dep2)
+        hash(dep1)
+        hash(dep2)
         # from cache
         dep1, dep2 = cache.get_or_create_nevras(None, [self.nevra(2), self.nevra(3)])
         self.assertEquals(self.dep(2), dep1)
         self.assertEquals(self.dep(3), dep2)
+        hash(dep1)
+        hash(dep2)
         # insert
         dep1, dep2 = cache.get_or_create_nevras(self.s, [self.nevra(4), self.nevra(5)])
         self.assertEquals(self.dep(4), dep1)
         self.assertEquals(self.dep(5), dep2)
+        hash(dep1)
+        hash(dep2)
         # mixed
         dep1, dep2, dep3 = cache.get_or_create_nevras(self.s, [self.nevra(6),
                                                                self.nevra(4),
@@ -115,6 +127,18 @@ class DependencyCacheTest(DBTest):
         self.assertEquals(self.dep(6), dep1)
         self.assertEquals(self.dep(4), dep2)
         self.assertEquals(self.dep(2), dep3)
+        hash(dep1)
+        hash(dep2)
+        hash(dep3)
+
+        # now get them by id
+        dep1, dep2, dep3 = cache.get_by_ids(self.s, [dep1.id, dep2.id, dep3.id])
+        self.assertEquals(self.dep(6), dep1)
+        self.assertEquals(self.dep(4), dep2)
+        self.assertEquals(self.dep(2), dep3)
+        hash(dep1)
+        hash(dep2)
+        hash(dep3)
 
     def test_lru(self):
         cache = DependencyCache(2)
