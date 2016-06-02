@@ -112,7 +112,6 @@ class RepoCache(object):
 
     def _download_repo(self, repo_descriptor, repo_dir):
         """ Download repo from Koji to disk. """
-        log.debug('Downloading repo {} from Koji to disk'.format(repo_descriptor))
         h = librepo.Handle()
         h.destdir = repo_dir
         # pylint:disable=no-member
@@ -120,7 +119,6 @@ class RepoCache(object):
         h.urls = [repo_descriptor.make_url()]
         h.yumdlist = ['primary', 'filelists', 'group', 'group_gz']
         h.perform(librepo.Result())
-        log.debug('Repo {} successfully downloaded to disk'.format(repo_descriptor))
 
     def _load_sack(self, repo_descriptor, repo_path, build_cache=False):
         """ Load repo from disk into memory as sack. """
@@ -129,7 +127,6 @@ class RepoCache(object):
         if build_cache:
             os.mkdir(cache_dir)
         sack = hawkey.Sack(arch=for_arch, cachedir=cache_dir)
-        log.debug('Loading repo {} from disk into memory'.format(repo_descriptor))
         h = librepo.Handle()
         h.local = True
         # pylint:disable=no-member
@@ -142,7 +139,6 @@ class RepoCache(object):
         repo.primary_fn = repodata['primary']
         repo.filelists_fn = repodata['filelists']
         sack.load_yum_repo(repo, load_filelists=True, build_cache=build_cache)
-        log.debug('Repo {} successfully loaded into memory'.format(repo_descriptor))
         return sack
 
     def get_sack(self, repo_descriptor):
@@ -160,6 +156,7 @@ class RepoCache(object):
             del self._repos[repo_descriptor]
             self._repos[repo_descriptor] = repo_path
             return self._load_sack(repo_descriptor, repo_path)
+        log.debug('Downloading repo {} (cache miss)'.format(repo_descriptor))
         try:
             self._ensure_capacity()
             repo_path = os.path.join(self._repos_dir, str(repo_descriptor))
@@ -169,6 +166,7 @@ class RepoCache(object):
             sack = self._load_sack(repo_descriptor, temp_dir, build_cache=True)
             os.rename(temp_dir, repo_path)
             self._repos[repo_descriptor] = repo_path
+            log.debug('Repo {} was successfully downloaded'.format(repo_descriptor))
             return sack
         except librepo.LibrepoException as e:
             if e.args[0] == REPO_404:
