@@ -146,18 +146,41 @@ class DependencyCacheTest(DBTest):
         cache.get_by_ids(self.s, [2, 3])
         # one more
         cache.get_by_ids(self.s, [1])
-        print(cache.ids)
         # from cache
         cache.get_by_ids(None, [3])
-        print(cache.ids)
         self.s.query(Dependency).filter_by(version="2").update({'name': 'bar'})
         self.s.commit()
         # refetch
         dep = cache.get_by_ids(self.s, [2])[0]
-        print(cache.ids)
         self.assertEquals('bar', dep.name)
         # still cached
         cache.get_by_ids(None, [3])
+
+    def test_lru2(self):
+        cache = DependencyCache(2)
+        # from db
+        dep1, dep2 = cache.get_or_create_nevras(self.s, [self.nevra(2), self.nevra(3)])
+        self.assertEquals(self.dep(2), dep1)
+        self.assertEquals(self.dep(3), dep2)
+        # one mode
+        dep1 = cache.get_or_create_nevras(self.s, [self.nevra(1)])[0]
+        self.assertEquals(self.dep(1), dep1)
+        hash(dep1)
+        # from cache
+        dep3 = cache.get_or_create_nevras(None, [self.nevra(3)])[0]
+        self.assertEquals(self.dep(3), dep3)
+        hash(dep3)
+
+        self.s.query(Dependency).filter_by(version="2").update({'name': 'bar'})
+        self.s.commit()
+        # 2 should be expired, this should insert new
+        dep = cache.get_or_create_nevras(self.s, [self.nevra(2)])[0]
+        self.assertEquals('foo', dep.name)
+        hash(dep)
+        # still cached
+        dep3 = cache.get_or_create_nevras(None, [self.nevra(3)])[0]
+        self.assertEquals(self.dep(3), dep3)
+        hash(dep3)
 
 
 class ResolverTest(DBTest):
