@@ -678,8 +678,10 @@ def search():
     term = request.args.get('q')
     if term:
         matcher = '%{}%'.format(term.strip().replace('*', '%'))
-        query = db.query(Package).filter(Package.name.ilike(matcher))
-        return package_view(query, "search-results.html")
+
+        def query_fn(query):
+            return query.filter(Package.name.ilike(matcher))
+        return package_view("search-results.html", query_fn)
     return redirect(url_for('frontpage'))
 
 
