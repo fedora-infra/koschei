@@ -205,6 +205,26 @@ def get_order(order_map, order_spec):
     return components, orders
 
 
+def populate_package_groups(packages):
+    name_map = {}
+    for package in packages:
+        package.visible_groups = []
+        name_map[package.name] = package
+    filter_expr = PackageGroup.namespace == None
+    if g.user:
+        filter_expr |= GroupACL.user_id == g.user.id
+    group_rels = db.query(PackageGroupRelation)\
+        .options(contains_eager(PackageGroupRelation.group))\
+        .filter(PackageGroupRelation.package_name.in_(name_map.keys()))\
+        .join(PackageGroup)\
+        .join(GroupACL)\
+        .filter(filter_expr)\
+        .order_by(PackageGroup.namespace, PackageGroup.name)\
+        .all()
+    for r in group_rels:
+        name_map[r.package_name].visible_groups.append(r.group)
+
+
 def package_view(template, query_fn=None, **template_args):
     if g.current_collection:
         return collection_package_view(template, query_fn, **template_args)
@@ -234,6 +254,7 @@ def collection_package_view(template, query_fn=None, **template_args):
                         .options(contains_eager(Package.last_build))\
                         .order_by(*order)
     page = pkgs.paginate(packages_per_page)
+    populate_package_groups(page.items)
     return render_template(template, packages=page.items, page=page,
                            order=order_names, collection=collection,
                            **template_args)
@@ -312,6 +333,13 @@ def get_collections():
         g.current_collection = None
 
 
+class UnifiedPackage(object):
+    def __init__(self, result):
+        self.name = result.name
+        self.states = result.states
+        self.has_running_build = result.has_running_build
+
+
 def unified_package_view(template, query_fn=None, **template_args):
     untracked = request.args.get('untracked') == '1'
     order_name = request.args.get('order_by', 'running,state,name')
@@ -342,6 +370,8 @@ def unified_package_view(template, query_fn=None, **template_args):
 
     package_query = db.query(subq.c.name, subq.c.states, subq.c.has_running_build)
     page = package_query.order_by(*order).paginate(packages_per_page)
+    page.items = map(UnifiedPackage, page.items)
+    populate_package_groups(page.items)
     return render_template(template, packages=page.items, page=page,
                            order=order_names, collection=None, **template_args)
 

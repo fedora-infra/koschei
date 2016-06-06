@@ -379,6 +379,9 @@ class PackageGroup(Base):
     def owners_list(self):
         return ', '.join(u.name for u in self.owners)
 
+    def __str__(self):
+        return self.full_name
+
 
 class Build(Base):
     __tablename__ = 'build'
@@ -678,6 +681,7 @@ PackageGroup.packages = relationship(Package, secondary=PackageGroupRelation.__t
                                      secondaryjoin=(PackageGroupRelation.package_name
                                                     == Package.name),
                                      order_by=Package.name, passive_deletes=True)
+PackageGroupRelation.group = relationship(PackageGroup)
 User.groups = relationship(PackageGroup,
                            secondary=GroupACL.__table__,
                            order_by=[PackageGroup.namespace,

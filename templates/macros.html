@@ -52,6 +52,7 @@
                 {{ ordered_column('started', 'Last build started', order) }}
                 {{ ordered_column('current_priority', 'Current priority', order) }}
                 {% endif %}
+                <th>Package groups</th>
                 {% if not auto_tracking %}
                 <th></th>
                 {% endif %}
@@ -100,6 +101,9 @@
                     {{ package.current_priority or ""}}
                 </td>
                 {% endif %}
+                <td>
+                    {{ package.visible_groups | join(', ') }}
+                </td>
                 {% if not auto_tracking %}
                 <td>
                     {% if not package.tracked %}
