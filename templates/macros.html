@@ -28,96 +28,81 @@
     <button type="submit">{% if untracked %}Hide untracked{% else %}Show untracked{% endif %} packages</button>
 </form>
 {% endif %}
+
 {% if page %}
 {{ pagination_row(page, 'Packages') }}
 {% endif %}
-{% if not auto_tracking %}
-<form action="{{ url_for('add_packages') }}" method="post">
-{% endif %}
-    <input type="hidden" name="next" value="{{ request.url }}"/>
-    <table class="data-list">
-        <thead>
-            <tr class="list-header">
-                {{ ordered_column('name', 'Name', order) }}
-                {% if not collection %}
-                {% for coll in g.collections %}
-                <th>{{ coll }}</th>
-                {% endfor %}
-                {% else %}
-                {{ ordered_column('state', 'State', order) }}
-                {% endif %}
-                {{ ordered_column('running', 'Running', order) }}
-                {% if collection %}
-                {{ ordered_column('task_id', 'Task ID', order) }}
-                {{ ordered_column('started', 'Last build started', order) }}
-                {{ ordered_column('current_priority', 'Current priority', order) }}
-                {% endif %}
-                <th>Package groups</th>
-                {% if not auto_tracking %}
-                <th></th>
-                {% endif %}
-            </tr>
-        </thead>
-        <tbody>
-
-            {% for package in packages %}
-            {% set last_build = package.last_build %}
-
-            <tr class="row-odd">
-                <td>
-                    <a href="{{ url_for('package_detail', name=package.name) }}{{ page_args(clear=True, collection=(collection or g.default_collection).name) }}">{{ package.name }}</a>
-                </td>
-                {% if collection %}
-                <td>
-                    <div class="hidden">{{ package.state_string }}</div>
-                    {% if package.state_string %}
-                    <img src="{{ package.state_icon }}"
-                    title="{{ package.state_string }}" alt="{{ package.state_string }}"/>
-                    {% endif %}
-                </td>
-                {% else %} {# unified view #}
-                {{ state_icons(package) }}
-                {% endif %}
-                <td>
-                    {% if package.has_running_build %}
-                    <img src="{{ url_for('static', filename='images/running.png') }}"
-                    title="running" alt="running"/>
-                    {% endif %}
-                </td>
-                {% if collection %}
-                {% if last_build %}
-                <td>
-                    <a href="{{ last_build.taskinfo_url }}">
-                        {{ last_build.task_id }}
-                    </a>
-                </td>
-                <td>
-                    {{ last_build.started | date }}
-                </td>
-                {% else %}
-                <td colspan="2"></td>
-                {% endif %}
-                <td>
-                    {{ package.current_priority or ""}}
-                </td>
-                {% endif %}
-                <td>
-                    {{ package.visible_groups | join(', ') }}
-                </td>
-                {% if not auto_tracking %}
-                <td>
-                    {% if not package.tracked %}
-                    <button type="submit" name="names" value="{{ package.name }}">Add to Koschei</button>
-                    {% endif %}
-                </td>
-                {% endif %}
-            </tr>
+<input type="hidden" name="next" value="{{ request.url }}"/>
+<table class="data-list">
+    <thead>
+        <tr class="list-header">
+            {{ ordered_column('name', 'Name', order) }}
+            {% if not collection %}
+            {% for coll in g.collections %}
+            <th>{{ coll }}</th>
             {% endfor %}
-        </tbody>
-    </table>
-{% if not auto_tracking %}
-</form>
-{% endif %}
+            {% else %}
+            {{ ordered_column('state', 'State', order) }}
+            {% endif %}
+            {{ ordered_column('running', 'Running', order) }}
+            {% if collection %}
+            {{ ordered_column('task_id', 'Task ID', order) }}
+            {{ ordered_column('started', 'Last build started', order) }}
+            {{ ordered_column('current_priority', 'Current priority', order) }}
+            {% endif %}
+            <th>Package groups</th>
+        </tr>
+    </thead>
+    <tbody>
+
+        {% for package in packages %}
+        {% set last_build = package.last_build %}
+
+        <tr class="row-odd">
+            <td>
+                <a href="{{ url_for('package_detail', name=package.name) }}{{ page_args(clear=True, collection=(collection or g.default_collection).name) }}">{{ package.name }}</a>
+            </td>
+            {% if collection %}
+            <td>
+                <div class="hidden">{{ package.state_string }}</div>
+                {% if package.state_string %}
+                <img src="{{ package.state_icon }}"
+                title="{{ package.state_string }}" alt="{{ package.state_string }}"/>
+                {% endif %}
+            </td>
+            {% else %} {# unified view #}
+            {{ state_icons(package) }}
+            {% endif %}
+            <td>
+                {% if package.has_running_build %}
+                <img src="{{ url_for('static', filename='images/running.png') }}"
+                title="running" alt="running"/>
+                {% endif %}
+            </td>
+            {% if collection %}
+            {% if last_build %}
+            <td>
+                <a href="{{ last_build.taskinfo_url }}">
+                    {{ last_build.task_id }}
+                </a>
+            </td>
+            <td>
+                {{ last_build.started | date }}
+            </td>
+            {% else %}
+            <td colspan="2"></td>
+            {% endif %}
+            <td>
+                {{ package.current_priority or ""}}
+            </td>
+            {% endif %}
+            <td>
+                {{ package.visible_groups | join(', ') }}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 {% if page %}
 {{ pagination_row(page, 'Packages') }}
 {% endif %}
