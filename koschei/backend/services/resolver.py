@@ -293,11 +293,12 @@ class Resolver(KojiService):
         """
         last_build = package.last_build
         if last_build and last_build.state in Build.FINISHED_STATES:
-            if last_build.deps_resolved:
+            if last_build.deps_resolved is True:
                 return last_build
-            if last_build.deps_processed:
+            if last_build.deps_resolved is False:
                 # unresolved build, skip it
                 return self.get_prev_build_for_comparison(last_build)
+            # not yet processed builds are not considered
 
     def persist_results(self, resolved_map, problems, changes):
         """
@@ -431,7 +432,7 @@ class Resolver(KojiService):
         prev = self.get_prev_build_for_comparison(entry)
         deps = self.store_deps(curr_deps)
         self.db.query(Build).filter_by(id=entry.id)\
-            .update({'deps_processed': True, 'deps_resolved': curr_deps is not None,
+            .update({'deps_resolved': curr_deps is not None,
                      'dependency_keys': [dep.id for dep in deps]})
         if curr_deps is None:
             return
@@ -454,7 +455,7 @@ class Resolver(KojiService):
                                Package.name, Build.version, Build.release,
                                Package.last_build_id, Package.collection_id)\
             .join(Build.package)\
-            .filter(Build.deps_processed == False)\
+            .filter(Build.deps_resolved == None)\
             .filter(Build.repo_id != None)\
             .order_by(Build.repo_id).all()
 
@@ -472,7 +473,7 @@ class Resolver(KojiService):
         if unavailable_build_ids:
             self.db.query(Build)\
                 .filter(Build.id.in_(unavailable_build_ids))\
-                .update({'deps_processed': True}, synchronize_session=False)
+                .update({'deps_resolved': False}, synchronize_session=False)
             self.db.commit()
         buildrequires = koji_util.get_rpm_requires(self.koji_sessions['secondary'],
                                                    [dict(name=b.name, version=b.version,
@@ -502,7 +503,7 @@ class Resolver(KojiService):
         self.db.query(Build)\
             .filter_by(repo_id=None)\
             .filter(Build.state.in_(Build.FINISHED_STATES))\
-            .update({'deps_processed': True}, synchronize_session=False)
+            .update({'deps_resolved': False}, synchronize_session=False)
         self.db.commit()
 
     def main(self):

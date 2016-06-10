@@ -425,10 +425,8 @@ class Build(Base):
 
     cancel_requested = Column(Boolean, nullable=False, server_default=false())
 
-    # deps_processed means we tried to resolve them, deps_resolved means we
-    # succeeded
-    deps_processed = Column(Boolean, nullable=False, server_default=false())
-    deps_resolved = Column(Boolean, nullable=False, server_default=false())
+    # deps_resolved is null before the build resolution is attempted
+    deps_resolved = Column(Boolean)
 
     build_arch_tasks = relationship(KojiTask, backref='build',
                                     order_by=KojiTask.arch,

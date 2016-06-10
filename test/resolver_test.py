@@ -62,6 +62,7 @@ def get_sack():
     return sack
 
 
+# pylint:disable=unbalanced-tuple-unpacking
 class DependencyCacheTest(DBTest):
     def __init__(self, *args, **kwargs):
         super(DependencyCacheTest, self).__init__(*args, **kwargs)
@@ -74,7 +75,7 @@ class DependencyCacheTest(DBTest):
 
     def setUp(self):
         super(DependencyCacheTest, self).setUp()
-        deps = [str(self.nevra(i)) for i in range(1,4)]
+        deps = [str(self.nevra(i)) for i in range(1, 4)]
         self.s.execute("INSERT INTO dependency(name,epoch,version,release,arch) VALUES {}"
                        .format(','.join(deps)))
         self.s.commit()
@@ -199,13 +200,14 @@ class ResolverTest(DBTest):
         self.sec_koji_mock = KojiMock()
         self.sec_koji_mock.repoInfo.return_value = {'id': 123, 'tag_name': 'f24-build',
                                                     'state': koji.REPO_STATES['READY']}
-        self.resolver = Resolver(db=self.s, koji_sessions={'primary': self.koji_mock,
-                                                           'secondary': self.sec_koji_mock},
+        self.resolver = Resolver(db=self.s,
+                                 koji_sessions={'primary': self.koji_mock,
+                                                'secondary': self.sec_koji_mock},
                                  repo_cache=self.repo_mock)
 
     def prepare_foo_build(self, repo_id=666, version='4'):
         self.prepare_packages(['foo'])
-        foo_build = self.prepare_build('foo', True, repo_id=repo_id)
+        foo_build = self.prepare_build('foo', True, repo_id=repo_id, resolved=None)
         foo_build.version = version
         foo_build.release = '1.fc22'
         self.s.commit()
@@ -214,18 +216,15 @@ class ResolverTest(DBTest):
     def test_dont_resolve_against_old_build_when_new_is_running(self):
         foo = self.prepare_packages(['foo'])[0]
         build = self.prepare_build('foo', False, repo_id=2)
-        build.deps_processed = build.deps_resolved = True
+        build.deps_resolved = True
         self.prepare_build('foo', None, repo_id=None)
         with patch('koschei.backend.koji_util.get_build_group', return_value=['gcc','bash']):
             self.assertIsNone(self.resolver.get_build_for_comparison(foo))
 
     def test_skip_unresolved_failed_build(self):
         foo = self.prepare_packages(['foo'])[0]
-        b1 = self.prepare_build('foo', False, repo_id=2)
-        b1.deps_processed = b1.deps_resolved = True
-        b2 = self.prepare_build('foo', False, repo_id=3)
-        b2.deps_processed = True
-        b2.deps_resolved = False
+        b1 = self.prepare_build('foo', False, repo_id=2, resolved=True)
+        b2 = self.prepare_build('foo', False, repo_id=3, resolved=False)
         self.s.commit()
         with patch('koschei.backend.koji_util.get_build_group', return_value=['gcc','bash']):
             self.assertEqual(b1, self.resolver.get_build_for_comparison(foo))
@@ -251,7 +250,7 @@ class ResolverTest(DBTest):
 
     def test_resolution_fail(self):
         self.prepare_packages(['bar'])
-        b = self.prepare_build('bar', True, repo_id=666)
+        b = self.prepare_build('bar', True, repo_id=666, resolved=False)
         b.epoch = 1
         b.version = '2'
         b.release = '2'
@@ -259,12 +258,11 @@ class ResolverTest(DBTest):
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
             with patch('koschei.backend.koji_util.get_rpm_requires', return_value=[['nonexistent']]):
                 self.resolver.process_builds()
-        self.assertTrue(b.deps_processed)
-        self.assertFalse(b.deps_resolved)
+        self.assertIs(False, b.deps_resolved)
 
     def prepare_old_build(self):
         old_build = self.prepare_foo_build(repo_id=555, version='3')
-        old_build.deps_processed = old_build.deps_resolved = True
+        old_build.deps_resolved = True
         old_deps = FOO_DEPS[:]
         old_deps[2] = ('C', 1, '2', '1.fc22', 'x86_64')
         del old_deps[4] # E

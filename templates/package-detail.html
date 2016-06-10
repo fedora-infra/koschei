@@ -138,7 +138,7 @@
     <tbody>
         {% for build in builds %}
         {% set row_class = ["odd", "even"][loop.index % 2] + ["", " real"][build.real] %}
-        {% set changes = iter(build.dependency_changes) if build.deps_processed else iter([]) %}
+        {% set changes = iter(build.dependency_changes) if build.deps_resolved else iter([]) %}
         {% if build.real %}
         <tr class="{{ row_class }}">
             <td></td>
@@ -159,9 +159,9 @@
             <td>
                 {{ build.started | date }}
             </td>
-            {% if build.deps_processed and build.deps_resolved %}
+            {% if build.deps_resolved %}
             {{ next_change(changes) }}
-            {% elif build.deps_processed %}
+            {% elif build.deps_resolved is sameas False %}
             <td colspan="4">Dependencies for this build couldn't be processed</td>
             {% else %}
             <td colspan="4">Dependencies for this build weren't processed yet</td>
