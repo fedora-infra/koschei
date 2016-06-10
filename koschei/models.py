@@ -302,14 +302,15 @@ class Package(Base):
 
 class KojiTask(Base):
     __tablename__ = 'koji_task'
-    __table_args__ = (CheckConstraint('state BETWEEN 0 AND 5', name='koji_task_state_check'),)
+    __table_args__ = (CheckConstraint('state BETWEEN 0 AND 5',
+                                      name='koji_task_state_check'),)
 
     id = Column(Integer, primary_key=True)
     build_id = Column(ForeignKey('build.id', ondelete='CASCADE'),
                       nullable=False, index=True)
     task_id = Column(Integer, nullable=False)
     arch = Column(String, nullable=False)
-    state = Column(Integer)
+    state = Column(Integer, nullable=False)
     started = Column(DateTime)
     finished = Column(DateTime)
 
