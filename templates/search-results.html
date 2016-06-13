@@ -1,10 +1,6 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {% block content %}
-{% if packages %}
 <div class="pageHeader">Search results</div>
 {{ macros.package_table(packages, page, order, collection=collection) }}
-{% else %}
-<div class="pageHeader">No results found</div>
-{% endif %}
 {% endblock %}
