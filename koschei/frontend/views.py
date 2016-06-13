@@ -386,10 +386,17 @@ def frontpage():
 @tab('Packages', slave=True)
 def package_detail(name):
     collection = g.current_collection or g.default_collection
-    package = db.query(Package)\
-                .filter_by(name=name, collection_id=collection.id)\
-                .options(subqueryload(Package.unapplied_changes))\
-                .first_or_404()
+    packages = {p.collection_id: p for p in db.query(Package).filter_by(name=name)}
+    package = None
+    all_packages = []
+    for coll in g.collections:
+        p = packages.get(coll.id)
+        if p:
+            all_packages.append((coll, p))
+            if coll is collection:
+                package = p
+    if not package:
+        abort(404)
     package.global_groups = db.query(PackageGroup)\
         .join(PackageGroupRelation)\
         .filter(PackageGroupRelation.package_name == package.name)\
@@ -419,7 +426,7 @@ def package_detail(name):
              .paginate(builds_per_page)
 
     return render_template("package-detail.html", package=package, page=page,
-                           builds=page.items)
+                           builds=page.items, all_packages=all_packages)
 
 
 @app.route('/build/<int:build_id>')

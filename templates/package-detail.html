@@ -9,6 +9,18 @@
 
 {{ macros.collection_chooser(allow_all=False) }}
 
+<div class="states-table">
+    <h4>State in all collections</h4>
+    <table>
+        {% for (collection, package) in all_packages  %}
+        <tr>
+            <td>{{ collection }}</td>
+            <td><img src="{{ package.state_icon }}" title="{{ package.state_string }}"/></td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
 {% set editable = "" if g.user else 'disabled="true"' %}
 <form method="POST" action="{{ url_for('edit_package', name=package.name) }}">
 <table class="details">
