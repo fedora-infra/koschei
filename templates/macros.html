@@ -63,7 +63,7 @@
 
         <tr class="row-odd">
             <td>
-                <a href="{{ url_for('package_detail', name=package.name) }}{{ page_args(clear=True, collection=(collection or g.default_collection).name) }}">{{ package.name }}</a>
+                <a href="{{ url_for('package_detail', name=package.name) }}{{ page_args(clear=True, collection=collection.name if collection else None) }}">{{ package.name }}</a>
             </td>
             {% if collection %}
             <td>
