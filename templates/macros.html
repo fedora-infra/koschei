@@ -149,7 +149,7 @@
         <select name="collection"
             onchange="javascript:
                 if (this.value === '_all')
-                    window.location = window.location.pathname
+                    window.location = window.location.pathname + '{{ page_args(page=None, collection=None) }}';
                 else
                     window.location = '{{ page_args(page=None, collection='...') }}';">
             {% if allow_all %}
