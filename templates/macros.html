@@ -17,6 +17,7 @@
     </form>
 </div>
 {% endmacro %}
+
 {% macro package_table(packages, page, order, collection=None, untracked_toggle=True) %}
 {% if untracked_toggle %}
 {% set untracked = request.args.get('untracked') == '1' %}
@@ -28,6 +29,8 @@
     <button type="submit">{% if untracked %}Hide untracked{% else %}Show untracked{% endif %} packages</button>
 </form>
 {% endif %}
+
+{{ collection_chooser() }}
 
 {% if page %}
 {{ pagination_row(page, 'Packages') }}
@@ -107,6 +110,7 @@
 {{ pagination_row(page, 'Packages') }}
 {% endif %}
 {% endmacro %}
+
 {% macro depchange_table(dependency_changes) %}
 {% if dependency_changes %}
 <tr>
@@ -121,6 +125,7 @@
 {% endfor %}
 {% endif %}
 {% endmacro %}
+
 {% macro ordered_column(name, title, current_order, css_class=None) %}
 <th {% if css_class %}class="{{ css_class }}"{% endif %}>
     {% if name in current_order[:1] %}
@@ -135,4 +140,28 @@
         {% endif %}
     {% endif %}
 </th>
+{% endmacro %}
+
+{% macro collection_chooser(allow_all=True) %}
+<div class="collections">
+    <form>
+        <label for="collection">Package collection:</label>
+        <select name="collection"
+            onchange="javascript:
+                if (this.value === '_all')
+                    window.location = window.location.pathname
+                else
+                    window.location = '{{ page_args(page=None, collection='...') }}';">
+            {% if allow_all %}
+            <option value="_all">All collections</option>
+            {% endif %}
+            {% for collection in g.collections %}
+            <option value="{{ collection.name }}"
+            {% if collection.id == g.current_collection.id %}selected="selected"{% endif %}>
+            {{ collection }}
+            </option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
 {% endmacro %}

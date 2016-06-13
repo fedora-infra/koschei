@@ -84,28 +84,6 @@
                 <h3 class="notice">{{ notice }}</h3>
                 {% endfor %}
 
-                <div class="collections">
-                    <form>
-                        <label for="collection">Package collection:</label>
-                        <select name="collection"
-                            onchange="javascript:
-                                if (this.value === '_all')
-                                    window.location = window.location.pathname
-                                else
-                                    window.location = '{{
-                                    page_args(page=None, collection='...')
-                                    }}';">
-                            <option value="_all">All collections</option>
-                            {% for collection in g.collections %}
-                            <option value="{{ collection.name }}"
-                            {% if collection.id == g.current_collection.id %}selected="selected"{% endif %}>
-                            {{ collection }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </form>
-                </div>
-
                 <div id="content">
                     {% block content %}
                     {% endblock %}

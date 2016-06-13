@@ -2,5 +2,6 @@
 {% import "macros.html" as macros %}
 {% block title %}Koschei - {{ username }}'s packages{% endblock %}
 {% block content %}
+<div class="pageHeader">{{ username }}'s packages</div>
 {{ macros.package_table(packages, page, order, collection=collection) }}
 {% endblock %}

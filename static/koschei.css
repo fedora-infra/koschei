@@ -270,7 +270,7 @@ div.dataHeader {
     font-weight: bold;
     font-size:17px;
     line-height:28px;
-    padding-bottom:4px;
+    /* padding-bottom:4px; */
 }
 
 div.pageHeader {
@@ -564,8 +564,7 @@ span#loginInfo {
 }
 
 .collections {
-    display: block;
-    padding: 15pt 0pt 0pt 15pt;
+    padding: 10pt 0pt 10pt 0pt;
 }
 
 .problem {
