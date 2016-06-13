@@ -22,7 +22,7 @@ import requests
 import fedmsg.meta
 import dogpile.cache
 
-from koschei.models import Package, Collection
+from koschei.models import Package
 from koschei.config import get_config
 from koschei.plugin import listen_event
 
@@ -58,10 +58,6 @@ def query_monitored_packages():
         return packages['packages']
 
 
-def user_key(collection_id, username):
-    return "{}###{}".format(collection_id, username)
-
-
 @listen_event('fedmsg_event')
 def consume_fedmsg(topic, msg, db, **kwargs):
     topic_re = re.compile(get_config('pkgdb.topic_re'))
@@ -77,10 +73,8 @@ def consume_fedmsg(topic, msg, db, **kwargs):
               .update({'tracked': tracked}, synchronize_session=False)
             db.expire_all()
             db.commit()
-        collection_ids = db.query(Collection.id).all_flat()
         for username in fedmsg.meta.msg2usernames(msg):
-            for collection_id in collection_ids:
-                get_cache().delete(user_key(collection_id, username))
+            get_cache().delete(str(username))
 
 
 @listen_event('polling_event')

@@ -20,7 +20,6 @@ import logging
 import requests
 import dogpile.cache
 
-from koschei.models import Package
 from koschei.config import get_config
 from koschei.plugin import listen_event
 
@@ -49,11 +48,9 @@ def query_pkgdb(url):
     return req.json()
 
 
-def query_users_packages(username, branch):
-    log.debug("Requesting pkgdb packages for {} (branch {})"
-              .format(username, branch))
-    packages = query_pkgdb('packager/package/{}?branches={}'
-                           .format(username, branch))
+def query_users_packages(username):
+    log.debug("Requesting pkgdb packages for {}".format(username))
+    packages = query_pkgdb('packager/package/{}'.format(username))
     if packages:
         packages = (packages['point of contact'] +
                     packages['co-maintained'] +
@@ -61,18 +58,10 @@ def query_users_packages(username, branch):
         return {p['name'] for p in packages}
 
 
-def user_key(collection_id, username):
-    return "{}###{}".format(collection_id, username)
-
-
 @listen_event('get_user_packages')
-def get_user_packages(db, username, current_collection):
+def get_user_packages(username):
     def create():
-        names = query_users_packages(username, current_collection.branch)
-        if names:
-            return db.query(Package.id)\
-                .filter(Package.name.in_(names))\
-                .filter(Package.collection_id == current_collection.id)\
-                .all_flat()
+        names = query_users_packages(username)
+        return names
 
-    return get_cache().get_or_create(user_key(current_collection.id, username), create)
+    return get_cache().get_or_create(str(username), create)

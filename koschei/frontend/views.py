@@ -482,19 +482,19 @@ def group_detail(name=None, namespace=None):
 @app.route('/user/<name>')
 @tab('Packages', slave=True)
 def user_packages(name):
-    ids = []
+    names = []
     try:
-        for res in plugin.dispatch_event('get_user_packages', db=db, username=name,
-                                         current_collection=g.current_collection):
+        for res in plugin.dispatch_event('get_user_packages', username=name):
             if res:
-                ids += res
+                names += res
     except Exception:
         flash("Error retrieving user's packages")
         log.exception("Error retrieving user's packages")
-    query = db.query(Package)\
-        .filter(Package.id.in_(ids))
 
-    return package_view(query, "user-packages.html", username=name)
+    def query_fn(query):
+        return query.filter(Package.name.in_(names))
+
+    return package_view("user-packages.html", query_fn, username=name)
 
 
 class StrippedStringField(StringField):
