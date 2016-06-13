@@ -342,7 +342,7 @@ class UnifiedPackage(object):
 
 def unified_package_view(template, query_fn=None, **template_args):
     untracked = request.args.get('untracked') == '1'
-    order_name = request.args.get('order_by', 'running,state,name')
+    order_name = request.args.get('order_by', 'running,failing,name')
     # pylint: disable=E1101
     subq = db.query(Package.name,
                     func.array_agg(func.row(Package.collection_id,
@@ -364,6 +364,7 @@ def unified_package_view(template, query_fn=None, **template_args):
 
     order_map = {
         'name': [subq.c.name],
+        'failing': [subq.c.resolved, Reversed(subq.c.failing)],
         'running': [NullsLastOrder(subq.c.has_running_build)],
     }
     order_names, order = get_order(order_map, order_name)
