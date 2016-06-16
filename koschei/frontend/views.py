@@ -213,15 +213,15 @@ def populate_package_groups(packages):
     filter_expr = PackageGroup.namespace == None
     if g.user:
         filter_expr |= GroupACL.user_id == g.user.id
-    group_rels = db.query(PackageGroupRelation)\
+    query = db.query(PackageGroupRelation)\
         .options(contains_eager(PackageGroupRelation.group))\
         .filter(PackageGroupRelation.package_name.in_(name_map.keys()))\
         .join(PackageGroup)\
-        .join(GroupACL)\
         .filter(filter_expr)\
-        .order_by(PackageGroup.namespace, PackageGroup.name)\
-        .all()
-    for r in group_rels:
+        .order_by(PackageGroup.namespace, PackageGroup.name)
+    if g.user:
+        query = query.outerjoin(GroupACL)
+    for r in query:
         name_map[r.package_name].visible_groups.append(r.group)
 
 
