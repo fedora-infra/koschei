@@ -144,6 +144,26 @@ class SchedulerTest(DBTest):
         # schedules rnv and firefox
         self.assertItemsEqual([(pkgs[0].id, 200), (pkgs[6].id, 200)], query.all())
 
+    def test_coefficient(self):
+        rnv, eclipse, fop = self.prepare_packages(['rnv', 'eclipse', 'fop'])
+        rnv_coll = self.collection
+        eclipse_coll = m.Collection(name='eclipse', display_name='eclipse',
+                                    build_tag='foo', target_tag='foo',
+                                    priority_coefficient=0.1)
+        self.s.add(eclipse_coll)
+        self.s.flush()
+        eclipse.collection_id = eclipse_coll.id
+        self.prepare_build('rnv', True)
+        self.prepare_build('rnv', False)
+        self.prepare_build('eclipse', True)
+        self.prepare_build('eclipse', False)
+        eclipse.manual_priority = 500
+        priorities = {{1: rnv, 2: eclipse, 3: fop}[id]: prio
+                      for id, prio in self.get_scheduler().get_priorities()}
+        self.assertAlmostEqual(170, priorities[rnv], places=1)
+        self.assertAlmostEqual(517, priorities[eclipse], places=1)
+        self.assertAlmostEqual(0, priorities.get(fop, 0), places=1)
+
     @contextmanager
     def prio_table(self, tablename='tmp', **kwargs):
         try:
