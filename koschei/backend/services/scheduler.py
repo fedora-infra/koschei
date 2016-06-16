@@ -84,15 +84,11 @@ class Scheduler(KojiService):
         ).group_by(sub.c.pkg_id).having(func.count(sub.c.pkg_id) == 2)
 
     def get_priority_queries(self):
-        prio = (('manual', Package.manual_priority),
-                ('static', Package.static_priority))
-        priorities = {name: self.db.query(Package.id.label('pkg_id'),
-                                          col.label('priority'))
-                      for name, col in prio}
-        priorities['dependency'] = self.get_dependency_priority_query()
-        priorities['time'] = self.get_time_priority_query()
-        priorities['failed_build'] = self.get_failed_build_priority_query()
-        return priorities
+        return {
+            'dependency': self.get_dependency_priority_query(),
+            'time': self.get_time_priority_query(),
+            'failed_build': self.get_failed_build_priority_query(),
+        }
 
     def get_incomplete_builds_query(self):
         return self.db.query(Build.package_id).filter(Build.state == Build.RUNNING)
@@ -107,7 +103,8 @@ class Scheduler(KojiService):
         priorities = self.db.query(pkg_id, current_priority)\
                             .group_by(pkg_id).subquery()
         return self.db.query(Package.id, priorities.c.curr_priority *
-                             Collection.priority_coefficient)\
+                             Collection.priority_coefficient +
+                             Package.manual_priority + Package.static_priority)\
                       .join(Package.collection)\
                       .join(priorities, Package.id == priorities.c.pkg_id)\
                       .filter((Package.resolved == True) |
