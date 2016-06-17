@@ -136,14 +136,15 @@ def state_icons(package_row):
     state_array = package_row.states
     packages = {}
     if len(state_array) > 4:
-        # format is like this {"(2,,3)","(1,f,3)"}
+        # format is like this {"(2,t,,3)","(1,t,f,3)"}
         state_array = state_array[2:-2].split('","')
         for state in state_array:
-            collection_id, resolved, build_state = state[1:-1].split(',')
+            collection_id, tracked, resolved, build_state = state[1:-1].split(',')
             resolved = None if resolved == '' else (resolved == 't')
             build_state = None if build_state == '' else int(build_state)
+            tracked = tracked == 't'
             package = Package(name=package_row.name, blocked=False,
-                              tracked=True,
+                              tracked=tracked,
                               last_complete_build_state=build_state,
                               resolved=resolved)
             packages[int(collection_id)] = package
@@ -153,7 +154,8 @@ def state_icons(package_row):
         package = packages.get(collection.id)
         out += '<td>'
         if package:
-            out += '<img src="{icon}"/>'.format(icon=state_icon(package))
+            out += '<img src="{icon}" title="{title}"/>'\
+                .format(icon=package.state_icon, title=package.state_string)
         out += '</td>'
     return Markup(out)
 
@@ -346,6 +348,7 @@ def unified_package_view(template, query_fn=None, **template_args):
     # pylint: disable=E1101
     subq = db.query(Package.name,
                     func.array_agg(func.row(Package.collection_id,
+                                            Package.tracked,
                                             Package.resolved,
                                             Package.last_complete_build_state))
                     .label("states"),
