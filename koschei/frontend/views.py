@@ -574,6 +574,7 @@ class GroupForm(EmptyForm):
 class AddPackagesForm(EmptyForm):
     packages = ListAreaField('packages', [NonEmptyList("No packages given"),
                                           NameListValidator("Invalid package list")])
+    collection = StrippedStringField('collection')
     group = StrippedStringField('group', [Regexp(group_re, message="Invalid group")])
 
 
@@ -672,6 +673,7 @@ def delete_group(name, namespace=None):
         return render_template('edit-group.html', group=group)
     return redirect(url_for('groups_overview'))
 
+
 if not frontend_config['auto_tracking']:
     @app.route('/add_packages', methods=['GET', 'POST'])
     @tab('Add packages')
@@ -687,7 +689,14 @@ if not frontend_config['auto_tracking']:
             if nonexistent:
                 flash("Packages don't exist: " + ','.join(nonexistent))
                 return render_template("add-packages.html", form=form)
+            if form.collection.data == '_all':
+                coll_ids = [c.id for c in g.collections]
+            else:
+                coll_ids = [c.id for c in g.collections if c.name == form.collection.data]
+                if not coll_ids:
+                    abort(404)
             db.query(Package).filter(Package.name.in_(names))\
+                             .filter(Package.collection_id.in_(coll_ids))\
                              .update({'tracked': True})
             if form.group.data:
                 name, _, namespace = reversed(form.group.data.partition('/'))

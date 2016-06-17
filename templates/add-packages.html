@@ -5,7 +5,14 @@
     <div>Names of packages to be added to Koschei:</div>
     <div><textarea name="packages" rows="20" cols="80"></textarea></div>
     <div>
-        <label for"group">Package group (optional):</label>
+        <label for="collection">Package collection:</label>
+        <select name="collection">
+            <option value="_all">All collections</option>
+            {% for collection in g.collections %}
+            <option value="{{ collection.name }}">{{ collection }}</option>
+            {% endfor %}
+        </select>
+        <label for="group">Package group (optional):</label>
         <select name="group">
             <option></option>
             {% for group in g.user.groups %}
@@ -14,6 +21,6 @@
         </select>
     </div>
     <input type="hidden" name="next" value="{{ next }}"/>
-    <div><button type="submit"/>Add packages</button></div>
+    <div><button type="submit">Add packages</button></div>
 </form>
 {% endblock content %}
