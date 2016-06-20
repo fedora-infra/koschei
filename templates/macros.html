@@ -36,13 +36,13 @@
 {{ pagination_row(page, 'Packages') }}
 {% endif %}
 <input type="hidden" name="next" value="{{ request.url }}"/>
-<table class="data-list">
+<table class="data-list package-table">
     <thead>
         <tr class="list-header">
             {{ ordered_column('name', 'Name', order) }}
             {% if not collection %}
             {% for coll in g.collections %}
-            <th>{{ coll }}</th>
+            <th class="collection-column">{{ coll }}</th>
             {% endfor %}
             {% else %}
             {{ ordered_column('state', 'State', order) }}

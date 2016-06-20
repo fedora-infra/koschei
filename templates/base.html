@@ -7,6 +7,24 @@
         href="{{ url_for('static', filename='koschei.css') }}"/>
 
         <script type="text/javascript" src="{{ url_for('static', filename='jquery.min.js') }}"></script>
+        <script type="text/javascript">
+            $(function() {
+                // Hide empty collection columns of package table
+                $('.package-table th').each(function(i) {
+                    if (this.classList.contains('collection-column')) {
+                        var columnCells = $(this).parents('table').find('tr td:nth-child(' + (i + 1) + ')')
+                        var columnEmpty = true;
+                        columnCells.each(function() {
+                            columnEmpty &= this.innerHTML == '';
+                        });
+                        if (columnEmpty) {
+                            $(this).hide();
+                            columnCells.hide();
+                        }
+                    }
+                });
+            });
+        </script>
 
         {% if fedmenu_url is defined %}
         <script type="text/javascript" src="{{fedmenu_url}}/js/fedmenu.js"></script>
