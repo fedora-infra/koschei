@@ -6,8 +6,9 @@
         <link rel="stylesheet" type="text/css" media="screen" title="Koschei Style"
         href="{{ url_for('static', filename='koschei.css') }}"/>
 
+        <script type="text/javascript" src="{{ url_for('static', filename='jquery.min.js') }}"></script>
+
         {% if fedmenu_url is defined %}
-        <script type="text/javascript" src="{{fedmenu_url}}/js/jquery-1.11.2.min.js"></script>
         <script type="text/javascript" src="{{fedmenu_url}}/js/fedmenu.js"></script>
         <script type="text/javascript" src="{{fedmenu_url}}/js/fedora-libravatar.js"></script>
         <script type="text/javascript">

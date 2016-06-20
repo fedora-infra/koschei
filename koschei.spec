@@ -69,6 +69,7 @@ Requires:       python-flask-wtf
 Requires:       python-jinja2
 Requires:       mod_wsgi
 Requires:       httpd
+Requires:       js-jquery
 
 %description frontend
 %{summary}.
