@@ -16,6 +16,8 @@
 #
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
+import koschei.models as m
+
 from .common import DBTest
 
 
@@ -23,4 +25,14 @@ class ModelTest(DBTest):
 
     def test_group_cardinality(self):
         group = self.prepare_group('xyzzy', content=['foo', 'bar', 'baz'])
+        self.assertEqual(3, group.package_count)
+
+    def test_group_cardinality_multiple_collections(self):
+        group = self.prepare_group('xyzzy', content=['foo', 'bar', 'baz'])
+        new_collection = m.Collection(name="new", display_name="New", target_tag="tag2",
+                                      build_tag="build_tag2", priority_coefficient=2.0)
+        self.s.add(new_collection)
+        self.s.commit()
+        self.s.add(m.Package(name='bar', collection_id=new_collection.id))
+        self.s.commit()
         self.assertEqual(3, group.package_count)
