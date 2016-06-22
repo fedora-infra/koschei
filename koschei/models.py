@@ -663,8 +663,8 @@ Build.dependency_changes = relationship(AppliedChange, backref='build',
 PackageGroup.package_count = column_property(
     select([func.count(distinct(Package.name))],
            PackageGroupRelation.group_id == PackageGroup.id,
-           join(PackageGroup, join(PackageGroupRelation, Package,
-                                   PackageGroupRelation.package_name == Package.name)))
+           join(Package, PackageGroupRelation,
+                PackageGroupRelation.package_name == Package.name))
     .where(Package.blocked == False)
     .correlate(PackageGroup).as_scalar(),
     deferred=True)
