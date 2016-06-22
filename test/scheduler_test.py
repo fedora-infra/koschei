@@ -38,7 +38,7 @@ class SchedulerTest(DBTest):
 
     def prepare_depchanges(self):
         build1 = self.prepare_build('rnv', True)
-        build2 = self.prepare_build('rnv', None)
+        build2 = self.prepare_build('rnv', True)
         chngs = []
         # update, value 20
         chngs.append(m.UnappliedChange(package_id=build1.package_id, dep_name='expat',
@@ -89,6 +89,19 @@ class SchedulerTest(DBTest):
 
     def test_dependency_priority(self):
         pkg = self.prepare_depchanges()
+        query = self.get_scheduler().get_dependency_priority_query()
+        self.assert_priority_query(query)
+        res = query.all()
+        self.assertIn((pkg.id, 20), res)
+        self.assertIn((pkg.id, 10), res)
+        self.assertIn((pkg.id, 5), res)
+        self.assertIn((pkg.id, 2), res)
+        self.assertEqual(4, len(res))
+
+    # regression test for #100
+    def test_dependency_priority_unresolved_build_skipped(self):
+        pkg = self.prepare_depchanges()
+        self.prepare_build('rnv', resolved=False)
         query = self.get_scheduler().get_dependency_priority_query()
         self.assert_priority_query(query)
         res = query.all()
