@@ -229,7 +229,6 @@ class Package(Base):
     name = Column(String, nullable=False)
     static_priority = Column(Integer, nullable=False, default=0)
     manual_priority = Column(Integer, nullable=False, default=0)
-    added = Column(DateTime, nullable=False, default=datetime.now)
     collection_id = Column(Integer, ForeignKey(Collection.id, ondelete='CASCADE'),
                            nullable=False)
     collection = None  # backref, shut up pylint
