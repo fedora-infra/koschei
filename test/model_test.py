@@ -27,6 +27,12 @@ class ModelTest(DBTest):
         group = self.prepare_group('xyzzy', content=['foo', 'bar', 'baz'])
         self.assertEqual(3, group.package_count)
 
+    def test_group_cardinality_multiple_groups(self):
+        group1 = self.prepare_group('xyzzy', content=['foo', 'bar', 'baz'])
+        group2 = self.prepare_group('dsfla', content=['abc', 'def', 'ghi', 'jkl'])
+        self.assertEqual(3, group1.package_count)
+        self.assertEqual(4, group2.package_count)
+
     def test_group_cardinality_multiple_collections(self):
         group = self.prepare_group('xyzzy', content=['foo', 'bar', 'baz'])
         new_collection = m.Collection(name="new", display_name="New", target_tag="tag2",

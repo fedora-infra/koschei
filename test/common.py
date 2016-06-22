@@ -169,6 +169,9 @@ class DBTest(AbstractTest):
         return build
 
     def prepare_user(self, **kwargs):
+        user = self.s.query(m.User).filter_by(**kwargs).first()
+        if user:
+            return user
         user = m.User(**kwargs)
         self.s.add(user)
         self.s.commit()
