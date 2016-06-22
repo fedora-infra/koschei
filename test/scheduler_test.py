@@ -39,6 +39,7 @@ class SchedulerTest(DBTest):
     def prepare_depchanges(self):
         build1 = self.prepare_build('rnv', True)
         build2 = self.prepare_build('rnv', True)
+        build3 = self.prepare_build('eclipse', True)
         chngs = []
         # update, value 20
         chngs.append(m.UnappliedChange(package_id=build1.package_id, dep_name='expat',
@@ -76,10 +77,17 @@ class SchedulerTest(DBTest):
                                        prev_build_id=build1.id,
                                        distance=1))
 
+        # different package - eclipse, value 20
+        chngs.append(m.UnappliedChange(package_id=build3.package_id, dep_name='maven',
+                                       prev_version='2', curr_version='2',
+                                       prev_release='rc1', curr_release='rc2',
+                                       prev_build_id=build3.id,
+                                       distance=1))
+
         for chng in chngs:
             self.s.add(chng)
         self.s.commit()
-        return build1.package
+        return build1.package, build3.package
 
     def assert_priority_query(self, query):
         columns = query.subquery().c
@@ -88,28 +96,30 @@ class SchedulerTest(DBTest):
         self.assertEqual(2, len(columns))
 
     def test_dependency_priority(self):
-        pkg = self.prepare_depchanges()
+        rnv, eclipse = self.prepare_depchanges()
         query = self.get_scheduler().get_dependency_priority_query()
         self.assert_priority_query(query)
         res = query.all()
-        self.assertIn((pkg.id, 20), res)
-        self.assertIn((pkg.id, 10), res)
-        self.assertIn((pkg.id, 5), res)
-        self.assertIn((pkg.id, 2), res)
-        self.assertEqual(4, len(res))
+        self.assertIn((rnv.id, 20), res)
+        self.assertIn((rnv.id, 10), res)
+        self.assertIn((rnv.id, 5), res)
+        self.assertIn((rnv.id, 2), res)
+        self.assertIn((eclipse.id, 20), res)
+        self.assertEqual(5, len(res))
 
     # regression test for #100
     def test_dependency_priority_unresolved_build_skipped(self):
-        pkg = self.prepare_depchanges()
+        rnv, eclipse = self.prepare_depchanges()
         self.prepare_build('rnv', resolved=False)
         query = self.get_scheduler().get_dependency_priority_query()
         self.assert_priority_query(query)
         res = query.all()
-        self.assertIn((pkg.id, 20), res)
-        self.assertIn((pkg.id, 10), res)
-        self.assertIn((pkg.id, 5), res)
-        self.assertIn((pkg.id, 2), res)
-        self.assertEqual(4, len(res))
+        self.assertIn((rnv.id, 20), res)
+        self.assertIn((rnv.id, 10), res)
+        self.assertIn((rnv.id, 5), res)
+        self.assertIn((rnv.id, 2), res)
+        self.assertIn((eclipse.id, 20), res)
+        self.assertEqual(5, len(res))
 
     def test_time_priority(self):
         for days in [0, 2, 5, 7, 12]:

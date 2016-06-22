@@ -22,7 +22,7 @@ import math
 import time
 
 from sqlalchemy import (func, union_all, extract, cast, Integer, case, null,
-                        literal_column)
+                        literal_column, text, Column)
 from sqlalchemy.sql.functions import coalesce
 
 from koschei.config import get_config
@@ -46,14 +46,18 @@ class Scheduler(KojiService):
 
     def get_dependency_priority_query(self):
         update_weight = get_config('priorities.package_update')
-        # pylint: disable=E1120
-        distance = coalesce(UnappliedChange.distance, 8)
-        # inner join with package last build to get rid of outdated dependency changes
-        return self.db.query(UnappliedChange.package_id.label('pkg_id'),
-                             (update_weight / distance)
-                             .label('priority'))\
-                      .join(Package,
-                            Package.last_build_id == UnappliedChange.prev_build_id)
+        cols = Column('pkg_id'), Column('priority')
+        query = text("""
+                SELECT package_id AS pkg_id, {w}/COALESCE(distance, 8) AS priority
+                FROM unapplied_change
+                WHERE prev_build_id IN (
+                    SELECT DISTINCT ON(package.id) build.id AS build_id
+                    FROM package JOIN build ON package.id = build.package_id
+                    WHERE deps_resolved
+                    ORDER BY package.id, build.id DESC
+                )
+                """.format(w=update_weight)).columns(*cols)
+        return self.db.query(*cols).from_statement(query)
 
     def get_time_priority_query(self):
         t0 = get_config('priorities.t0')
