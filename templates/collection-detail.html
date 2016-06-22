@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% import "macros.html" as macros %}
+{% block title %}Koschei - {{ collection.display_name }}{% endblock %}
+{% block content %}
+<div class="pageHeader">{{ collection.display_name }}</div>
+
+{% set editable = "" if g.user and g.user.admin else 'disabled="true"' %}
+<form method="POST" action="{{ url_for('edit_collection', name=collection.name) }}">
+<table class="details">
+    <tr>
+        <th>Internal name</th>
+        <td>
+            <input type="text" name="name"
+            value="{{ collection.name }}" {{ editable }}/>
+        </td>
+    </tr>
+    <tr>
+        <th>Display name</th>
+        <td>
+            <input type="text" name="display_name"
+            value="{{ collection.display_name }}" {{ editable }}/>
+        </td>
+    </tr>
+    <tr>
+        <th>Display order</th>
+        <td>
+            <input type="text" name="order"
+            value="{{ collection.order }}" {{ editable }}/>
+        </td>
+    </tr>
+    <tr>
+        <th>Priority coefficient</th>
+        <td>
+            <input type="text" name="priority_coefficient"
+            value="{{ collection.priority_coefficient }}" {{ editable }}/>
+        </td>
+    </tr>
+    <tr>
+        <th>Koji target tag</th>
+        <td>
+            <input type="text" name="target_tag"
+            value="{{ collection.target_tag }}" {{ editable }}/>
+        </td>
+    </tr>
+    <tr>
+        <th>Koji build tag</th>
+        <td>
+            <input type="text" name="build_tag"
+            value="{{ collection.build_tag }}" {{ editable }}/>
+        </td>
+    </tr>
+    <tr>
+        <th>Koji build group</th>
+        <td>
+            <input type="text" name="build_group"
+            value="{{ collection.build_group }}" {{ editable }}/>
+        </td>
+    </tr>
+    <tr>
+        <th>PkgDB branch name</th>
+        <td>
+            <input type="text" name="branch"
+            value="{{ collection.branch }}" {{ editable }}/>
+        </td>
+    </tr>
+    <tr>
+        <th>Bugzilla product</th>
+        <td>
+            <input type="text" name="bugzilla_product"
+            value="{{ collection.bugzilla_product }}" {{ editable }}/>
+        </td>
+    </tr>
+    <tr>
+        <th>Bugzilla product version</th>
+        <td>
+            <input type="text" name="bugzilla_version"
+            value="{{ collection.bugzilla_version }}" {{ editable }}/>
+        </td>
+    </tr>
+    <tr>
+        <th>Enable build polling for untracked packages</th>
+        <td>
+            <input type="text" name="poll_untracked"
+            value="{{ collection.poll_untracked }}" {{ editable }}/>
+        </td>
+    </tr>
+    {% if g.user and g.user.admin %}
+    <tr>
+        <td>
+            <button type="submit">Submit modifications</button>
+        </td>
+    </tr>
+    {% endif %}
+</table>
+{% endblock %}

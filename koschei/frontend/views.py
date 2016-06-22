@@ -787,3 +787,21 @@ def bugreport(name):
     query = urllib.urlencode(bug)
     bugreport_url = get_config('bugreport.url').format(query=query)
     return redirect(bugreport_url)
+
+
+@app.route('/collection/<name>')
+def collection_detail(name):
+    for collection in g.collections:
+        if collection.name == name:
+            return render_template("collection-detail.html",
+                                   collection=collection)
+    abort(404)
+
+
+@app.route('/collection/<name>/edit', methods=['POST'])
+@auth.login_required()
+def edit_collection(name):
+    if not g.user.admin:
+        abort(403)
+    # Not implemented
+    abort(501)
