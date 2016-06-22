@@ -25,7 +25,7 @@ import sqlalchemy
 
 from sqlalchemy import (create_engine, Table, Column, Integer, String, Boolean,
                         ForeignKey, DateTime, Index, DDL, Float, CheckConstraint)
-from sqlalchemy.sql.expression import func, select, false, true
+from sqlalchemy.sql.expression import func, select, join, distinct, false, true
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import (sessionmaker, relationship, column_property,
                             configure_mappers, deferred)
@@ -662,8 +662,11 @@ Build.dependency_changes = relationship(AppliedChange, backref='build',
                                         .nullslast(), passive_deletes=True)
 
 PackageGroup.package_count = column_property(
-    select([func.count(PackageGroupRelation.group_id)],
-           PackageGroupRelation.group_id == PackageGroup.id)
+    select([func.count(distinct(Package.name))],
+           PackageGroupRelation.group_id == PackageGroup.id,
+           join(PackageGroup, join(PackageGroupRelation, Package,
+                                   PackageGroupRelation.package_name == Package.name)))
+    .where(Package.blocked == False)
     .correlate(PackageGroup).as_scalar(),
     deferred=True)
 # pylint: disable=E1101

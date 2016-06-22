@@ -174,6 +174,22 @@ class DBTest(AbstractTest):
         self.s.commit()
         return user
 
+    def prepare_group(self, name, content=(), namespace=None, owners=('john.doe',)):
+        users = [self.prepare_user(name=name) for name in owners]
+        packages = self.prepare_packages(content)
+        group = m.PackageGroup(name=name, namespace=namespace)
+        self.s.add(group)
+        self.s.commit()
+        self.s.execute(m.PackageGroupRelation.__table__.insert(),
+                       [dict(group_id=group.id, package_name=package.name)
+                        for package in packages])
+        self.s.execute(m.GroupACL.__table__.insert(),
+                       [dict(group_id=group.id, user_id=user.id)
+                        for user in users])
+        self.s.commit()
+        return group
+
+
     @staticmethod
     def parse_pkg(string):
         epoch = None
