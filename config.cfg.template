@@ -72,29 +72,10 @@ config = {
         # The size of queue (item == package) between resolving and io thread
         "resolver_queue_size": 300,
 
-        # Max number of hawkey sacks that can be kept in memory at given time
-        # (excluding sacks with no references, which can be garbage collected
-        # at any time). Generally this value should be as high as memory
-        # constrains permit, possibly even exceeding available physical memory
-        # (unused sacks can be swapped to disk by OS and reading sack from swap
-        # should be much faster than loading it from repodata).
-        "cache_l1_capacity": 4,
-
         # Max number of repos kept on disk.  For slow Koji connections this
         # value should be as high as storage constrains permit.  If Koji is on
         # the same network as Koschei then this value can be lowered.
         "cache_l2_capacity": 100,
-
-        # Max number of threads that can concurrently load sacks. Generally
-        # this value should be equal to number of processors in the system.
-        "cache_l1_threads": 1,
-
-        # Max number of threads that can concurrently download repos from Koji.
-        "cache_l2_threads": 1,
-
-        # Total number of threads used for cache prefetching.  Making it
-        # greater than cache_l1_threads+cache_l2_threads wouldn't make sense.
-        "cache_threads_max": 2,
 
         # The architecture for which dependencies are resolved with hawkey
         "resolve_for_arch": "x86_64",
