@@ -181,11 +181,12 @@ class SchedulerTest(DBTest):
         self.prepare_build('eclipse', True)
         self.prepare_build('eclipse', False)
         eclipse.manual_priority = 500
-        priorities = {{1: rnv, 2: eclipse, 3: fop}[id]: prio
-                      for id, prio in self.get_scheduler().get_priorities()}
-        self.assertAlmostEqual(170, priorities[rnv], places=1)
-        self.assertAlmostEqual(517, priorities[eclipse], places=1)
-        self.assertAlmostEqual(0, priorities.get(fop, 0), places=1)
+        priorities = self.get_scheduler().get_priorities()
+        self.assertEquals(eclipse.id, priorities[0][0])
+        self.assertAlmostEqual(517, priorities[0][1], places=1)
+        self.assertEquals(rnv.id, priorities[1][0])
+        self.assertAlmostEqual(170, priorities[1][1], places=1)
+        self.assertEqual(2, len(priorities))
 
     @contextmanager
     def prio_table(self, tablename='tmp', **kwargs):

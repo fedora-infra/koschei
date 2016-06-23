@@ -106,9 +106,10 @@ class Scheduler(KojiService):
                                 Integer).label('curr_priority')
         priorities = self.db.query(pkg_id, current_priority)\
                             .group_by(pkg_id).subquery()
-        return self.db.query(Package.id, priorities.c.curr_priority *
-                             Collection.priority_coefficient +
-                             Package.manual_priority + Package.static_priority)\
+        priority_expr = (priorities.c.curr_priority
+                         * Collection.priority_coefficient
+                         + Package.manual_priority + Package.static_priority)
+        return self.db.query(Package.id, priority_expr)\
                       .join(Package.collection)\
                       .join(priorities, Package.id == priorities.c.pkg_id)\
                       .filter((Package.resolved == True) |
@@ -116,7 +117,7 @@ class Scheduler(KojiService):
                       .filter(Package.id.notin_(incomplete_builds.subquery()))\
                       .filter(Package.blocked == False)\
                       .filter(Package.tracked == True)\
-                      .order_by(priorities.c.curr_priority.desc())\
+                      .order_by(priority_expr.desc())\
                       .all()
 
     def persist_priorities(self, prioritized):
