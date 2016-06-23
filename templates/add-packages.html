@@ -7,7 +7,6 @@
     <div>
         <label for="collection">Package collection:</label>
         <select name="collection">
-            <option value="_all">All collections</option>
             {% for collection in g.collections %}
             <option value="{{ collection.name }}">{{ collection }}</option>
             {% endfor %}
