@@ -60,10 +60,11 @@
 
         {% for package in packages %}
         {% set last_build = package.last_build %}
+        {% set args = page_args(clear=True, collection=collection.name if collection else None) %}
 
         <tr class="row-odd">
             <td>
-                <a href="{{ url_for('package_detail', name=package.name) }}{{ page_args(clear=True, collection=collection.name if collection else None) }}">{{ package.name }}</a>
+                <a href="{{ url_for('package_detail', name=package.name) }}{{ args }}">{{ package.name }}</a>
             </td>
             {% if collection %}
             <td>
@@ -100,7 +101,11 @@
             </td>
             {% endif %}
             <td>
-                {{ package.visible_groups | join(', ') }}
+                {% for group in package.visible_groups %}
+                <a href="{{ url_for('group_detail', name=group.name, namespace=group.namespace )}}{{ args }}">
+                    {{ group }}
+                </a>
+                {% endfor %}
             </td>
         </tr>
         {% endfor %}
