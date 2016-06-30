@@ -26,6 +26,7 @@ from test.common import DBTest, KojiMock
 from mock import Mock, patch
 from koschei.backend import Backend
 from koschei import plugin, models as m
+from koschei.models import *
 
 rnv_task = {'arch': 'noarch',
             'awaited': None,
@@ -162,6 +163,39 @@ rnv_build_info = [{'build_id': 730661,
                    'version': '1.7.11',
                    'volume_id': 0,
                    'volume_name': 'DEFAULT'}]
+
+package_list = [{'blocked': False,
+                 'extra_arches': None,
+                 'owner_id': 837,
+                 'owner_name': 'akurtakov',
+                 'package_id': 183,
+                 'package_name': 'eclipse',
+                 'tag_id': 335,
+                 'tag_name': 'f25'},
+                {'blocked': True,
+                 'extra_arches': None,
+                 'owner_id': 1758,
+                 'owner_name': 'jcapik',
+                 'package_id': 10326,
+                 'package_name': 'maven-doxia-tools',
+                 'tag_id': 335,
+                 'tag_name': 'f25'},
+                {'blocked': False,
+                 'extra_arches': None,
+                 'owner_id': 837,
+                 'owner_name': 'akurtakov',
+                 'package_id': 11290,
+                 'package_name': 'maven',
+                 'tag_id': 335,
+                 'tag_name': 'f25'},
+                {'blocked': False,
+                 'extra_arches': None,
+                 'owner_id': 2645,
+                 'owner_name': 'msimacek',
+                 'package_id': 16808,
+                 'package_name': 'rnv',
+                 'tag_id': 335,
+                 'tag_name': 'f25'}]
 
 
 class BackendTest(DBTest):
@@ -363,3 +397,14 @@ class BackendTest(DBTest):
         self.assertItemsEqual(content + ['bar'],
                               self.s.query(m.PackageGroupRelation.package_name)
                               .filter_by(group_id=group.id).all_flat())
+
+    def test_refresh_packages(self):
+        self.prepare_packages(['eclipse'])
+        self.secondary_koji.listPackages.return_value = package_list
+        self.backend.refresh_packages()
+        eclipse = self.s.query(Package).filter_by(name='eclipse').one()
+        rnv = self.s.query(Package).filter_by(name='eclipse').one()
+        tools = self.s.query(Package).filter_by(name='maven-doxia-tools').one()
+        self.assertFalse(eclipse.blocked)
+        self.assertFalse(rnv.blocked)
+        self.assertTrue(tools.blocked)
