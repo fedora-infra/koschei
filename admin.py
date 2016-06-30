@@ -44,6 +44,7 @@ def parse_group_name(name):
 
 
 class Command(object):
+    needs_koji_login = False
     needs_backend = True
 
     def setup_parser(self, parser):
@@ -68,7 +69,7 @@ def main():
     kwargs = vars(args)
     del kwargs['cmd']
     if cmd.needs_backend:
-        primary = koji_util.KojiSession(anonymous=True)
+        primary = koji_util.KojiSession(anonymous=not cmd.needs_koji_login)
         secondary = koji_util.KojiSession(anonymous=True, koji_id='secondary')
         backend = Backend(db=Session(), log=logging.getLogger(),
                           koji_sessions={'primary': primary, 'secondary': secondary})
@@ -428,6 +429,23 @@ class Psql(Command):
         if engine.url.password:
             env['PGPASSWORD'] = engine.url.password
         os.execve('/usr/bin/psql', cmd, env)
+
+
+class SubmitBuild(Command):
+    """ Forces scratch-build for given packages to be submitted to Koji. """
+
+    needs_koji_login = True
+
+    def setup_parser(self, parser):
+        # TODO allow selecting particular collection
+        parser.add_argument('names', nargs='+')
+
+    def execute(self, backend, names):
+        pkgs = backend.db.query(Package)\
+                         .filter(Package.name.in_(names)).all()
+        for pkg in pkgs:
+            backend.submit_build(pkg)
+        backend.db.commit()
 
 
 if __name__ == '__main__':
