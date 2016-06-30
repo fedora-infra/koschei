@@ -42,7 +42,7 @@
             {{ ordered_column('name', 'Name', order) }}
             {% if not collection %}
             {% for coll in g.collections %}
-            <th class="collection-column">{{ coll }}</th>
+            {{ ordered_column('state-' + coll.name, coll.display_name, order, css_class="collection-column") }}
             {% endfor %}
             {% else %}
             {{ ordered_column('state', 'State', order) }}
@@ -75,7 +75,12 @@
                 {% endif %}
             </td>
             {% else %} {# unified view #}
-            {{ state_icons(package) }}
+            {% for pkg in package.packages %}
+            <td>
+                <img src="{{ pkg.state_icon }}"
+                title="{{ pkg.state_string }}" alt="{{ pkg.state_string }}"/>
+            </td>
+            {% endfor %}
             {% endif %}
             <td>
                 {% if package.has_running_build %}

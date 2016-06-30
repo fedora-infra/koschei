@@ -28,8 +28,8 @@ from flask import abort, render_template, request, url_for, redirect, g, flash
 from flask_wtf import Form
 from jinja2 import Markup, escape
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import joinedload, subqueryload, undefer, contains_eager
-from sqlalchemy.sql import exists, func
+from sqlalchemy.orm import joinedload, subqueryload, undefer, contains_eager, aliased
+from sqlalchemy.sql import exists, func, false
 from wtforms import StringField, TextAreaField
 from wtforms.validators import Regexp, ValidationError
 
@@ -37,7 +37,7 @@ from koschei import util, plugin
 from koschei.config import get_config
 from koschei.frontend import app, db, frontend_config, auth
 from koschei.models import (Package, Build, PackageGroup, PackageGroupRelation,
-                            AdminNotice, User, BuildrootProblem,
+                            AdminNotice, User, BuildrootProblem, BasePackage,
                             GroupACL, Collection, get_or_create)
 
 log = logging.getLogger('koschei.views')
@@ -132,34 +132,6 @@ def require_login():
     return " " if g.user else ' disabled="true" '
 
 
-def state_icons(package_row):
-    state_array = package_row.states
-    packages = {}
-    if len(state_array) > 4:
-        # format is like this {"(2,t,,3)","(1,t,f,3)"}
-        state_array = state_array[2:-2].split('","')
-        for state in state_array:
-            collection_id, tracked, resolved, build_state = state[1:-1].split(',')
-            resolved = None if resolved == '' else (resolved == 't')
-            build_state = None if build_state == '' else int(build_state)
-            tracked = tracked == 't'
-            package = Package(name=package_row.name, blocked=False,
-                              tracked=tracked,
-                              last_complete_build_state=build_state,
-                              resolved=resolved)
-            packages[int(collection_id)] = package
-
-    out = ""
-    for collection in g.collections:
-        package = packages.get(collection.id)
-        out += '<td>'
-        if package:
-            out += '<img src="{icon}" title="{title}"/>'\
-                .format(icon=package.state_icon, title=package.state_string)
-        out += '</td>'
-    return Markup(out)
-
-
 app.jinja_env.globals.update(
     primary_koji_url=get_config('koji_config.weburl'),
     secondary_koji_url=get_config('secondary_koji_config.weburl'),
@@ -169,7 +141,6 @@ app.jinja_env.globals.update(
     get_global_notices=get_global_notices,
     require_login=require_login,
     Package=Package, Build=Build,
-    state_icons=state_icons,
     auto_tracking=frontend_config['auto_tracking'])
 
 app.jinja_env.filters.update(columnize=columnize,
@@ -237,7 +208,7 @@ def collection_package_view(template, query_fn=None, **template_args):
     collection = g.current_collection or g.default_collection
     package_query = db.query(Package).filter(Package.collection_id == collection.id)
     if query_fn:
-        package_query = query_fn(package_query)
+        package_query = query_fn(package_query.join(BasePackage))
     untracked = request.args.get('untracked') == '1'
     order_name = request.args.get('order_by', 'running,state,name')
     # pylint: disable=E1101
@@ -336,44 +307,60 @@ def get_collections():
 
 
 class UnifiedPackage(object):
-    def __init__(self, result):
-        self.name = result.name
-        self.states = result.states
-        self.has_running_build = result.has_running_build
+    def __init__(self, row):
+        self.name = row.name
+        self.has_running_build = row.has_running_build
+        self.packages = []
+        for attr in dir(row):
+            if attr.startswith('tracked'):
+                collection_id = attr.replace('tracked', '')
+                self.packages.append(Package(
+                    name=row.name, blocked=False, tracked=getattr(row, attr) or False,
+                    last_complete_build_state=getattr(row, 'state' + collection_id),
+                    resolved=getattr(row, 'resolved' + collection_id)
+                ))
 
 
 def unified_package_view(template, query_fn=None, **template_args):
     untracked = request.args.get('untracked') == '1'
     order_name = request.args.get('order_by', 'running,failing,name')
-    # pylint: disable=E1101
-    subq = db.query(Package.name,
-                    func.array_agg(func.row(Package.collection_id,
-                                            Package.tracked,
-                                            Package.resolved,
-                                            Package.last_complete_build_state))
-                    .label("states"),
-                    func.bool_or(Package.resolved).label("resolved"),
-                    func.bool_or(Package.last_complete_build_state == Build.FAILED)
-                    .label("failing"),
-                    func.bool_or(Package.last_complete_build_id != Package.last_build_id)
-                    .label("has_running_build"))\
-        .filter(Package.blocked == False)\
-        .group_by(Package.name)
-    if not untracked:
-        subq = subq.filter(Package.tracked == True)
+    exprs = []
+    tables = []
+    running_build_expr = false()
+    failing_expr = false()
+    order_map = {'name': [BasePackage.name]}
+    for collection in g.collections:
+        table = aliased(Package)
+        tables.append(table)
+        exprs.append(table.tracked.label('tracked{}'.format(collection.id)))
+        exprs.append(table.resolved.label('resolved{}'.format(collection.id)))
+        exprs.append(table.last_complete_build_state
+                     .label('state{}'.format(collection.id)))
+        running_build_expr |= table.last_build_id != table.last_complete_build_id
+        failing_expr |= table.last_complete_build_state == Build.FAILED
+        failing_expr |= table.resolved == False
+    running_build_expr = func.coalesce(running_build_expr, false())
+    failing_expr = func.coalesce(failing_expr, false())
+    query = db.query(BasePackage.name,
+                     running_build_expr.label('has_running_build'),
+                     *exprs)
+    for collection, table in zip(g.collections, tables):
+        on_expr = BasePackage.id == table.base_id
+        on_expr &= table.collection_id == collection.id
+        on_expr &= ~table.blocked
+        if not untracked:
+            on_expr &= table.tracked
+        query = query.outerjoin(table, on_expr)
+        order_map['state-' + collection.name] = \
+            [table.resolved, Reversed(table.last_complete_build_state)]
     if query_fn:
-        subq = query_fn(subq)
-    subq = subq.subquery()
+        query = query_fn(query)
+    order_map['running'] = [Reversed(running_build_expr)]
+    order_map['failing'] = [Reversed(failing_expr)]
 
-    order_map = {
-        'name': [subq.c.name],
-        'failing': [subq.c.resolved, Reversed(subq.c.failing)],
-        'running': [NullsLastOrder(subq.c.has_running_build)],
-    }
     order_names, order = get_order(order_map, order_name)
 
-    package_query = db.query(subq.c.name, subq.c.states, subq.c.has_running_build)
-    page = package_query.order_by(*order).paginate(packages_per_page)
+    page = query.order_by(*order).paginate(packages_per_page)
     page.items = map(UnifiedPackage, page.items)
     populate_package_groups(page.items)
     return render_template(template, packages=page.items, page=page,
@@ -483,8 +470,9 @@ def group_detail(name=None, namespace=None):
               .filter_by(name=name, namespace=namespace).first_or_404()
 
     def query_fn(query):
+        # TODO
         return query.outerjoin(PackageGroupRelation,
-                               PackageGroupRelation.package_name == Package.name)\
+                               PackageGroupRelation.package_name == BasePackage.name)\
             .filter(PackageGroupRelation.group_id == group.id)
 
     return package_view("group-detail.html", query_fn=query_fn, group=group)
@@ -503,7 +491,7 @@ def user_packages(name):
         log.exception("Error retrieving user's packages")
 
     def query_fn(query):
-        return query.filter(Package.name.in_(names))
+        return query.filter(BasePackage.name.in_(names))
 
     return package_view("user-packages.html", query_fn, username=name)
 
@@ -730,7 +718,7 @@ def search():
         matcher = '%{}%'.format(term.strip().replace('*', '%'))
 
         def query_fn(query):
-            return query.filter(Package.name.ilike(matcher))
+            return query.filter(BasePackage.name.ilike(matcher))
         return package_view("search-results.html", query_fn)
     return redirect(url_for('frontpage'))
 
