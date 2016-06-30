@@ -47,9 +47,9 @@ class FedmsgSenderTest(DBTest):
                                             msg={'name': 'rnv',
                                                  'old': 'failed',
                                                  'new': 'ok',
-                                                 'repo': 'tag',
-                                                 'collection': 'foo',
-                                                 'collection_name': 'Foo',
+                                                 'repo': 'f25',
+                                                 'collection': 'f25',
+                                                 'collection_name': 'Fedora Rawhide',
                                                  'koji_instance': 'primary',
                                                  'groups': ['c', 'foo/xml']})
 

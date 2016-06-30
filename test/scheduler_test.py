@@ -124,6 +124,7 @@ class SchedulerTest(DBTest):
     def test_time_priority(self):
         for days in [0, 2, 5, 7, 12]:
             pkg = m.Package(name='p{}'.format(days), collection_id=self.collection.id)
+            self.ensure_base_package(pkg)
             self.s.add(pkg)
             self.s.flush()
             build = m.Build(package_id=pkg.id,
@@ -206,6 +207,7 @@ class SchedulerTest(DBTest):
                 if not pkg:
                     pkg = m.Package(name=name, tracked=states.get(name) != 'ignored',
                                     collection_id=self.collection.id)
+                    self.ensure_base_package(pkg)
                     self.s.add(pkg)
                     self.s.flush()
                     if states.get(name, True) is not None:

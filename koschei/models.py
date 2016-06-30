@@ -19,12 +19,11 @@
 import struct
 import zlib
 
-from datetime import datetime
-
 import sqlalchemy
 
 from sqlalchemy import (create_engine, Table, Column, Integer, String, Boolean,
-                        ForeignKey, DateTime, Index, DDL, Float, CheckConstraint)
+                        ForeignKey, DateTime, Index, DDL, Float, CheckConstraint,
+                        UniqueConstraint)
 from sqlalchemy.sql.expression import func, select, join, distinct, false, true
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import (sessionmaker, relationship, column_property,
@@ -222,11 +221,23 @@ class Collection(Base):
         return self.display_name
 
 
+class BasePackage(Base):
+    __tablename__ = 'base_package'
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False, unique=True)
+    packages = relationship('Package', backref='base', passive_deletes=True)
+
+
 class Package(Base):
     __tablename__ = 'package'
+    __table_args__ = (UniqueConstraint('base_id', 'collection_id',
+                                       name='package_unique_in_collection'),)
 
     id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
+    base_id = Column(Integer, ForeignKey(BasePackage.id, ondelete='CASCADE'),
+                     nullable=False)
+
+    name = Column(String, nullable=False, index=True) #  denormalized from base_package
     static_priority = Column(Integer, nullable=False, default=0)
     manual_priority = Column(Integer, nullable=False, default=0)
     collection_id = Column(Integer, ForeignKey(Collection.id, ondelete='CASCADE'),

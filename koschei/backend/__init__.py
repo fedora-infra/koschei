@@ -30,7 +30,7 @@ from koschei.config import get_config
 from koschei.backend import koji_util
 from koschei.backend.koji_util import itercall
 from koschei.models import (Build, UnappliedChange, KojiTask, Package,
-                            PackageGroup, PackageGroupRelation,
+                            PackageGroup, PackageGroupRelation, BasePackage,
                             Collection, RepoMapping)
 from koschei.plugin import dispatch_event
 
@@ -365,9 +365,10 @@ class Backend(object):
         Refresh packages from Koji: add packages not yet known by Koschei
         and update blocked flag.
         """
+        bases = {base.name: base for base in self.db.query(BasePackage)}
         for collection in self.db.query(Collection):
             koji_packages = self.koji_sessions['secondary']\
-                .listPackages(tagID=collection.target_tag, inherited=True)
+                .listPackages(tagID=collection.target_tag, inherited=False)
             whitelisted = {p['package_name'] for p in koji_packages if not p['blocked']}
             packages = self.db.query(Package).filter_by(collection_id=collection.id).all()
             to_update = [p.id for p in packages if p.blocked == (p.name in whitelisted)]
@@ -376,14 +377,21 @@ class Backend(object):
                        .update({'blocked': ~Package.blocked}, synchronize_session=False)
                 self.db.flush()
             existing_names = {p.name for p in packages}
-            to_add = [p for p in koji_packages if p['package_name'] not in existing_names]
-            if to_add:
-                for p in to_add:
-                    pkg = Package(name=p['package_name'], collection_id=collection.id)
-                    pkg.blocked = p['blocked']
-                    pkg.tracked = False
+            for pkg_dict in koji_packages:
+                name = pkg_dict['package_name']
+                if name not in bases.iterkeys():
+                    base = BasePackage(name=name)
+                    self.db.add(base)
+                    bases[name] = base
+            self.db.flush()
+            for pkg_dict in koji_packages:
+                name = pkg_dict['package_name']
+                if name not in existing_names:
+                    pkg = Package(name=name, base_id=bases.get(name).id,
+                                  collection_id=collection.id, tracked=False,
+                                  blocked=pkg_dict['blocked'])
                     self.db.add(pkg)
-                self.db.flush()
+            self.db.flush()
             self.db.expire_all()
 
     def refresh_latest_builds(self):

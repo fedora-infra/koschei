@@ -96,8 +96,10 @@ class DBTest(AbstractTest):
         super(DBTest, self).__init__(*args, **kwargs)
         self.s = None
         self.task_id_counter = 1
-        self.collection = m.Collection(name="foo", display_name="Foo", target_tag="tag",
-                                       build_tag="build_tag", priority_coefficient=1.0)
+        self.collection = m.Collection(
+            name="f25", display_name="Fedora Rawhide", target_tag="f25",
+            build_tag="f25-build", priority_coefficient=1.0
+        )
 
     @classmethod
     def setUpClass(cls):
@@ -127,8 +129,18 @@ class DBTest(AbstractTest):
         super(DBTest, self).tearDown()
         self.s.close()
 
+    def ensure_base_package(self, package):
+        if not package.base_id:
+            base = self.s.query(m.BasePackage).filter_by(name=package.name).first()
+            if not base:
+                base = m.BasePackage(name=package.name)
+                self.s.add(base)
+                self.s.flush()
+            package.base_id = base.id
+
     def prepare_basic_data(self):
         pkg = m.Package(name='rnv', collection_id=self.collection.id)
+        self.ensure_base_package(pkg)
         self.s.add(pkg)
         self.s.flush()
         build = m.Build(package_id=pkg.id, state=m.Build.RUNNING,
@@ -143,6 +155,7 @@ class DBTest(AbstractTest):
             pkg = self.s.query(m.Package).filter_by(name=name).first()
             if not pkg:
                 pkg = m.Package(name=name, collection_id=self.collection.id)
+                self.ensure_base_package(pkg)
                 self.s.add(pkg)
             pkgs.append(pkg)
         self.s.commit()
