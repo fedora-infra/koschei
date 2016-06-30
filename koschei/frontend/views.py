@@ -314,11 +314,16 @@ class UnifiedPackage(object):
         for attr in dir(row):
             if attr.startswith('tracked'):
                 collection_id = attr.replace('tracked', '')
-                self.packages.append(Package(
+                package = Package(
                     name=row.name, blocked=False, tracked=getattr(row, attr) or False,
                     last_complete_build_state=getattr(row, 'state' + collection_id),
                     resolved=getattr(row, 'resolved' + collection_id)
-                ))
+                )
+                collection = db.query(Collection).get(int(collection_id))
+                # when I don't do this, ORM generates an INSERT, AAARRGH
+                db.expunge(collection)
+                package.collection = collection
+                self.packages.append(package)
 
 
 def unified_package_view(template, query_fn=None, **template_args):

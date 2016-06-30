@@ -15,7 +15,12 @@
         {% for (collection, package) in all_packages  %}
         <tr>
             <td>{{ collection }}</td>
-            <td><img src="{{ package.state_icon }}" title="{{ package.state_string }}"/></td>
+            <td>
+                <a href="{{ url_for('package_detail', name=package.name) }}{{
+                    page_args(clear=True, collection=collection.name) }}">
+                    <img src="{{ package.state_icon }}" title="{{ package.state_string }}"/>
+                </a>
+            </td>
         </tr>
         {% endfor %}
     </table>
