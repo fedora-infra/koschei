@@ -85,3 +85,14 @@ class TriggerTest(DBTest):
         self.s.commit()
         self.assertEqual(b2.id, e.last_build_id)
         self.s.delete(b2)
+
+    def test_all_blocked_insert(self):
+        [p, e] = self.prepare_packages(['rnv', 'eclipse'])
+        self.assertFalse(p.base.all_blocked)
+        self.assertFalse(e.base.all_blocked)
+
+    def test_all_blocked_update(self):
+        [p, e] = self.prepare_packages(['rnv', 'eclipse'])
+        e.blocked = True
+        self.s.commit()
+        self.assertTrue(e.base.all_blocked)

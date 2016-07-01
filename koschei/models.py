@@ -227,6 +227,9 @@ class BasePackage(Base):
     name = Column(String, nullable=False, unique=True)
     packages = relationship('Package', backref='base', passive_deletes=True)
 
+    # updated by trigger
+    all_blocked = Column(Boolean, nullable=False, server_default=true())
+
 
 class Package(Base):
     __tablename__ = 'package'
@@ -610,10 +613,19 @@ trigger = DDL("""
                   RETURN OLD;
               END $$ LANGUAGE plpgsql;
 
-              DROP TRIGGER IF EXISTS update_last_complete_build_trigger
-                    ON build;
-              DROP TRIGGER IF EXISTS update_last_build_trigger
-                    ON build;
+              CREATE OR REPLACE FUNCTION update_all_blocked()
+                  RETURNS TRIGGER AS $$
+              BEGIN
+                  UPDATE base_package
+                  SET all_blocked = q.all_blocked
+                  FROM (SELECT base_id, BOOL_AND(blocked) AS all_blocked
+                        FROM package
+                        GROUP BY base_id) AS q
+                  WHERE id = q.base_id;
+                  RETURN NULL;
+              END $$ LANGUAGE plpgsql;
+
+
               CREATE TRIGGER update_last_complete_build_trigger
                   AFTER INSERT ON build FOR EACH ROW
                   WHEN (NEW.state = 3 OR NEW.state = 5)
@@ -621,17 +633,17 @@ trigger = DDL("""
               CREATE TRIGGER update_last_build_trigger
                   AFTER INSERT ON build FOR EACH ROW
                   EXECUTE PROCEDURE update_last_build();
-              DROP TRIGGER IF EXISTS update_last_complete_build_trigger_up
-                    ON build;
               CREATE TRIGGER update_last_complete_build_trigger_up
                   AFTER UPDATE ON build FOR EACH ROW
                   WHEN (OLD.state != NEW.state)
                   EXECUTE PROCEDURE update_last_complete_build();
-              DROP TRIGGER IF EXISTS update_last_build_trigger_del
-                    ON build;
               CREATE TRIGGER update_last_build_trigger_del
                   BEFORE DELETE ON build FOR EACH ROW
                   EXECUTE PROCEDURE update_last_build_del();
+              CREATE TRIGGER update_all_blocked_trigger
+                  AFTER INSERT OR DELETE OR UPDATE OF blocked ON package
+                  FOR EACH STATEMENT
+                  EXECUTE PROCEDURE update_all_blocked();
               """)
 
 listen(Base.metadata, 'after_create', trigger.execute_if(dialect='postgresql'))
@@ -672,12 +684,12 @@ Build.dependency_changes = relationship(AppliedChange, backref='build',
                                         order_by=AppliedChange.distance
                                         .nullslast(), passive_deletes=True)
 
-# TODO blocked
 PackageGroup.package_count = column_property(
     select([func.count()],
            PackageGroupRelation.group_id == PackageGroup.id,
            join(BasePackage, PackageGroupRelation,
                 PackageGroupRelation.base_id == BasePackage.id))
+    .where(~BasePackage.all_blocked)
     .correlate(PackageGroup).as_scalar(),
     deferred=True)
 
