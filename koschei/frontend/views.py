@@ -288,6 +288,8 @@ def inject_fedmenu():
 
 @app.before_request
 def get_collections():
+    if request.endpoint == 'static':
+        return
     collection_name = request.args.get('collection')
     g.collections = db.query(Collection)\
         .order_by(Collection.order, Collection.name.desc())\

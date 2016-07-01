@@ -55,6 +55,8 @@ def login():
 
 @app.before_request
 def lookup_current_user():
+    if request.endpoint == 'static':
+        return
     g.user = None
     user_name = session.get('user', None)
     if user_name:
