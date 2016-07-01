@@ -349,7 +349,7 @@ def unified_package_view(template, query_fn=None, **template_args):
     failing_expr = func.coalesce(failing_expr, false())
     query = db.query(BasePackage.name, BasePackage.id.label('base_id'),
                      running_build_expr.label('has_running_build'),
-                     *exprs)
+                     *exprs).filter(~BasePackage.all_blocked)
     for collection, table in zip(g.collections, tables):
         on_expr = BasePackage.id == table.base_id
         on_expr &= table.collection_id == collection.id
