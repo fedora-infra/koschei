@@ -28,6 +28,8 @@ from koschei.backend import Backend
 from koschei import plugin, models as m
 from koschei.models import *
 
+# pylint: disable=unbalanced-tuple-unpacking,blacklisted-name
+
 rnv_task = {'arch': 'noarch',
             'awaited': None,
             'channel_id': 1,
@@ -372,30 +374,32 @@ class BackendTest(DBTest):
 
     def test_set_group_contents(self):
         group = m.PackageGroup(name='foo')
+        bar, a1, a2, a3 = self.prepare_packages(['bar', 'a1', 'a2', 'a3'])
         self.s.add(group)
         self.s.flush()
-        rel = m.PackageGroupRelation(group_id=group.id, package_name='bar')
+        rel = m.PackageGroupRelation(group_id=group.id, base_id=bar.base_id)
         self.s.add(rel)
         self.s.commit()
         content = ['a1', 'a2', 'a3']
         self.backend.set_group_content(group, content)
 
-        self.assertItemsEqual(content,
-                              self.s.query(m.PackageGroupRelation.package_name)
+        self.assertItemsEqual([a1.base_id, a2.base_id, a3.base_id],
+                              self.s.query(m.PackageGroupRelation.base_id)
                               .filter_by(group_id=group.id).all_flat())
 
     def test_append_group_content(self):
         group = m.PackageGroup(name='foo')
         self.s.add(group)
         self.s.flush()
-        rel = m.PackageGroupRelation(group_id=group.id, package_name='bar')
+        bar, a1, a2, a3 = self.prepare_packages(['bar', 'a1', 'a2', 'a3'])
+        rel = m.PackageGroupRelation(group_id=group.id, base_id=bar.base_id)
         self.s.add(rel)
         self.s.commit()
         content = ['a1', 'a2', 'a3']
         self.backend.set_group_content(group, content, append=True)
 
-        self.assertItemsEqual(content + ['bar'],
-                              self.s.query(m.PackageGroupRelation.package_name)
+        self.assertItemsEqual([bar.base_id, a1.base_id, a2.base_id, a3.base_id],
+                              self.s.query(m.PackageGroupRelation.base_id)
                               .filter_by(group_id=group.id).all_flat())
 
     def test_refresh_packages(self):

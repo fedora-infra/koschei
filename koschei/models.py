@@ -70,8 +70,8 @@ class Query(sqlalchemy.orm.Query):
             .with_lockmode('update')\
             .all()
 
-    def all_flat(self):
-        return [x for [x] in self.all()]
+    def all_flat(self, ctor=list):
+        return ctor(x for [x] in self)
 
 
 class KoscheiDbSession(sqlalchemy.orm.session.Session):
@@ -355,8 +355,9 @@ class PackageGroupRelation(Base):
     __tablename__ = 'package_group_relation'
     group_id = Column(Integer, ForeignKey('package_group.id',
                                           ondelete='CASCADE'),
-                      primary_key=True, index=True)
-    package_name = Column(String, primary_key=True, index=True)
+                      primary_key=True) #  there should be index on whole PK
+    base_id = Column(Integer, ForeignKey('base_package.id', ondelete='CASCADE'),
+                     primary_key=True, index=True)
 
 
 class GroupACL(Base):
@@ -671,28 +672,37 @@ Build.dependency_changes = relationship(AppliedChange, backref='build',
                                         order_by=AppliedChange.distance
                                         .nullslast(), passive_deletes=True)
 
+# TODO blocked
 PackageGroup.package_count = column_property(
-    select([func.count(distinct(Package.name))],
+    select([func.count()],
            PackageGroupRelation.group_id == PackageGroup.id,
-           join(Package, PackageGroupRelation,
-                PackageGroupRelation.package_name == Package.name))
-    .where(Package.blocked == False)
+           join(BasePackage, PackageGroupRelation,
+                PackageGroupRelation.base_id == BasePackage.id))
     .correlate(PackageGroup).as_scalar(),
     deferred=True)
+
 # pylint: disable=E1101
+BasePackage.groups = relationship(PackageGroup,
+                                  secondary=PackageGroupRelation.__table__,
+                                  secondaryjoin=(PackageGroup.id ==
+                                                 PackageGroupRelation.group_id),
+                                  primaryjoin=(PackageGroupRelation.base_id ==
+                                               BasePackage.id),
+                                  order_by=PackageGroup.name, passive_deletes=True)
 Package.groups = relationship(PackageGroup,
                               secondary=PackageGroupRelation.__table__,
                               secondaryjoin=(PackageGroup.id ==
                                              PackageGroupRelation.group_id),
-                              primaryjoin=(PackageGroupRelation.package_name ==
-                                           Package.name),
+                              primaryjoin=(PackageGroupRelation.base_id ==
+                                           Package.base_id),
                               order_by=PackageGroup.name, passive_deletes=True)
-PackageGroup.packages = relationship(Package, secondary=PackageGroupRelation.__table__,
+PackageGroup.packages = relationship(BasePackage,
+                                     secondary=PackageGroupRelation.__table__,
                                      primaryjoin=(PackageGroup.id ==
                                                   PackageGroupRelation.group_id),
-                                     secondaryjoin=(PackageGroupRelation.package_name
-                                                    == Package.name),
-                                     order_by=Package.name, passive_deletes=True)
+                                     secondaryjoin=(PackageGroupRelation.base_id
+                                                    == BasePackage.id),
+                                     order_by=BasePackage.name, passive_deletes=True)
 PackageGroupRelation.group = relationship(PackageGroup)
 User.groups = relationship(PackageGroup,
                            secondary=GroupACL.__table__,

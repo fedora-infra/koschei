@@ -33,7 +33,7 @@ class FedmsgSenderTest(DBTest):
             self.s.add(group)
             self.s.flush()
             self.s.add(PackageGroupRelation(group_id=group.id,
-                                            package_name=pkg.name))
+                                            base_id=pkg.base_id))
         self.s.commit()
         return pkg
 

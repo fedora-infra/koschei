@@ -197,7 +197,7 @@ class DBTest(AbstractTest):
         self.s.add(group)
         self.s.commit()
         self.s.execute(m.PackageGroupRelation.__table__.insert(),
-                       [dict(group_id=group.id, package_name=package.name)
+                       [dict(group_id=group.id, base_id=package.base_id)
                         for package in packages])
         self.s.execute(m.GroupACL.__table__.insert(),
                        [dict(group_id=group.id, user_id=user.id)

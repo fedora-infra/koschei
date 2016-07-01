@@ -345,16 +345,22 @@ class Backend(object):
             self.db.flush()
         for pkg in pkgs:
             rel = PackageGroupRelation(group_id=group_obj.id,
-                                       package_id=pkg.id)
+                                       base_id=pkg.base_id)
             self.db.add(rel)
 
     def set_group_content(self, group, contents, append=False):
-        existing_names = set(self.db.query(PackageGroupRelation.package_name)\
-                             .filter_by(group_id=group.id).all_flat())
-        rels = []
-        for name in set(contents):
-            if not append or name not in existing_names:
-                rels.append(dict(group_id=group.id, package_name=name))
+        contents = set(contents)
+        base_ids = self.db.query(BasePackage.id)\
+            .filter(BasePackage.name.in_(contents))\
+            .all_flat(set)
+        if len(base_ids) != len(contents):
+            raise RuntimeError("Some packages weren't found")
+        if append:
+            base_ids -= self.db.query(PackageGroupRelation.base_id)\
+                .filter(PackageGroup.id == group.id)\
+                .filter(PackageGroupRelation.base_id.in_(base_ids))\
+                .all_flat(set)
+        rels = [dict(group_id=group.id, base_id=base_id) for base_id in base_ids]
         if not append:
             self.db.query(PackageGroupRelation).filter_by(group_id=group.id).delete()
         if rels:

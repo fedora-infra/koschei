@@ -179,23 +179,23 @@ def get_order(order_map, order_spec):
 
 
 def populate_package_groups(packages):
-    name_map = {}
+    base_map = {}
     for package in packages:
         package.visible_groups = []
-        name_map[package.name] = package
+        base_map[package.base_id] = package
     filter_expr = PackageGroup.namespace == None
     if g.user:
         filter_expr |= GroupACL.user_id == g.user.id
     query = db.query(PackageGroupRelation)\
         .options(contains_eager(PackageGroupRelation.group))\
-        .filter(PackageGroupRelation.package_name.in_(name_map.keys()))\
+        .filter(PackageGroupRelation.base_id.in_(base_map.keys()))\
         .join(PackageGroup)\
         .filter(filter_expr)\
         .order_by(PackageGroup.namespace, PackageGroup.name)
     if g.user:
         query = query.outerjoin(GroupACL)
     for r in query:
-        name_map[r.package_name].visible_groups.append(r.group)
+        base_map[r.base_id].visible_groups.append(r.group)
 
 
 def package_view(template, query_fn=None, **template_args):
@@ -310,6 +310,7 @@ class UnifiedPackage(object):
     def __init__(self, row):
         self.name = row.name
         self.has_running_build = row.has_running_build
+        self.base_id = row.base_id
         self.packages = []
         for attr in dir(row):
             if attr.startswith('tracked'):
@@ -346,7 +347,7 @@ def unified_package_view(template, query_fn=None, **template_args):
         failing_expr |= table.resolved == False
     running_build_expr = func.coalesce(running_build_expr, false())
     failing_expr = func.coalesce(failing_expr, false())
-    query = db.query(BasePackage.name,
+    query = db.query(BasePackage.name, BasePackage.id.label('base_id'),
                      running_build_expr.label('has_running_build'),
                      *exprs)
     for collection, table in zip(g.collections, tables):
@@ -395,7 +396,7 @@ def package_detail(name):
         abort(404)
     package.global_groups = db.query(PackageGroup)\
         .join(PackageGroupRelation)\
-        .filter(PackageGroupRelation.package_name == package.name)\
+        .filter(PackageGroupRelation.base_id == package.base_id)\
         .filter(PackageGroup.namespace == None)\
         .all()
     package.user_groups = []
@@ -403,7 +404,7 @@ def package_detail(name):
     if g.user:
         user_groups = \
             db.query(PackageGroup,
-                     func.bool_or(PackageGroupRelation.package_name == package.name))\
+                     func.bool_or(PackageGroupRelation.base_id == package.base_id))\
             .outerjoin(PackageGroupRelation)\
             .join(GroupACL)\
             .filter(GroupACL.user_id == g.user.id)\
@@ -475,9 +476,8 @@ def group_detail(name=None, namespace=None):
               .filter_by(name=name, namespace=namespace).first_or_404()
 
     def query_fn(query):
-        # TODO
         return query.outerjoin(PackageGroupRelation,
-                               PackageGroupRelation.package_name == BasePackage.name)\
+                               PackageGroupRelation.base_id == BasePackage.id)\
             .filter(PackageGroupRelation.group_id == group.id)
 
     return package_view("group-detail.html", query_fn=query_fn, group=group)
@@ -602,7 +602,7 @@ def process_group_form(group=None):
     users = [get_or_create(db, User, name=name) for name in set(form.owners.data)]
     db.commit()
     user_ids = [u.id for u in users]
-    packages = db.query(Package).filter(Package.name.in_(names))
+    packages = db.query(BasePackage).filter(BasePackage.name.in_(names))
     found_names = {p.name for p in packages}
     if len(found_names) != len(names):
         flash("Packages don't exist: " + ', '.join(names - found_names))
@@ -623,7 +623,7 @@ def process_group_form(group=None):
           .filter_by(group_id=group.id).delete()
         db.query(GroupACL)\
           .filter_by(group_id=group.id).delete()
-    rels = [dict(group_id=group.id, package_name=name) for name in found_names]
+    rels = [dict(group_id=group.id, base_id=base.id) for base in packages]
     acls = [dict(group_id=group.id, user_id=user_id) for user_id in user_ids]
     db.execute(PackageGroupRelation.__table__.insert(), rels)
     db.execute(GroupACL.__table__.insert(), acls)
