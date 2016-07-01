@@ -294,6 +294,8 @@ def get_collections():
     g.collections = db.query(Collection)\
         .order_by(Collection.order, Collection.name.desc())\
         .all()
+    for collection in g.collections:
+        db.expunge(collection)
     if not g.collections:
         abort(500, "No collections setup")
     g.default_collection = g.collections[0]
@@ -322,9 +324,7 @@ class UnifiedPackage(object):
                     last_complete_build_state=getattr(row, 'state' + collection_id),
                     resolved=getattr(row, 'resolved' + collection_id)
                 )
-                collection = db.query(Collection).get(int(collection_id))
-                # when I don't do this, ORM generates an INSERT, AAARRGH
-                db.expunge(collection)
+                collection = [c for c in g.collections if c.id == int(collection_id)][0]
                 package.collection = collection
                 self.packages.append(package)
 
