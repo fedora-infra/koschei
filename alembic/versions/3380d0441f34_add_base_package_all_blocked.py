@@ -34,6 +34,14 @@ def upgrade():
             AFTER INSERT OR DELETE OR UPDATE OF blocked ON package
             FOR EACH STATEMENT
             EXECUTE PROCEDURE update_all_blocked();
+
+        -- execute the trigger once
+        UPDATE base_package
+        SET all_blocked = q.all_blocked
+        FROM (SELECT base_id, BOOL_AND(blocked) AS all_blocked
+              FROM package
+              GROUP BY base_id) AS q
+        WHERE id = q.base_id;
     """)
 
 
