@@ -332,6 +332,11 @@ class DeleteGroup(Command):
         backend.db.commit()
 
 
+class CollectionModeAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, values == 'secondary')
+
+
 class CollectionCommandParser(object):
     args_required = True
 
@@ -344,6 +349,10 @@ class CollectionCommandParser(object):
         parser.add_argument('-t', '--target-tag',
                             required=self.args_required,
                             help="Koji target tag")
+        parser.add_argument('-m', '--mode', choices=('primary', 'secondary'),
+                            dest='secondary_mode', action=CollectionModeAction,
+                            help="Whether target should be in secondary "
+                            "or primary mode (default)")
         parser.add_argument('-b', '--build-tag',
                             required=self.args_required,
                             help="Koji build tag")

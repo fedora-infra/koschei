@@ -189,6 +189,9 @@ class Collection(Base):
     # name for ordinary people, e.g. "Fedora 24"
     display_name = Column(String, nullable=False)
 
+    # whether this collection is in secondary or primary mode
+    secondary_mode = Column(Boolean, nullable=False, server_default=false())
+
     target_tag = Column(String, nullable=False)
     build_tag = Column(String, nullable=False)
 
