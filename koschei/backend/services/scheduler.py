@@ -161,11 +161,6 @@ class Scheduler(KojiService):
                 self.log.debug("Skipping {}: {} buildroot broken"
                                .format(package, package.collection))
                 continue
-            newer_build = self.backend.get_newer_build_if_exists(package)
-            if newer_build:
-                self.log.debug("Skipping {} due to real build"
-                               .format(package))
-                continue
 
             # a package was chosen
             self.log.info('Scheduling build for {}, priority {}'
