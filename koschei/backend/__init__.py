@@ -381,7 +381,7 @@ class Backend(KojiService):
         for collection in self.db.query(Collection):
             koji_session = self.secondary_session_for(collection)
             koji_packages = koji_session.listPackages(tagID=collection.target_tag,
-                                                      inherited=False)
+                                                      inherited=True)
             whitelisted = {p['package_name'] for p in koji_packages if not p['blocked']}
             packages = self.db.query(Package).filter_by(collection_id=collection.id).all()
             to_update = [p.id for p in packages if p.blocked == (p.name in whitelisted)]
