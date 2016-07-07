@@ -316,17 +316,17 @@ class UnifiedPackage(object):
         self.has_running_build = row.has_running_build
         self.base_id = row.base_id
         self.packages = []
-        for attr in dir(row):
-            if attr.startswith('tracked'):
-                collection_id = attr.replace('tracked', '')
-                package = Package(
-                    name=row.name, blocked=False, tracked=getattr(row, attr) or False,
-                    last_complete_build_state=getattr(row, 'state' + collection_id),
-                    resolved=getattr(row, 'resolved' + collection_id)
-                )
-                collection = [c for c in g.collections if c.id == int(collection_id)][0]
-                package.collection = collection
-                self.packages.append(package)
+        for collection in g.collections:
+            str_id = str(collection.id)
+            package = Package(
+                name=row.name,
+                blocked=False,
+                collection=collection,
+                tracked=getattr(row, 'tracked' + str_id) or False,
+                last_complete_build_state=getattr(row, 'state' + str_id),
+                resolved=getattr(row, 'resolved' + str_id),
+            )
+            self.packages.append(package)
 
 
 def unified_package_view(template, query_fn=None, **template_args):
