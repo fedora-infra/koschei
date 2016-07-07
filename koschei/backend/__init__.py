@@ -290,7 +290,10 @@ class Backend(KojiService):
         koji_session = (self.secondary_session_for(collection) if real
                         else self.koji_sessions['primary'])
         call = itercall(koji_session, builds, lambda k, b: k.getTaskInfo(b.task_id))
+        valid_builds = []
         for build, task_info in izip(builds, call):
+            if not task_info:
+                continue
             if task_info.get('create_ts'):
                 build.started = datetime.fromtimestamp(task_info['create_ts'])
             if task_info.get('completion_ts'):
@@ -298,10 +301,11 @@ class Backend(KojiService):
             elif build.state != Build.RUNNING:
                 # When fedmsg delivery is fast, the time is not set yet
                 build.finished = datetime.now()
-        call = itercall(koji_session, builds,
+            valid_builds.append(build)
+        call = itercall(koji_session, valid_builds,
                         lambda k, b: k.getTaskChildren(b.task_id, request=True))
         build_tasks = {}
-        for build, subtasks in izip(builds, call):
+        for build, subtasks in izip(valid_builds, call):
             tasks = []
             build_arch_tasks = [task for task in subtasks
                                 if task['method'] == 'buildArch']
