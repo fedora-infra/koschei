@@ -106,12 +106,12 @@ class Scheduler(KojiService):
                                 Integer).label('curr_priority')
         priorities = self.db.query(pkg_id, current_priority)\
                             .group_by(pkg_id).subquery()
-        priority_expr = (priorities.c.curr_priority
-                         * Collection.priority_coefficient
+        priority_expr = (func.coalesce(priorities.c.curr_priority
+                                       * Collection.priority_coefficient, 0)
                          + Package.manual_priority + Package.static_priority)
         return self.db.query(Package.id, priority_expr)\
                       .join(Package.collection)\
-                      .join(priorities, Package.id == priorities.c.pkg_id)\
+                      .outerjoin(priorities, Package.id == priorities.c.pkg_id)\
                       .filter((Package.resolved == True) |
                               (Package.resolved == None))\
                       .filter(Package.id.notin_(incomplete_builds.subquery()))\
