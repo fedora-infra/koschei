@@ -77,7 +77,7 @@ class KojiService(Service):
         else:
             primary_koji = KojiSession(anonymous=self.koji_anonymous)
             secondary_koji = primary_koji
-            if get_config('secondary_mode'):
+            if get_config('secondary_koji_config'):
                 secondary_koji = KojiSession(koji_id='secondary')
 
             self.koji_sessions = {
