@@ -159,7 +159,7 @@
         <tr class="{{ row_class }}">
             <td></td>
             <td colspan="7" class="real_build_description">
-                Real build: <a class="mono" href="{{ secondary_koji_url }}/search?match=&type=build&terms={{ package.name }}-{{ build.version }}-{{ build.release }}">{{ package.name }}-{{ build.version }}-{{ build.release }}</a>
+                Real build: <a class="mono" href="{{ secondary_koji_url(package.collection) }}/search?match=&type=build&terms={{ package.name }}-{{ build.version }}-{{ build.release }}">{{ package.name }}-{{ build.version }}-{{ build.release }}</a>
             </td>
         </tr>
         {% endif %}

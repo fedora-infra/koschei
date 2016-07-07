@@ -132,9 +132,15 @@ def require_login():
     return " " if g.user else ' disabled="true" '
 
 
+def secondary_koji_url(collection):
+    if collection.secondary_mode:
+        return get_config('secondary_koji_config.weburl')
+    return get_config('koji_config.weburl')
+
+
 app.jinja_env.globals.update(
     primary_koji_url=get_config('koji_config.weburl'),
-    secondary_koji_url=get_config('secondary_koji_config.weburl'),
+    secondary_koji_url=secondary_koji_url,
     generate_links=generate_links,
     inext=next, iter=iter,
     min=min, max=max, page_args=page_args,
