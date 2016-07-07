@@ -66,8 +66,11 @@ def itercall(koji_session, args, koji_call):
         koji_session.multicall = True
         for arg in args[:chunk_size]:
             koji_call(koji_session, arg)
-        for [info] in koji_session.multiCall():
-            yield info
+        for info in koji_session.multiCall():
+            if len(info) == 1:
+                yield info[0]
+            else:
+                yield None
         args = args[chunk_size:]
 
 
