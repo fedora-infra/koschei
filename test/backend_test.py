@@ -206,6 +206,8 @@ class BackendTest(DBTest):
         self.koji_session = KojiMock()
         self.secondary_koji = KojiMock()
         self.log = Mock()
+        self.collection.secondary_mode = True
+        self.s.commit()
         self.backend = Backend(db=self.s, koji_sessions={'primary': self.koji_session,
                                                          'secondary': self.secondary_koji},
                                log=logging.getLogger('koschei.backend'))

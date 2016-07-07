@@ -141,11 +141,9 @@ class Resolver(KojiService):
         capacity = get_config('dependency.dependency_cache_capacity')
         self.dependency_cache = DependencyCache(capacity=capacity)
 
-    def get_build_group(self, collection_or_id):
-        collection_id = getattr(collection_or_id, 'id', collection_or_id)
-        group = self.build_groups.get(collection_id)
+    def get_build_group(self, collection):
+        group = self.build_groups.get(collection.id)
         if group is None:
-            collection = self.db.query(Collection).get(collection_id)
             group = koji_util.get_build_group(self.koji_sessions['primary'],
                                               collection.build_tag,
                                               collection.build_group)
@@ -217,10 +215,10 @@ class Resolver(KojiService):
             .options(undefer('dependency_keys'))\
             .first()
 
-    def set_descriptor_tags(self, descriptors):
+    def set_descriptor_tags(self, collection, descriptors):
         def koji_call(koji_session, desc):
             koji_session.repoInfo(desc.repo_id)
-        result_gen = itercall(self.koji_sessions['secondary'],
+        result_gen = itercall(self.secondary_session_for(collection),
                               descriptors, koji_call)
         for desc, repo_info in izip(descriptors, result_gen):
             if repo_info['state'] in (koji.REPO_STATES['READY'],
@@ -382,14 +380,16 @@ class Resolver(KojiService):
         total_time.start()
         self.log.info("Generating new repo")
         repo_descriptor = self.create_repo_descriptor(collection.secondary_mode, repo_id)
-        self.set_descriptor_tags([repo_descriptor])
+        self.set_descriptor_tags(collection, [repo_descriptor])
         if not repo_descriptor.build_tag:
             self.log.error('Cannot generate repo: {}'.format(repo_id))
             self.db.rollback()
             return
         packages = self.get_packages(collection)
-        brs = koji_util.get_rpm_requires(self.koji_sessions['secondary'],
-                                         [p.srpm_nvra for p in packages])
+        brs = koji_util.get_rpm_requires(
+            self.secondary_session_for(collection),
+            [p.srpm_nvra for p in packages]
+        )
         brs = util.parallel_generator(brs, queue_size=None)
         try:
             sack = self.repo_cache.get_sack(repo_descriptor)
@@ -449,20 +449,21 @@ class Resolver(KojiService):
             .filter(Build.repo_id < entry.repo_id)\
             .update({'dependency_keys': None})
 
-    def process_builds(self):
+    def process_builds(self, collection):
         # pylint: disable=E1101
         builds = self.db.query(Build.id, Build.repo_id, Build.real, Build.package_id,
                                Package.name, Build.version, Build.release,
-                               Package.last_build_id, Package.collection_id,
-                               Collection.secondary_mode)\
+                               Package.last_build_id)\
             .join(Build.package)\
             .filter(Build.deps_resolved == None)\
             .filter(Build.repo_id != None)\
+            .filter(Package.collection_id == collection.id)\
             .order_by(Build.repo_id).all()
 
-        descriptors = [self.create_repo_descriptor(build.secondary_mode, build.repo_id)
+        descriptors = [self.create_repo_descriptor(collection.secondary_mode,
+                                                   build.repo_id)
                        for build in builds]
-        self.set_descriptor_tags(descriptors)
+        self.set_descriptor_tags(collection, descriptors)
         builds_to_process = []
         repos_to_process = []
         unavailable_build_ids = []
@@ -477,10 +478,11 @@ class Resolver(KojiService):
                 .filter(Build.id.in_(unavailable_build_ids))\
                 .update({'deps_resolved': False}, synchronize_session=False)
             self.db.commit()
-        buildrequires = koji_util.get_rpm_requires(self.koji_sessions['secondary'],
-                                                   [dict(name=b.name, version=b.version,
-                                                         release=b.release, arch='src')
-                                                    for b in builds_to_process])
+        buildrequires = koji_util.get_rpm_requires(
+            self.secondary_session_for(collection),
+            [dict(name=b.name, version=b.version, release=b.release, arch='src')
+             for b in builds_to_process]
+        )
         if len(builds) > 100:
             buildrequires = util.parallel_generator(buildrequires, queue_size=None)
         for repo_descriptor, group in groupby(izip(repos_to_process,
@@ -490,7 +492,7 @@ class Resolver(KojiService):
             sack = self.repo_cache.get_sack(repo_descriptor)
             if sack:
                 for _, build, brs in group:
-                    build_group = self.get_build_group(build.collection_id)
+                    build_group = self.get_build_group(collection)
                     _, _, curr_deps = self.resolve_dependencies(sack, brs, build_group)
                     try:
                         self.process_build(sack, build, curr_deps)
@@ -509,10 +511,11 @@ class Resolver(KojiService):
         self.db.commit()
 
     def main(self):
-        self.process_builds()
         for collection in self.db.query(Collection).all():
-            curr_repo = koji_util.get_latest_repo(self.koji_sessions['secondary'],
-                                                  collection.build_tag)
+            self.process_builds(collection)
+            curr_repo = koji_util.get_latest_repo(
+                self.secondary_session_for(collection),
+                collection.build_tag)
             if curr_repo and collection.secondary_mode:
                 self.backend.refresh_repo_mappings()
                 mapping = self.db.query(RepoMapping)\

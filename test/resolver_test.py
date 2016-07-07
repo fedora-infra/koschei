@@ -234,7 +234,7 @@ class ResolverTest(DBTest):
         package_id = foo_build.package_id
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
             with patch('koschei.backend.koji_util.get_rpm_requires', return_value=[['F', 'A']]):
-                self.resolver.process_builds()
+                self.resolver.process_builds(self.collection)
         actual_deps = self.s.query(Dependency.name, Dependency.epoch,
                                    Dependency.version, Dependency.release,
                                    Dependency.arch)\
@@ -245,7 +245,7 @@ class ResolverTest(DBTest):
         foo_build = self.prepare_foo_build()
         with patch('koschei.backend.koji_util.get_build_group', return_value=['virtual']):
             with patch('koschei.backend.koji_util.get_rpm_requires', return_value=[['F', 'A']]):
-                self.resolver.process_builds()
+                self.resolver.process_builds(self.collection)
         self.assertTrue(foo_build.deps_resolved)
 
     def test_resolution_fail(self):
@@ -257,7 +257,7 @@ class ResolverTest(DBTest):
         self.s.commit()
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
             with patch('koschei.backend.koji_util.get_rpm_requires', return_value=[['nonexistent']]):
-                self.resolver.process_builds()
+                self.resolver.process_builds(self.collection)
         self.assertIs(False, b.deps_resolved)
 
     def prepare_old_build(self):
@@ -282,7 +282,7 @@ class ResolverTest(DBTest):
         build = self.prepare_foo_build(repo_id=666, version='4')
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
             with patch('koschei.backend.koji_util.get_rpm_requires', return_value=[['F', 'A']]):
-                self.resolver.process_builds()
+                self.resolver.process_builds(self.collection)
         expected_changes = [(build.id, 'C', 1, 1, '2', '3', '1.fc22', '1.fc22', 2),
                             (build.id, 'E', None, 0, None, '0.1', None, '1.fc22.1', 2)]
         c = AppliedChange

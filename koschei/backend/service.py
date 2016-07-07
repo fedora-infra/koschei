@@ -85,6 +85,15 @@ class KojiService(Service):
                 'secondary': secondary_koji
             }
 
+    def secondary_session_for(self, collection):
+        """
+        Returns secondary session for secondary mode and primary otherwise.
+
+        :param: collection collection object
+        """
+        return self.koji_sessions['secondary' if collection.secondary_mode
+                                  else 'primary']
+
 
 def sd_notify(msg):
     sock_path = os.environ.get('NOTIFY_SOCKET', None)

@@ -33,6 +33,7 @@ from koschei.models import (Build, UnappliedChange, KojiTask, Package,
                             PackageGroup, PackageGroupRelation, BasePackage,
                             Collection, RepoMapping)
 from koschei.plugin import dispatch_event
+from koschei.backend.service import KojiService
 
 
 class PackagesDontExist(Exception):
@@ -49,13 +50,7 @@ def check_package_state(package, prev_state):
                        new_state=new_state)
 
 
-class Backend(object):
-
-    def __init__(self, log, db, koji_sessions):
-        self.log = log
-        self.db = db
-        self.koji_sessions = koji_sessions
-
+class Backend(KojiService):
     def submit_build(self, package):
         build = Build(package_id=package.id, state=Build.RUNNING)
         name = package.name
@@ -63,9 +58,12 @@ class Backend(object):
         if package.arch_override:
             build_opts = {'arch_override': package.arch_override}
         tag = package.collection.target_tag
-        # SRPMs are taken from secondary, primary needs to be able to build
-        # from relative URL constructed against secondary (internal redirect)
-        srpm_res = koji_util.get_last_srpm(self.koji_sessions['secondary'], tag, name)
+        # on secondary collections SRPMs are taken from secondary, primary
+        # needs to be able to build from relative URL constructed against
+        # secondary (internal redirect)
+        srpm_res = koji_util.get_last_srpm(
+            self.secondary_session_for(package.collection), tag, name
+        )
         if srpm_res:
             srpm, srpm_url = srpm_res
             package.manual_priority = 0
@@ -86,7 +84,7 @@ class Backend(object):
                .delete(synchronize_session=False)
 
     def get_newer_build_if_exists(self, package):
-        [info] = self.koji_sessions['secondary']\
+        [info] = self.secondary_session_for(package.collection)\
             .listTagged(package.collection.target_tag, latest=True,
                         package=package.name, inherit=True) or [None]
         if info and self.is_build_newer(package.last_build, info):
@@ -122,8 +120,7 @@ class Backend(object):
             retries = 10
             while True:
                 try:
-                    build_tasks = self.sync_tasks(collection, chunk,
-                                                  self.koji_sessions['secondary'])
+                    build_tasks = self.sync_tasks(collection, chunk, real=True)
                     for build, tasks in build_tasks.items():
                         if not build.repo_id:
                             del build_tasks[build]
@@ -171,6 +168,7 @@ class Backend(object):
         Sends fedmsg when the build is complete.
         Commits the transaction.
         """
+        # pylint: disable=too-many-statements
         try:
             task_timeout = timedelta(0, get_config('koji_config.task_timeout'))
             time_threshold = datetime.now() - task_timeout
@@ -211,8 +209,7 @@ class Backend(object):
                 self.log.info('Setting build {build} state to {state}'
                               .format(build=build,
                                       state=Build.REV_STATE_MAP[state]))
-                tasks = self.sync_tasks(build.package.collection, [build],
-                                        self.koji_sessions['primary'])
+                tasks = self.sync_tasks(build.package.collection, [build])
                 if build.repo_id is None:
                     # Koji problem, no need to bother packagers with this
                     self.log.info('Deleting build {0} because it has no repo_id'
@@ -237,8 +234,7 @@ class Backend(object):
                                    prev_state=prev_state,
                                    new_state=new_state)
             else:
-                tasks = self.sync_tasks(build.package.collection, [build],
-                                        self.koji_sessions['primary'])
+                tasks = self.sync_tasks(build.package.collection, [build])
                 self.insert_koji_tasks(tasks)
                 self.db.commit()
         except (StaleDataError, ObjectDeletedError, IntegrityError):
@@ -282,13 +278,17 @@ class Backend(object):
             else:
                 build.repo_id = repo_id
 
-    def sync_tasks(self, collection, builds, koji_session):
+    def sync_tasks(self, collection, builds, real=False):
         """
         Synchronizes task and subtask data from Koji.
         Sets properties on build objects passed in and return KojiTask objects.
         Uses koji_session passed as argument.
         Returns map of build to list of tasks
         """
+        if not builds:
+            return
+        koji_session = (self.secondary_session_for(collection) if real
+                        else self.koji_sessions['primary'])
         call = itercall(koji_session, builds, lambda k, b: k.getTaskInfo(b.task_id))
         for build, task_info in izip(builds, call):
             if task_info.get('create_ts'):
@@ -375,8 +375,9 @@ class Backend(object):
         """
         bases = {base.name: base for base in self.db.query(BasePackage)}
         for collection in self.db.query(Collection):
-            koji_packages = self.koji_sessions['secondary']\
-                .listPackages(tagID=collection.target_tag, inherited=False)
+            koji_session = self.secondary_session_for(collection)
+            koji_packages = koji_session.listPackages(tagID=collection.target_tag,
+                                                      inherited=False)
             whitelisted = {p['package_name'] for p in koji_packages if not p['blocked']}
             packages = self.db.query(Package).filter_by(collection_id=collection.id).all()
             to_update = [p.id for p in packages if p.blocked == (p.name in whitelisted)]
@@ -409,8 +410,8 @@ class Backend(object):
         """
         for collection in self.db.query(Collection):
             tag = collection.target_tag
-            infos = self.koji_sessions['secondary']\
-                .listTagged(tag, latest=True, inherit=True)
+            koji_session = self.secondary_session_for(collection)
+            infos = koji_session.listTagged(tag, latest=True, inherit=True)
             existing_task_ids = set(self.db.query(Build.task_id)
                                     .join(Build.package)
                                     .filter(Package.collection_id == collection.id)
