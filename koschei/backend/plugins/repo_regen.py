@@ -33,7 +33,7 @@ def poll_secondary_repo(backend):
     db = backend.db
     primary = backend.koji_sessions['primary']
     secondary = backend.koji_sessions['secondary']
-    for collection in db.query(Collection).all():
+    for collection in db.query(Collection).filter_by(secondary_mode=True).all():
         remote_repo = koji_util.get_latest_repo(secondary, collection.build_tag)
         mapping = db.query(RepoMapping)\
             .filter_by(secondary_id=remote_repo['id'])\
