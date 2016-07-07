@@ -739,7 +739,10 @@ def search():
 @app.route('/package/<name>/edit', methods=['POST'])
 @auth.login_required()
 def edit_package(name):
-    package = db.query(Package).filter_by(name=name).first_or_404()
+    collection = g.current_collection or g.default_collection
+    package = db.query(Package)\
+        .filter_by(name=name, collection_id=collection.id)\
+        .first_or_404()
     form = request.form
     try:
         for key, prev_val in form.items():
