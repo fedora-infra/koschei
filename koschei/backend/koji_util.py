@@ -83,7 +83,7 @@ def prepare_build_opts(opts=None):
 
 
 def get_last_srpm(koji_session, tag, name):
-    rel_pathinfo = koji.PathInfo(topdir=get_config('koji_config.srpm_relative_path_root'))
+    rel_pathinfo = koji.PathInfo(topdir=koji_session.config['srpm_relative_path_root'])
     info = koji_session.listTagged(tag, latest=True,
                                    package=name, inherit=True)
     if info:
