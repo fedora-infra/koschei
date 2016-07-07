@@ -381,7 +381,7 @@ class Resolver(KojiService):
         generate_dependency_changes_time.reset()
         total_time.start()
         self.log.info("Generating new repo")
-        repo_descriptor = self.create_repo_descriptor(repo_id)
+        repo_descriptor = self.create_repo_descriptor(collection.secondary_mode, repo_id)
         self.set_descriptor_tags([repo_descriptor])
         if not repo_descriptor.build_tag:
             self.log.error('Cannot generate repo: {}'.format(repo_id))
@@ -423,9 +423,9 @@ class Resolver(KojiService):
         total_time.display()
         generate_dependency_changes_time.display()
 
-    def create_repo_descriptor(self, repo_id):
-        return RepoDescriptor('secondary' if get_config('secondary_mode') else
-                              'primary', None, repo_id)
+    def create_repo_descriptor(self, secondary_mode, repo_id):
+        return RepoDescriptor('secondary' if secondary_mode else 'primary',
+                              None, repo_id)
 
     def process_build(self, sack, entry, curr_deps):
         self.log.info("Processing build {}".format(entry.id))
@@ -453,13 +453,15 @@ class Resolver(KojiService):
         # pylint: disable=E1101
         builds = self.db.query(Build.id, Build.repo_id, Build.real, Build.package_id,
                                Package.name, Build.version, Build.release,
-                               Package.last_build_id, Package.collection_id)\
+                               Package.last_build_id, Package.collection_id,
+                               Collection.secondary_mode)\
             .join(Build.package)\
             .filter(Build.deps_resolved == None)\
             .filter(Build.repo_id != None)\
             .order_by(Build.repo_id).all()
 
-        descriptors = [self.create_repo_descriptor(build.repo_id) for build in builds]
+        descriptors = [self.create_repo_descriptor(build.secondary_mode, build.repo_id)
+                       for build in builds]
         self.set_descriptor_tags(descriptors)
         builds_to_process = []
         repos_to_process = []
@@ -511,7 +513,7 @@ class Resolver(KojiService):
         for collection in self.db.query(Collection).all():
             curr_repo = koji_util.get_latest_repo(self.koji_sessions['secondary'],
                                                   collection.build_tag)
-            if curr_repo and get_config('secondary_mode'):
+            if curr_repo and collection.secondary_mode:
                 self.backend.refresh_repo_mappings()
                 mapping = self.db.query(RepoMapping)\
                     .filter_by(secondary_id=curr_repo['id'])\

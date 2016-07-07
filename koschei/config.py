@@ -65,7 +65,6 @@ def load_config(config_paths, ignore_env=False):
 
     assert config
 
-    config['secondary_mode'] = bool(config.get('secondary_koji_config', False))
     secondary_koji_config = dict(config['koji_config'])
     secondary_koji_config.update(config.get('secondary_koji_config', {}))
     config['secondary_koji_config'] = secondary_koji_config

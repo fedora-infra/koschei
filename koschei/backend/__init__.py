@@ -102,7 +102,7 @@ class Backend(object):
                                  task_info['version'],
                                  task_info['release'])) < 0
 
-    def register_real_builds(self, package_build_infos):
+    def register_real_builds(self, collection, package_build_infos):
         """
         Registers real builds for given build infos.
         Takes care of concurrency and commits the transaction.
@@ -122,7 +122,7 @@ class Backend(object):
             retries = 10
             while True:
                 try:
-                    build_tasks = self.sync_tasks(chunk,
+                    build_tasks = self.sync_tasks(collection, chunk,
                                                   self.koji_sessions['secondary'])
                     for build, tasks in build_tasks.items():
                         if not build.repo_id:
@@ -211,7 +211,8 @@ class Backend(object):
                 self.log.info('Setting build {build} state to {state}'
                               .format(build=build,
                                       state=Build.REV_STATE_MAP[state]))
-                tasks = self.sync_tasks([build], self.koji_sessions['primary'])
+                tasks = self.sync_tasks(build.package.collection, [build],
+                                        self.koji_sessions['primary'])
                 if build.repo_id is None:
                     # Koji problem, no need to bother packagers with this
                     self.log.info('Deleting build {0} because it has no repo_id'
@@ -236,7 +237,8 @@ class Backend(object):
                                    prev_state=prev_state,
                                    new_state=new_state)
             else:
-                tasks = self.sync_tasks([build], self.koji_sessions['primary'])
+                tasks = self.sync_tasks(build.package.collection, [build],
+                                        self.koji_sessions['primary'])
                 self.insert_koji_tasks(tasks)
                 self.db.commit()
         except (StaleDataError, ObjectDeletedError, IntegrityError):
@@ -261,7 +263,7 @@ class Backend(object):
                 except KeyError:
                     pass
 
-    def set_build_repo_id(self, build, task):
+    def set_build_repo_id(self, build, task, secondary_mode):
         if build.repo_id:
             return
         try:
@@ -269,7 +271,7 @@ class Backend(object):
         except KeyError:
             return
         if repo_id:
-            if get_config('secondary_mode') and not build.real:
+            if secondary_mode and not build.real:
                 self.refresh_repo_mappings()
                 # need to map the repo_id to primary
                 mapping = self.db.query(RepoMapping)\
@@ -280,7 +282,7 @@ class Backend(object):
             else:
                 build.repo_id = repo_id
 
-    def sync_tasks(self, builds, koji_session):
+    def sync_tasks(self, collection, builds, koji_session):
         """
         Synchronizes task and subtask data from Koji.
         Sets properties on build objects passed in and return KojiTask objects.
@@ -304,7 +306,7 @@ class Backend(object):
             build_arch_tasks = [task for task in subtasks
                                 if task['method'] == 'buildArch']
             for task in build_arch_tasks:
-                self.set_build_repo_id(build, task)
+                self.set_build_repo_id(build, task, collection.secondary_mode)
                 db_task = KojiTask(task_id=task['id'])
                 db_task.build_id = build.id
                 db_task.state = task['state']
@@ -431,7 +433,7 @@ class Backend(object):
                             (name_mapping[info['package_name']].id, info)
                         )
                 if package_build_infos:
-                    self.register_real_builds(package_build_infos)
+                    self.register_real_builds(collection, package_build_infos)
 
     def add_packages(self, names, collection_id=None):
         query = self.db.query(Package).filter(Package.name.in_(names))
