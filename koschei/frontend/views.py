@@ -33,12 +33,12 @@ from sqlalchemy.sql import exists, func, false
 from wtforms import StringField, TextAreaField
 from wtforms.validators import Regexp, ValidationError
 
-from koschei import util, plugin
+from koschei import util, plugin, data
 from koschei.config import get_config
 from koschei.frontend import app, db, frontend_config, auth
 from koschei.models import (Package, Build, PackageGroup, PackageGroupRelation,
-                            AdminNotice, User, BuildrootProblem, BasePackage,
-                            GroupACL, Collection, get_or_create)
+                            AdminNotice, BuildrootProblem, BasePackage,
+                            GroupACL, Collection)
 
 log = logging.getLogger('koschei.views')
 
@@ -606,15 +606,7 @@ def process_group_form(group=None):
     # check form validity
     if not form.validate_or_flash():
         return render_template('edit-group.html', group=group, form=form)
-    names = set(form.packages.data)
-    users = [get_or_create(db, User, name=name) for name in set(form.owners.data)]
-    db.commit()
-    user_ids = [u.id for u in users]
-    packages = db.query(BasePackage).filter(BasePackage.name.in_(names))
-    found_names = {p.name for p in packages}
-    if len(found_names) != len(names):
-        flash("Packages don't exist: " + ', '.join(names - found_names))
-        return render_template('edit-group.html', group=group, form=form)
+
     created = not group
     if created:
         group = PackageGroup(namespace=g.user.name)
@@ -626,15 +618,13 @@ def process_group_form(group=None):
         db.rollback()
         flash("Group already exists")
         return render_template('edit-group.html', group=group, form=form)
-    if not created:
-        db.query(PackageGroupRelation)\
-          .filter_by(group_id=group.id).delete()
-        db.query(GroupACL)\
-          .filter_by(group_id=group.id).delete()
-    rels = [dict(group_id=group.id, base_id=base.id) for base in packages]
-    acls = [dict(group_id=group.id, user_id=user_id) for user_id in user_ids]
-    db.execute(PackageGroupRelation.__table__.insert(), rels)
-    db.execute(GroupACL.__table__.insert(), acls)
+    try:
+        data.set_group_content(db, group, form.packages.data)
+        data.set_group_maintainers(db, group, form.owners.data)
+    except data.PackagesDontExist as e:
+        db.rollback()
+        flash(str(e))
+        return render_template('edit-group.html', group=group, form=form)
     db.commit()
     flash("Group created" if created else "Group modified")
     return redirect(url_for('group_detail', name=group.name,
@@ -685,33 +675,29 @@ if not frontend_config['auto_tracking']:
             if not form.validate_or_flash():
                 return render_template("add-packages.html", form=form)
             names = set(form.packages.data)
-            existing = db.query(Package).filter(Package.name.in_(names)).all()
-            nonexistent = names - {p.name for p in existing}
-            if nonexistent:
-                flash("Packages don't exist: " + ','.join(nonexistent))
-                return render_template("add-packages.html", form=form)
-            if form.collection.data == '_all':
-                coll_ids = [c.id for c in g.collections]
-            else:
-                coll_ids = [c.id for c in g.collections if c.name == form.collection.data]
-                if not coll_ids:
-                    abort(404)
-            db.query(Package).filter(Package.name.in_(names))\
-                             .filter(Package.collection_id.in_(coll_ids))\
-                             .update({'tracked': True})
+            try:
+                collection = [c for c in g.collections
+                              if c.name == form.collection.data][0]
+            except IndexError:
+                abort(404)
+
             if form.group.data:
-                name, _, namespace = reversed(form.group.data.partition('/'))
+                name, namespace = PackageGroup.parse_name(form.group.data)
                 group = db.query(PackageGroup)\
-                          .filter_by(namespace=namespace or None, name=name)\
-                          .first() or abort(400)
+                          .filter_by(namespace=namespace, name=name)\
+                          .first_or_404()
                 if not group.editable:
                     abort(400)
-                rels = [dict(group_id=group.id, package_name=name) for name in names]
-                if rels:
-                    db.execute(PackageGroupRelation.__table__.insert(), rels)
-            added = ' '.join(names)
-            log.info("%s added %s", g.user.name, added)
-            flash("Packages added: {}".format(added))
+                data.set_group_content(db, group, names, append=True)
+
+            try:
+                added = data.track_packages(db, collection, names)
+            except data.PackagesDontExist as e:
+                db.rollback()
+                flash(str(e))
+                return render_template("add-packages.html", form=form)
+
+            flash("Packages added: {}".format(','.join(p.name for p in added)))
             db.commit()
             return redirect(request.form.get('next') or url_for('frontpage'))
         return render_template("add-packages.html", form=form)
