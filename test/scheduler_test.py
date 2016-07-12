@@ -30,10 +30,8 @@ from koschei.backend.services.scheduler import Scheduler
 class SchedulerTest(DBTest):
     def get_scheduler(self):
         backend_mock = Mock()
-        backend_mock.get_newer_build_if_exists.return_value = None
         sched = Scheduler(db=self.s, koji_sessions={'primary': Mock(), 'secondary': Mock()},
                           backend=backend_mock)
-        sched.lock_package_table = lambda: None
         return sched
 
     def prepare_depchanges(self):
@@ -170,7 +168,6 @@ class SchedulerTest(DBTest):
 
     def test_coefficient(self):
         rnv, eclipse, fop = self.prepare_packages(['rnv', 'eclipse', 'fop'])
-        rnv_coll = self.collection
         eclipse_coll = m.Collection(name='eclipse', display_name='eclipse',
                                     build_tag='foo', target_tag='foo',
                                     priority_coefficient=0.1)
@@ -187,7 +184,9 @@ class SchedulerTest(DBTest):
         self.assertAlmostEqual(517, priorities[0][1], places=1)
         self.assertEquals(rnv.id, priorities[1][0])
         self.assertAlmostEqual(170, priorities[1][1], places=1)
-        self.assertEqual(2, len(priorities))
+        self.assertEquals(fop.id, priorities[2][0])
+        self.assertAlmostEqual(0, priorities[2][1], places=1)
+        self.assertEqual(3, len(priorities))
 
     @contextmanager
     def prio_table(self, tablename='tmp', **kwargs):
