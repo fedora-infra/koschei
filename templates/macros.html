@@ -77,11 +77,13 @@
             {% else %} {# unified view #}
             {% for pkg in package.packages %}
             <td>
-                <a href="{{ url_for('package_detail', name=package.name) }}{{
-                    page_args(clear=True, collection=pkg.collection.name) }}">
-                    <img src="{{ pkg.state_icon }}"
-                    title="{{ pkg.state_string }}" alt="{{ pkg.state_string }}"/>
-                </a>
+                {% if pkg.tracked %}
+                    <a href="{{ url_for('package_detail', name=package.name) }}{{
+                        page_args(clear=True, collection=pkg.collection.name) }}">
+                        <img src="{{ pkg.state_icon }}"
+                        title="{{ pkg.state_string }}" alt="{{ pkg.state_string }}"/>
+                    </a>
+                {% endif %}
             </td>
             {% endfor %}
             {% endif %}
