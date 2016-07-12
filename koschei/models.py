@@ -397,6 +397,13 @@ class PackageGroup(Base):
     def owners_list(self):
         return ', '.join(u.name for u in self.owners)
 
+    @staticmethod
+    def parse_name(name):
+        if '/' not in name:
+            return None, name
+        ns, _, name = name.partition('/')
+        return ns, name
+
     def __str__(self):
         return self.full_name
 

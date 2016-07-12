@@ -25,27 +25,21 @@ import re
 import os
 import sys
 import argparse
-import logging
 
+from koschei import data
 from koschei.models import (get_engine, Base, Package, PackageGroup, Session,
                             AdminNotice, Collection)
-from koschei.backend import Backend, PackagesDontExist, koji_util
+from koschei.backend import koji_util, Backend
 from koschei.config import load_config, get_config
 
 
 load_config(['/usr/share/koschei/config.cfg', '/etc/koschei/config-admin.cfg'])
 
 
-def parse_group_name(name):
-    if '/' not in name:
-        return None, name
-    ns, _, name = name.partition('/')
-    return ns, name
-
-
 class Command(object):
+    needs_db = True
+    needs_koji = False
     needs_koji_login = False
-    needs_backend = True
 
     def setup_parser(self, parser):
         pass
@@ -68,22 +62,22 @@ def main():
     cmd = args.cmd
     kwargs = vars(args)
     del kwargs['cmd']
-    if cmd.needs_backend:
+    if cmd.needs_db:
+        kwargs['db'] = db = Session()
+    if cmd.needs_koji or cmd.needs_koji_login:
         primary = koji_util.KojiSession(anonymous=not cmd.needs_koji_login)
         secondary = koji_util.KojiSession(anonymous=True, koji_id='secondary')
-        backend = Backend(db=Session(), log=logging.getLogger(),
-                          koji_sessions={'primary': primary, 'secondary': secondary})
-        kwargs['backend'] = backend
+        kwargs['koji_sessions'] = {'primary': primary, 'secondary': secondary}
     cmd.execute(**kwargs)
-    if cmd.needs_backend:
-        backend.db.commit()
-        backend.db.close()
+    if cmd.needs_db:
+        db.commit()
+        db.close()
 
 
 class CreateDb(Command):
     """ Creates database tables """
 
-    needs_backend = False
+    needs_db = False
 
     def execute(self):
         from alembic.config import Config
@@ -103,10 +97,10 @@ class Cleanup(Command):
         parser.add_argument('--reindex', action='store_true')
         parser.add_argument('--vacuum', action='store_true')
 
-    def execute(self, backend, older_than, reindex, vacuum):
+    def execute(self, db, older_than, reindex, vacuum):
         if older_than < 2:
             sys.exit("Minimal allowed value is 2 months")
-        conn = backend.db.connection()
+        conn = db.connection()
         conn.connection.connection.rollback()
         conn.connection.connection.autocommit = True
         res = conn.execute(
@@ -130,8 +124,7 @@ class SetNotice(Command):
     def setup_parser(self, parser):
         parser.add_argument('content')
 
-    def execute(self, backend, content):
-        db = backend.db
+    def execute(self, db, content):
         key = 'global_notice'
         content = content.strip()
         notice = db.query(AdminNotice).filter_by(key=key).first()
@@ -143,10 +136,9 @@ class SetNotice(Command):
 class ClearNotice(Command):
     """ Clears current admin notice """
 
-    def execute(self, backend):
+    def execute(self, db):
         key = 'global_notice'
-        backend.db.query(AdminNotice).filter_by(key=key).delete()
-        backend.db.commit()
+        db.query(AdminNotice).filter_by(key=key).delete()
 
 
 class AddPkg(Command):
@@ -154,20 +146,19 @@ class AddPkg(Command):
 
     def setup_parser(self, parser):
         parser.add_argument('names', nargs='+')
-        parser.add_argument('-c', '--collection')
+        parser.add_argument('-c', '--collection', required=True)
 
-    def execute(self, backend, names, collection):
+    def execute(self, db, names, collection):
         if collection:
-            collection = backend.db.query(Collection)\
+            collection = db.query(Collection)\
                 .filter_by(name=collection)\
                 .first()
             if not collection:
                 sys.exit("Collection not found")
         try:
-            backend.add_packages(names, collection_id=collection.id if
-                                 collection else None)
-        except PackagesDontExist as e:
-            sys.exit("Packages don't exist: " + ','.join(e.names))
+            data.track_packages(db, collection, names)
+        except data.PackagesDontExist as e:
+            sys.exit(str(e))
 
 
 class AddGroup(Command):
@@ -175,14 +166,22 @@ class AddGroup(Command):
     def setup_parser(self, parser):
         parser.add_argument('group')
         parser.add_argument('pkgs', nargs='*')
+        parser.add_argument('-m', '--maintainer', nargs='*')
 
-    def execute(self, backend, group, pkgs):
-        pkg_objs = backend.db.query(Package)\
-                             .filter(Package.name.in_(pkgs)).all()
-        names = {pkg.name for pkg in pkg_objs}
-        if names != set(pkgs):
-            sys.exit("Packages not found: " + ','.join(set(pkgs).difference(names)))
-        backend.add_group(group, pkg_objs)
+    def execute(self, db, group, pkgs, maintainer):
+        namespace, name = PackageGroup.parse_name(group)
+        if (db.query(PackageGroup)
+                .filter_by(namespace=namespace, name=name)
+                .count()):
+            sys.exit("Group already exists")
+        group_obj = PackageGroup(name=name, namespace=namespace)
+        db.add(group_obj)
+        db.flush()
+        try:
+            data.set_group_content(db, group, pkgs)
+            data.set_group_maintainers(db, group, maintainer)
+        except data.PackagesDontExist as e:
+            sys.exit(str(e))
 
 
 class SetPriority(Command):
@@ -193,9 +192,9 @@ class SetPriority(Command):
         parser.add_argument('value')
         parser.add_argument('--static', action='store_true')
 
-    def execute(self, backend, names, value, static):
-        pkgs = backend.db.query(Package)\
-                         .filter(Package.name.in_(names)).all()
+    def execute(self, db, names, value, static):
+        pkgs = db.query(Package)\
+            .filter(Package.name.in_(names)).all()
         if len(names) != len(pkgs):
             not_found = set(names).difference(pkg.name for pkg in pkgs)
             sys.exit('Packages not found: {}'.format(','.join(not_found)))
@@ -218,16 +217,16 @@ class SetArchOverride(Command):
         parser.add_argument('--group', action='store_true',
                             help="Apply on entire group instead of single package")
 
-    def execute(self, backend, name, arch_override, group):
+    def execute(self, db, name, arch_override, group):
         if group:
-            group_obj = backend.db.query(PackageGroup)\
+            group_obj = db.query(PackageGroup)\
                                   .filter_by(name=name).first()
             if not group_obj:
                 sys.exit("Group {} not found".format(name))
             for pkg in group_obj.packages:
                 pkg.arch_override = arch_override
         else:
-            pkg = backend.db.query(Package).filter_by(name=name).first()
+            pkg = db.query(Package).filter_by(name=name).first()
             if not pkg:
                 sys.exit("Package {} not found".format(name))
             pkg.arch_override = arch_override
@@ -244,13 +243,13 @@ class GroupCommandParser(object):
                             help="Appends to existing list of packages instead "
                             "of overwriting it")
 
-    def set_group_content(self, backend, group, content_from_file, append):
+    def set_group_content(self, db, group, content_from_file, append):
 
         def from_fo(fo):
             content = filter(None, fo.read().split())
             if not content:
                 sys.exit("Group content empty")
-            backend.set_group_content(group, content, append)
+            data.set_group_content(group, content, append)
 
         if content_from_file == '-':
             from_fo(sys.stdin)
@@ -268,17 +267,16 @@ class CreateGroup(GroupCommandParser, Command):
                             "just name for global groups")
         super(CreateGroup, self).setup_parser(parser)
 
-    def execute(self, backend, name, content_from_file, append):
-        ns, name = parse_group_name(name)
-        group = backend.db.query(PackageGroup)\
+    def execute(self, db, name, content_from_file, append):
+        ns, name = PackageGroup.parse_name(name)
+        group = db.query(PackageGroup)\
             .filter_by(name=name, namespace=ns or None).first()
         if group:
             sys.exit("Group already exists")
         group = PackageGroup(name=name, namespace=ns)
-        backend.db.add(group)
-        backend.db.flush()
-        self.set_group_content(backend, group, content_from_file, append)
-        backend.db.commit()
+        db.add(group)
+        db.flush()
+        self.set_group_content(db, group, content_from_file, append)
 
 
 class EditGroup(GroupCommandParser, Command):
@@ -296,12 +294,10 @@ class EditGroup(GroupCommandParser, Command):
                             help="Sets group as global (unsets namespace)")
         super(EditGroup, self).setup_parser(parser)
 
-    def execute(self, backend, current_name, new_name, new_namespace,
+    def execute(self, db, current_name, new_name, new_namespace,
                 make_global, content_from_file, append):
-        ns, name = parse_group_name(current_name)
-        if not name:
-            ns, name = name, ns
-        group = backend.db.query(PackageGroup)\
+        ns, name = PackageGroup.parse_name(current_name)
+        group = db.query(PackageGroup)\
             .filter_by(name=name, namespace=ns or None).first()
         if not group:
             sys.exit("Group {} not found".format(current_name))
@@ -311,8 +307,7 @@ class EditGroup(GroupCommandParser, Command):
             group.namespace = new_namespace
         if make_global:
             group.namespace = None
-        self.set_group_content(backend, group, content_from_file, append)
-        backend.db.commit()
+        self.set_group_content(db, group, content_from_file, append)
 
 
 class DeleteGroup(Command):
@@ -322,14 +317,13 @@ class DeleteGroup(Command):
         parser.add_argument('current_name',
                             help="Current group full name - ns/name")
 
-    def execute(self, backend, current_name):
-        ns, name = parse_group_name(current_name)
-        group = backend.db.query(PackageGroup)\
+    def execute(self, db, current_name):
+        ns, name = PackageGroup.parse_name(current_name)
+        group = db.query(PackageGroup)\
             .filter_by(name=name, namespace=ns or None).first()
         if not group:
             sys.exit("Group {} not found".format(current_name))
-        backend.db.delete(group)
-        backend.db.commit()
+        db.delete(group)
 
 
 class CollectionModeAction(argparse.Action):
@@ -377,23 +371,21 @@ class CollectionCommandParser(object):
 class CreateCollection(CollectionCommandParser, Command):
     """ Creates new package collection """
 
-    def execute(self, backend, **kwargs):
-        backend.db.add(Collection(**kwargs))
-        backend.db.commit()
+    def execute(self, db, **kwargs):
+        db.add(Collection(**kwargs))
 
 
 class EditCollection(CollectionCommandParser, Command):
     """ Modifies existing package collection """
     args_required = False
 
-    def execute(self, backend, name, **kwargs):
-        collection = backend.db.query(Collection).filter_by(name=name).first()
+    def execute(self, db, name, **kwargs):
+        collection = db.query(Collection).filter_by(name=name).first()
         if not collection:
             sys.exit("Collection not found")
         for key, value in kwargs.items():
             if value is not None:
                 setattr(collection, key, value)
-        backend.db.commit()
 
 
 class DeleteCollection(Command):
@@ -405,17 +397,16 @@ class DeleteCollection(Command):
                             help="Name identificator")
         parser.add_argument('-f', '--force', action='store_true')
 
-    def execute(self, backend, name, force):
-        collection = backend.db.query(Collection).filter_by(name=name).first()
+    def execute(self, db, name, force):
+        collection = db.query(Collection).filter_by(name=name).first()
         if not collection:
             sys.exit("Collection not found")
         if (not force and
-                backend.db.query(Package).filter_by(collection_id=collection.id).count()):
+                db.query(Package).filter_by(collection_id=collection.id).count()):
             sys.exit("The collection contains packages. Specify --force to delete "
                      "it anyway. It means deleting all the packages build history. "
                      "It cannot be reverted and may take long time to execute")
-        backend.db.delete(collection)
-        backend.db.commit()
+        db.delete(collection)
 
 
 class Psql(Command):
@@ -449,12 +440,12 @@ class SubmitBuild(Command):
         # TODO allow selecting particular collection
         parser.add_argument('names', nargs='+')
 
-    def execute(self, backend, names):
-        pkgs = backend.db.query(Package)\
-                         .filter(Package.name.in_(names)).all()
+    def execute(self, db, koji_sessions, names):
+        pkgs = db.query(Package)\
+            .filter(Package.name.in_(names)).all()
+        backend = Backend(db=db, koji_sessions=koji_sessions)
         for pkg in pkgs:
             backend.submit_build(pkg)
-        backend.db.commit()
 
 
 if __name__ == '__main__':
