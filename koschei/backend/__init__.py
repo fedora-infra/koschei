@@ -342,36 +342,6 @@ class Backend(KojiService):
             self.db.flush()
             self.db.bulk_insert(to_insert)
 
-    def add_group(self, group, pkgs):
-        group_obj = self.db.query(PackageGroup)\
-                           .filter_by(name=group).first()
-        if not group_obj:
-            group_obj = PackageGroup(name=group)
-            self.db.add(group_obj)
-            self.db.flush()
-        for pkg in pkgs:
-            rel = PackageGroupRelation(group_id=group_obj.id,
-                                       base_id=pkg.base_id)
-            self.db.add(rel)
-
-    def set_group_content(self, group, contents, append=False):
-        contents = set(contents)
-        base_ids = self.db.query(BasePackage.id)\
-            .filter(BasePackage.name.in_(contents))\
-            .all_flat(set)
-        if len(base_ids) != len(contents):
-            raise RuntimeError("Some packages weren't found")
-        if append:
-            base_ids -= self.db.query(PackageGroupRelation.base_id)\
-                .filter(PackageGroup.id == group.id)\
-                .filter(PackageGroupRelation.base_id.in_(base_ids))\
-                .all_flat(set)
-        rels = [dict(group_id=group.id, base_id=base_id) for base_id in base_ids]
-        if not append:
-            self.db.query(PackageGroupRelation).filter_by(group_id=group.id).delete()
-        if rels:
-            self.db.execute(insert(PackageGroupRelation, rels))
-
     def refresh_packages(self):
         """
         Refresh packages from Koji: add packages not yet known by Koschei
@@ -439,19 +409,6 @@ class Backend(KojiService):
                         )
                 if package_build_infos:
                     self.register_real_builds(collection, package_build_infos)
-
-    def add_packages(self, names, collection_id=None):
-        query = self.db.query(Package).filter(Package.name.in_(names))
-        if collection_id:
-            query = query.filter_by(collection_id=collection_id)
-        packages = query.all()
-        if len(packages) != len(names):
-            nonexistent = set(names) - {p.name for p in packages}
-            raise PackagesDontExist(names=nonexistent)
-        query = self.db.query(Package).filter(Package.name.in_(names))
-        if collection_id:
-            query = query.filter_by(collection_id=collection_id)
-        query.update({'tracked': True})
 
     def sync_tracked(self, tracked, collection_id=None):
         """

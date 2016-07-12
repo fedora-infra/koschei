@@ -374,36 +374,6 @@ class BackendTest(DBTest):
         self.koji_session.cancelTask.assert_called_once_with(running_build.task_id)
         self.assertEquals(0, self.s.query(m.Build).count())
 
-    def test_set_group_contents(self):
-        group = m.PackageGroup(name='foo')
-        bar, a1, a2, a3 = self.prepare_packages(['bar', 'a1', 'a2', 'a3'])
-        self.s.add(group)
-        self.s.flush()
-        rel = m.PackageGroupRelation(group_id=group.id, base_id=bar.base_id)
-        self.s.add(rel)
-        self.s.commit()
-        content = ['a1', 'a2', 'a3']
-        self.backend.set_group_content(group, content)
-
-        self.assertItemsEqual([a1.base_id, a2.base_id, a3.base_id],
-                              self.s.query(m.PackageGroupRelation.base_id)
-                              .filter_by(group_id=group.id).all_flat())
-
-    def test_append_group_content(self):
-        group = m.PackageGroup(name='foo')
-        self.s.add(group)
-        self.s.flush()
-        bar, a1, a2, a3 = self.prepare_packages(['bar', 'a1', 'a2', 'a3'])
-        rel = m.PackageGroupRelation(group_id=group.id, base_id=bar.base_id)
-        self.s.add(rel)
-        self.s.commit()
-        content = ['a1', 'a2', 'a3']
-        self.backend.set_group_content(group, content, append=True)
-
-        self.assertItemsEqual([bar.base_id, a1.base_id, a2.base_id, a3.base_id],
-                              self.s.query(m.PackageGroupRelation.base_id)
-                              .filter_by(group_id=group.id).all_flat())
-
     def test_refresh_packages(self):
         self.prepare_packages(['eclipse'])
         self.secondary_koji.listPackages.return_value = package_list
