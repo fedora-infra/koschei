@@ -167,13 +167,17 @@
                     window.location = window.location.pathname + '{{ page_args(page=None, collection=None) }}';
                 else
                     window.location = '{{ page_args(page=None, collection='...') }}';">
+            {% if g.current_collections | length > 1 and g.current_collections != g.collections %}
+            <option selected="selected">{{ g.current_collections | join(' + ') }}</option>
+            {% endif %}
             {% if allow_all %}
             <option value="_all">All collections</option>
             {% endif %}
             {% for collection in g.collections %}
             <option value="{{ collection.name }}"
-            {# TODO #}
-            {% if collection.id == g.current_collections[0].id %}selected="selected"{% endif %}>
+                {% if g.current_collections | length == 1 and collection.id == g.current_collections[0].id %}
+                selected="selected"
+                {% endif %}>
             {{ collection }}
             </option>
             {% endfor %}
