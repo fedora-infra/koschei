@@ -30,7 +30,7 @@ from koschei.backend.services.scheduler import Scheduler
 class SchedulerTest(DBTest):
     def get_scheduler(self):
         backend_mock = Mock()
-        sched = Scheduler(db=self.s, koji_sessions={'primary': Mock(), 'secondary': Mock()},
+        sched = Scheduler(db=self.db, koji_sessions={'primary': Mock(), 'secondary': Mock()},
                           backend=backend_mock)
         return sched
 
@@ -83,8 +83,8 @@ class SchedulerTest(DBTest):
                                        distance=1))
 
         for chng in chngs:
-            self.s.add(chng)
-        self.s.commit()
+            self.db.add(chng)
+        self.db.commit()
         return build1.package, build3.package
 
     def assert_priority_query(self, query):
@@ -123,14 +123,14 @@ class SchedulerTest(DBTest):
         for days in [0, 2, 5, 7, 12]:
             pkg = m.Package(name='p{}'.format(days), collection_id=self.collection.id)
             self.ensure_base_package(pkg)
-            self.s.add(pkg)
-            self.s.flush()
+            self.db.add(pkg)
+            self.db.flush()
             build = m.Build(package_id=pkg.id,
                             started=datetime.now() - timedelta(days, hours=1),
                             version='1', release='1.fc25',
                             task_id=days + 1)
-            self.s.add(build)
-        self.s.commit()
+            self.db.add(build)
+        self.db.commit()
         query = self.get_scheduler().get_time_priority_query()
         self.assert_priority_query(query)
         res = sorted(query.all(), key=lambda x: x.priority)
@@ -171,8 +171,8 @@ class SchedulerTest(DBTest):
         eclipse_coll = m.Collection(name='eclipse', display_name='eclipse',
                                     build_tag='foo', target_tag='foo',
                                     priority_coefficient=0.1)
-        self.s.add(eclipse_coll)
-        self.s.flush()
+        self.db.add(eclipse_coll)
+        self.db.flush()
         eclipse.collection_id = eclipse_coll.id
         self.prepare_build('rnv', True)
         self.prepare_build('rnv', False)
@@ -193,7 +193,7 @@ class SchedulerTest(DBTest):
         try:
             table = Table(tablename, MetaData(),
                           Column('pkg_id', Integer), Column('priority', Integer))
-            conn = self.s.connection()
+            conn = self.db.connection()
             table.create(bind=conn)
             priorities = {name: prio for name, prio in kwargs.items() if '_' not in name}
             builds = {name[:-len("_build")]: state for name, state in kwargs.items()
@@ -202,43 +202,43 @@ class SchedulerTest(DBTest):
                       if name.endswith('_state')}
             pkgs = []
             for name in priorities.keys():
-                pkg = self.s.query(m.Package).filter_by(name=name).first()
+                pkg = self.db.query(m.Package).filter_by(name=name).first()
                 if not pkg:
                     pkg = m.Package(name=name, tracked=states.get(name) != 'ignored',
                                     collection_id=self.collection.id)
                     self.ensure_base_package(pkg)
-                    self.s.add(pkg)
-                    self.s.flush()
+                    self.db.add(pkg)
+                    self.db.flush()
                     if states.get(name, True) is not None:
                         pkg.resolved = states.get(name) != 'unresolved'
                 pkgs.append((name, pkg))
                 if name in builds:
-                    self.s.add(m.Build(package_id=pkg.id, state=builds[name],
+                    self.db.add(m.Build(package_id=pkg.id, state=builds[name],
                                        task_id=self.task_id_counter,
                                        version='1', release='1.fc25',
                                        repo_id=1 if builds[name] != m.Build.RUNNING else None))
                     self.task_id_counter += 1
             conn.execute(table.insert(), [{'pkg_id': pkg.id, 'priority': priorities[name]}
                                           for name, pkg in pkgs])
-            self.s.commit()
+            self.db.commit()
             yield table
         finally:
-            self.s.rollback()
-            conn = self.s.connection()
+            self.db.rollback()
+            conn = self.db.connection()
             table.drop(bind=conn, checkfirst=True)
-            self.s.commit()
+            self.db.commit()
 
     def assert_scheduled(self, tables, scheduled, koji_load=0.3):
         with patch('koschei.backend.koji_util.get_koji_load',
                    Mock(return_value=koji_load)):
             sched = self.get_scheduler()
             def get_prio_q():
-                return {i :self.s.query(t.c.pkg_id.label('pkg_id'), t.c.priority.label('priority'))
+                return {i :self.db.query(t.c.pkg_id.label('pkg_id'), t.c.priority.label('priority'))
                         for i, t in enumerate(tables)}
             with patch.object(sched, 'get_priority_queries', get_prio_q):
                 sched.main()
                 if scheduled:
-                    pkg = self.s.query(m.Package).filter_by(name=scheduled).one()
+                    pkg = self.db.query(m.Package).filter_by(name=scheduled).one()
                     sched.backend.submit_build.assert_called_once_with(pkg)
                 else:
                     self.assertFalse(sched.backend.submit_build.called)

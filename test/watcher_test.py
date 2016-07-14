@@ -54,5 +54,5 @@ class WatcherTest(DBTest):
         _, build = self.prepare_basic_data()
         backend_mock = Mock()
         with patch('fedmsg.tail_messages', tail_messages_mock):
-            Watcher(db=self.s, koji_sessions={'primary': Mock(), 'secondary': Mock()}, backend=backend_mock).main()
+            Watcher(db=self.db, koji_sessions={'primary': Mock(), 'secondary': Mock()}, backend=backend_mock).main()
             backend_mock.update_build_state.assert_called_once_with(build, 'CLOSED')

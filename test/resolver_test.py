@@ -76,14 +76,14 @@ class DependencyCacheTest(DBTest):
     def setUp(self):
         super(DependencyCacheTest, self).setUp()
         deps = [str(self.nevra(i)) for i in range(1, 4)]
-        self.s.execute("INSERT INTO dependency(name,epoch,version,release,arch) VALUES {}"
+        self.db.execute("INSERT INTO dependency(name,epoch,version,release,arch) VALUES {}"
                        .format(','.join(deps)))
-        self.s.commit()
+        self.db.commit()
 
     def test_get_ids(self):
         cache = DependencyCache(10)
         # from db
-        dep1, dep2 = cache.get_by_ids(self.s, [2, 3])
+        dep1, dep2 = cache.get_by_ids(self.db, [2, 3])
         self.assertEquals(self.dep(2), dep1)
         self.assertEquals(self.dep(3), dep2)
         hash(dep1)
@@ -95,7 +95,7 @@ class DependencyCacheTest(DBTest):
         hash(dep1)
         hash(dep2)
         # mixed
-        dep1, dep2 = cache.get_by_ids(self.s, [2, 1])
+        dep1, dep2 = cache.get_by_ids(self.db, [2, 1])
         self.assertEquals(self.dep(2), dep1)
         self.assertEquals(self.dep(1), dep2)
         hash(dep1)
@@ -104,7 +104,7 @@ class DependencyCacheTest(DBTest):
     def test_get_nevras(self):
         cache = DependencyCache(10)
         # from db
-        dep1, dep2 = cache.get_or_create_nevras(self.s, [self.nevra(2), self.nevra(3)])
+        dep1, dep2 = cache.get_or_create_nevras(self.db, [self.nevra(2), self.nevra(3)])
         self.assertEquals(self.dep(2), dep1)
         self.assertEquals(self.dep(3), dep2)
         hash(dep1)
@@ -116,13 +116,13 @@ class DependencyCacheTest(DBTest):
         hash(dep1)
         hash(dep2)
         # insert
-        dep1, dep2 = cache.get_or_create_nevras(self.s, [self.nevra(4), self.nevra(5)])
+        dep1, dep2 = cache.get_or_create_nevras(self.db, [self.nevra(4), self.nevra(5)])
         self.assertEquals(self.dep(4), dep1)
         self.assertEquals(self.dep(5), dep2)
         hash(dep1)
         hash(dep2)
         # mixed
-        dep1, dep2, dep3 = cache.get_or_create_nevras(self.s, [self.nevra(6),
+        dep1, dep2, dep3 = cache.get_or_create_nevras(self.db, [self.nevra(6),
                                                                self.nevra(4),
                                                                self.nevra(2)])
         self.assertEquals(self.dep(6), dep1)
@@ -133,7 +133,7 @@ class DependencyCacheTest(DBTest):
         hash(dep3)
 
         # now get them by id
-        dep1, dep2, dep3 = cache.get_by_ids(self.s, [dep1.id, dep2.id, dep3.id])
+        dep1, dep2, dep3 = cache.get_by_ids(self.db, [dep1.id, dep2.id, dep3.id])
         self.assertEquals(self.dep(6), dep1)
         self.assertEquals(self.dep(4), dep2)
         self.assertEquals(self.dep(2), dep3)
@@ -144,15 +144,15 @@ class DependencyCacheTest(DBTest):
     def test_lru(self):
         cache = DependencyCache(2)
         # from db
-        cache.get_by_ids(self.s, [2, 3])
+        cache.get_by_ids(self.db, [2, 3])
         # one more
-        cache.get_by_ids(self.s, [1])
+        cache.get_by_ids(self.db, [1])
         # from cache
         cache.get_by_ids(None, [3])
-        self.s.query(Dependency).filter_by(version="2").update({'name': 'bar'})
-        self.s.commit()
+        self.db.query(Dependency).filter_by(version="2").update({'name': 'bar'})
+        self.db.commit()
         # refetch
-        dep = cache.get_by_ids(self.s, [2])[0]
+        dep = cache.get_by_ids(self.db, [2])[0]
         self.assertEquals('bar', dep.name)
         # still cached
         cache.get_by_ids(None, [3])
@@ -160,11 +160,11 @@ class DependencyCacheTest(DBTest):
     def test_lru2(self):
         cache = DependencyCache(2)
         # from db
-        dep1, dep2 = cache.get_or_create_nevras(self.s, [self.nevra(2), self.nevra(3)])
+        dep1, dep2 = cache.get_or_create_nevras(self.db, [self.nevra(2), self.nevra(3)])
         self.assertEquals(self.dep(2), dep1)
         self.assertEquals(self.dep(3), dep2)
         # one mode
-        dep1 = cache.get_or_create_nevras(self.s, [self.nevra(1)])[0]
+        dep1 = cache.get_or_create_nevras(self.db, [self.nevra(1)])[0]
         self.assertEquals(self.dep(1), dep1)
         hash(dep1)
         # from cache
@@ -172,10 +172,10 @@ class DependencyCacheTest(DBTest):
         self.assertEquals(self.dep(3), dep3)
         hash(dep3)
 
-        self.s.query(Dependency).filter_by(version="2").update({'name': 'bar'})
-        self.s.commit()
+        self.db.query(Dependency).filter_by(version="2").update({'name': 'bar'})
+        self.db.commit()
         # 2 should be expired, this should insert new
-        dep = cache.get_or_create_nevras(self.s, [self.nevra(2)])[0]
+        dep = cache.get_or_create_nevras(self.db, [self.nevra(2)])[0]
         self.assertEquals('foo', dep.name)
         hash(dep)
         # still cached
@@ -200,7 +200,7 @@ class ResolverTest(DBTest):
         self.sec_koji_mock = KojiMock()
         self.sec_koji_mock.repoInfo.return_value = {'id': 123, 'tag_name': 'f24-build',
                                                     'state': koji.REPO_STATES['READY']}
-        self.resolver = Resolver(db=self.s,
+        self.resolver = Resolver(db=self.db,
                                  koji_sessions={'primary': self.koji_mock,
                                                 'secondary': self.sec_koji_mock},
                                  repo_cache=self.repo_mock)
@@ -210,7 +210,7 @@ class ResolverTest(DBTest):
         foo_build = self.prepare_build('foo', True, repo_id=repo_id, resolved=None)
         foo_build.version = version
         foo_build.release = '1.fc22'
-        self.s.commit()
+        self.db.commit()
         return foo_build
 
     def test_dont_resolve_against_old_build_when_new_is_running(self):
@@ -225,7 +225,7 @@ class ResolverTest(DBTest):
         foo = self.prepare_packages(['foo'])[0]
         b1 = self.prepare_build('foo', False, repo_id=2, resolved=True)
         b2 = self.prepare_build('foo', False, repo_id=3, resolved=False)
-        self.s.commit()
+        self.db.commit()
         with patch('koschei.backend.koji_util.get_build_group', return_value=['gcc','bash']):
             self.assertEqual(b1, self.resolver.get_build_for_comparison(foo))
 
@@ -235,7 +235,7 @@ class ResolverTest(DBTest):
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
             with patch('koschei.backend.koji_util.get_rpm_requires', return_value=[['F', 'A']]):
                 self.resolver.process_builds(self.collection)
-        actual_deps = self.s.query(Dependency.name, Dependency.epoch,
+        actual_deps = self.db.query(Dependency.name, Dependency.epoch,
                                    Dependency.version, Dependency.release,
                                    Dependency.arch)\
             .filter(Dependency.id.in_(foo_build.dependency_keys)).all()
@@ -254,7 +254,7 @@ class ResolverTest(DBTest):
         b.epoch = 1
         b.version = '2'
         b.release = '2'
-        self.s.commit()
+        self.db.commit()
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
             with patch('koschei.backend.koji_util.get_rpm_requires', return_value=[['nonexistent']]):
                 self.resolver.process_builds(self.collection)
@@ -270,11 +270,11 @@ class ResolverTest(DBTest):
         dependency_keys = []
         for n, e, v, r, a in old_deps:
             dep = Dependency(arch=a, name=n, epoch=e, version=v, release=r)
-            self.s.add(dep)
-            self.s.flush()
+            self.db.add(dep)
+            self.db.flush()
             dependency_keys.append(dep.id)
         old_build.dependency_keys = dependency_keys
-        self.s.commit()
+        self.db.commit()
         return old_build
 
     def test_differences(self):
@@ -286,7 +286,7 @@ class ResolverTest(DBTest):
         expected_changes = [(build.id, 'C', 1, 1, '2', '3', '1.fc22', '1.fc22', 2),
                             (build.id, 'E', None, 0, None, '0.1', None, '1.fc22.1', 2)]
         c = AppliedChange
-        actual_changes = self.s.query(c.build_id, c.dep_name, c.prev_epoch,
+        actual_changes = self.db.query(c.build_id, c.dep_name, c.prev_epoch,
                                       c.curr_epoch, c.prev_version, c.curr_version,
                                       c.prev_release, c.curr_release, c.distance).all()
         self.assertItemsEqual(expected_changes, actual_changes)
@@ -297,17 +297,17 @@ class ResolverTest(DBTest):
             with patch('koschei.backend.koji_util.get_rpm_requires',
                        return_value=[['F', 'A'], ['nonexistent']]):
                 self.resolver.generate_repo(self.collection, 666)
-        self.s.expire_all()
-        foo = self.s.query(Package).filter_by(name='foo').first()
+        self.db.expire_all()
+        foo = self.db.query(Package).filter_by(name='foo').first()
         self.assertTrue(foo.resolved)
         expected_changes = [(foo.id, 'C', 1, 1, '2', '3', '1.fc22', '1.fc22', 2),
                             (foo.id, 'E', None, 0, None, '0.1', None, '1.fc22.1', 2)]
         c = UnappliedChange
-        actual_changes = self.s.query(c.package_id, c.dep_name, c.prev_epoch,
+        actual_changes = self.db.query(c.package_id, c.dep_name, c.prev_epoch,
                                       c.curr_epoch, c.prev_version, c.curr_version,
                                       c.prev_release, c.curr_release, c.distance).all()
         self.assertItemsEqual(expected_changes, actual_changes)
-        self.assertFalse(self.s.query(ResolutionProblem)
+        self.assertFalse(self.db.query(ResolutionProblem)
                          .filter_by(package_id=foo.id).count())
         self.assertTrue(self.collection.latest_repo_resolved)
         self.assertEqual(666, self.collection.latest_repo_id)
@@ -322,7 +322,7 @@ class ResolverTest(DBTest):
                     self.assertFalse(fedmsg_mock.called)
         self.assertFalse(self.collection.latest_repo_resolved)
         self.assertEquals(666, self.collection.latest_repo_id)
-        self.assertTrue(self.s.query(BuildrootProblem).count())
+        self.assertTrue(self.db.query(BuildrootProblem).count())
 
     def test_buildrequires(self):
         call_result = [{'flags': 0, 'name': 'maven-local', 'type': 0, 'version': ''},

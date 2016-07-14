@@ -37,46 +37,46 @@ class ModelTest(DBTest):
         group = self.prepare_group('xyzzy', content=['foo', 'bar', 'baz'])
         new_collection = m.Collection(name="new", display_name="New", target_tag="tag2",
                                       build_tag="build_tag2", priority_coefficient=2.0)
-        self.s.add(new_collection)
-        self.s.commit()
+        self.db.add(new_collection)
+        self.db.commit()
         pkg = m.Package(name='bar', collection_id=new_collection.id)
         self.ensure_base_package(pkg)
-        self.s.add(pkg)
-        self.s.commit()
+        self.db.add(pkg)
+        self.db.commit()
         self.assertEqual(3, group.package_count)
 
     def test_group_cardinality_blocked(self):
         group = self.prepare_group('xyzzy', content=['foo', 'bar', 'baz'])
         self.prepare_packages(['bar'])[0].blocked = True
-        self.s.commit()
+        self.db.commit()
         self.assertEqual(2, group.package_count)
 
     def test_group_cardinality_partially_blocked(self):
         # Package xalan-j2 is blocked in one collection only.
         group = self.prepare_group('xyzzy', content=['xalan-j2'])
         self.prepare_packages(['xalan-j2'])[0].blocked = True
-        self.s.commit()
+        self.db.commit()
         new_collection = m.Collection(name="new", display_name="New", target_tag="tag2",
                                       build_tag="build_tag2", priority_coefficient=2.0)
-        self.s.add(new_collection)
-        self.s.commit()
+        self.db.add(new_collection)
+        self.db.commit()
         pkg = m.Package(name='xalan-j2', collection_id=new_collection.id)
         self.ensure_base_package(pkg)
-        self.s.add(pkg)
-        self.s.commit()
+        self.db.add(pkg)
+        self.db.commit()
         self.assertEqual(1, group.package_count)
 
     def test_group_cardinality_fully_blocked(self):
         # Package xalan-j2 is blocked in all collections.
         group = self.prepare_group('xyzzy', content=['xalan-j2'])
         self.prepare_packages(['xalan-j2'])[0].blocked = True
-        self.s.commit()
+        self.db.commit()
         new_collection = m.Collection(name="new", display_name="New", target_tag="tag2",
                                       build_tag="build_tag2", priority_coefficient=2.0)
-        self.s.add(new_collection)
-        self.s.commit()
+        self.db.add(new_collection)
+        self.db.commit()
         pkg = m.Package(name='xalan-j2', collection_id=new_collection.id, blocked=True)
         self.ensure_base_package(pkg)
-        self.s.add(pkg)
-        self.s.commit()
+        self.db.add(pkg)
+        self.db.commit()
         self.assertEqual(0, group.package_count)

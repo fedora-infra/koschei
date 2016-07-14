@@ -82,7 +82,7 @@ class FrontendTest(DBTest):
         reply = self.client.post(url, follow_redirects=True)
         self.assertEqual(200, reply.status_code)
         self.assertIn('Cancelation request sent.', reply.data)
-        self.s.expire(build)
+        self.db.expire(build)
         self.assertTrue(build.cancel_requested)
 
     @authenticate(admin=False)
@@ -92,7 +92,7 @@ class FrontendTest(DBTest):
         url = 'build/{0}/cancel'.format(build.id)
         reply = self.client.post(url, follow_redirects=True)
         self.assertEqual(403, reply.status_code)
-        self.s.expire(build)
+        self.db.expire(build)
         self.assertFalse(build.cancel_requested)
 
     @authenticate(admin=True)
@@ -103,7 +103,7 @@ class FrontendTest(DBTest):
         reply = self.client.post(url, follow_redirects=True)
         self.assertEqual(200, reply.status_code)
         self.assertIn('Only running builds can be canceled.', reply.data)
-        self.s.expire(build)
+        self.db.expire(build)
         self.assertFalse(build.cancel_requested)
 
     @authenticate(admin=True)
@@ -111,12 +111,12 @@ class FrontendTest(DBTest):
         self.prepare_packages(['groovy'])
         build = self.prepare_build('groovy')
         build.cancel_requested = True
-        self.s.commit()
+        self.db.commit()
         url = 'build/{0}/cancel'.format(build.id)
         reply = self.client.post(url, follow_redirects=True)
         self.assertEqual(200, reply.status_code)
         self.assertIn('Build already has pending cancelation request.', reply.data)
-        self.s.expire(build)
+        self.db.expire(build)
         self.assertTrue(build.cancel_requested)
 
     @authenticate
@@ -131,7 +131,7 @@ class FrontendTest(DBTest):
     def test_add_package(self):
         pkg = self.prepare_packages(['xpp3'])[0]
         pkg.tracked = False
-        self.s.commit()
+        self.db.commit()
         reply = self.client.post('add_packages',
                                  data=dict(packages='xpp3'),
                                  follow_redirects=True)

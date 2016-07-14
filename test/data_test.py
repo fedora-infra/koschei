@@ -27,29 +27,29 @@ class DataTest(DBTest):
     def test_set_group_contents(self):
         group = PackageGroup(name='foo')
         bar, a1, a2, a3 = self.prepare_packages(['bar', 'a1', 'a2', 'a3'])
-        self.s.add(group)
-        self.s.flush()
+        self.db.add(group)
+        self.db.flush()
         rel = PackageGroupRelation(group_id=group.id, base_id=bar.base_id)
-        self.s.add(rel)
-        self.s.commit()
+        self.db.add(rel)
+        self.db.commit()
         content = ['a1', 'a2', 'a3']
-        data.set_group_content(self.s, group, content, append=False)
+        data.set_group_content(self.db, group, content, append=False)
 
         self.assertItemsEqual([a1.base_id, a2.base_id, a3.base_id],
-                              self.s.query(PackageGroupRelation.base_id)
+                              self.db.query(PackageGroupRelation.base_id)
                               .filter_by(group_id=group.id).all_flat())
 
     def test_append_group_content(self):
         group = PackageGroup(name='foo')
-        self.s.add(group)
-        self.s.flush()
+        self.db.add(group)
+        self.db.flush()
         bar, a1, a2, a3 = self.prepare_packages(['bar', 'a1', 'a2', 'a3'])
         rel = PackageGroupRelation(group_id=group.id, base_id=bar.base_id)
-        self.s.add(rel)
-        self.s.commit()
+        self.db.add(rel)
+        self.db.commit()
         content = ['a1', 'a2', 'a3']
-        data.set_group_content(self.s, group, content, append=True)
+        data.set_group_content(self.db, group, content, append=True)
 
         self.assertItemsEqual([bar.base_id, a1.base_id, a2.base_id, a3.base_id],
-                              self.s.query(PackageGroupRelation.base_id)
+                              self.db.query(PackageGroupRelation.base_id)
                               .filter_by(group_id=group.id).all_flat())

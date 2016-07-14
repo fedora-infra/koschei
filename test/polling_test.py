@@ -38,7 +38,7 @@ class PollingTest(DBTest):
         self.prepare_build('eclipse', False)
         koji_mock = self.get_koji_mock()
         backend_mock = Mock()
-        polling = Polling(db=self.s, koji_sessions={'primary': koji_mock,
+        polling = Polling(db=self.db, koji_sessions={'primary': koji_mock,
                                                     'secondary': koji_mock},
                           backend=backend_mock)
         polling.poll_builds()
@@ -49,7 +49,7 @@ class PollingTest(DBTest):
         build = self.prepare_build('rnv')
         backend_mock = Mock()
         koji_mock = self.get_koji_mock()
-        polling = Polling(db=self.s, koji_sessions={'primary': koji_mock,
+        polling = Polling(db=self.db, koji_sessions={'primary': koji_mock,
                                                     'secondary': koji_mock},
                           backend=backend_mock)
         polling.poll_builds()
@@ -61,7 +61,7 @@ class PollingTest(DBTest):
         self.prepare_build('expat', False)
         backend_mock = Mock()
         koji_mock = self.get_koji_mock(state='FAILED')
-        polling = Polling(db=self.s, koji_sessions={'primary': koji_mock,
+        polling = Polling(db=self.db, koji_sessions={'primary': koji_mock,
                                                     'secondary': koji_mock},
                           backend=backend_mock)
         polling.poll_builds()

@@ -36,7 +36,7 @@ class TriggerTest(DBTest):
         b = self.prepare_build('rnv')
         self.assertEqual(b.id, p.last_build_id)
         b.state = Build.FAILED
-        self.s.commit()
+        self.db.commit()
         self.assertEqual(b.id, p.last_build_id)
         self.assertEqual(b.id, p.last_complete_build_id)
         self.assertEqual(b.state, p.last_complete_build_state)
@@ -78,13 +78,13 @@ class TriggerTest(DBTest):
         b2 = self.prepare_build('eclipse', True)
         b3 = self.prepare_build('eclipse', None)
         self.assertEqual(b3.id, e.last_build_id)
-        self.s.delete(b1)
-        self.s.commit()
+        self.db.delete(b1)
+        self.db.commit()
         self.assertEqual(b3.id, e.last_build_id)
-        self.s.delete(b3)
-        self.s.commit()
+        self.db.delete(b3)
+        self.db.commit()
         self.assertEqual(b2.id, e.last_build_id)
-        self.s.delete(b2)
+        self.db.delete(b2)
 
     def test_all_blocked_insert(self):
         [p, e] = self.prepare_packages(['rnv', 'eclipse'])
@@ -94,5 +94,5 @@ class TriggerTest(DBTest):
     def test_all_blocked_update(self):
         [p, e] = self.prepare_packages(['rnv', 'eclipse'])
         e.blocked = True
-        self.s.commit()
+        self.db.commit()
         self.assertTrue(e.base.all_blocked)

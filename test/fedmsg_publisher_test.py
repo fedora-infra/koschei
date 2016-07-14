@@ -30,11 +30,11 @@ class FedmsgSenderTest(DBTest):
         pkg = self.prepare_basic_data()[0]
         groups = PackageGroup(name='c'), PackageGroup(name='xml', namespace='foo')
         for group in groups:
-            self.s.add(group)
-            self.s.flush()
-            self.s.add(PackageGroupRelation(group_id=group.id,
+            self.db.add(group)
+            self.db.flush()
+            self.db.add(PackageGroupRelation(group_id=group.id,
                                             base_id=pkg.base_id))
-        self.s.commit()
+        self.db.commit()
         return pkg
 
     def test_event(self):
