@@ -24,7 +24,7 @@ import sqlalchemy
 from sqlalchemy import (create_engine, Table, Column, Integer, String, Boolean,
                         ForeignKey, DateTime, Index, DDL, Float, CheckConstraint,
                         UniqueConstraint)
-from sqlalchemy.sql.expression import func, select, join, distinct, false, true
+from sqlalchemy.sql.expression import func, select, join, false, true
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import (sessionmaker, relationship, column_property,
                             configure_mappers, deferred)

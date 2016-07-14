@@ -347,34 +347,39 @@ class Backend(KojiService):
         Refresh packages from Koji: add packages not yet known by Koschei
         and update blocked flag.
         """
-        bases = {base.name: base for base in self.db.query(BasePackage)}
-        for collection in self.db.query(Collection):
+        bases = {base.name: base for base
+                 in self.db.query(BasePackage.id, BasePackage.name)}
+        for collection in self.db.query(Collection.id, Collection.target_tag,
+                                        Collection.secondary_mode):
             koji_session = self.secondary_session_for(collection)
             koji_packages = koji_session.listPackages(tagID=collection.target_tag,
                                                       inherited=True)
             whitelisted = {p['package_name'] for p in koji_packages if not p['blocked']}
-            packages = self.db.query(Package).filter_by(collection_id=collection.id).all()
+            packages = self.db.query(Package.id, Package.name, Package.blocked)\
+                .filter_by(collection_id=collection.id)\
+                .all()
             to_update = [p.id for p in packages if p.blocked == (p.name in whitelisted)]
             if to_update:
                 self.db.query(Package).filter(Package.id.in_(to_update))\
                        .update({'blocked': ~Package.blocked}, synchronize_session=False)
-                self.db.flush()
             existing_names = {p.name for p in packages}
+            to_add = []
             for pkg_dict in koji_packages:
                 name = pkg_dict['package_name']
                 if name not in bases.iterkeys():
                     base = BasePackage(name=name)
-                    self.db.add(base)
                     bases[name] = base
-            self.db.flush()
+                    to_add.append(base)
+            self.db.bulk_insert(to_add)
+            to_add = []
             for pkg_dict in koji_packages:
                 name = pkg_dict['package_name']
                 if name not in existing_names:
                     pkg = Package(name=name, base_id=bases.get(name).id,
                                   collection_id=collection.id, tracked=False,
                                   blocked=pkg_dict['blocked'])
-                    self.db.add(pkg)
-            self.db.flush()
+                    to_add.append(pkg)
+            self.db.bulk_insert(to_add)
             self.db.expire_all()
 
     def refresh_latest_builds(self):
