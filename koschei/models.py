@@ -207,7 +207,6 @@ class Collection(Base):
 
     # build group name
     build_group = Column(String, nullable=False, server_default='build')
-    # comma separated list of architectures for which to include repos when resolving
 
     latest_repo_id = Column(Integer)
     latest_repo_resolved = Column(Boolean)
