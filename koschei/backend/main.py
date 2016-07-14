@@ -37,7 +37,7 @@ def init_fedmsg():
         print("Unable to initialize fedmsg", file=sys.stderr)
 
 
-if __name__ == '__main__':
+def main():
     load_config(['/usr/share/koschei/config.cfg', '/etc/koschei/config-backend.cfg'])
     log = logging.getLogger('koschei.main')
 
@@ -47,15 +47,18 @@ if __name__ == '__main__':
     name = sys.argv[1]
     plugin.load_plugins('backend')
     init_fedmsg()
-    service = service.load_service(name)
-    if not service:
+    svc = service.load_service(name)
+    if not svc:
         print("No such service", file=sys.stderr)
         sys.exit(2)
     signal.signal(signal.SIGTERM, lambda x, y: sys.exit(0))
     try:
-        service().run_service()
+        svc().run_service()
     except Exception:
         log.exception("Service %s crashed.", name)
         raise
     except KeyboardInterrupt:
         sys.exit(0)
+
+if __name__ == '__main__':
+    main()
