@@ -342,6 +342,7 @@ def unified_package_view(template, query_fn=None, **template_args):
     tables = []
     running_build_expr = false()
     failing_expr = false()
+    tracked_expr = false()
     order_map = {'name': [BasePackage.name]}
     for collection in g.collections:
         table = aliased(Package)
@@ -353,11 +354,14 @@ def unified_package_view(template, query_fn=None, **template_args):
         running_build_expr |= table.last_build_id != table.last_complete_build_id
         failing_expr |= table.last_complete_build_state == Build.FAILED
         failing_expr |= table.resolved == False
+        tracked_expr |= table.tracked == True
     running_build_expr = func.coalesce(running_build_expr, false())
     failing_expr = func.coalesce(failing_expr, false())
     query = db.query(BasePackage.name, BasePackage.id.label('base_id'),
                      running_build_expr.label('has_running_build'),
                      *exprs).filter(~BasePackage.all_blocked)
+    if not untracked:
+        query.filter(tracked_expr)
     for collection, table in zip(g.collections, tables):
         on_expr = BasePackage.id == table.base_id
         on_expr &= table.collection_id == collection.id
