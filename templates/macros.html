@@ -41,7 +41,7 @@
         <tr class="list-header">
             {{ ordered_column('name', 'Name', order) }}
             {% if not collection %}
-            {% for coll in g.collections %}
+            {% for coll in g.current_collections %}
             {{ ordered_column('state-' + coll.name, coll.display_name, order, css_class="collection-column") }}
             {% endfor %}
             {% else %}
@@ -172,7 +172,8 @@
             {% endif %}
             {% for collection in g.collections %}
             <option value="{{ collection.name }}"
-            {% if collection.id == g.current_collection.id %}selected="selected"{% endif %}>
+            {# TODO #}
+            {% if collection.id == g.current_collections[0].id %}selected="selected"{% endif %}>
             {{ collection }}
             </option>
             {% endfor %}

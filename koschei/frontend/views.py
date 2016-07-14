@@ -118,12 +118,13 @@ def columnize(what, css_class=None):
 def get_global_notices():
     notices = [n.content for n in
                db.query(AdminNotice.content).filter_by(key="global_notice")]
-    if g.current_collection and g.current_collection.latest_repo_resolved is False:
-        problems = db.query(BuildrootProblem)\
-            .filter_by(collection_id=g.current_collection.id).all()
-        notices.append("Base buildroot for {} is not installable. "
-                       "Dependency problems:<br/>".format(g.current_collection) +
-                       '<br/>'.join((p.problem for p in problems)))
+    for collection in g.current_collections:
+        if collection.latest_repo_resolved is False:
+            problems = db.query(BuildrootProblem)\
+                .filter_by(collection_id=collection.id).all()
+            notices.append("Base buildroot for {} is not installable. "
+                           "Dependency problems:<br/>".format(collection) +
+                           '<br/>'.join((p.problem for p in problems)))
     notices = map(Markup, notices)
     return notices
 
@@ -205,13 +206,13 @@ def populate_package_groups(packages):
 
 
 def package_view(template, query_fn=None, **template_args):
-    if g.current_collection:
+    if len(g.current_collections) == 1:
         return collection_package_view(template, query_fn, **template_args)
     return unified_package_view(template, query_fn, **template_args)
 
 
 def collection_package_view(template, query_fn=None, **template_args):
-    collection = g.current_collection or g.default_collection
+    collection = g.current_collections[0]
     package_query = db.query(Package).filter(Package.collection_id == collection.id)
     if query_fn:
         package_query = query_fn(package_query.join(BasePackage))
@@ -304,16 +305,16 @@ def get_collections():
         db.expunge(collection)
     if not g.collections:
         abort(500, "No collections setup")
-    g.default_collection = g.collections[0]
+    by_name = {c.name: c for c in g.collections}
+    g.current_collections = []
     if collection_name:
-        for collection in g.collections:
-            if collection.name == collection_name:
-                g.current_collection = collection
-                break
-        else:
+        try:
+            for component in collection_name.split(','):
+                g.current_collections.append(by_name[component])
+        except KeyError:
             abort(404, "Collection not found")
     else:
-        g.current_collection = None
+        g.current_collections = g.collections
 
 
 class UnifiedPackage(object):
@@ -322,7 +323,7 @@ class UnifiedPackage(object):
         self.has_running_build = row.has_running_build
         self.base_id = row.base_id
         self.packages = []
-        for collection in g.collections:
+        for collection in g.current_collections:
             str_id = str(collection.id)
             package = Package(
                 name=row.name,
@@ -344,7 +345,7 @@ def unified_package_view(template, query_fn=None, **template_args):
     failing_expr = false()
     tracked_expr = false()
     order_map = {'name': [BasePackage.name]}
-    for collection in g.collections:
+    for collection in g.current_collections:
         table = aliased(Package)
         tables.append(table)
         exprs.append(table.tracked.label('tracked{}'.format(collection.id)))
@@ -362,7 +363,7 @@ def unified_package_view(template, query_fn=None, **template_args):
                      *exprs).filter(~BasePackage.all_blocked)
     if not untracked:
         query.filter(tracked_expr)
-    for collection, table in zip(g.collections, tables):
+    for collection, table in zip(g.current_collections, tables):
         on_expr = BasePackage.id == table.base_id
         on_expr &= table.collection_id == collection.id
         on_expr &= ~table.blocked
@@ -394,7 +395,7 @@ def frontpage():
 @app.route('/package/<name>')
 @tab('Packages', slave=True)
 def package_detail(name):
-    collection = g.current_collection or g.default_collection
+    collection = g.current_collections[0]
     packages = {p.collection_id: p for p in db.query(Package).filter_by(name=name)}
     package = None
     all_packages = []
@@ -729,7 +730,7 @@ def search():
 @app.route('/package/<name>/edit', methods=['POST'])
 @auth.login_required()
 def edit_package(name):
-    collection = g.current_collection or g.default_collection
+    collection = g.current_collections[0]
     package = db.query(Package)\
         .filter_by(name=name, collection_id=collection.id)\
         .first_or_404()

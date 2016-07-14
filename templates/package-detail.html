@@ -121,7 +121,7 @@
             {{ generate_links(package) }}
         </td>
     </tr>
-    {% if g.current_collection.bugzilla_product and g.current_collection.bugzilla_version %}
+    {% if g.current_collections[0].bugzilla_product and g.current_collections[0].bugzilla_version %}
     <tr>
         <th>Bug reports</th>
         <td>
