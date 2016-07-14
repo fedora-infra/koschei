@@ -25,6 +25,7 @@ from koschei.backend.service import Service
 class MyException(Exception):
     pass
 
+
 class MyService(Service):
     def __init__(self, main=None, *args, **kwargs):
         self.__class__.main = main or (lambda inst: 0)
@@ -37,7 +38,7 @@ class ServiceTest(AbstractTest):
 
     def test_create_session(self):
         with patch('koschei.backend.service.Session') as create:
-            s = MyService(log=Mock())
+            MyService(log=Mock())
             create.assert_called_once_with()
 
     def test_create_log(self):

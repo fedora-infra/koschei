@@ -39,7 +39,7 @@ class PollingTest(DBTest):
         koji_mock = self.get_koji_mock()
         backend_mock = Mock()
         polling = Polling(db=self.db, koji_sessions={'primary': koji_mock,
-                                                    'secondary': koji_mock},
+                                                     'secondary': koji_mock},
                           backend=backend_mock)
         polling.poll_builds()
         self.assertFalse(koji_mock.getTaskInfo.called)
@@ -50,7 +50,7 @@ class PollingTest(DBTest):
         backend_mock = Mock()
         koji_mock = self.get_koji_mock()
         polling = Polling(db=self.db, koji_sessions={'primary': koji_mock,
-                                                    'secondary': koji_mock},
+                                                     'secondary': koji_mock},
                           backend=backend_mock)
         polling.poll_builds()
         backend_mock.update_build_state.assert_called_once_with(build, 'CLOSED')
@@ -62,7 +62,7 @@ class PollingTest(DBTest):
         backend_mock = Mock()
         koji_mock = self.get_koji_mock(state='FAILED')
         polling = Polling(db=self.db, koji_sessions={'primary': koji_mock,
-                                                    'secondary': koji_mock},
+                                                     'secondary': koji_mock},
                           backend=backend_mock)
         polling.poll_builds()
         backend_mock.update_build_state.assert_has_calls(

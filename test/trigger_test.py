@@ -19,6 +19,8 @@
 from test.common import DBTest
 from koschei.models import Build
 
+
+# pylint:disable = unbalanced-tuple-unpacking
 class TriggerTest(DBTest):
 
     def test_new(self):
@@ -92,7 +94,7 @@ class TriggerTest(DBTest):
         self.assertFalse(e.base.all_blocked)
 
     def test_all_blocked_update(self):
-        [p, e] = self.prepare_packages(['rnv', 'eclipse'])
+        [_, e] = self.prepare_packages(['rnv', 'eclipse'])
         e.blocked = True
         self.db.commit()
         self.assertTrue(e.base.all_blocked)

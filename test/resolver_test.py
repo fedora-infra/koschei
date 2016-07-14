@@ -26,8 +26,8 @@ import koji
 import librepo
 from mock import Mock, patch
 
-import koschei.backend.koji_util
 from test.common import DBTest, testdir, KojiMock
+from koschei.backend import koji_util
 from koschei.backend.services.resolver import Resolver, DependencyCache
 from koschei.models import (Dependency, UnappliedChange, AppliedChange, Package,
                             ResolutionProblem, BuildrootProblem)
@@ -76,8 +76,9 @@ class DependencyCacheTest(DBTest):
     def setUp(self):
         super(DependencyCacheTest, self).setUp()
         deps = [str(self.nevra(i)) for i in range(1, 4)]
-        self.db.execute("INSERT INTO dependency(name,epoch,version,release,arch) VALUES {}"
-                       .format(','.join(deps)))
+        self.db.execute(
+            "INSERT INTO dependency(name,epoch,version,release,arch) VALUES {}"
+            .format(','.join(deps)))
         self.db.commit()
 
     def test_get_ids(self):
@@ -123,8 +124,8 @@ class DependencyCacheTest(DBTest):
         hash(dep2)
         # mixed
         dep1, dep2, dep3 = cache.get_or_create_nevras(self.db, [self.nevra(6),
-                                                               self.nevra(4),
-                                                               self.nevra(2)])
+                                                                self.nevra(4),
+                                                                self.nevra(2)])
         self.assertEquals(self.dep(6), dep1)
         self.assertEquals(self.dep(4), dep2)
         self.assertEquals(self.dep(2), dep3)
@@ -218,33 +219,38 @@ class ResolverTest(DBTest):
         build = self.prepare_build('foo', False, repo_id=2)
         build.deps_resolved = True
         self.prepare_build('foo', None, repo_id=None)
-        with patch('koschei.backend.koji_util.get_build_group', return_value=['gcc','bash']):
+        with patch('koschei.backend.koji_util.get_build_group',
+                   return_value=['gcc', 'bash']):
             self.assertIsNone(self.resolver.get_build_for_comparison(foo))
 
     def test_skip_unresolved_failed_build(self):
         foo = self.prepare_packages(['foo'])[0]
         b1 = self.prepare_build('foo', False, repo_id=2, resolved=True)
-        b2 = self.prepare_build('foo', False, repo_id=3, resolved=False)
+        self.prepare_build('foo', False, repo_id=3, resolved=False)
         self.db.commit()
-        with patch('koschei.backend.koji_util.get_build_group', return_value=['gcc','bash']):
+        with patch('koschei.backend.koji_util.get_build_group',
+                   return_value=['gcc', 'bash']):
             self.assertEqual(b1, self.resolver.get_build_for_comparison(foo))
 
     def test_resolve_build(self):
         foo_build = self.prepare_foo_build()
-        package_id = foo_build.package_id
-        with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
-            with patch('koschei.backend.koji_util.get_rpm_requires', return_value=[['F', 'A']]):
+        with patch('koschei.backend.koji_util.get_build_group',
+                   return_value=['R']):
+            with patch('koschei.backend.koji_util.get_rpm_requires',
+                       return_value=[['F', 'A']]):
                 self.resolver.process_builds(self.collection)
         actual_deps = self.db.query(Dependency.name, Dependency.epoch,
-                                   Dependency.version, Dependency.release,
-                                   Dependency.arch)\
+                                    Dependency.version, Dependency.release,
+                                    Dependency.arch)\
             .filter(Dependency.id.in_(foo_build.dependency_keys)).all()
         self.assertItemsEqual(FOO_DEPS, actual_deps)
 
     def test_virtual_in_group(self):
         foo_build = self.prepare_foo_build()
-        with patch('koschei.backend.koji_util.get_build_group', return_value=['virtual']):
-            with patch('koschei.backend.koji_util.get_rpm_requires', return_value=[['F', 'A']]):
+        with patch('koschei.backend.koji_util.get_build_group',
+                   return_value=['virtual']):
+            with patch('koschei.backend.koji_util.get_rpm_requires',
+                       return_value=[['F', 'A']]):
                 self.resolver.process_builds(self.collection)
         self.assertTrue(foo_build.deps_resolved)
 
@@ -255,8 +261,10 @@ class ResolverTest(DBTest):
         b.version = '2'
         b.release = '2'
         self.db.commit()
-        with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
-            with patch('koschei.backend.koji_util.get_rpm_requires', return_value=[['nonexistent']]):
+        with patch('koschei.backend.koji_util.get_build_group',
+                   return_value=['R']):
+            with patch('koschei.backend.koji_util.get_rpm_requires',
+                       return_value=[['nonexistent']]):
                 self.resolver.process_builds(self.collection)
         self.assertIs(False, b.deps_resolved)
 
@@ -266,7 +274,6 @@ class ResolverTest(DBTest):
         old_deps = FOO_DEPS[:]
         old_deps[2] = ('C', 1, '2', '1.fc22', 'x86_64')
         del old_deps[4] # E
-        package_id = old_build.package_id
         dependency_keys = []
         for n, e, v, r, a in old_deps:
             dep = Dependency(arch=a, name=n, epoch=e, version=v, release=r)
@@ -280,15 +287,17 @@ class ResolverTest(DBTest):
     def test_differences(self):
         self.prepare_old_build()
         build = self.prepare_foo_build(repo_id=666, version='4')
-        with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
-            with patch('koschei.backend.koji_util.get_rpm_requires', return_value=[['F', 'A']]):
+        with patch('koschei.backend.koji_util.get_build_group',
+                   return_value=['R']):
+            with patch('koschei.backend.koji_util.get_rpm_requires',
+                       return_value=[['F', 'A']]):
                 self.resolver.process_builds(self.collection)
         expected_changes = [(build.id, 'C', 1, 1, '2', '3', '1.fc22', '1.fc22', 2),
                             (build.id, 'E', None, 0, None, '0.1', None, '1.fc22.1', 2)]
         c = AppliedChange
         actual_changes = self.db.query(c.build_id, c.dep_name, c.prev_epoch,
-                                      c.curr_epoch, c.prev_version, c.curr_version,
-                                      c.prev_release, c.curr_release, c.distance).all()
+                                       c.curr_epoch, c.prev_version, c.curr_version,
+                                       c.prev_release, c.curr_release, c.distance).all()
         self.assertItemsEqual(expected_changes, actual_changes)
 
     def test_repo_generation(self):
@@ -304,8 +313,8 @@ class ResolverTest(DBTest):
                             (foo.id, 'E', None, 0, None, '0.1', None, '1.fc22.1', 2)]
         c = UnappliedChange
         actual_changes = self.db.query(c.package_id, c.dep_name, c.prev_epoch,
-                                      c.curr_epoch, c.prev_version, c.curr_version,
-                                      c.prev_release, c.curr_release, c.distance).all()
+                                       c.curr_epoch, c.prev_version, c.curr_version,
+                                       c.prev_release, c.curr_release, c.distance).all()
         self.assertItemsEqual(expected_changes, actual_changes)
         self.assertFalse(self.db.query(ResolutionProblem)
                          .filter_by(package_id=foo.id).count())
@@ -315,8 +324,10 @@ class ResolverTest(DBTest):
     def test_broken_buildroot(self):
         self.prepare_old_build()
         self.prepare_packages(['bar'])
-        with patch('koschei.backend.koji_util.get_build_group', return_value=['bar']):
-            with patch('koschei.backend.koji_util.get_rpm_requires', return_value=[['nonexistent']]):
+        with patch('koschei.backend.koji_util.get_build_group',
+                   return_value=['bar']):
+            with patch('koschei.backend.koji_util.get_rpm_requires',
+                       return_value=[['nonexistent']]):
                 with patch('fedmsg.publish') as fedmsg_mock:
                     self.resolver.generate_repo(self.collection, 666)
                     self.assertFalse(fedmsg_mock.called)
@@ -338,14 +349,15 @@ class ResolverTest(DBTest):
         koji_mock = Mock()
         koji_mock.multiCall = Mock(return_value=[[call_result]])
         inp = dict(name='jetty-schemas', version='3.1', release='3.fc21', arch='src')
-        res = [req for req in koschei.backend.koji_util.get_rpm_requires(koji_mock, [inp])]
+        res = [req for req in koji_util.get_rpm_requires(koji_mock, [inp])]
         koji_mock.getRPMDeps.assert_called_once_with(inp, koji.DEP_REQUIRE)
         self.assertEqual(res, [['maven-local', 'jetty-toolchain']])
 
     def test_virtual_file_provides(self):
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
             sack = get_sack()
-            (resolved, problems, deps) = self.resolver.resolve_dependencies(sack, ['/bin/csh'], ['R'])
+            (resolved, problems, deps) = \
+                self.resolver.resolve_dependencies(sack, ['/bin/csh'], ['R'])
             self.assertItemsEqual([], problems)
             self.assertTrue(resolved)
             self.assertIsNotNone(deps)
@@ -358,7 +370,8 @@ class ResolverTest(DBTest):
     def test_rich_deps(self):
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
             sack = get_sack()
-            (resolved, problems, deps) = self.resolver.resolve_dependencies(sack, ['qt-x11'], ['R'])
+            (resolved, problems, deps) = \
+                self.resolver.resolve_dependencies(sack, ['qt-x11'], ['R'])
             self.assertItemsEqual([], problems)
             self.assertTrue(resolved)
             self.assertIsNotNone(deps)
@@ -371,8 +384,12 @@ class ResolverTest(DBTest):
     def test_rich_deps2(self):
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
             sack = get_sack()
-            (resolved, problems, deps) = self.resolver.resolve_dependencies(sack, ['qt-x11', 'plasma-workspace'], ['R'])
+            (resolved, problems, deps) = \
+                self.resolver.resolve_dependencies(sack,
+                                                   ['qt-x11', 'plasma-workspace'],
+                                                   ['R'])
             self.assertItemsEqual([], problems)
             self.assertTrue(resolved)
             self.assertIsNotNone(deps)
-            self.assertItemsEqual(['qt-x11', 'plasma-workspace', 'sni-qt', 'R'], [dep.name for dep in deps])
+            self.assertItemsEqual(['qt-x11', 'plasma-workspace', 'sni-qt', 'R'],
+                                  [dep.name for dep in deps])

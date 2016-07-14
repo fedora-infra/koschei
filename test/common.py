@@ -28,9 +28,10 @@ import psycopg2
 
 from mock import Mock
 
-from test import testdir
-from koschei import models as m
-from . import config
+from test import testdir, config
+from koschei.models import (get_engine, Base, Session, Package, Build,
+                            Collection, BasePackage, PackageGroupRelation,
+                            PackageGroup, GroupACL, User)
 
 workdir = '.workdir'
 
@@ -90,13 +91,13 @@ class DBTest(AbstractTest):
                     cur.execute("ALTER DATABASE {0} SET {1} TO '{2}'".format(dbname,
                                                                              option,
                                                                              value))
-        m.Base.metadata.create_all(m.get_engine())
+        Base.metadata.create_all(get_engine())
 
     def __init__(self, *args, **kwargs):
         super(DBTest, self).__init__(*args, **kwargs)
         self.db = None
         self.task_id_counter = 1
-        self.collection = m.Collection(
+        self.collection = Collection(
             name="f25", display_name="Fedora Rawhide", target_tag="f25",
             build_tag="f25-build", priority_coefficient=1.0
         )
@@ -114,14 +115,14 @@ class DBTest(AbstractTest):
         if not DBTest.postgres_initialized:
             self.skipTest("requires PostgreSQL")
         super(DBTest, self).setUp()
-        tables = m.Base.metadata.tables
-        conn = m.get_engine().connect()
+        tables = Base.metadata.tables
+        conn = get_engine().connect()
         for table in tables.values():
             conn.execute(table.delete())
             if hasattr(table.c, 'id'):
                 conn.execute("ALTER SEQUENCE {}_id_seq RESTART".format(table.name))
         conn.close()
-        self.db = m.Session()
+        self.db = Session()
         self.db.add(self.collection)
         self.db.commit()
 
@@ -131,20 +132,20 @@ class DBTest(AbstractTest):
 
     def ensure_base_package(self, package):
         if not package.base_id:
-            base = self.db.query(m.BasePackage).filter_by(name=package.name).first()
+            base = self.db.query(BasePackage).filter_by(name=package.name).first()
             if not base:
-                base = m.BasePackage(name=package.name)
+                base = BasePackage(name=package.name)
                 self.db.add(base)
                 self.db.flush()
             package.base_id = base.id
 
     def prepare_basic_data(self):
-        pkg = m.Package(name='rnv', collection_id=self.collection.id)
+        pkg = Package(name='rnv', collection_id=self.collection.id)
         self.ensure_base_package(pkg)
         self.db.add(pkg)
         self.db.flush()
-        build = m.Build(package_id=pkg.id, state=m.Build.RUNNING,
-                        task_id=666, repo_id=1)
+        build = Build(package_id=pkg.id, state=Build.RUNNING,
+                      task_id=666, repo_id=1)
         self.db.add(build)
         self.db.commit()
         return pkg, build
@@ -152,9 +153,9 @@ class DBTest(AbstractTest):
     def prepare_packages(self, pkg_names):
         pkgs = []
         for name in pkg_names:
-            pkg = self.db.query(m.Package).filter_by(name=name).first()
+            pkg = self.db.query(Package).filter_by(name=name).first()
             if not pkg:
-                pkg = m.Package(name=name, collection_id=self.collection.id)
+                pkg = Package(name=name, collection_id=self.collection.id)
                 self.ensure_base_package(pkg)
                 self.db.add(pkg)
             pkgs.append(pkg)
@@ -163,29 +164,29 @@ class DBTest(AbstractTest):
 
     def prepare_build(self, pkg_name, state=None, repo_id=None, resolved=True):
         states = {
-            True: m.Build.COMPLETE,
-            False: m.Build.FAILED,
-            None: m.Build.RUNNING,
+            True: Build.COMPLETE,
+            False: Build.FAILED,
+            None: Build.RUNNING,
         }
         if isinstance(state, bool):
             state = states[state]
         self.prepare_packages([pkg_name])
-        package_id = self.db.query(m.Package.id).filter_by(name=pkg_name).scalar()
-        build = m.Build(package_id=package_id, state=state,
-                        repo_id=repo_id or (1 if state != m.Build.RUNNING else None),
-                        version='1', release='1.fc25',
-                        task_id=self.task_id_counter,
-                        deps_resolved=resolved)
+        package_id = self.db.query(Package.id).filter_by(name=pkg_name).scalar()
+        build = Build(package_id=package_id, state=state,
+                      repo_id=repo_id or (1 if state != Build.RUNNING else None),
+                      version='1', release='1.fc25',
+                      task_id=self.task_id_counter,
+                      deps_resolved=resolved)
         self.task_id_counter += 1
         self.db.add(build)
         self.db.commit()
         return build
 
     def prepare_user(self, **kwargs):
-        user = self.db.query(m.User).filter_by(**kwargs).first()
+        user = self.db.query(User).filter_by(**kwargs).first()
         if user:
             return user
-        user = m.User(**kwargs)
+        user = User(**kwargs)
         self.db.add(user)
         self.db.commit()
         return user
@@ -193,15 +194,15 @@ class DBTest(AbstractTest):
     def prepare_group(self, name, content=(), namespace=None, owners=('john.doe',)):
         users = [self.prepare_user(name=name) for name in owners]
         packages = self.prepare_packages(content)
-        group = m.PackageGroup(name=name, namespace=namespace)
+        group = PackageGroup(name=name, namespace=namespace)
         self.db.add(group)
         self.db.commit()
-        self.db.execute(m.PackageGroupRelation.__table__.insert(),
-                       [dict(group_id=group.id, base_id=package.base_id)
-                        for package in packages])
-        self.db.execute(m.GroupACL.__table__.insert(),
-                       [dict(group_id=group.id, user_id=user.id)
-                        for user in users])
+        self.db.execute(PackageGroupRelation.__table__.insert(),
+                        [dict(group_id=group.id, base_id=package.base_id)
+                         for package in packages])
+        self.db.execute(GroupACL.__table__.insert(),
+                        [dict(group_id=group.id, user_id=user.id)
+                         for user in users])
         self.db.commit()
         return group
 

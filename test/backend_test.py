@@ -25,8 +25,8 @@ from copy import deepcopy
 from test.common import DBTest, KojiMock
 from mock import Mock, patch
 from koschei.backend import Backend
-from koschei import plugin, models as m
-from koschei.models import *
+from koschei import plugin
+from koschei.models import Package, Build, KojiTask
 
 # pylint: disable=unbalanced-tuple-unpacking,blacklisted-name
 
@@ -64,11 +64,12 @@ rnv_subtasks = [{'arch': 'armhfp',
                  'owner': 2645,
                  'parent': 9107738,
                  'priority': 49,
-                 'request': ['../packages/rnv/1.7.11/7.fc22/src/rnv-1.7.11-7.fc22.src.rpm',
-                             299,
-                             'armv7hl',
-                             True,
-                             {'repo_id': 460889}],
+                 'request':
+                 ['../packages/rnv/1.7.11/7.fc22/src/rnv-1.7.11-7.fc22.src.rpm',
+                  299,
+                  'armv7hl',
+                  True,
+                  {'repo_id': 460889}],
                  'start_time': '2015-03-01 13:39:41.486608',
                  'start_ts': 1425217181.48661,
                  'state': 2,
@@ -88,11 +89,12 @@ rnv_subtasks = [{'arch': 'armhfp',
                  'owner': 2645,
                  'parent': 9107738,
                  'priority': 49,
-                 'request': ['../packages/rnv/1.7.11/7.fc22/src/rnv-1.7.11-7.fc22.src.rpm',
-                             299,
-                             'i686',
-                             False,
-                             {'repo_id': 460889}],
+                 'request':
+                 ['../packages/rnv/1.7.11/7.fc22/src/rnv-1.7.11-7.fc22.src.rpm',
+                  299,
+                  'i686',
+                  False,
+                  {'repo_id': 460889}],
                  'start_time': '2015-03-01 13:39:46.519139',
                  'start_ts': 1425217186.51914,
                  'state': 2,
@@ -112,11 +114,12 @@ rnv_subtasks = [{'arch': 'armhfp',
                  'owner': 2645,
                  'parent': 9107738,
                  'priority': 49,
-                 'request': ['../packages/rnv/1.7.11/7.fc22/src/rnv-1.7.11-7.fc22.src.rpm',
-                             299,
-                             'x86_64',
-                             False,
-                             {'repo_id': 460889}],
+                 'request':
+                 ['../packages/rnv/1.7.11/7.fc22/src/rnv-1.7.11-7.fc22.src.rpm',
+                  299,
+                  'x86_64',
+                  False,
+                  {'repo_id': 460889}],
                  'start_time': '2015-03-01 13:39:41.574641',
                  'start_ts': 1425217181.57464,
                  'state': 2,
@@ -208,8 +211,9 @@ class BackendTest(DBTest):
         self.log = Mock()
         self.collection.secondary_mode = True
         self.db.commit()
-        self.backend = Backend(db=self.db, koji_sessions={'primary': self.koji_session,
-                                                         'secondary': self.secondary_koji},
+        self.backend = Backend(db=self.db,
+                               koji_sessions={'primary': self.koji_session,
+                                              'secondary': self.secondary_koji},
                                log=logging.getLogger('koschei.backend'))
         plugin.load_plugins('backend', ['fedmsg_publisher'])
 
@@ -232,7 +236,7 @@ class BackendTest(DBTest):
             event.assert_called_once_with('package_state_change', package=package,
                                           prev_state='failing', new_state='ok')
             self.assertItemsEqual([(x['id'],) for x in rnv_subtasks],
-                                  self.db.query(m.KojiTask.task_id))
+                                  self.db.query(KojiTask.task_id))
 
     def test_update_state_existing_task(self):
         self.koji_session.getTaskInfo = Mock(return_value=rnv_task)
@@ -241,10 +245,10 @@ class BackendTest(DBTest):
         self.prepare_build('rnv', False)
         running_build = self.prepare_build('rnv')
         running_build.task_id = rnv_task['id']
-        koji_task = m.KojiTask(task_id=rnv_subtasks[0]['id'],
-                               arch='noarch',
-                               state=koji.TASK_STATES['OPEN'],
-                               build_id=running_build.id)
+        koji_task = KojiTask(task_id=rnv_subtasks[0]['id'],
+                             arch='noarch',
+                             state=koji.TASK_STATES['OPEN'],
+                             build_id=running_build.id)
         self.db.add(koji_task)
         self.db.commit()
         self.assertEqual('failing', package.state_string)
@@ -257,7 +261,7 @@ class BackendTest(DBTest):
             event.assert_called_once_with('package_state_change', package=package,
                                           prev_state='failing', new_state='ok')
             self.assertItemsEqual([(x['id'],) for x in rnv_subtasks],
-                                  self.db.query(m.KojiTask.task_id))
+                                  self.db.query(KojiTask.task_id))
 
     # Regression test for https://github.com/msimacek/koschei/issues/27
     def test_update_state_inconsistent(self):
@@ -289,22 +293,24 @@ class BackendTest(DBTest):
         build.release = "9.fc24"
         self.secondary_koji.listTagged = Mock(return_value=rnv_build_info)
         self.db.commit()
-        with patch('koschei.backend.dispatch_event') as event:
+        with patch('koschei.backend.dispatch_event'):
             self.backend.refresh_latest_builds()
-            self.secondary_koji.getTaskInfo.assert_called_once_with(rnv_build_info[0]['task_id'])
-            self.secondary_koji.getTaskChildren.assert_called_once_with(rnv_build_info[0]['task_id'],
-                                                                        request=True)
+            self.secondary_koji.getTaskInfo\
+                .assert_called_once_with(rnv_build_info[0]['task_id'])
+            self.secondary_koji.getTaskChildren\
+                .assert_called_once_with(rnv_build_info[0]['task_id'],
+                                         request=True)
             self.assertEqual('ok', package.state_string)
             self.assertEquals(460889, package.last_complete_build.repo_id)
             # event.assert_called_once_with('package_state_change', package=package,
             #                               prev_state='failing', new_state='ok')
             self.assertItemsEqual([(x['id'],) for x in rnv_subtasks],
-                                  self.db.query(m.KojiTask.task_id))
+                                  self.db.query(KojiTask.task_id))
 
     def test_refresh_latest_builds_already_present(self):
         self.secondary_koji.getTaskInfo = Mock(return_value=rnv_task)
         self.secondary_koji.getTaskChildren = Mock(return_value=rnv_subtasks)
-        package = self.prepare_packages(['rnv'])[0]
+        self.prepare_packages(['rnv'])
         build = self.prepare_build('rnv', False)
         build.real = True
         build.repo_id = 460889
@@ -314,9 +320,9 @@ class BackendTest(DBTest):
         build.task_id = rnv_build_info[0]['task_id']
         self.secondary_koji.listTagged = Mock(return_value=rnv_build_info)
         self.db.commit()
-        with patch('koschei.backend.dispatch_event') as event:
+        with patch('koschei.backend.dispatch_event'):
             self.backend.refresh_latest_builds()
-            self.assertEquals(1, self.db.query(m.Build).count())
+            self.assertEquals(1, self.db.query(Build).count())
 
     def test_refresh_latest_builds_no_repo_id(self):
         self.secondary_koji.getTaskInfo = Mock(return_value=rnv_task)
@@ -324,7 +330,7 @@ class BackendTest(DBTest):
         for subtask in subtasks:
             del subtask['request']
         self.secondary_koji.getTaskChildren = Mock(return_value=subtasks)
-        package = self.prepare_packages(['rnv'])[0]
+        self.prepare_packages(['rnv'])
         build = self.prepare_build('rnv', False)
         build.real = True
         build.repo_id = 460889
@@ -334,14 +340,14 @@ class BackendTest(DBTest):
         build.task_id = 1234
         self.secondary_koji.listTagged = Mock(return_value=rnv_build_info)
         self.db.commit()
-        with patch('koschei.backend.dispatch_event') as event:
+        with patch('koschei.backend.dispatch_event'):
             self.backend.refresh_latest_builds()
-            self.assertEquals(1, self.db.query(m.Build).count())
+            self.assertEquals(1, self.db.query(Build).count())
 
     def test_refresh_latest_builds_skip_old(self):
         self.secondary_koji.getTaskInfo = Mock(return_value=rnv_task)
         self.secondary_koji.getTaskChildren = Mock(return_value=rnv_subtasks)
-        package = self.prepare_packages(['rnv'])[0]
+        self.prepare_packages(['rnv'])
         build = self.prepare_build('rnv', False)
         build.real = True
         build.epoch = None
@@ -351,9 +357,9 @@ class BackendTest(DBTest):
         build.task_id = 12345678
         self.secondary_koji.listTagged = Mock(return_value=rnv_build_info)
         self.db.commit()
-        with patch('koschei.backend.dispatch_event') as event:
+        with patch('koschei.backend.dispatch_event'):
             self.backend.refresh_latest_builds()
-            self.assertEquals(1, self.db.query(m.Build).count())
+            self.assertEquals(1, self.db.query(Build).count())
 
     def test_cancel_timed_out(self):
         self.prepare_packages(['rnv'])
@@ -363,7 +369,7 @@ class BackendTest(DBTest):
         self.koji_session.cancelTask = Mock(side_effect=koji.GenericError)
         self.backend.update_build_state(running_build, 'FREE')
         self.koji_session.cancelTask.assert_called_once_with(running_build.task_id)
-        self.assertEquals(0, self.db.query(m.Build).count())
+        self.assertEquals(0, self.db.query(Build).count())
 
     def test_cancel_requested(self):
         self.prepare_packages(['rnv'])
@@ -372,7 +378,7 @@ class BackendTest(DBTest):
         self.db.commit()
         self.backend.update_build_state(running_build, 'ASSIGNED')
         self.koji_session.cancelTask.assert_called_once_with(running_build.task_id)
-        self.assertEquals(0, self.db.query(m.Build).count())
+        self.assertEquals(0, self.db.query(Build).count())
 
     def test_refresh_packages(self):
         self.prepare_packages(['eclipse'])

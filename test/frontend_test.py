@@ -18,12 +18,13 @@
 
 from functools import wraps
 
-from koschei.frontend import app
+# pylint:disable = unused-import
 import koschei.frontend.views
 import koschei.frontend.auth
-import koschei.models as m
 
-from .common import DBTest
+from koschei.frontend import app
+
+from test.common import DBTest
 
 
 def authenticate(admin=False):
@@ -60,9 +61,9 @@ class FrontendTest(DBTest):
         self.assertEqual(404, reply.status_code)
 
     def test_static(self):
-         reply = self.client.get('/static/koschei.css')
-         self.assertEqual(200, reply.status_code)
-         self.assertEqual('text/css; charset=utf-8', reply.content_type)
+        reply = self.client.get('/static/koschei.css')
+        self.assertEqual(200, reply.status_code)
+        self.assertEqual('text/css; charset=utf-8', reply.content_type)
 
     def test_documentation(self):
         reply = self.client.get('documentation')

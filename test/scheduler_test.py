@@ -23,14 +23,16 @@ from mock import Mock, patch
 from sqlalchemy import Table, Column, Integer, MetaData
 
 from test.common import DBTest
-from koschei import models as m
+from koschei.models import UnappliedChange, AppliedChange, Build, Package, Collection
 from koschei.backend.services.scheduler import Scheduler
 
 
+# pylint:disable = too-many-public-methods, unbalanced-tuple-unpacking
 class SchedulerTest(DBTest):
     def get_scheduler(self):
         backend_mock = Mock()
-        sched = Scheduler(db=self.db, koji_sessions={'primary': Mock(), 'secondary': Mock()},
+        sched = Scheduler(db=self.db,
+                          koji_sessions={'primary': Mock(), 'secondary': Mock()},
                           backend=backend_mock)
         return sched
 
@@ -40,47 +42,47 @@ class SchedulerTest(DBTest):
         build3 = self.prepare_build('eclipse', True)
         chngs = []
         # update, value 20
-        chngs.append(m.UnappliedChange(package_id=build1.package_id, dep_name='expat',
-                                       prev_version='2', curr_version='2',
-                                       prev_release='rc1', curr_release='rc2',
-                                       prev_build_id=build2.id,
-                                       distance=1))
+        chngs.append(UnappliedChange(package_id=build1.package_id, dep_name='expat',
+                                     prev_version='2', curr_version='2',
+                                     prev_release='rc1', curr_release='rc2',
+                                     prev_build_id=build2.id,
+                                     distance=1))
         # update - applied
-        chngs.append(m.AppliedChange(dep_name='expat',
-                                     prev_version='1', curr_version='2',
-                                     prev_release='1', curr_release='rc1',
-                                     distance=1, build_id=build2.id))
+        chngs.append(AppliedChange(dep_name='expat',
+                                   prev_version='1', curr_version='2',
+                                   prev_release='1', curr_release='rc1',
+                                   distance=1, build_id=build2.id))
         # downgrade, value 10
-        chngs.append(m.UnappliedChange(package_id=build1.package_id, dep_name='gcc',
-                                       prev_version='11', curr_version='9',
-                                       prev_release='19', curr_release='18',
-                                       prev_build_id=build2.id,
-                                       distance=2))
+        chngs.append(UnappliedChange(package_id=build1.package_id, dep_name='gcc',
+                                     prev_version='11', curr_version='9',
+                                     prev_release='19', curr_release='18',
+                                     prev_build_id=build2.id,
+                                     distance=2))
         # appearance, value 5
-        chngs.append(m.UnappliedChange(package_id=build1.package_id, dep_name='python',
-                                       prev_version=None, curr_version='3.3',
-                                       prev_release=None, curr_release='11',
-                                       prev_build_id=build2.id,
-                                       distance=4))
+        chngs.append(UnappliedChange(package_id=build1.package_id, dep_name='python',
+                                     prev_version=None, curr_version='3.3',
+                                     prev_release=None, curr_release='11',
+                                     prev_build_id=build2.id,
+                                     distance=4))
         # null distance, value 2
-        chngs.append(m.UnappliedChange(package_id=build1.package_id, dep_name='python-lxml',
-                                       prev_version=None, curr_version='3.3',
-                                       prev_release=None, curr_release='11',
-                                       prev_build_id=build2.id,
-                                       distance=None))
+        chngs.append(UnappliedChange(package_id=build1.package_id, dep_name='python-lxml',
+                                     prev_version=None, curr_version='3.3',
+                                     prev_release=None, curr_release='11',
+                                     prev_build_id=build2.id,
+                                     distance=None))
         # not from current build
-        chngs.append(m.UnappliedChange(package_id=build1.package_id, dep_name='expat',
-                                       prev_version='2', curr_version='2',
-                                       prev_release='rc1', curr_release='rc2',
-                                       prev_build_id=build1.id,
-                                       distance=1))
+        chngs.append(UnappliedChange(package_id=build1.package_id, dep_name='expat',
+                                     prev_version='2', curr_version='2',
+                                     prev_release='rc1', curr_release='rc2',
+                                     prev_build_id=build1.id,
+                                     distance=1))
 
         # different package - eclipse, value 20
-        chngs.append(m.UnappliedChange(package_id=build3.package_id, dep_name='maven',
-                                       prev_version='2', curr_version='2',
-                                       prev_release='rc1', curr_release='rc2',
-                                       prev_build_id=build3.id,
-                                       distance=1))
+        chngs.append(UnappliedChange(package_id=build3.package_id, dep_name='maven',
+                                     prev_version='2', curr_version='2',
+                                     prev_release='rc1', curr_release='rc2',
+                                     prev_build_id=build3.id,
+                                     distance=1))
 
         for chng in chngs:
             self.db.add(chng)
@@ -121,14 +123,14 @@ class SchedulerTest(DBTest):
 
     def test_time_priority(self):
         for days in [0, 2, 5, 7, 12]:
-            pkg = m.Package(name='p{}'.format(days), collection_id=self.collection.id)
+            pkg = Package(name='p{}'.format(days), collection_id=self.collection.id)
             self.ensure_base_package(pkg)
             self.db.add(pkg)
             self.db.flush()
-            build = m.Build(package_id=pkg.id,
-                            started=datetime.now() - timedelta(days, hours=1),
-                            version='1', release='1.fc25',
-                            task_id=days + 1)
+            build = Build(package_id=pkg.id,
+                          started=datetime.now() - timedelta(days, hours=1),
+                          version='1', release='1.fc25',
+                          task_id=days + 1)
             self.db.add(build)
         self.db.commit()
         query = self.get_scheduler().get_time_priority_query()
@@ -168,9 +170,9 @@ class SchedulerTest(DBTest):
 
     def test_coefficient(self):
         rnv, eclipse, fop = self.prepare_packages(['rnv', 'eclipse', 'fop'])
-        eclipse_coll = m.Collection(name='eclipse', display_name='eclipse',
-                                    build_tag='foo', target_tag='foo',
-                                    priority_coefficient=0.1)
+        eclipse_coll = Collection(name='eclipse', display_name='eclipse',
+                                  build_tag='foo', target_tag='foo',
+                                  priority_coefficient=0.1)
         self.db.add(eclipse_coll)
         self.db.flush()
         eclipse.collection_id = eclipse_coll.id
@@ -202,10 +204,10 @@ class SchedulerTest(DBTest):
                       if name.endswith('_state')}
             pkgs = []
             for name in priorities.keys():
-                pkg = self.db.query(m.Package).filter_by(name=name).first()
+                pkg = self.db.query(Package).filter_by(name=name).first()
                 if not pkg:
-                    pkg = m.Package(name=name, tracked=states.get(name) != 'ignored',
-                                    collection_id=self.collection.id)
+                    pkg = Package(name=name, tracked=states.get(name) != 'ignored',
+                                  collection_id=self.collection.id)
                     self.ensure_base_package(pkg)
                     self.db.add(pkg)
                     self.db.flush()
@@ -213,11 +215,13 @@ class SchedulerTest(DBTest):
                         pkg.resolved = states.get(name) != 'unresolved'
                 pkgs.append((name, pkg))
                 if name in builds:
-                    self.db.add(m.Build(package_id=pkg.id, state=builds[name],
-                                       task_id=self.task_id_counter,
-                                       version='1', release='1.fc25',
-                                       repo_id=1 if builds[name] != m.Build.RUNNING else None))
+                    self.db.add(Build(package_id=pkg.id, state=builds[name],
+                                      task_id=self.task_id_counter,
+                                      version='1', release='1.fc25',
+                                      repo_id=1 if builds[name] != Build.RUNNING
+                                      else None))
                     self.task_id_counter += 1
+            # pylint:disable = no-value-for-parameter
             conn.execute(table.insert(), [{'pkg_id': pkg.id, 'priority': priorities[name]}
                                           for name, pkg in pkgs])
             self.db.commit()
@@ -233,12 +237,13 @@ class SchedulerTest(DBTest):
                    Mock(return_value=koji_load)):
             sched = self.get_scheduler()
             def get_prio_q():
-                return {i :self.db.query(t.c.pkg_id.label('pkg_id'), t.c.priority.label('priority'))
+                return {i :self.db.query(t.c.pkg_id.label('pkg_id'),
+                                         t.c.priority.label('priority'))
                         for i, t in enumerate(tables)}
             with patch.object(sched, 'get_priority_queries', get_prio_q):
                 sched.main()
                 if scheduled:
-                    pkg = self.db.query(m.Package).filter_by(name=scheduled).one()
+                    pkg = self.db.query(Package).filter_by(name=scheduled).one()
                     sched.backend.submit_build.assert_called_once_with(pkg)
                 else:
                     self.assertFalse(sched.backend.submit_build.called)
@@ -260,21 +265,21 @@ class SchedulerTest(DBTest):
             self.assert_scheduled([table], koji_load=0.7, scheduled=None)
 
     def test_max_builds(self):
-        with self.prio_table(rnv=30, rnv_build=m.Build.RUNNING,
-                             eclipse=300, eclipse_build=m.Build.RUNNING,
+        with self.prio_table(rnv=30, rnv_build=Build.RUNNING,
+                             eclipse=300, eclipse_build=Build.RUNNING,
                              expat=400) as table:
             self.assert_scheduled([table], scheduled=None)
 
     def test_running1(self):
-        with self.prio_table(rnv=30000, rnv_build=m.Build.RUNNING) as table:
+        with self.prio_table(rnv=30000, rnv_build=Build.RUNNING) as table:
             self.assert_scheduled([table], scheduled=None)
 
     def test_running2(self):
-        with self.prio_table(eclipse=100, rnv=300, rnv_build=m.Build.RUNNING) as table:
+        with self.prio_table(eclipse=100, rnv=300, rnv_build=Build.RUNNING) as table:
             self.assert_scheduled([table], scheduled=None)
 
     def test_running3(self):
-        with self.prio_table(eclipse=280, rnv=300, rnv_build=m.Build.RUNNING) as table:
+        with self.prio_table(eclipse=280, rnv=300, rnv_build=Build.RUNNING) as table:
             self.assert_scheduled([table], scheduled='eclipse')
 
     def test_multiple(self):
@@ -282,8 +287,8 @@ class SchedulerTest(DBTest):
             self.assert_scheduled([table], scheduled='rnv')
 
     def test_builds(self):
-        with self.prio_table(eclipse=100, rnv=300, rnv_build=m.Build.COMPLETE,
-                             eclipse_build=m.Build.RUNNING) as table:
+        with self.prio_table(eclipse=100, rnv=300, rnv_build=Build.COMPLETE,
+                             eclipse_build=Build.RUNNING) as table:
             self.assert_scheduled([table], scheduled='rnv')
 
     def test_state1(self):
