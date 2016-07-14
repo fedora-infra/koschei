@@ -362,7 +362,7 @@ def unified_package_view(template, query_fn=None, **template_args):
                      running_build_expr.label('has_running_build'),
                      *exprs).filter(~BasePackage.all_blocked)
     if not untracked:
-        query.filter(tracked_expr)
+        query = query.filter(tracked_expr)
     for collection, table in zip(g.current_collections, tables):
         on_expr = BasePackage.id == table.base_id
         on_expr &= table.collection_id == collection.id
