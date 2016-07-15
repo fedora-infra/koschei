@@ -305,12 +305,12 @@ def get_collections():
         db.expunge(collection)
     if not g.collections:
         abort(500, "No collections setup")
-    by_name = {c.name: c for c in g.collections}
+    g.collections_by_name = {c.name: c for c in g.collections}
     g.current_collections = []
     if collection_name:
         try:
             for component in collection_name.split(','):
-                g.current_collections.append(by_name[component])
+                g.current_collections.append(g.collections_by_name[component])
         except KeyError:
             abort(404, "Collection not found")
     else:
@@ -730,12 +730,12 @@ def search():
 @app.route('/package/<name>/edit', methods=['POST'])
 @auth.login_required()
 def edit_package(name):
-    collection = g.current_collections[0]
-    package = db.query(Package)\
-        .filter_by(name=name, collection_id=collection.id)\
-        .first_or_404()
     form = request.form
     try:
+        collection = g.collections_by_name[form['collection']]
+        package = db.query(Package)\
+            .filter_by(name=name, collection_id=collection.id)\
+            .first_or_404()
         for key, prev_val in form.items():
             if key.startswith('group-prev-'):
                 group = db.query(PackageGroup).get_or_404(int(key[len('group-prev-'):]))
@@ -761,7 +761,8 @@ def edit_package(name):
         abort(400)
 
     db.commit()
-    return redirect(url_for('package_detail', name=package.name))
+    return redirect(url_for('package_detail', name=package.name) +
+                    "?collection=" + collection.name)
 
 
 @app.route('/bugreport/<name>')
