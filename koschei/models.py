@@ -223,6 +223,30 @@ class Collection(Base):
         return self.display_name
 
 
+class CollectionGroup(Base):
+    __tablename__ = 'collection_group'
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False, unique=True)
+    display_name = Column(String, nullable=False)
+
+    def __str__(self):
+        return self.display_name
+
+
+class CollectionGroupRelation(Base):
+    __tablename__ = 'collection_group_relation'
+    group_id = Column(
+        Integer,
+        ForeignKey('collection_group.id', ondelete='CASCADE'),
+        primary_key=True
+    )
+    collection_id = Column(
+        Integer,
+        ForeignKey('collection.id', ondelete='CASCADE'),
+        primary_key=True,
+    )
+
+
 class BasePackage(Base):
     __tablename__ = 'base_package'
     id = Column(Integer, primary_key=True)
@@ -729,5 +753,11 @@ User.groups = relationship(PackageGroup,
                            secondary=GroupACL.__table__,
                            order_by=[PackageGroup.namespace,
                                      PackageGroup.name], passive_deletes=True)
+CollectionGroup.collections = relationship(
+    Collection,
+    secondary=CollectionGroupRelation.__table__,
+    order_by=(Collection.order, Collection.name.desc()),
+    passive_deletes=True,
+)
 
 configure_mappers()
