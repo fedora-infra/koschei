@@ -171,6 +171,13 @@ config = {
         "SECRET_KEY": "isecretlylovebabymetal",
     },
     "frontend": {
+        # function bound to frontpage endpoint. Useful values are:
+        # 'package_list', 'collection_list', 'groups', 'login'
+        # Other possible options can be obtained by inspecting the source, but
+        # those may be changed without notice
+        "frontpage": "package_list",
+        # arguments to frontpage view function
+        "frontpage_kwargs": {},
         # pagination values
         "packages_per_page": 100,
         "builds_per_page": 15,

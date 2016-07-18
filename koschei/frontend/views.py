@@ -404,7 +404,9 @@ def package_list():
 @app.route('/')
 @tab('Packages', slave=True)
 def frontpage():
-    return package_list()
+    return app.view_functions[frontend_config['frontpage']](
+        **frontend_config['frontpage_kwargs']
+    )
 
 
 @app.route('/package/<name>')
