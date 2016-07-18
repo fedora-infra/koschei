@@ -38,7 +38,7 @@ from koschei.config import get_config
 from koschei.frontend import app, db, frontend_config, auth
 from koschei.models import (Package, Build, PackageGroup, PackageGroupRelation,
                             AdminNotice, BuildrootProblem, BasePackage,
-                            GroupACL, Collection)
+                            GroupACL, Collection, CollectionGroup)
 
 log = logging.getLogger('koschei.views')
 
@@ -386,10 +386,25 @@ def unified_package_view(template, query_fn=None, **template_args):
                            order=order_names, collection=None, **template_args)
 
 
-@app.route('/')
+@app.route('/collections')
+@tab('Collections')
+def collection_list():
+    groups = db.query(CollectionGroup)\
+        .options(joinedload(CollectionGroup.collections))\
+        .all()
+    return render_template("list-collections.html", groups=groups)
+
+
+@app.route('/packages')
 @tab('Packages')
-def frontpage():
+def package_list():
     return package_view("frontpage.html")
+
+
+@app.route('/')
+@tab('Packages', slave=True)
+def frontpage():
+    return package_list()
 
 
 @app.route('/package/<name>')
