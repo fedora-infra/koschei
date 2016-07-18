@@ -398,7 +398,7 @@ def collection_list():
 @app.route('/packages')
 @tab('Packages')
 def package_list():
-    return package_view("frontpage.html")
+    return package_view("list-packages.html")
 
 
 @app.route('/')
@@ -493,7 +493,7 @@ def groups_overview():
                .options(undefer(PackageGroup.package_count))\
                .filter_by(namespace=None)\
                .order_by(PackageGroup.name).all()
-    return render_template("groups.html", groups=groups)
+    return render_template("list-groups.html", groups=groups)
 
 
 @app.route('/groups/<name>')
