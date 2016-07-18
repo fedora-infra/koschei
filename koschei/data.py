@@ -22,6 +22,7 @@ from sqlalchemy import insert
 
 from koschei.models import (Package, BasePackage, PackageGroup,
                             PackageGroupRelation, GroupACL, User,
+                            Collection, CollectionGroupRelation,
                             get_or_create)
 
 
@@ -100,3 +101,26 @@ def set_group_maintainers(db, group, maintainers):
     acls = [dict(group_id=group.id, user_id=user.id)
             for user in users]
     db.execute(insert(GroupACL), acls)
+
+
+def set_collection_group_content(db, group, collection_names):
+    """
+    Makes given collection group contain given collections
+
+    :param: db database session
+    :param: group collection group
+    :param: collection_names list of collection names
+    """
+    collection_names = set(collection_names)
+    collection_ids = db.query(Collection.id)\
+        .filter(Collection.name.in_(collection_names))\
+        .all_flat()
+    if len(collection_ids) != len(collection_names):
+        raise RuntimeError("Some collections weren't found")
+    rels = [dict(group_id=group.id, collection_id=coll_id)
+            for coll_id in collection_ids]
+    db.query(CollectionGroupRelation)\
+        .filter(CollectionGroupRelation.group_id == group.id)\
+        .delete()
+    if rels:
+        db.execute(insert(CollectionGroupRelation, rels))

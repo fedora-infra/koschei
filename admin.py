@@ -28,7 +28,7 @@ import argparse
 
 from koschei import data
 from koschei.models import (get_engine, Base, Package, PackageGroup, Session,
-                            AdminNotice, Collection)
+                            AdminNotice, Collection, CollectionGroup)
 from koschei.backend import koji_util, Backend
 from koschei.config import load_config, get_config
 
@@ -310,20 +310,39 @@ class EditGroup(GroupCommandParser, Command):
         self.set_group_content(db, group, content_from_file, append)
 
 
-class DeleteGroup(Command):
-    """ Deletes package group """
+class EntityCommand(object):
+    # entity needs to be overriden
+    def get(self, db, name, **kwargs):
+        return db.query(self.entity).filter(self.entity.name == name).first()
 
-    def setup_parser(self, parser):
-        parser.add_argument('current_name',
-                            help="Current group full name - ns/name")
 
-    def execute(self, db, current_name):
-        ns, name = PackageGroup.parse_name(current_name)
-        group = db.query(PackageGroup)\
-            .filter_by(name=name, namespace=ns or None).first()
-        if not group:
-            sys.exit("Group {} not found".format(current_name))
-        db.delete(group)
+class CreateEntityCommand(EntityCommand):
+    def execute(self, db, **kwargs):
+        instance = self.get(db, **kwargs)
+        if instance:
+            sys.exit("Object already exists")
+        instance = self.entity(**kwargs)
+        db.add(instance)
+        return instance
+
+
+class EditEntityCommand(EntityCommand):
+    def execute(self, db, **kwargs):
+        instance = self.get(db, **kwargs)
+        if not instance:
+            sys.exit("Object not found")
+        for key, value in kwargs.items():
+            if value is not None:
+                setattr(instance, key, value)
+        return instance
+
+
+class DeleteEntityCommand(EntityCommand):
+    def execute(self, db, **kwargs):
+        instance = self.get(db, **kwargs)
+        if not instance:
+            sys.exit("Object not found")
+        db.delete(instance)
 
 
 class CollectionModeAction(argparse.Action):
@@ -368,15 +387,14 @@ class CollectionCommandParser(object):
                             help="Product version used in bugzilla template")
 
 
-class CreateCollection(CollectionCommandParser, Command):
+class CreateCollection(CollectionCommandParser, CreateEntityCommand, Command):
     """ Creates new package collection """
-
-    def execute(self, db, **kwargs):
-        db.add(Collection(**kwargs))
+    entity = Collection
 
 
-class EditCollection(CollectionCommandParser, Command):
+class EditCollection(CollectionCommandParser, EditEntityCommand, Command):
     """ Modifies existing package collection """
+    entity = Collection
     args_required = False
 
     def execute(self, db, name, **kwargs):
@@ -407,6 +425,48 @@ class DeleteCollection(Command):
                      "it anyway. It means deleting all the packages build history. "
                      "It cannot be reverted and may take long time to execute")
         db.delete(collection)
+
+
+class CreateOrEditCollectionGroupCommand(object):
+    args_required = True
+
+    def setup_parser(self, parser):
+        parser.add_argument('name',
+                            help="Name identificator")
+        parser.add_argument('-d', '--display-name',
+                            required=self.args_required,
+                            help="Human readable name")
+        parser.add_argument('-c', '--contents', nargs='*',
+                            help="Signifies that remaining arguments are "
+                            "group contents")
+
+    def execute(self, db, contents, **kwargs):
+        group = super(CreateOrEditCollectionGroupCommand, self).execute(db, **kwargs)
+        if contents:
+            data.set_collection_group_content(db, group, contents)
+
+
+class CreateCollectionGroup(CreateOrEditCollectionGroupCommand,
+                            CreateEntityCommand, Command):
+    """ Creates new package collection group """
+    entity = CollectionGroup
+
+
+class EditCollectionGroup(CreateOrEditCollectionGroupCommand,
+                          EditEntityCommand, Command):
+    """ Modifies existing package collection group """
+    args_required = False
+    entity = CollectionGroup
+
+
+
+class DeleteCollectionGroup(DeleteEntityCommand, Command):
+    """ Deletes collection group """
+    entity = CollectionGroup
+
+    def setup_parser(self, parser):
+        parser.add_argument('name',
+                            help="Name identificator")
 
 
 class Psql(Command):
