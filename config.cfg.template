@@ -275,7 +275,7 @@ config = {
             {version}-{release}
 
             Steps to Reproduce:
-            koji build --scratch {collection.target_tag} {name}-{version}-{release}.{arch}.rpm
+            koji build --scratch {collection.target} {name}-{version}-{release}.{arch}.rpm
 
             Additional info:
             This package is tracked by Koschei. See:

@@ -34,8 +34,10 @@ class ModelTest(DBTest):
 
     def test_group_cardinality_multiple_collections(self):
         group = self.prepare_group('xyzzy', content=['foo', 'bar', 'baz'])
-        new_collection = Collection(name="new", display_name="New", target_tag="tag2",
-                                    build_tag="build_tag2", priority_coefficient=2.0)
+        new_collection = Collection(name="new", display_name="New",
+                                    target='foo', target_tag="tag2",
+                                    build_tag="build_tag2",
+                                    priority_coefficient=2.0)
         self.db.add(new_collection)
         self.db.commit()
         pkg = Package(name='bar', collection_id=new_collection.id)
@@ -55,8 +57,10 @@ class ModelTest(DBTest):
         group = self.prepare_group('xyzzy', content=['xalan-j2'])
         self.prepare_packages(['xalan-j2'])[0].blocked = True
         self.db.commit()
-        new_collection = Collection(name="new", display_name="New", target_tag="tag2",
-                                    build_tag="build_tag2", priority_coefficient=2.0)
+        new_collection = Collection(name="new", display_name="New",
+                                    target='foo', target_tag="tag2",
+                                    build_tag="build_tag2",
+                                    priority_coefficient=2.0)
         self.db.add(new_collection)
         self.db.commit()
         pkg = Package(name='xalan-j2', collection_id=new_collection.id)
@@ -70,8 +74,10 @@ class ModelTest(DBTest):
         group = self.prepare_group('xyzzy', content=['xalan-j2'])
         self.prepare_packages(['xalan-j2'])[0].blocked = True
         self.db.commit()
-        new_collection = Collection(name="new", display_name="New", target_tag="tag2",
-                                    build_tag="build_tag2", priority_coefficient=2.0)
+        new_collection = Collection(name="new", display_name="New",
+                                    target='foo', target_tag="tag2",
+                                    build_tag="build_tag2",
+                                    priority_coefficient=2.0)
         self.db.add(new_collection)
         self.db.commit()
         pkg = Package(name='xalan-j2', collection_id=new_collection.id, blocked=True)

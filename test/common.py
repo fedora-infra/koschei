@@ -98,8 +98,8 @@ class DBTest(AbstractTest):
         self.db = None
         self.task_id_counter = 1
         self.collection = Collection(
-            name="f25", display_name="Fedora Rawhide", target_tag="f25",
-            build_tag="f25-build", priority_coefficient=1.0
+            name="f25", display_name="Fedora Rawhide", target="f25",
+            target_tag='f25', build_tag="f25-build", priority_coefficient=1.0
         )
 
     @classmethod

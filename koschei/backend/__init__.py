@@ -57,18 +57,24 @@ class Backend(KojiService):
         build_opts = {}
         if package.arch_override:
             build_opts = {'arch_override': package.arch_override}
-        tag = package.collection.target_tag
         # on secondary collections SRPMs are taken from secondary, primary
         # needs to be able to build from relative URL constructed against
         # secondary (internal redirect)
         srpm_res = koji_util.get_last_srpm(
-            self.secondary_session_for(package.collection), tag, name
+            self.secondary_session_for(package.collection),
+            package.collection.target_tag,
+            name
         )
         if srpm_res:
             srpm, srpm_url = srpm_res
             package.manual_priority = 0
-            build.task_id = koji_util.koji_scratch_build(self.koji_sessions['primary'],
-                                                         tag, name, srpm_url, build_opts)
+            build.task_id = koji_util.koji_scratch_build(
+                self.koji_sessions['primary'],
+                package.collection.target,
+                name,
+                srpm_url,
+                build_opts
+            )
             build.started = datetime.now()
             build.epoch = srpm['epoch']
             build.version = srpm['version']
@@ -85,7 +91,7 @@ class Backend(KojiService):
 
     def get_newer_build_if_exists(self, package):
         [info] = self.secondary_session_for(package.collection)\
-            .listTagged(package.collection.target_tag, latest=True,
+            .listTagged(package.collection.target, latest=True,
                         package=package.name, inherit=True) or [None]
         if info and self.is_build_newer(package.last_build, info):
             return info
@@ -388,9 +394,9 @@ class Backend(KojiService):
         new real builds.
         """
         for collection in self.db.query(Collection):
-            tag = collection.target_tag
             koji_session = self.secondary_session_for(collection)
-            infos = koji_session.listTagged(tag, latest=True, inherit=True)
+            infos = koji_session.listTagged(collection.target_tag, latest=True,
+                                            inherit=True)
             existing_task_ids = set(self.db.query(Build.task_id)
                                     .join(Build.package)
                                     .filter(Package.collection_id == collection.id)

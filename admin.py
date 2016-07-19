@@ -359,9 +359,9 @@ class CollectionCommandParser(object):
         parser.add_argument('-d', '--display-name',
                             required=self.args_required,
                             help="Human readable name")
-        parser.add_argument('-t', '--target-tag',
+        parser.add_argument('-t', '--target',
                             required=self.args_required,
-                            help="Koji target tag")
+                            help="Koji target")
         parser.add_argument('-m', '--mode', choices=('primary', 'secondary'),
                             dest='secondary_mode', action=CollectionModeAction,
                             help="Whether target should be in secondary "
