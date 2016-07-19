@@ -347,11 +347,12 @@ class DeleteEntityCommand(EntityCommand):
 
 class CollectionModeAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
-        setattr(namespace, self.dest, values == 'secondary')
+        setattr(namespace, self.dest, values == 'secondary' if values else None)
 
 
-class CollectionCommandParser(object):
+class CreateOrEditCollectionCommand(object):
     args_required = True
+    needs_koji = True
 
     def setup_parser(self, parser):
         parser.add_argument('name',
@@ -366,9 +367,6 @@ class CollectionCommandParser(object):
                             dest='secondary_mode', action=CollectionModeAction,
                             help="Whether target should be in secondary "
                             "or primary mode (default)")
-        parser.add_argument('-b', '--build-tag',
-                            required=self.args_required,
-                            help="Koji build tag")
         parser.add_argument('-p', '--priority-coefficient',
                             help="Priority coefficient")
         parser.add_argument('-o', '--order',
@@ -387,23 +385,34 @@ class CollectionCommandParser(object):
                             help="Product version used in bugzilla template")
 
 
-class CreateCollection(CollectionCommandParser, CreateEntityCommand, Command):
+    def set_koji_tags(self, koji_sessions, collection):
+        if collection.secondary_mode:
+            koji_session = koji_sessions['secondary']
+        else:
+            koji_session = koji_sessions['primary']
+        target_info = koji_session.getBuildTarget(collection.target)
+        collection.target_tag = target_info['dest_tag_name']
+        collection.build_tag = target_info['build_tag_name']
+
+
+class CreateCollection(CreateOrEditCollectionCommand, CreateEntityCommand, Command):
     """ Creates new package collection """
     entity = Collection
 
+    def execute(self, db, koji_sessions, **kwargs):
+        collection = super(CreateCollection, self).execute(db, **kwargs)
+        self.set_koji_tags(koji_sessions, collection)
 
-class EditCollection(CollectionCommandParser, EditEntityCommand, Command):
+
+class EditCollection(CreateOrEditCollectionCommand, EditEntityCommand, Command):
     """ Modifies existing package collection """
     entity = Collection
     args_required = False
 
-    def execute(self, db, name, **kwargs):
-        collection = db.query(Collection).filter_by(name=name).first()
-        if not collection:
-            sys.exit("Collection not found")
-        for key, value in kwargs.items():
-            if value is not None:
-                setattr(collection, key, value)
+    def execute(self, db, koji_sessions, **kwargs):
+        collection = super(EditCollection, self).execute(db, **kwargs)
+        if kwargs['secondary_mode'] is not None or kwargs['target'] is not None:
+            self.set_koji_tags(koji_sessions, collection)
 
 
 class DeleteCollection(Command):
