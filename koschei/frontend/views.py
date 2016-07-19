@@ -392,7 +392,10 @@ def collection_list():
     groups = db.query(CollectionGroup)\
         .options(joinedload(CollectionGroup.collections))\
         .all()
-    return render_template("list-collections.html", groups=groups)
+    categorized_ids = {c.id for g in groups for c in g.collections}
+    uncategorized = [c for c in g.collections if c.id not in categorized_ids]
+    return render_template("list-collections.html", groups=groups,
+                           uncategorized=uncategorized)
 
 
 @app.route('/packages')

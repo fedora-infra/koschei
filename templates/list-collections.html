@@ -1,4 +1,21 @@
 {% extends "base.html" %}
+{% macro collection_row(collection) %}
+<tr>
+    <td>
+        {{ collection }}
+    </td>
+    <td>
+        <a href="{{ url_for('package_list') }}?collection={{ collection.name }}">
+            Packages
+        </a>
+    </td>
+    <td>
+        <a href="{{ url_for('collection_detail', name=collection.name) }}">
+            Collection configuration
+        </a>
+    </td>
+</tr>
+{% endmacro %}
 {% block content %}
 <div>
     <div class="pageHeader">All collections</div>
@@ -16,23 +33,17 @@
                 </th>
             </tr>
             {% for collection in group.collections %}
-            <tr>
-                <td>
-                    {{ collection }}
-                </td>
-                <td>
-                    <a href="{{ url_for('package_list') }}?collection={{ collection.name }}">
-                        Packages
-                    </a>
-                </td>
-                <td>
-                    <a href="{{ url_for('collection_detail', name=collection.name) }}">
-                        Collection configuration
-                    </a>
-                </td>
-            </tr>
+            {{ collection_row(collection) }}
             {% endfor %}
         {% endfor %}
+        {% if uncategorized %}
+            <tr class="list-header">
+                <th colspan="3">Uncategorized</th>
+            </tr>
+            {% for collection in uncategorized %}
+            {{ collection_row(collection) }}
+            {% endfor %}
+        {% endif %}
     </table>
 </div>
 {% endblock %}
