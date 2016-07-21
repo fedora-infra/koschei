@@ -391,7 +391,7 @@ class CreateOrEditCollectionCommand(object):
         else:
             koji_session = koji_sessions['primary']
         target_info = koji_session.getBuildTarget(collection.target)
-        collection.target_tag = target_info['dest_tag_name']
+        collection.dest_tag = target_info['dest_tag_name']
         collection.build_tag = target_info['build_tag_name']
 
 

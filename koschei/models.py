@@ -194,7 +194,7 @@ class Collection(Base):
 
     # Koji configuration
     target = Column(String, nullable=False)
-    target_tag = Column(String, nullable=False)
+    dest_tag = Column(String, nullable=False)
     build_tag = Column(String, nullable=False)
 
     # PkgDB branch name, currently unused

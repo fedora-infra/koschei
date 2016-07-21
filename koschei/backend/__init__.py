@@ -62,7 +62,7 @@ class Backend(KojiService):
         # secondary (internal redirect)
         srpm_res = koji_util.get_last_srpm(
             self.secondary_session_for(package.collection),
-            package.collection.target_tag,
+            package.collection.dest_tag,
             name
         )
         if srpm_res:
@@ -355,10 +355,10 @@ class Backend(KojiService):
         """
         bases = {base.name: base for base
                  in self.db.query(BasePackage.id, BasePackage.name)}
-        for collection in self.db.query(Collection.id, Collection.target_tag,
+        for collection in self.db.query(Collection.id, Collection.dest_tag,
                                         Collection.secondary_mode):
             koji_session = self.secondary_session_for(collection)
-            koji_packages = koji_session.listPackages(tagID=collection.target_tag,
+            koji_packages = koji_session.listPackages(tagID=collection.dest_tag,
                                                       inherited=True)
             whitelisted = {p['package_name'] for p in koji_packages if not p['blocked']}
             packages = self.db.query(Package.id, Package.name, Package.blocked)\
@@ -395,7 +395,7 @@ class Backend(KojiService):
         """
         for collection in self.db.query(Collection):
             koji_session = self.secondary_session_for(collection)
-            infos = koji_session.listTagged(collection.target_tag, latest=True,
+            infos = koji_session.listTagged(collection.dest_tag, latest=True,
                                             inherit=True)
             existing_task_ids = set(self.db.query(Build.task_id)
                                     .join(Build.package)

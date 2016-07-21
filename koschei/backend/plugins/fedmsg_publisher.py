@@ -37,7 +37,7 @@ def emit_package_state_update(package, prev_state, new_state):
                         'new': new_state,
                         'koji_instance': get_config('fedmsg.instance'),
                         # compat
-                        'repo': package.collection.target_tag,
+                        'repo': package.collection.dest_tag,
                         'collection': package.collection.name,
                         'collection_name': package.collection.display_name,
                         'groups': group_names})

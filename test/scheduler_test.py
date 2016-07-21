@@ -171,7 +171,7 @@ class SchedulerTest(DBTest):
     def test_coefficient(self):
         rnv, eclipse, fop = self.prepare_packages(['rnv', 'eclipse', 'fop'])
         eclipse_coll = Collection(name='eclipse', display_name='eclipse',
-                                  build_tag='foo', target_tag='foo', target='foo',
+                                  build_tag='foo', dest_tag='foo', target='foo',
                                   priority_coefficient=0.1)
         self.db.add(eclipse_coll)
         self.db.flush()

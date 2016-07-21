@@ -35,7 +35,7 @@ class ModelTest(DBTest):
     def test_group_cardinality_multiple_collections(self):
         group = self.prepare_group('xyzzy', content=['foo', 'bar', 'baz'])
         new_collection = Collection(name="new", display_name="New",
-                                    target='foo', target_tag="tag2",
+                                    target='foo', dest_tag="tag2",
                                     build_tag="build_tag2",
                                     priority_coefficient=2.0)
         self.db.add(new_collection)
@@ -58,7 +58,7 @@ class ModelTest(DBTest):
         self.prepare_packages(['xalan-j2'])[0].blocked = True
         self.db.commit()
         new_collection = Collection(name="new", display_name="New",
-                                    target='foo', target_tag="tag2",
+                                    target='foo', dest_tag="tag2",
                                     build_tag="build_tag2",
                                     priority_coefficient=2.0)
         self.db.add(new_collection)
@@ -75,7 +75,7 @@ class ModelTest(DBTest):
         self.prepare_packages(['xalan-j2'])[0].blocked = True
         self.db.commit()
         new_collection = Collection(name="new", display_name="New",
-                                    target='foo', target_tag="tag2",
+                                    target='foo', dest_tag="tag2",
                                     build_tag="build_tag2",
                                     priority_coefficient=2.0)
         self.db.add(new_collection)
