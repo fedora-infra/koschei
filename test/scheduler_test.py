@@ -309,3 +309,13 @@ class SchedulerTest(DBTest):
             with self.prio_table(tablename='tmp2', eclipse=300, rnv=200) as table2:
                 with self.prio_table(tablename='tmp3', eclipse=201, rnv=200) as table3:
                     self.assert_scheduled([table1, table2, table3], scheduled='eclipse')
+
+    def test_broken_buildroot(self):
+        self.collection.latest_repo_resolved = False
+        with self.prio_table(rnv=256, rnv_state=None) as table:
+            self.assert_scheduled([table], scheduled=None)
+
+    def test_buildroot_not_yet_resolved(self):
+        self.collection.latest_repo_resolved = None
+        with self.prio_table(rnv=256, rnv_state=None) as table:
+            self.assert_scheduled([table], scheduled=None)

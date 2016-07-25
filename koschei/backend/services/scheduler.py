@@ -157,8 +157,8 @@ class Scheduler(KojiService):
                 self.log.debug("Not scheduling: no package above threshold")
                 return
             package = self.db.query(Package).get(package_id)
-            if package.collection.is_buildroot_broken():
-                self.log.debug("Skipping {}: {} buildroot broken"
+            if not package.collection.latest_repo_resolved:
+                self.log.debug("Skipping {}: {} buildroot not resolved"
                                .format(package, package.collection))
                 continue
 

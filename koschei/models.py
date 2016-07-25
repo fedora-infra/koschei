@@ -218,9 +218,6 @@ class Collection(Base):
 
     packages = relationship('Package', backref='collection', passive_deletes=True)
 
-    def is_buildroot_broken(self):
-        return self.latest_repo_resolved is False  # None means unknown
-
     def __str__(self):
         return self.display_name
 
