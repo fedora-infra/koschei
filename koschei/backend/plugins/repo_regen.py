@@ -30,7 +30,8 @@ log = logging.getLogger('koschei.repo_regen_plugin')
 def ensure_tag(koji_session, tag_name):
     tag = koji_session.getTag(tag_name)
     if not tag:
-        koji_session.createTag(tag_name)
+        arches = ','.join(koji_session.config['build_arches']) or None
+        koji_session.createTag(tag_name, arches=arches)
 
 
 @listen_event('polling_event')
