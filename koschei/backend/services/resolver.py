@@ -522,7 +522,10 @@ class Resolver(KojiService):
                     .filter_by(secondary_id=curr_repo['id'])\
                     .first()
                 # don't resolve it if we don't have it on primary yet
-                if not mapping or not mapping.primary_id:
+                if not (mapping and mapping.primary_id and
+                        self.koji_sessions['primary']
+                        .getTaskInfo(mapping.task_id)['state'] ==
+                        koji.TASK_STATES['CLOSED']):
                     continue
             if curr_repo and curr_repo['id'] > collection.latest_repo_id:
                 self.generate_repo(collection, curr_repo['id'])
