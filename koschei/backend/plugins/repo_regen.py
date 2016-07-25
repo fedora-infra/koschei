@@ -27,13 +27,40 @@ from koschei.plugin import listen_event
 log = logging.getLogger('koschei.repo_regen_plugin')
 
 
+def ensure_tag(koji_session, tag_name):
+    tag = koji_session.getTag(tag_name)
+    if not tag:
+        koji_session.createTag(tag_name)
+
+
 @listen_event('polling_event')
 def poll_secondary_repo(backend):
     log.debug("Polling new external repo")
     db = backend.db
     primary = backend.koji_sessions['primary']
     secondary = backend.koji_sessions['secondary']
-    for collection in db.query(Collection).filter_by(secondary_mode=True).all():
+    for collection in db.query(Collection).filter_by(secondary_mode=True):
+        ensure_tag(primary, collection.dest_tag)
+        ensure_tag(primary, collection.build_tag)
+        target = primary.getBuildTarget(collection.target)
+        if not target:
+            log.info("Creating new secondary build target")
+            primary.createBuildTarget(collection.target, collection.build_tag,
+                                      collection.dest_tag)
+            groups = secondary.getTagGroups(collection.build_tag)
+            primary.multicall = True
+            for group in groups:
+                primary.groupListAdd(collection.build_tag, group['name'])
+                for pkg in group['packagelist']:
+                    primary.groupPackageListAdd(
+                        collection.build_tag,
+                        group['name'],
+                        pkg['package'],
+                        type=pkg['type'],
+                        blocked=pkg['blocked'],
+                    )
+            primary.multiCall()
+
         remote_repo = koji_util.get_latest_repo(secondary, collection.build_tag)
         mapping = db.query(RepoMapping)\
             .filter_by(secondary_id=remote_repo['id'])\
