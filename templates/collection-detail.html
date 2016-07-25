@@ -36,10 +36,17 @@
         </td>
     </tr>
     <tr>
-        <th>Koji target tag</th>
+        <th>Koji target</th>
         <td>
-            <input type="text" name="target_tag"
-            value="{{ collection.target_tag }}" {{ editable }}/>
+            <input type="text" name="target"
+            value="{{ collection.target }}" {{ editable }}/>
+        </td>
+    </tr>
+    <tr>
+        <th>Koji destination tag</th>
+        <td>
+            <input type="text" name="dest_tag"
+            value="{{ collection.target }}" {{ editable }}/>
         </td>
     </tr>
     <tr>
