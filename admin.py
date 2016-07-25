@@ -33,7 +33,9 @@ from koschei.backend import koji_util, Backend
 from koschei.config import load_config, get_config
 
 
-load_config(['/usr/share/koschei/config.cfg', '/etc/koschei/config-admin.cfg'])
+load_config(['/usr/share/koschei/config.cfg',
+             '/etc/koschei/config-backend.cfg',
+             '/etc/koschei/config-admin.cfg'])
 
 
 class Command(object):
@@ -391,6 +393,8 @@ class CreateOrEditCollectionCommand(object):
         else:
             koji_session = koji_sessions['primary']
         target_info = koji_session.getBuildTarget(collection.target)
+        if not target_info:
+            sys.exit("Target not found in Koji")
         collection.dest_tag = target_info['dest_tag_name']
         collection.build_tag = target_info['build_tag_name']
 
