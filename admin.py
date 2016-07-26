@@ -251,7 +251,7 @@ class GroupCommandParser(object):
             content = filter(None, fo.read().split())
             if not content:
                 sys.exit("Group content empty")
-            data.set_group_content(group, content, append)
+            data.set_group_content(db, group, content, append)
 
         if content_from_file == '-':
             from_fo(sys.stdin)
