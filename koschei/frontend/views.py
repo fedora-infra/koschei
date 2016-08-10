@@ -796,7 +796,8 @@ def bugreport(name):
     variables = package.srpm_nvra or abort(404)
     variables['package'] = package
     variables['collection'] = package.collection
-    variables['url'] = request.url_root + url_for('package_detail', name=package.name)
+    variables['url'] = request.url_root.replace(request.script_root, '').rstrip('/') \
+        + url_for('package_detail', name=package.name)
     template = get_config('bugreport.template')
     bug = {key: template[key].format(**variables) for key in template.keys()}
     bug['comment'] = dedent(bug['comment']).strip()

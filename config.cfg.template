@@ -253,7 +253,7 @@ config = {
     "bugreport": {
         # URL to bugzilla instance enter_bug endpoint. Query string is
         # interpolated into {query} key
-        "url": "https://bugzilla.redhat.com/enter_bug.cgi?{}",
+        "url": "https://bugzilla.redhat.com/enter_bug.cgi?{query}",
         # dictionary of bugzilla fields.
         # in all values, the following variables are available for
         # interpolation:
