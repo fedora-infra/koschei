@@ -16,9 +16,6 @@ import sqlalchemy as sa
 
 def upgrade():
     op.execute("ALTER TABLE collection ADD COLUMN secondary_mode BOOLEAN DEFAULT FALSE NOT NULL")
-    from koschei.config import get_config
-    if get_config('secondary_koji_config', False):
-        op.execute("UPDATE collection SET secondary_mode = TRUE")
 
 
 def downgrade():
