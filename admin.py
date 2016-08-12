@@ -486,6 +486,7 @@ class Psql(Command):
     """ Convenience to get psql shell connected to koschei DB. """
 
     needs_backend = False
+    needs_db = False
 
     def setup_parser(self, parser):
         parser.add_argument('args', nargs='*',
