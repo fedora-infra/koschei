@@ -16,11 +16,11 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-import datetime
 import koji
 import logging
 
 from copy import deepcopy
+from datetime import datetime, timedelta
 
 from test.common import DBTest, KojiMock
 from mock import Mock, patch
@@ -248,6 +248,7 @@ class BackendTest(DBTest):
         koji_task = KojiTask(task_id=rnv_subtasks[0]['id'],
                              arch='noarch',
                              state=koji.TASK_STATES['OPEN'],
+                             started=datetime.fromtimestamp(123),
                              build_id=running_build.id)
         self.db.add(koji_task)
         self.db.commit()
@@ -364,7 +365,7 @@ class BackendTest(DBTest):
     def test_cancel_timed_out(self):
         self.prepare_packages(['rnv'])
         running_build = self.prepare_build('rnv')
-        running_build.started = datetime.datetime.now() - datetime.timedelta(999)
+        running_build.started = datetime.now() - timedelta(999)
         self.db.commit()
         self.koji_session.cancelTask = Mock(side_effect=koji.GenericError)
         self.backend.update_build_state(running_build, 'FREE')

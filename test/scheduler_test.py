@@ -181,11 +181,18 @@ class SchedulerTest(DBTest):
         self.prepare_build('eclipse', True)
         self.prepare_build('eclipse', False)
         eclipse.manual_priority = 500
-        priorities = self.get_scheduler().get_priorities()
+        sched = self.get_scheduler()
+
+        def mock_prio():
+            return self.db.query(Package.id, Package.manual_priority)\
+                .filter_by(id=12309)
+        sched.get_time_priority_query = mock_prio
+
+        priorities = sched.get_priorities()
         self.assertEquals(eclipse.id, priorities[0][0])
-        self.assertAlmostEqual(517, priorities[0][1], places=1)
+        self.assertAlmostEqual(520, priorities[0][1], places=1)
         self.assertEquals(rnv.id, priorities[1][0])
-        self.assertAlmostEqual(170, priorities[1][1], places=1)
+        self.assertAlmostEqual(200, priorities[1][1], places=1)
         self.assertEquals(fop.id, priorities[2][0])
         self.assertAlmostEqual(0, priorities[2][1], places=1)
         self.assertEqual(3, len(priorities))
@@ -218,6 +225,7 @@ class SchedulerTest(DBTest):
                     self.db.add(Build(package_id=pkg.id, state=builds[name],
                                       task_id=self.task_id_counter,
                                       version='1', release='1.fc25',
+                                      started=datetime.fromtimestamp(123),
                                       repo_id=1 if builds[name] != Build.RUNNING
                                       else None))
                     self.task_id_counter += 1

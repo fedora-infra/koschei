@@ -300,8 +300,7 @@ class Backend(KojiService):
         for build, task_info in izip(builds, call):
             if not task_info:
                 continue
-            if task_info.get('create_ts'):
-                build.started = datetime.fromtimestamp(task_info['create_ts'])
+            build.started = datetime.fromtimestamp(task_info['create_ts'])
             if task_info.get('completion_ts'):
                 build.finished = datetime.fromtimestamp(task_info['completion_ts'])
             elif build.state != Build.RUNNING:
@@ -321,8 +320,7 @@ class Backend(KojiService):
                 db_task.build_id = build.id
                 db_task.state = task['state']
                 db_task.arch = task['arch']
-                if task.get('create_ts'):
-                    db_task.started = datetime.fromtimestamp(task['create_ts'])
+                db_task.started = datetime.fromtimestamp(task['create_ts'])
                 if task.get('completion_ts'):
                     db_task.finished = datetime.fromtimestamp(task['completion_ts'])
                 tasks.append(db_task)

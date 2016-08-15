@@ -349,7 +349,7 @@ class KojiTask(Base):
     task_id = Column(Integer, nullable=False)
     arch = Column(String, nullable=False)
     state = Column(Integer, nullable=False)
-    started = Column(DateTime)
+    started = Column(DateTime, nullable=False)
     finished = Column(DateTime)
 
     @property
@@ -462,7 +462,7 @@ class Build(Base):
     package = None  # backref
     state = Column(Integer, nullable=False, default=RUNNING)
     task_id = Column(Integer, nullable=False)
-    started = Column(DateTime)
+    started = Column(DateTime, nullable=False)
     finished = Column(DateTime)
     epoch = Column(Integer)
     version = Column(String)

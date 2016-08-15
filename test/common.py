@@ -27,6 +27,7 @@ import json
 import psycopg2
 
 from mock import Mock
+from datetime import datetime
 
 from test import testdir, config
 from koschei.models import (get_engine, Base, Session, Package, Build,
@@ -146,7 +147,7 @@ class DBTest(AbstractTest):
         self.db.add(pkg)
         self.db.flush()
         build = Build(package_id=pkg.id, state=Build.RUNNING,
-                      task_id=666, repo_id=1)
+                      task_id=666, repo_id=1, started=datetime.fromtimestamp(123))
         self.db.add(build)
         self.db.commit()
         return pkg, build
@@ -177,6 +178,7 @@ class DBTest(AbstractTest):
                       repo_id=repo_id or (1 if state != Build.RUNNING else None),
                       version='1', release='1.fc25',
                       task_id=self.task_id_counter,
+                      started=datetime.fromtimestamp(self.task_id_counter),
                       deps_resolved=resolved)
         self.task_id_counter += 1
         self.db.add(build)
@@ -206,7 +208,6 @@ class DBTest(AbstractTest):
                          for user in users])
         self.db.commit()
         return group
-
 
     @staticmethod
     def parse_pkg(string):
