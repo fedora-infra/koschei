@@ -38,7 +38,8 @@ from koschei.config import get_config
 from koschei.frontend import app, db, frontend_config, auth
 from koschei.models import (Package, Build, PackageGroup, PackageGroupRelation,
                             AdminNotice, BuildrootProblem, BasePackage,
-                            GroupACL, Collection, CollectionGroup)
+                            GroupACL, Collection, CollectionGroup,
+                            ResolutionResult)
 
 log = logging.getLogger('koschei.views')
 

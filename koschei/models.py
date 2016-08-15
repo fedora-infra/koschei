@@ -293,9 +293,6 @@ class Package(Base):
                nullable=True)
     resolved = Column(Boolean)
 
-    resolution_problems = relationship('ResolutionProblem', backref='package',
-                                       passive_deletes=True)
-
     tracked = Column(Boolean, nullable=False, server_default=true())
     blocked = Column(Boolean, nullable=False, server_default=false())
 
@@ -508,13 +505,34 @@ class Build(Base):
                 'task_id={b.task_id})').format(b=self)
 
 
+class ResolutionChange(Base):
+    __tablename__ = 'resolution_change'
+
+    id = Column(Integer, primary_key=True)
+    resolved = Column(Boolean, nullable=False)
+    timestamp = Column(DateTime, nullable=False, server_default=func.clock_timestamp())
+    package_id = Column(
+        Integer,
+        ForeignKey(Package.id, ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+    )
+
+
 class ResolutionProblem(Base):
     __tablename__ = 'resolution_problem'
     id = Column(Integer, primary_key=True)
-    package_id = Column(Integer, ForeignKey(Package.id,
-                                            ondelete='CASCADE'),
-                        nullable=False, index=True)
+    resolution_id = Column(
+        Integer,
+        ForeignKey(ResolutionChange.id, ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+    )
+
     problem = Column(String, nullable=False)
+
+    def __str__(self):
+        return self.problem
 
 
 class Dependency(Base):
@@ -715,6 +733,12 @@ Build.dependency_changes = relationship(AppliedChange, backref='build',
                                         primaryjoin=(Build.id == AppliedChange.build_id),
                                         order_by=AppliedChange.distance
                                         .nullslast(), passive_deletes=True)
+
+ResolutionChange.problems = relationship(
+    ResolutionProblem,
+    backref='result',
+    passive_deletes=True,
+)
 
 PackageGroup.package_count = column_property(
     select([func.count()],
