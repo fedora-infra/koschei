@@ -353,17 +353,20 @@ class CollectionModeAction(argparse.Action):
 
 
 class CreateOrEditCollectionCommand(object):
-    args_required = True
+    create = True
     needs_koji = True
 
     def setup_parser(self, parser):
         parser.add_argument('name',
                             help="Name identificator")
+        if not self.create:
+            parser.add_argument('--new-name',
+                                help="New name identificator")
         parser.add_argument('-d', '--display-name',
-                            required=self.args_required,
+                            required=self.create,
                             help="Human readable name")
         parser.add_argument('-t', '--target',
-                            required=self.args_required,
+                            required=self.create,
                             help="Koji target")
         parser.add_argument('-m', '--mode', choices=('primary', 'secondary'),
                             dest='secondary_mode', action=CollectionModeAction,
@@ -411,10 +414,12 @@ class CreateCollection(CreateOrEditCollectionCommand, CreateEntityCommand, Comma
 class EditCollection(CreateOrEditCollectionCommand, EditEntityCommand, Command):
     """ Modifies existing package collection """
     entity = Collection
-    args_required = False
+    create = False
 
-    def execute(self, db, koji_sessions, **kwargs):
+    def execute(self, db, koji_sessions, new_name, **kwargs):
         collection = super(EditCollection, self).execute(db, **kwargs)
+        if new_name:
+            collection.name = new_name
         if kwargs['secondary_mode'] is not None or kwargs['target'] is not None:
             self.set_koji_tags(koji_sessions, collection)
 
@@ -441,13 +446,13 @@ class DeleteCollection(Command):
 
 
 class CreateOrEditCollectionGroupCommand(object):
-    args_required = True
+    create = True
 
     def setup_parser(self, parser):
         parser.add_argument('name',
                             help="Name identificator")
         parser.add_argument('-d', '--display-name',
-                            required=self.args_required,
+                            required=self.create,
                             help="Human readable name")
         parser.add_argument('-c', '--contents', nargs='*',
                             help="Signifies that remaining arguments are "
@@ -468,7 +473,7 @@ class CreateCollectionGroup(CreateOrEditCollectionGroupCommand,
 class EditCollectionGroup(CreateOrEditCollectionGroupCommand,
                           EditEntityCommand, Command):
     """ Modifies existing package collection group """
-    args_required = False
+    create = False
     entity = CollectionGroup
 
 
