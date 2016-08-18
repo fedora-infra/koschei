@@ -4,6 +4,7 @@ config = {
     # database connection properties
     "database_config": {
         "drivername": "postgres",
+        # "host": "localhost",
         # "database": "koschei",
         # "username": "koschei",
         # "password": "",
