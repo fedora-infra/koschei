@@ -195,7 +195,7 @@ class DBTest(AbstractTest):
         return user
 
     def prepare_group(self, name, content=(), namespace=None, owners=('john.doe',)):
-        users = [self.prepare_user(name=name) for name in owners]
+        users = [self.prepare_user(name=username) for username in owners]
         packages = self.prepare_packages(content)
         group = PackageGroup(name=name, namespace=namespace)
         self.db.add(group)
