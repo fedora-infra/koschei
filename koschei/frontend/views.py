@@ -27,9 +27,11 @@ from textwrap import dedent
 from flask import abort, render_template, request, url_for, redirect, g, flash
 from flask_wtf import Form
 from jinja2 import Markup, escape
+from sqlalchemy import Integer
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import joinedload, subqueryload, undefer, contains_eager, aliased
-from sqlalchemy.sql import exists, func, false
+from sqlalchemy.orm import (joinedload, subqueryload, undefer, contains_eager,
+                            aliased)
+from sqlalchemy.sql import exists, func, false, true, cast
 from wtforms import StringField, TextAreaField
 from wtforms.validators import Regexp, ValidationError
 
@@ -39,7 +41,7 @@ from koschei.frontend import app, db, frontend_config, auth
 from koschei.models import (Package, Build, PackageGroup, PackageGroupRelation,
                             AdminNotice, BuildrootProblem, BasePackage,
                             GroupACL, Collection, CollectionGroup,
-                            ResolutionResult)
+                            ResolutionChange)
 
 log = logging.getLogger('koschei.views')
 
@@ -116,6 +118,10 @@ def columnize(what, css_class=None):
                             for item in what))
 
 
+def epoch_filter(dt):
+    return int((dt - datetime.fromtimestamp(0)).total_seconds())
+
+
 def get_global_notices():
     notices = [n.content for n in
                db.query(AdminNotice.content).filter_by(key="global_notice")]
@@ -152,7 +158,8 @@ app.jinja_env.globals.update(
     auto_tracking=frontend_config['auto_tracking'])
 
 app.jinja_env.filters.update(columnize=columnize,
-                             format_depchange=format_depchange)
+                             format_depchange=format_depchange,
+                             epoch=epoch_filter)
 
 
 class Reversed(object):
@@ -449,15 +456,46 @@ def package_detail(name):
                                checked and group.namespace]
         package.available_groups = [group for group, checked in user_groups if
                                     not checked]
-    page = db.query(Build)\
-             .filter_by(package_id=package.id)\
-             .options(subqueryload(Build.dependency_changes),
-                      subqueryload(Build.build_arch_tasks))\
-             .order_by(Build.id.desc())\
-             .paginate(builds_per_page)
 
-    return render_template("package-detail.html", package=package, page=page,
-                           builds=page.items, all_packages=all_packages)
+    entries_per_page = 20
+    last_seen_ts = request.args.get('last_seen_ts')
+    if last_seen_ts:
+        try:
+            last_seen_ts = int(last_seen_ts)
+        except ValueError:
+            abort(400)
+
+    def to_epoch(col):
+        return cast(func.extract('EPOCH', col), Integer)
+
+    builds = db.query(Build)\
+        .filter_by(package_id=package.id)\
+        .filter(to_epoch(Build.started) < last_seen_ts
+                if last_seen_ts else true())\
+        .options(subqueryload(Build.dependency_changes),
+                 subqueryload(Build.build_arch_tasks))\
+        .order_by(Build.started.desc())\
+        .limit(entries_per_page)\
+        .all()
+    resolutions = db.query(ResolutionChange)\
+        .filter_by(package_id=package.id)\
+        .filter(to_epoch(ResolutionChange.timestamp) < last_seen_ts
+                if last_seen_ts else true())\
+        .options(joinedload(ResolutionChange.problems))\
+        .order_by(ResolutionChange.timestamp.desc())\
+        .limit(entries_per_page)\
+        .all()
+
+    entries = sorted(
+        builds + resolutions,
+        key=lambda x: getattr(x, 'started', None) or getattr(x, 'timestamp'),
+        reverse=True,
+    )[:entries_per_page]
+
+    return render_template("package-detail.html", package=package,
+                           entries=entries, all_packages=all_packages,
+                           is_continuation=bool(last_seen_ts),
+                           is_last=len(entries) < entries_per_page)
 
 
 @app.route('/build/<int:build_id>')

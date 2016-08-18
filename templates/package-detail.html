@@ -44,18 +44,6 @@
             {% endif %}
         </td>
     </tr>
-    {% if package.state_string == 'unresolved' and package.resolution_problems %}
-    <tr>
-        <th>Dependency problems</th>
-        <td class="problem">{{ package.resolution_problems[0].problem }}</td>
-    </tr>
-    {% for problem in package.resolution_problems[1:] %}
-    <tr>
-        <td></td>
-        <td class="problem">{{ problem.problem }}</td>
-    </tr>
-    {% endfor %}
-    {% endif %}
     <tr>
         <th>Current priority</th>
         <td>
@@ -141,8 +129,7 @@
     {{ macros.depchange_table(package.unapplied_changes) }}
 </table>
 
-{{ macros.pagination_row(page, "Builds") }}
-<table class="data-list">
+<table class="data-list package-history">
     <thead>
         <tr class="list-header">
             <th>State</th>
@@ -153,7 +140,35 @@
         </tr>
     </thead>
     <tbody>
-        {% for build in builds %}
+        {% if is_continuation %}
+        <tr><td colspan="8">...</td></tr>
+        {% endif %}
+        {% for entry in entries %}
+        {% if not entry.version %}
+        {# is an resolution entry #}
+        {% set problems = iter(entry.problems) %}
+        {% if entry.resolved %}
+        <tr class="resolution-success">
+            <td colspan="8">
+                Package dependencies resolved successfuly
+            </td>
+        </tr>
+        {% else %}
+        <tr class="resolution-failure">
+            <td>
+                Package resolution failed
+            </td>
+            <td colspan="7">
+                {{ inext(problems, '') }}
+            </td>
+        </tr>
+        {% endif %}
+        {% for problem in problems %}
+        <tr class="resolution-failure"><td/><td colspan="7">{{ problem }}</td></tr>
+        {% endfor %}
+        {% else %}
+        {# is a build entry #}
+        {% set build = entry %}
         {% set row_class = ["odd", "even"][loop.index % 2] + ["", " real"][build.real] %}
         {% set changes = iter(build.dependency_changes) if build.deps_resolved else iter([]) %}
         {% if build.real %}
@@ -217,9 +232,12 @@
             <td></td>
         </tr>
         {% endfor %}
+        {% endif %}
         {% endfor %}
     </tbody>
 </table>
+{% if not is_last %}
+<a href="?last_seen_ts={{ (entries[-1].timestamp or entries[-1].started) | epoch }}">Previous history</a>
+{% endif %}
 
-{{ macros.pagination_row(page, "Builds") }}
 {% endblock %}

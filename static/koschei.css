@@ -577,3 +577,13 @@ span#loginInfo {
     padding: 0px 20px 10px 20px;
     float: right;
 }
+
+.resolution-failure {
+    background-color: #f3dddd;
+    color: #c44;
+}
+
+.resolution-success {
+    color: #0a0;
+    background-color: #efd;
+}
