@@ -33,7 +33,8 @@ from koschei.backend import Backend, koji_util, depsolve
 from koschei.backend.repo_cache import RepoCache, RepoDescriptor
 from koschei.models import (Package, Dependency, UnappliedChange,
                             AppliedChange, Collection, ResolutionProblem,
-                            Build, BuildrootProblem, RepoMapping)
+                            Build, BuildrootProblem, RepoMapping,
+                            ResolutionChange)
 from koschei.plugin import dispatch_event
 from koschei.util import Stopwatch
 
@@ -46,6 +47,9 @@ generate_dependency_changes_time = Stopwatch("generate_dependency_changes")
 
 DepTuple = namedtuple('DepTuple', ['id', 'name', 'epoch', 'version', 'release',
                                    'arch'])
+ResolutionOutput = namedtuple('ResolutionOutput',
+                              ['package_id', 'prev_resolved', 'resolved',
+                               'problems', 'changes'])
 
 
 class DependencyWithDistance(object):
@@ -247,43 +251,6 @@ class Resolver(KojiService):
                     self.db.expunge(p.last_complete_build)
         return packages
 
-    def check_package_state_changes(self, resolved_map):
-        """
-        Creates a map of package state changes.
-        Needs to be called before the change is persisted.
-
-        :param resolved_map: dict from package ids to their new resolution state
-        """
-        packages = self.db.query(Package)\
-            .filter(Package.id.in_(resolved_map.iterkeys()))\
-            .options(joinedload(Package.last_complete_build))
-        state_changes = {}
-        for pkg in packages:
-            # don't propagate the write, we'll do it manually later
-            self.db.expunge(pkg)
-            prev_state = pkg.msg_state_string
-            pkg.resolved = resolved_map[pkg.id]
-            new_state = pkg.msg_state_string
-            if prev_state != new_state:
-                state_changes[pkg.id] = prev_state, new_state
-        return state_changes
-
-    def emit_package_state_changes(self, state_changes):
-        """
-        Emits package state change events for given map as produced by
-        check_package_state_changes
-        """
-        if not state_changes:
-            return
-        for package in self.db.query(Package)\
-            .filter(Package.id.in_(state_changes.iterkeys()))\
-            .options(joinedload(Package.groups),
-                     joinedload(Package.collection)):
-            prev_state, new_state = state_changes[package.id]
-            dispatch_event('package_state_change', package=package,
-                           prev_state=prev_state,
-                           new_state=new_state)
-
     def get_build_for_comparison(self, package):
         """
         Returns newest build which should be used for dependency
@@ -298,75 +265,121 @@ class Resolver(KojiService):
                 return self.get_prev_build_for_comparison(last_build)
             # not yet processed builds are not considered
 
-    def persist_results(self, resolved_map, problems, changes):
-        """
-        Persists resolution results into DB.
-
-        :param resolved_map: dict from package ids to their new resolution state
-        :param problems: list of dependency problems as dicts
-        :param changes: list of dependency changes as dicts
-        """
-        if not resolved_map:
-            return
-        self.db.query(Package)\
-            .filter(Package.id.in_(resolved_map.keys()))\
-            .lock_rows()
-        for val in True, False:
-            pkg_ids = [pkg_id for pkg_id, resolved
-                       in resolved_map.iteritems() if resolved is val]
-            if pkg_ids:
-                self.db.query(Package)\
-                    .filter(Package.id.in_(pkg_ids))\
-                    .update({'resolved': val}, synchronize_session=False)
-        for rel, vals in (ResolutionProblem, problems), (UnappliedChange, changes):
-            self.db.query(rel)\
-                .filter(rel.package_id.in_(resolved_map.iterkeys()))\
-                .delete(synchronize_session=False)
-            if vals:
-                self.db.execute(rel.__table__.insert(), vals)
-
     # pylint: disable=too-many-locals
+    def persist_resolution_output(self, chunk):
+        if not chunk:
+            return
+        package_ids = [p.package_id for p in chunk]
+        self.db.query(Package)\
+            .filter(Package.id.in_(package_ids))\
+            .lock_rows()
+        self.db.query(UnappliedChange)\
+            .filter(UnappliedChange.package_id.in_(package_ids))\
+            .delete()
+
+        already_unresolved = self.db.query(ResolutionChange)\
+            .filter(ResolutionChange.package_id.in_(package_ids))\
+            .options(joinedload(ResolutionChange.problems))\
+            .order_by(ResolutionChange.package_id,
+                      ResolutionChange.timestamp.desc())\
+            .distinct(ResolutionChange.package_id)\
+            .all()
+
+        problems = []
+        changes = []
+        problem_map = {r.package_id: set(p.problem for p in r.problems)
+                       for r in already_unresolved}
+        for pkg in chunk:
+            if (pkg.prev_resolved != pkg.resolved or
+                    pkg.resolved is False and pkg.prev_resolved is False and
+                    pkg.problems != problem_map[pkg.package_id]):
+                result = ResolutionChange(package_id=pkg.package_id,
+                                          resolved=pkg.resolved)
+                self.db.add(result)
+                self.db.flush()
+                problems += [dict(resolution_id=result.id, problem=problem)
+                             for problem in pkg.problems]
+            changes += pkg.changes
+        if problems:
+            self.db.execute(insert(ResolutionProblem, problems))
+
+        self.db.query(UnappliedChange)\
+            .filter(UnappliedChange.package_id.in_(package_ids))\
+            .delete()
+        if changes:
+            self.db.execute(insert(UnappliedChange, changes))
+
+        changed = {r.package_id: r for r in chunk
+                   if r.resolved != r.prev_resolved}
+        for val in True, False:
+            to_update = [r.package_id for r in chunk if r.resolved is val]
+            if to_update:
+                self.db.query(Package)\
+                    .filter(Package.id.in_(to_update))\
+                    .update({'resolved': val})
+        packages = self.db.query(Package)\
+            .filter(Package.id.in_(changed.iterkeys()))\
+            .options(joinedload(Package.last_complete_build))\
+            .all() if changed else []
+        state_changes = {}
+        for pkg in packages:
+            self.db.expunge(pkg)
+            pkg.resolved = changed[pkg.id].prev_resolved
+            prev_state = pkg.msg_state_string
+            pkg.resolved = changed[pkg.id].resolved
+            new_state = pkg.msg_state_string
+            if prev_state != new_state:
+                state_changes[pkg.id] = prev_state, new_state
+
+        self.db.commit()
+
+        if state_changes:
+            for package in self.db.query(Package)\
+                .filter(Package.id.in_(state_changes.iterkeys()))\
+                .options(joinedload(Package.groups),
+                         joinedload(Package.collection)):
+                prev_state, new_state = state_changes[package.id]
+                dispatch_event('package_state_change', package=package,
+                               prev_state=prev_state,
+                               new_state=new_state)
+
     def generate_dependency_changes(self, sack, collection, packages, brs, repo_id):
         """
         Generates and persists dependency changes for given list of packages.
         Emits package state change events.
         """
-        resolved_map = {}
-        problems = []
-        changes = []
+        results = []
 
-        def persist():
-            state_changes = self.check_package_state_changes(resolved_map)
-            self.persist_results(resolved_map, problems, changes)
-            self.db.commit()
-            self.emit_package_state_changes(state_changes)
         build_group = self.get_build_group(collection)
         gen = ((package, self.resolve_dependencies(sack, br, build_group))
                for package, br in izip(packages, brs))
         queue_size = get_config('dependency.resolver_queue_size')
         gen = util.parallel_generator(gen, queue_size=queue_size)
-        for package, result in gen:
+        for package, (resolved, curr_problems, curr_deps) in gen:
             generate_dependency_changes_time.start()
-            resolved_map[package.id], curr_problems, curr_deps = result
-            problems += [dict(package_id=package.id, problem=problem)
-                         for problem in sorted(set(curr_problems))]
+            changes = []
             if curr_deps is not None:
                 prev_build = self.get_build_for_comparison(package)
                 if prev_build and prev_build.dependency_keys:
                     prev_deps = self.dependency_cache.get_by_ids(
                         self.db, prev_build.dependency_keys)
                     create_dependency_changes_time.start()
-                    changes += self.create_dependency_changes(
+                    changes = self.create_dependency_changes(
                         prev_deps, curr_deps, package_id=package.id,
                         prev_build_id=prev_build.id)
                     create_dependency_changes_time.stop()
-            if len(resolved_map) > get_config('dependency.persist_chunk_size'):
-                persist()
-                resolved_map = {}
-                problems = []
-                changes = []
+            results.append(ResolutionOutput(
+                package_id=package.id,
+                prev_resolved=package.resolved,
+                resolved=resolved,
+                problems=set(curr_problems),
+                changes=changes,
+            ))
+            if len(results) > get_config('dependency.persist_chunk_size'):
+                self.persist_resolution_output(results)
+                results = []
             generate_dependency_changes_time.stop()
-        persist()
+        self.persist_resolution_output(results)
 
     def generate_repo(self, collection, repo_id):
         """
