@@ -90,11 +90,12 @@ class CreateDb(Command):
 
 
 class Cleanup(Command):
-    """ Cleans old builds from the database """
+    """ Cleans old builds and resolution changes from the database """
 
     def setup_parser(self, parser):
         parser.add_argument('--older-than', type=int,
-                            help="Delete builds older than N months",
+                            help="Delete builds and resolution changes "
+                            "older than N months",
                             default=6)
 
     def execute(self, db, older_than):
@@ -115,9 +116,14 @@ class Cleanup(Command):
                     SELECT 1 FROM excluded_build_ids
                     WHERE excluded_build_ids.id = build.id)
         """.format(months=older_than))
+        resolution_res = db.execute("""
+            DELETE FROM resolution_change
+                WHERE "timestamp" < now() - '{months} month':: interval
+        """.format(months=older_than))
         db.execute("ALTER TABLE build ENABLE TRIGGER update_last_build_trigger_del")
         db.commit()
         print("Deleted {} builds".format(build_res.rowcount))
+        print("Deleted {} resolution changes".format(resolution_res.rowcount))
 
 
 class SetNotice(Command):
