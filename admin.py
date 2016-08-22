@@ -96,28 +96,28 @@ class Cleanup(Command):
         parser.add_argument('--older-than', type=int,
                             help="Delete builds older than N months",
                             default=6)
-        parser.add_argument('--reindex', action='store_true')
-        parser.add_argument('--vacuum', action='store_true')
 
-    def execute(self, db, older_than, reindex, vacuum):
+    def execute(self, db, older_than):
         if older_than < 2:
             sys.exit("Minimal allowed value is 2 months")
-        conn = db.connection()
-        conn.connection.connection.rollback()
-        conn.connection.connection.autocommit = True
-        res = conn.execute(
-            """DELETE FROM build WHERE started < now() - '{months} month'::interval
-            AND id NOT IN (SELECT last_complete_build_id FROM package
-                           WHERE last_complete_build_id IS NOT NULL)
-            """.format(months=older_than))
-        print("Deleted {} builds".format(res.rowcount))
-        res.close()
-        if vacuum:
-            conn.execute("VACUUM FULL ANALYZE")
-            print("Vacuum full analyze done")
-        if reindex:
-            conn.execute("REINDEX DATABASE {}".format(get_engine().url.database))
-            print("Reindexed")
+        db.execute("ALTER TABLE build DISABLE TRIGGER update_last_build_trigger_del")
+        db.execute("""
+            CREATE TEMPORARY TABLE excluded_build_ids AS (
+                SELECT last_build_id AS id FROM package
+                UNION
+                SELECT last_complete_build_id FROM package
+            );
+            CREATE UNIQUE INDEX ON excluded_build_ids(id);
+        """)
+        build_res = db.execute("""
+            DELETE FROM build WHERE started < now() - '{months} month'::interval
+                AND NOT EXISTS (
+                    SELECT 1 FROM excluded_build_ids
+                    WHERE excluded_build_ids.id = build.id)
+        """.format(months=older_than))
+        db.execute("ALTER TABLE build ENABLE TRIGGER update_last_build_trigger_del")
+        db.commit()
+        print("Deleted {} builds".format(build_res.rowcount))
 
 
 class SetNotice(Command):
