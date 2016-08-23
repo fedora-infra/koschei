@@ -435,9 +435,19 @@ class ResolverTest(DBTest):
                 with patch('fedmsg.publish') as fedmsg_mock:
                     self.resolver.generate_repo(self.collection, 666)
                     self.assertFalse(fedmsg_mock.called)
-        self.assertFalse(self.collection.latest_repo_resolved)
-        self.assertEquals(666, self.collection.latest_repo_id)
-        self.assertTrue(self.db.query(BuildrootProblem).count())
+            self.assertFalse(self.collection.latest_repo_resolved)
+            self.assertEquals(666, self.collection.latest_repo_id)
+            self.assertIn('nonexistent',
+                          ''.join(p.problem for p in self.db.query(BuildrootProblem)))
+
+        self.resolver.build_groups = {}
+        with patch('koschei.backend.koji_util.get_build_group',
+                   return_value=['R']):
+            with patch('koschei.backend.koji_util.get_rpm_requires',
+                       return_value=[['F', 'A']]):
+                self.resolver.generate_repo(self.collection, 667)
+            self.assertTrue(self.collection.latest_repo_resolved)
+            self.assertEquals(0, self.db.query(BuildrootProblem).count())
 
     def test_buildrequires(self):
         call_result = [{'flags': 0, 'name': 'maven-local', 'type': 0, 'version': ''},
