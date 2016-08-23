@@ -2,7 +2,7 @@
 %global upstreamrel 1
 
 Name:           koschei
-Version:        1.7.2
+Version:        1.8
 Release:        1%{?dist}
 Summary:        Continuous integration for Fedora packages
 License:        GPLv2+
@@ -255,6 +255,9 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %{python2_sitelib}/*/backend/services/watcher.py*
 
 %changelog
+* Tue Aug 23 2016 Michael Simacek <msimacek@redhat.com> 1.8-1
+- Update to upstream version 1.8
+
 * Mon Aug 15 2016 Michael Simacek <msimacek@redhat.com> 1.7.2-1
 - Update to upstream version 1.7.2
 
