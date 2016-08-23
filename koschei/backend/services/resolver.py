@@ -413,16 +413,20 @@ class Resolver(KojiService):
             build_group = self.get_build_group(collection)
             resolved, base_problems, _ = self.resolve_dependencies(sack, [], build_group)
             resolution_time.stop()
+            self.db.query(BuildrootProblem)\
+                .filter_by(collection_id=collection.id)\
+                .delete()
+            collection.latest_repo_resolved = resolved
             if not resolved:
                 self.log.info("Build group not resolvable for {}"
                               .format(collection.name))
                 collection.latest_repo_id = repo_id
-                collection.latest_repo_resolved = False
                 self.db.execute(BuildrootProblem.__table__.insert(),
                                 [{'collection_id': collection.id, 'problem': problem}
                                  for problem in base_problems])
                 self.db.commit()
                 return
+            self.db.commit()
             self.log.info("Resolving dependencies...")
             resolution_time.start()
             self.generate_dependency_changes(sack, collection, packages, brs, repo_id)
@@ -430,7 +434,6 @@ class Resolver(KojiService):
         finally:
             brs.stop()
         collection.latest_repo_id = repo_id
-        collection.latest_repo_resolved = True
         self.db.commit()
         total_time.stop()
         total_time.display()
