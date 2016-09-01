@@ -58,7 +58,8 @@ class Watcher(KojiService):
         if pkg:
             newer_build = self.backend.get_newer_build_if_exists(pkg)
             if newer_build:
-                self.backend.register_real_builds([(pkg.id, newer_build)])
+                self.backend.register_real_builds(pkg.collection,
+                                                  [(pkg.id, newer_build)])
 
     def notify_watchdog(self):
         if not get_config('services.watcher.watchdog'):
