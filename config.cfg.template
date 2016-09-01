@@ -284,5 +284,5 @@ config = {
         },
     },
     # koschei version interpolated by build. Don't override
-    "version": "@VERSION",
+    "version": "@VERSION@",
 }
