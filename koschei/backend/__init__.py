@@ -91,7 +91,7 @@ class Backend(KojiService):
 
     def get_newer_build_if_exists(self, package):
         [info] = self.secondary_session_for(package.collection)\
-            .listTagged(package.collection.target, latest=True,
+            .listTagged(package.collection.dest_tag, latest=True,
                         package=package.name, inherit=True) or [None]
         if info and self.is_build_newer(package.last_build, info):
             return info
