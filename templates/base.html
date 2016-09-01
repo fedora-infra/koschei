@@ -4,7 +4,7 @@
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
         <title>{% block title %}Koschei{% endblock %}</title>
         <link rel="stylesheet" type="text/css" media="screen" title="Koschei Style"
-        href="{{ url_for('static', filename='koschei.css') }}"/>
+        href="{{ url_for('static', filename='koschei.css') }}?version={{ koschei_version }}"/>
 
         <script type="text/javascript" src="{{ url_for('static', filename='jquery.min.js') }}"></script>
         <script type="text/javascript">

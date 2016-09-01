@@ -283,4 +283,6 @@ config = {
             {url}"""
         },
     },
+    # koschei version interpolated by build. Don't override
+    "version": "@VERSION",
 }

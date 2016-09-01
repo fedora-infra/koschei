@@ -149,6 +149,7 @@ def secondary_koji_url(collection):
 app.jinja_env.globals.update(
     primary_koji_url=get_config('koji_config.weburl'),
     secondary_koji_url=secondary_koji_url,
+    koschei_version=get_config('version'),
     generate_links=generate_links,
     inext=next, iter=iter,
     min=min, max=max, page_args=page_args,
