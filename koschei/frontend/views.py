@@ -804,12 +804,12 @@ def edit_package(name):
                     if not group.editable:
                         abort(403)
                     if new_val:
-                        rel = PackageGroupRelation(package_name=package.name,
+                        rel = PackageGroupRelation(base_id=package.base_id,
                                                    group_id=group.id)
                         db.add(rel)
                     else:
                         db.query(PackageGroupRelation)\
-                            .filter_by(group_id=group.id, package_name=package.name)\
+                            .filter_by(group_id=group.id, base_id=package.base_id)\
                             .delete(synchronize_session=False)
         if 'manual_priority' in form:
             new_priority = int(form['manual_priority'])
