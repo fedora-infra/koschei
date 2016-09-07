@@ -16,11 +16,13 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+import sys
 import imp
 import logging
 import os
 import socket
 import time
+import resource
 
 from koschei.config import get_config
 from koschei.models import Session
@@ -49,9 +51,16 @@ class Service(object):
         service_config = get_config('services').get(name, {})
         interval = service_config.get('interval', 3)
         self.log.info("{name} started".format(name=name))
+        memory_limit = service_config.get("memory_limit", None)
         while True:
             try:
                 self.main()
+                if memory_limit:
+                    current_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+                    if current_memory > memory_limit:
+                        self.log.info("Memory limit reached: {mem}B. Exiting"
+                                      .format(mem=current_memory))
+                        sys.exit(3)
             finally:
                 self.db.close()
             time.sleep(interval)
