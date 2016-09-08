@@ -249,14 +249,27 @@ def collection_package_view(template, query_fn=None, **template_args):
                            **template_args)
 
 
-def state_icon(package):
+def package_state_icon(package):
     icon = {'ok': 'complete',
             'failing': 'failed',
             'unresolved': 'cross',
             'blocked': 'unknown',
             'untracked': 'unknown'}.get(package.state_string, 'unknown')
-    return url_for('static', filename='images/{name}.png'.format(name=icon))
-Package.state_icon = property(state_icon)
+    url = url_for('static', filename='images/{}.png'.format(icon))
+    return Markup(
+        '<img src="{url}" title="{state}"/>'
+        .format(url=url, state=package.state_string)
+    )
+Package.state_icon = property(package_state_icon)
+
+
+def build_state_icon(build):
+    url = url_for('static', filename='images/{}.png'.format(build.state_string))
+    return Markup(
+        '<img src="{url}" title="{state}"/>'
+        .format(url=url, state=build.state_string)
+    )
+Build.state_icon = property(build_state_icon)
 
 
 tabs = []

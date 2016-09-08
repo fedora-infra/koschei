@@ -70,8 +70,7 @@
             <td>
                 <div class="hidden">{{ package.state_string }}</div>
                 {% if package.state_string %}
-                <img src="{{ package.state_icon }}"
-                title="{{ package.state_string }}" alt="{{ package.state_string }}"/>
+                {{ package.state_icon }}
                 {% endif %}
             </td>
             {% else %} {# unified view #}
@@ -80,8 +79,7 @@
                 {% if pkg.tracked %}
                     <a href="{{ url_for('package_detail', name=package.name) }}{{
                         page_args(clear=True, collection=pkg.collection.name) }}">
-                        <img src="{{ pkg.state_icon }}"
-                        title="{{ pkg.state_string }}" alt="{{ pkg.state_string }}"/>
+                        {{ pkg.state_icon }}
                     </a>
                 {% endif %}
             </td>

@@ -18,7 +18,7 @@
             <td>
                 <a href="{{ url_for('package_detail', name=package.name) }}{{
                     page_args(clear=True, collection=collection.name) }}">
-                    <img src="{{ package.state_icon }}" title="{{ package.state_string }}"/>
+                    {{ package.state_icon }}
                 </a>
             </td>
         </tr>
@@ -33,7 +33,7 @@
     <tr>
         <th>Package state</th>
         <td>
-            <img src="{{ package.state_icon }}"/>
+            {{ package.state_icon }}
             {{ package.state_string }}
             {% if package.scheduler_skip_reason %}
             <br>
