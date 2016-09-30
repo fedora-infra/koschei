@@ -41,7 +41,7 @@ from koschei.frontend import app, db, frontend_config, auth
 from koschei.models import (Package, Build, PackageGroup, PackageGroupRelation,
                             AdminNotice, BuildrootProblem, BasePackage,
                             GroupACL, Collection, CollectionGroup,
-                            ResolutionChange)
+                            AppliedChange, ResolutionChange)
 
 log = logging.getLogger('koschei.views')
 

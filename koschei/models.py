@@ -265,7 +265,7 @@ class Package(Base):
     base_id = Column(Integer, ForeignKey(BasePackage.id, ondelete='CASCADE'),
                      nullable=False)
 
-    name = Column(String, nullable=False, index=True) #  denormalized from base_package
+    name = Column(String, nullable=False, index=True)  # denormalized from base_package
     static_priority = Column(Integer, nullable=False, server_default="0")
     manual_priority = Column(Integer, nullable=False, server_default="0")
     collection_id = Column(Integer, ForeignKey(Collection.id, ondelete='CASCADE'),
@@ -380,7 +380,7 @@ class PackageGroupRelation(Base):
     __tablename__ = 'package_group_relation'
     group_id = Column(Integer, ForeignKey('package_group.id',
                                           ondelete='CASCADE'),
-                      primary_key=True) #  there should be index on whole PK
+                      primary_key=True)  # there should be index on whole PK
     base_id = Column(Integer, ForeignKey('base_package.id', ondelete='CASCADE'),
                      primary_key=True, index=True)
 
@@ -713,26 +713,36 @@ def grant_db_access(_, conn, *args, **kwargs):
 listen(Table, 'after_create', grant_db_access)
 
 # Relationships
+Package.last_complete_build = relationship(
+    Build,
+    primaryjoin=(Build.id == Package.last_complete_build_id),
+    uselist=False,
+)
+Package.last_build = relationship(
+    Build,
+    primaryjoin=(Build.id == Package.last_build_id),
+    uselist=False,
+)
 
-Package.last_complete_build = \
-    relationship(Build,
-                 primaryjoin=(Build.id == Package.last_complete_build_id),
-                 uselist=False)
-Package.last_build = \
-    relationship(Build,
-                 primaryjoin=(Build.id == Package.last_build_id),
-                 uselist=False)
-
-Package.all_builds = relationship(Build, order_by=Build.id.desc(),
-                                  primaryjoin=(Build.package_id == Package.id),
-                                  backref='package', passive_deletes=True)
-Package.unapplied_changes = \
-    relationship(UnappliedChange, backref='package',
-                 order_by=[UnappliedChange.distance, UnappliedChange.dep_name])
-Build.dependency_changes = relationship(AppliedChange, backref='build',
-                                        primaryjoin=(Build.id == AppliedChange.build_id),
-                                        order_by=AppliedChange.distance
-                                        .nullslast(), passive_deletes=True)
+Package.all_builds = relationship(
+    Build,
+    order_by=Build.id.desc(),
+    primaryjoin=(Build.package_id == Package.id),
+    backref='package',
+    passive_deletes=True,
+)
+Package.unapplied_changes = relationship(
+    UnappliedChange,
+    backref='package',
+    order_by=[UnappliedChange.distance, UnappliedChange.dep_name],
+)
+Build.dependency_changes = relationship(
+    AppliedChange,
+    backref='build',
+    primaryjoin=(Build.id == AppliedChange.build_id),
+    order_by=AppliedChange.distance.nullslast(),
+    passive_deletes=True,
+)
 
 ResolutionChange.problems = relationship(
     ResolutionProblem,
@@ -750,32 +760,37 @@ PackageGroup.package_count = column_property(
     deferred=True)
 
 # pylint: disable=E1101
-BasePackage.groups = relationship(PackageGroup,
-                                  secondary=PackageGroupRelation.__table__,
-                                  secondaryjoin=(PackageGroup.id ==
-                                                 PackageGroupRelation.group_id),
-                                  primaryjoin=(PackageGroupRelation.base_id ==
-                                               BasePackage.id),
-                                  order_by=PackageGroup.name, passive_deletes=True)
-Package.groups = relationship(PackageGroup,
-                              secondary=PackageGroupRelation.__table__,
-                              secondaryjoin=(PackageGroup.id ==
-                                             PackageGroupRelation.group_id),
-                              primaryjoin=(PackageGroupRelation.base_id ==
-                                           Package.base_id),
-                              order_by=PackageGroup.name, passive_deletes=True)
-PackageGroup.packages = relationship(BasePackage,
-                                     secondary=PackageGroupRelation.__table__,
-                                     primaryjoin=(PackageGroup.id ==
-                                                  PackageGroupRelation.group_id),
-                                     secondaryjoin=(PackageGroupRelation.base_id
-                                                    == BasePackage.id),
-                                     order_by=BasePackage.name, passive_deletes=True)
+BasePackage.groups = relationship(
+    PackageGroup,
+    secondary=PackageGroupRelation.__table__,
+    secondaryjoin=(PackageGroup.id == PackageGroupRelation.group_id),
+    primaryjoin=(PackageGroupRelation.base_id == BasePackage.id),
+    order_by=PackageGroup.name,
+    passive_deletes=True,
+)
+Package.groups = relationship(
+    PackageGroup,
+    secondary=PackageGroupRelation.__table__,
+    secondaryjoin=(PackageGroup.id == PackageGroupRelation.group_id),
+    primaryjoin=(PackageGroupRelation.base_id == Package.base_id),
+    order_by=PackageGroup.name,
+    passive_deletes=True,
+)
+PackageGroup.packages = relationship(
+    BasePackage,
+    secondary=PackageGroupRelation.__table__,
+    primaryjoin=(PackageGroup.id == PackageGroupRelation.group_id),
+    secondaryjoin=(PackageGroupRelation.base_id == BasePackage.id),
+    order_by=BasePackage.name,
+    passive_deletes=True,
+)
 PackageGroupRelation.group = relationship(PackageGroup)
-User.groups = relationship(PackageGroup,
-                           secondary=GroupACL.__table__,
-                           order_by=[PackageGroup.namespace,
-                                     PackageGroup.name], passive_deletes=True)
+User.groups = relationship(
+    PackageGroup,
+    secondary=GroupACL.__table__,
+    order_by=[PackageGroup.namespace, PackageGroup.name],
+    passive_deletes=True,
+)
 CollectionGroup.collections = relationship(
     Collection,
     secondary=CollectionGroupRelation.__table__,
