@@ -2,7 +2,7 @@
 {% import "macros.html" as macros %}
 {% block title %}Koschei - {{ package.name }}{% endblock %}
 {% macro next_change(changes) %}
-{{ inext(changes, '') | format_depchange | columnize(css_class="mono") }}
+{{ inext(changes, None) | format_depchange | columnize(css_class="mono") }}
 {% endmacro %}
 {% block content %}
 <div class="pageHeader">{{ package.name }}</div>

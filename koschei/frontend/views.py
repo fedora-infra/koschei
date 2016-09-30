@@ -82,9 +82,11 @@ def format_evr(epoch, version, release):
 
 def format_depchange(change):
     if change:
-        is_update = util.compare_evr(change.prev_evr, change.curr_evr) < 0
-        return (change.dep_name, format_evr(*change.prev_evr),
-                '<>'[is_update], format_evr(*change.curr_evr))
+        prev_evr = (change.prev_epoch, change.prev_version, change.prev_release)
+        curr_evr = (change.curr_epoch, change.curr_version, change.curr_release)
+        is_update = util.compare_evr(prev_evr, curr_evr) < 0
+        return (change.dep_name, format_evr(*prev_evr),
+                '<>'[is_update], format_evr(*curr_evr))
 
     return [''] * 4
 
