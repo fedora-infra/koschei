@@ -51,3 +51,4 @@ def after_cursor_execute(conn, cursor, statement,
 
 
 application.run(debug=True)
+application.jinja_env.auto_reload = True
