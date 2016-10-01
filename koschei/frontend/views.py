@@ -108,7 +108,10 @@ def generate_links(package):
                     raise AttributeError()  # continue the outer loop
                 url = url.replace('{' + interp + '}',
                                   escape(urllib.quote_plus(str(value))))
-            output.append('<a href="{url}">{name}</a>'.format(name=name, url=url))
+            output.append('<a href="{url}">{name}</a>'.format(
+                name=escape(name),
+                url=escape(url),
+            ))
         except AttributeError:
             continue
     return Markup('\n'.join(output))

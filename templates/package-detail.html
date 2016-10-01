@@ -32,7 +32,7 @@
 <table class="details">
     <tr>
         <th>Package state</th>
-        <td>
+        <td colspan="4">
             {{ package.state_icon }}
             {{ package.state_string }}
             {% if package.scheduler_skip_reason %}
@@ -46,33 +46,33 @@
     </tr>
     <tr>
         <th>Current priority</th>
-        <td>
+        <td colspan="4">
             {{ package.current_priority }}
         </td>
     </tr>
     <tr>
         <th>Manual priority</th>
-        <td>
+        <td colspan="4">
             <input type="text" name="manual_priority" class="change_input"
-            value="{{ package.manual_priority }}" {{ editable }}/>
+            value="{{ package.manual_priority }}" {{ editable | safe }}/>
         </td>
     </tr>
     <tr>
         <th>Static priority</th>
-        <td>
+        <td colspan="4">
             {{ package.static_priority }}
         </td>
     </tr>
     <tr>
         <th>Arch override</th>
-        <td>
+        <td colspan="4">
             <input type="text" name="arch_override" class="change_input"
             value="{{ package.arch_override or "" }}" {{ editable }}/>
         </td>
     </tr>
     <tr>
         <th>Global package groups</th>
-        <td>
+        <td colspan="4">
             {% for group in package.global_groups %}
             <a href="{{ url_for('group_detail', name=group.name) }}">{{ group.name }}</a>
             {% if group.editable %}
@@ -85,7 +85,7 @@
     {% if g.user %}
     <tr>
         <th>Your package groups</th>
-        <td>
+        <td colspan="4">
             {% for group in package.user_groups %}
             <a href="{{ url_for('group_detail', name=group.name, namespace=group.namespace) }}">{{ group.full_name }}</a>
             <input type="checkbox" name="group-{{ group.id }}" checked="true"/>
@@ -95,7 +95,7 @@
     </tr>
     <tr>
         <th>Available package groups</th>
-        <td>
+        <td colspan="4">
             {% for group in package.available_groups %}
             <a href="{{ url_for('group_detail', name=group.name, namespace=group.namespace) }}">{{ group.full_name }}</a>
             <input type="checkbox" name="group-{{ group.id }}"/>
@@ -106,21 +106,21 @@
     {% endif %}
     <tr>
         <th>Links</th>
-        <td>
+        <td colspan="4">
             {{ generate_links(package) }}
         </td>
     </tr>
     {% if g.current_collections[0].bugzilla_product and g.current_collections[0].bugzilla_version %}
     <tr>
         <th>Bug reports</th>
-        <td>
+        <td colspan="4">
             <a href="{{ url_for('bugreport', name=package.name) }}">File new FTBFS bug</a>
         </td>
     </tr>
     {% endif %}
     {% if g.user %}
     <tr>
-        <td>
+        <td colspan="4">
             <button type="submit">Submit modifications</button>
         </td>
     </tr>
