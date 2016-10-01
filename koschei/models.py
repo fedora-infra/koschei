@@ -258,8 +258,12 @@ class BasePackage(Base):
 
 class Package(Base):
     __tablename__ = 'package'
-    __table_args__ = (UniqueConstraint('base_id', 'collection_id',
-                                       name='package_unique_in_collection'),)
+    __table_args__ = (
+        UniqueConstraint('base_id', 'collection_id',
+                         name='package_unique_in_collection'),
+        CheckConstraint('NOT skip_resolution OR resolved IS NULL',
+                        name='package_skip_resolution_check'),
+    )
 
     id = Column(Integer, primary_key=True)
     base_id = Column(Integer, ForeignKey(BasePackage.id, ondelete='CASCADE'),
@@ -273,6 +277,9 @@ class Package(Base):
     collection = None  # backref, shut up pylint
 
     arch_override = Column(String)
+    # causes resolution to be skipped, package can be built even if it would be
+    # unresolved otherwise
+    skip_resolution = Column(Boolean, nullable=False, server_default=false())
 
     # cached value, populated by scheduler
     current_priority = Column(Integer)

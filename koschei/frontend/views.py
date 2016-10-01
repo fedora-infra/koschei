@@ -41,7 +41,7 @@ from koschei.frontend import app, db, frontend_config, auth
 from koschei.models import (Package, Build, PackageGroup, PackageGroupRelation,
                             AdminNotice, BuildrootProblem, BasePackage,
                             GroupACL, Collection, CollectionGroup,
-                            AppliedChange, ResolutionChange)
+                            AppliedChange, UnappliedChange, ResolutionChange)
 
 log = logging.getLogger('koschei.views')
 
@@ -834,6 +834,12 @@ def edit_package(name):
             package.manual_priority = new_priority
         if 'arch_override' in form:
             package.arch_override = form['arch_override'].strip() or None
+        if form.get('skip_resolution') == 'on':
+            package.skip_resolution = True
+            package.resolved = None
+            db.query(UnappliedChange).filter_by(package_id=package.id).delete()
+        else:
+            package.skip_resolution = False
         flash("Package modified")
     except (KeyError, ValueError):
         abort(400)

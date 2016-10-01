@@ -233,7 +233,8 @@ class Resolver(KojiService):
 
     def get_packages(self, collection, expunge=True):
         packages = self.db.query(Package)\
-            .filter(Package.blocked == False)\
+            .filter(~Package.blocked)\
+            .filter(~Package.skip_resolution)\
             .filter_by(collection_id=collection.id)\
             .filter(Package.tracked == True)\
             .filter(Package.last_complete_build_id != None)\

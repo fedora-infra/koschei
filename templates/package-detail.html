@@ -67,7 +67,14 @@
         <th>Arch override</th>
         <td colspan="4">
             <input type="text" name="arch_override" class="change_input"
-            value="{{ package.arch_override or "" }}" {{ editable }}/>
+            value="{{ package.arch_override or "" }}" {{ editable | safe }}/>
+        </td>
+    </tr>
+    <tr>
+        <th>Skip resolution</th>
+        <td colspan="4">
+            <input type="checkbox" name="skip_resolution" {{ editable | safe }}
+            {% if package.skip_resolution %}checked="true"{% endif %}/>
         </td>
     </tr>
     <tr>
