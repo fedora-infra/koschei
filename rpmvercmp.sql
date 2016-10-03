@@ -45,3 +45,71 @@ BEGIN
         ELSE RETURN 0;
     END CASE;
 END $$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION rpmlt(a varchar, b varchar)
+    RETURNS boolean AS $$
+BEGIN
+    RETURN rpmvercmp(a, b) < 0;
+END $$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OPERATOR <# (PROCEDURE=rpmlt, LEFTARG=varchar, RIGHTARG=varchar,
+                    COMMUTATOR=">#", NEGATOR=">=#", RESTRICT=scalarltsel,
+                    JOIN=scalarltjoinsel);
+
+CREATE OR REPLACE FUNCTION rpmgt(a varchar, b varchar)
+    RETURNS boolean AS $$
+BEGIN
+    RETURN rpmvercmp(a, b) > 0;
+END $$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OPERATOR ># (PROCEDURE=rpmgt, LEFTARG=varchar, RIGHTARG=varchar,
+                    COMMUTATOR="<#", NEGATOR="<=#", RESTRICT=scalargtsel,
+                    JOIN=scalargtjoinsel);
+
+CREATE OR REPLACE FUNCTION rpmle(a varchar, b varchar)
+    RETURNS boolean AS $$
+BEGIN
+    RETURN rpmvercmp(a, b) <= 0;
+END $$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OPERATOR <=# (PROCEDURE=rpmle, LEFTARG=varchar, RIGHTARG=varchar,
+                    COMMUTATOR=">=#", NEGATOR=">#", RESTRICT=scalarltsel,
+                    JOIN=scalarltjoinsel);
+
+CREATE OR REPLACE FUNCTION rpmge(a varchar, b varchar)
+    RETURNS boolean AS $$
+BEGIN
+    RETURN rpmvercmp(a, b) >= 0;
+END $$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OPERATOR >=# (PROCEDURE=rpmge, LEFTARG=varchar, RIGHTARG=varchar,
+                    COMMUTATOR="<=#", NEGATOR="<#", RESTRICT=scalargtsel,
+                    JOIN=scalargtjoinsel);
+
+CREATE OR REPLACE FUNCTION rpmeq(a varchar, b varchar)
+    RETURNS boolean AS $$
+BEGIN
+    RETURN rpmvercmp(a, b) = 0;
+END $$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OPERATOR =# (PROCEDURE=rpmeq, LEFTARG=varchar, RIGHTARG=varchar,
+                    COMMUTATOR="=#", NEGATOR="!=#", RESTRICT=eqsel,
+                    JOIN=eqjoinsel);
+
+CREATE OR REPLACE FUNCTION rpmne(a varchar, b varchar)
+    RETURNS boolean AS $$
+BEGIN
+    RETURN rpmvercmp(a, b) != 0;
+END $$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OPERATOR !=# (PROCEDURE=rpmne, LEFTARG=varchar, RIGHTARG=varchar,
+                    COMMUTATOR="!=#", NEGATOR="=#", RESTRICT=neqsel,
+                    JOIN=neqjoinsel);
+
+CREATE OPERATOR CLASS rpmcmp_ops FOR TYPE varchar USING btree AS
+    OPERATOR        1       <#,
+    OPERATOR        2       <=#,
+    OPERATOR        3       =#,
+    OPERATOR        4       >=#,
+    OPERATOR        5       >#,
+    FUNCTION        1       rpmvercmp(varchar, varchar);

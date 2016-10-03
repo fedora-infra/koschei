@@ -16,10 +16,9 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-from sqlalchemy.sql.expression import func
+from sqlalchemy import literal_column
 
 from test.common import DBTest
-from koschei.models import Dependency
 
 # run the following in RPM's source tree to regenerate the test data
 # ruby -nle 'if /^RPMVERCMP\(([^,]+),\s*([^,]+),\s*([^,]+)\)$/ then print "(\x27#{$1}\x27, \x27#{$2}\x27, #{$3})," end' tests/rpmvercmp.at
@@ -104,3 +103,7 @@ class RpmVercmpTest(DBTest):
             WHERE exp != rpmvercmp(a, b)
         """.format(values=RPM_DATA.rstrip(',\n '))).fetchall()
         self.assertItemsEqual([], result)
+
+    def test_operator(self):
+        result = self.db.query(literal_column("'2' <# '11'")).scalar()
+        self.assertIs(True, result)
