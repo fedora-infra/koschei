@@ -493,6 +493,7 @@ Index('ix_package_group_name', PackageGroup.namespace, PackageGroup.name,
 Index('ix_dependency_composite', *Dependency.nevra, unique=True)
 Index('ix_package_collection_id', Package.collection_id, Package.tracked,
       postgresql_where=(~Package.blocked))
+Index('ix_applied_change_dep_name', AppliedChange.dep_name)
 
 
 # Relationships
