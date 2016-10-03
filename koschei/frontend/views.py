@@ -32,6 +32,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import (joinedload, subqueryload, undefer, contains_eager,
                             aliased)
 from sqlalchemy.sql import exists, func, false, true, cast
+from sqlalchemy.sql.functions import coalesce
+
 from wtforms import StringField, TextAreaField
 from wtforms.validators import Regexp, ValidationError
 
@@ -41,7 +43,8 @@ from koschei.frontend import app, db, frontend_config, auth
 from koschei.models import (Package, Build, PackageGroup, PackageGroupRelation,
                             AdminNotice, BuildrootProblem, BasePackage,
                             GroupACL, Collection, CollectionGroup,
-                            AppliedChange, UnappliedChange, ResolutionChange)
+                            AppliedChange, UnappliedChange, ResolutionChange,
+                            get_package_state)
 
 log = logging.getLogger('koschei.views')
 
@@ -151,23 +154,6 @@ def secondary_koji_url(collection):
     return get_config('koji_config.weburl')
 
 
-app.jinja_env.globals.update(
-    primary_koji_url=get_config('koji_config.weburl'),
-    secondary_koji_url=secondary_koji_url,
-    koschei_version=get_config('version'),
-    generate_links=generate_links,
-    inext=next, iter=iter,
-    min=min, max=max, page_args=page_args,
-    get_global_notices=get_global_notices,
-    require_login=require_login,
-    Package=Package, Build=Build,
-    auto_tracking=frontend_config['auto_tracking'])
-
-app.jinja_env.filters.update(columnize=columnize,
-                             format_depchange=format_depchange,
-                             epoch=epoch_filter)
-
-
 class Reversed(object):
     def __init__(self, content):
         self.content = content
@@ -254,16 +240,17 @@ def collection_package_view(template, query_fn=None, **template_args):
                            **template_args)
 
 
-def package_state_icon(package):
+def package_state_icon(package_or_state):
+    state_string = getattr(package_or_state, 'state_string', package_or_state)
     icon = {'ok': 'complete',
             'failing': 'failed',
             'unresolved': 'cross',
             'blocked': 'unknown',
-            'untracked': 'unknown'}.get(package.state_string, 'unknown')
+            'untracked': 'unknown'}.get(state_string, 'unknown')
     url = url_for('static', filename='images/{}.png'.format(icon))
     return Markup(
         '<img src="{url}" title="{state}"/>'
-        .format(url=url, state=package.state_string)
+        .format(url=url, state=state_string)
     )
 Package.state_icon = property(package_state_icon)
 
@@ -280,6 +267,10 @@ Build.state_icon = property(build_state_icon)
 tabs = []
 
 
+def get_all_tabs():
+    return tabs
+
+
 def tab(caption, slave=False):
     def decorator(fn):
         if not slave:
@@ -287,11 +278,30 @@ def tab(caption, slave=False):
 
         @wraps(fn)
         def decorated(*args, **kwargs):
-            g.tabs = tabs
             g.current_tab = fn.__name__
             return fn(*args, **kwargs)
         return decorated
     return decorator
+
+
+app.jinja_env.globals.update(
+    get_all_tabs=get_all_tabs,
+    primary_koji_url=get_config('koji_config.weburl'),
+    secondary_koji_url=secondary_koji_url,
+    koschei_version=get_config('version'),
+    generate_links=generate_links,
+    inext=next, iter=iter,
+    min=min, max=max, page_args=page_args,
+    get_global_notices=get_global_notices,
+    require_login=require_login,
+    Package=Package, Build=Build,
+    package_state_icon=package_state_icon,
+    format_evr=format_evr,
+    auto_tracking=frontend_config['auto_tracking'])
+
+app.jinja_env.filters.update(columnize=columnize,
+                             format_depchange=format_depchange,
+                             epoch=epoch_filter)
 
 
 @app.teardown_appcontext
@@ -871,6 +881,7 @@ def bugreport(name):
 
 
 @app.route('/collection/<name>')
+@tab('Collections', slave=True)
 def collection_detail(name):
     for collection in g.collections:
         if collection.name == name:
@@ -886,3 +897,73 @@ def edit_collection(name):
         abort(403)
     # Not implemented
     abort(501)
+
+@app.route('/depchange/<dep_name>')
+def depchange(dep_name):
+    try:
+        collection = g.current_collections[0]
+        evr1 = (int(request.args['epoch1']),
+                request.args['version1'],
+                request.args['release1'])
+        evr2 = (int(request.args['epoch2']),
+                request.args['version2'],
+                request.args['release2'])
+    except (KeyError, ValueError):
+        abort(400)
+
+    prev_evr = (AppliedChange.prev_epoch, AppliedChange.prev_version,
+                AppliedChange.prev_release)
+    curr_evr = (AppliedChange.curr_epoch, AppliedChange.curr_version,
+                AppliedChange.curr_release)
+
+    def op(a, op, b):
+        aug_op = op + '#'
+        return (coalesce(a[0], 0).op(op)(coalesce(b[0], 0)) |
+                (coalesce(a[0], 0).op('=')(coalesce(b[0], 0)) &
+                 func.ROW(a[1], a[2]).op(aug_op)(func.ROW(b[1], b[2]))))
+
+    evr_cmp_expr = (
+        (op(prev_evr, '>', evr1) | op(curr_evr, '>', evr1)) &
+        (op(prev_evr, '<', evr2) | op(curr_evr, '<', evr2))
+    )
+
+    prev_build = aliased(Build)
+    subq = db.query(prev_build.state.label('prev_state'))\
+        .order_by(prev_build.started.desc())\
+        .filter(prev_build.started < Build.started)\
+        .filter(prev_build.package_id == Build.package_id)\
+        .limit(1)\
+        .correlate().as_scalar()
+    failed = db.query(AppliedChange.dep_name, AppliedChange.prev_epoch,
+                      AppliedChange.prev_version, AppliedChange.prev_release,
+                      AppliedChange.curr_epoch, AppliedChange.curr_version,
+                      AppliedChange.curr_release, AppliedChange.distance,
+                      Build.id.label('build_id'),
+                      Build.state.label('build_state'),
+                      Package.name.label('package_name'),
+                      Package.resolved.label('package_resolved'),
+                      Package.last_complete_build_state.label('package_lb_state'),
+                      subq.label('prev_build_state'))\
+        .filter(AppliedChange.dep_name == dep_name)\
+        .filter(evr_cmp_expr)\
+        .join(AppliedChange.build).join(Build.package)\
+        .filter_by(blocked=False, tracked=True, collection_id=collection.id)\
+        .filter(Build.state == 5)\
+        .filter(subq != 5)\
+        .order_by(AppliedChange.distance, Package.name)\
+        .all()
+
+    def package_state(row):
+        return get_package_state(
+            tracked=True,
+            blocked=False,
+            resolved=row.package_resolved,
+            last_complete_build_state=row.package_lb_state,
+        )
+
+    is_upgrade = util.compare_evr(evr1, evr2) < 0
+
+    return render_template("depchange.html", package_state=package_state,
+                           dep_name=dep_name, evr1=evr1, evr2=evr2,
+                           is_upgrade=is_upgrade, collection=collection,
+                           failed=failed)

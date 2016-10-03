@@ -63,7 +63,7 @@
                 <div id="mainNav">
                     <h4 class="hide">Main Site Links:</h4>
                     <ul>
-                        {% for tab_name, tab_caption in g.tabs %}
+                        {% for tab_name, tab_caption in get_all_tabs() %}
                         <li {% if g.current_tab == tab_name %}id="activeTab"{% endif %}>
                             <a href="{{ url_for(tab_name) }}">{{ tab_caption }}</a>
                         </li>

@@ -111,6 +111,24 @@ class BasePackage(Base):
     all_blocked = Column(Boolean, nullable=False, server_default=true())
 
 
+def get_package_state(tracked, blocked, resolved, last_complete_build_state):
+    """
+    Returns package state string for given package properties
+    """
+    if blocked:
+        return 'blocked'
+    if not tracked:
+        return 'untracked'
+    if resolved is False:
+        return 'unresolved'
+    if last_complete_build_state is not None:
+        return {
+            Build.COMPLETE: 'ok',
+            Build.FAILED: 'failing',
+        }.get(last_complete_build_state, 'unknown')
+    return 'unknown'
+
+
 class Package(Base):
     __tablename__ = 'package'
     __table_args__ = (
@@ -161,26 +179,22 @@ class Package(Base):
     SKIPPED_NO_SRPM = 1
     scheduler_skip_reason = Column(Integer)
 
-    def get_state(self):
-        if self.blocked:
-            return 'blocked'
-        if not self.tracked:
-            return 'untracked'
-        if self.resolved is False:
-            return 'unresolved'
-        if self.last_complete_build_state is not None:
-            return {Build.COMPLETE: 'ok',
-                    Build.FAILED: 'failing'}.get(self.last_complete_build_state)
-
     @property
     def state_string(self):
         """String representation of state used when disaplying to user"""
-        return self.get_state() or 'unknown'
+        return get_package_state(
+            tracked=self.tracked,
+            blocked=self.blocked,
+            resolved=self.resolved,
+            last_complete_build_state=self.last_complete_build_state,
+        )
 
     @property
     def msg_state_string(self):
         """String representation of state used when publishing messages"""
-        return not self.blocked and self.tracked and self.get_state() or 'ignored'
+        state = self.state_string
+        return state if state in ('ok', 'failing', 'unresolved') else 'ignored'
+
 
     @property
     def has_running_build(self):

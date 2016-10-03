@@ -1,8 +1,25 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 {% block title %}Koschei - {{ package.name }}{% endblock %}
+{% macro change_link(change) %}
+{% if change %}
+<td>
+    <a href="{{ url_for('depchange', dep_name=change.dep_name)
+        }}?epoch1={{ change.prev_epoch or '0' }}&version1={{ change.prev_version
+        }}&release1={{ change.prev_release }}&epoch2={{ change.curr_epoch or '0'
+        }}&version2={{ change.curr_version }}&release2={{ change.curr_release
+        }}&collection={{ g.current_collections[0].name }}">
+        other affected
+    </a>
+</td>
+{% else %}
+<td></td>
+{% endif %}
+{% endmacro %}
 {% macro next_change(changes) %}
-{{ inext(changes, None) | format_depchange | columnize(css_class="mono") }}
+{% set change = inext(changes, None) %}
+{{ change | format_depchange | columnize(css_class="mono") }}
+{{ change_link(change) }}
 {% endmacro %}
 {% block content %}
 <div class="pageHeader">{{ package.name }}</div>
@@ -142,13 +159,13 @@
             <th>State</th>
             <th>Koji task</th>
             <th>Started</th>
-            <th colspan="4">Dependency changes</th>
+            <th colspan="5">Dependency changes</th>
             <th>Build details</th>
         </tr>
     </thead>
     <tbody>
         {% if is_continuation %}
-        <tr><td colspan="8">...</td></tr>
+        <tr><td colspan="9">...</td></tr>
         {% endif %}
         {% for entry in entries %}
         {% if not entry.version %}
@@ -156,7 +173,7 @@
         {% set problems = iter(entry.problems) %}
         {% if entry.resolved %}
         <tr class="resolution-success">
-            <td colspan="8">
+            <td colspan="9">
                 Package dependencies resolved successfuly
             </td>
         </tr>
@@ -165,13 +182,13 @@
             <td>
                 Package resolution failed
             </td>
-            <td colspan="7">
+            <td colspan="8">
                 {{ inext(problems, '') }}
             </td>
         </tr>
         {% endif %}
         {% for problem in problems %}
-        <tr class="resolution-failure"><td/><td colspan="7">{{ problem }}</td></tr>
+        <tr class="resolution-failure"><td/><td colspan="8">{{ problem }}</td></tr>
         {% endfor %}
         {% else %}
         {# is a build entry #}
@@ -181,7 +198,7 @@
         {% if build.real %}
         <tr class="{{ row_class }}">
             <td></td>
-            <td colspan="7" class="real_build_description">
+            <td colspan="8" class="real_build_description">
                 Real build: <a class="mono" href="{{ secondary_koji_url(package.collection) }}/search?match=&type=build&terms={{ package.name }}-{{ build.version }}-{{ build.release }}">{{ package.name }}-{{ build.version }}-{{ build.release }}</a>
             </td>
         </tr>
@@ -201,9 +218,9 @@
             {% if build.deps_resolved %}
             {{ next_change(changes) }}
             {% elif build.deps_resolved is sameas False %}
-            <td colspan="4">Dependencies for this build couldn't be processed</td>
+            <td colspan="5">Dependencies for this build couldn't be processed</td>
             {% else %}
-            <td colspan="4">Dependencies for this build weren't processed yet</td>
+            <td colspan="5">Dependencies for this build weren't processed yet</td>
             {% endif %}
             <td>
                 <a href="{{ url_for('build_detail', build_id=build.id) }}">details</a>
@@ -236,6 +253,7 @@
         <tr class="{{ row_class }}">
             <td colspan="3"></td>
             {{ change | format_depchange | columnize(css_class="mono") }}
+            {{ change_link(change) }}
             <td></td>
         </tr>
         {% endfor %}
