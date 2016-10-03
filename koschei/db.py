@@ -169,7 +169,7 @@ class CompressedKeyArray(TypeDecorator):
 
 
 def load_ddl():
-    for script in ('triggers.sql',):
+    for script in ('triggers.sql', 'rpmvercmp.sql'):
         with open(os.path.join(get_config('directories.datadir'), script)) as ddl_script:
             ddl = DDL(ddl_script.read())
         listen(Base.metadata, 'after_create', ddl.execute_if(dialect='postgresql'))
