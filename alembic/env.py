@@ -1,10 +1,10 @@
 from __future__ import with_statement
-import os
+
 from alembic import context
 from logging.config import fileConfig
 
 from koschei.config import load_config
-from koschei.models import Base, grant_db_access
+from koschei.db import Base, grant_db_access, get_engine
 
 load_config(['/usr/share/koschei/config.cfg', '/etc/koschei/config-admin.cfg'])
 
@@ -48,13 +48,11 @@ def run_migrations_online():
     and associate a connection with the context.
 
     """
-    from koschei.models import get_engine
-
     connection = get_engine().connect()
     context.configure(
-                connection=connection,
-                target_metadata=target_metadata
-                )
+        connection=connection,
+        target_metadata=target_metadata,
+    )
 
     try:
         with context.begin_transaction():
@@ -67,4 +65,3 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
-

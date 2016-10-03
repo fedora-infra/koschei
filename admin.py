@@ -27,8 +27,9 @@ import sys
 import argparse
 
 from koschei import data
-from koschei.models import (get_engine, Base, Package, PackageGroup, Session,
-                            AdminNotice, Collection, CollectionGroup)
+from koschei.db import get_engine, create_all, Session
+from koschei.models import (Package, PackageGroup, AdminNotice, Collection,
+                            CollectionGroup)
 from koschei.backend import koji_util, Backend
 from koschei.config import load_config, get_config
 
@@ -84,7 +85,7 @@ class CreateDb(Command):
     def execute(self):
         from alembic.config import Config
         from alembic import command
-        Base.metadata.create_all(get_engine())
+        create_all()
         alembic_cfg = Config(get_config('alembic.alembic_ini'))
         command.stamp(alembic_cfg, "head")
 

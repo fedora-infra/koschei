@@ -25,7 +25,7 @@ import time
 import resource
 
 from koschei.config import get_config
-from koschei.models import Session
+from koschei.db import Session
 from koschei.backend.koji_util import KojiSession
 
 

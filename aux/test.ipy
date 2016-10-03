@@ -8,6 +8,7 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 from koschei import util
 from koschei import plugin
+from koschei.db import *
 from koschei.models import *
 from koschei.config import *
 from koschei.backend import *

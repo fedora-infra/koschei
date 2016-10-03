@@ -21,7 +21,7 @@ from flask_sqlalchemy import BaseQuery, Pagination
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 from koschei.config import get_config, load_config
-from koschei.models import get_engine, Query
+from koschei.db import get_engine, Query
 
 dirs = get_config('directories')
 app = Flask('koschei', template_folder=dirs['templates'],

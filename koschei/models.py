@@ -16,159 +16,14 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-import struct
-import zlib
-
-import sqlalchemy
-
-from sqlalchemy import (create_engine, Table, Column, Integer, String, Boolean,
-                        ForeignKey, DateTime, Index, DDL, Float, CheckConstraint,
-                        UniqueConstraint)
+from sqlalchemy import (Column, Integer, String, Boolean, ForeignKey, DateTime,
+                        Index, Float, CheckConstraint, UniqueConstraint)
 from sqlalchemy.sql.expression import func, select, join, false, true
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import (sessionmaker, relationship, column_property,
+from sqlalchemy.orm import (relationship, column_property,
                             configure_mappers, deferred)
-from sqlalchemy.engine.url import URL
-from sqlalchemy.event import listen
-from sqlalchemy.types import TypeDecorator
-from sqlalchemy.dialects.postgresql import BYTEA
 
 from .config import get_config
-
-
-Base = declarative_base()
-
-
-class Query(sqlalchemy.orm.Query):
-    # TODO move get_or_create here
-    # def get_or_create(self):
-    #     items = self.all()
-    #     if items:
-    #         if len(items) > 1:
-    #             raise ProgrammerError("get_or_create query returned more than one item")
-    #         return items[0]
-    #     entity = self._primary_entity.entities[0]
-    #     how to get args?
-    #     self.session.add(entity(**args))
-
-    def delete(self, *args, **kwargs):
-        kwargs['synchronize_session'] = False
-        return super(Query, self).delete(*args, **kwargs)
-
-    def update(self, *args, **kwargs):
-        kwargs['synchronize_session'] = False
-        return super(Query, self).update(*args, **kwargs)
-
-    def lock_rows(self):
-        """
-        Locks rows satisfying given filter expression in consistent order.
-        Should eliminate deadlocks with other transactions that do the same before
-        attempting to update.
-        """
-        mapper = self._only_full_mapper_zero("lock_rows")
-        self.order_by(*mapper.primary_key)\
-            .with_lockmode('update')\
-            .all()
-
-    def all_flat(self, ctor=list):
-        return ctor(x for [x] in self)
-
-
-class KoscheiDbSession(sqlalchemy.orm.session.Session):
-    def bulk_insert(self, objects):
-        """
-        Inserts ORM objects using sqla-core bulk insert. Only handles simple flat
-        objects, no relationships. Assumes the primary key is generated
-        sequence and the attribute is named "id". Sets object ids.
-
-        :param: objects List of ORM objects to be persisted. All objects must be of
-                        the same type. Column list is determined from first object.
-        """
-        # pylint:disable=unidiomatic-typecheck
-        if objects:
-            cls = type(objects[0])
-            table = cls.__table__
-            cols = [col for col in objects[0].__dict__.keys() if not
-                    col.startswith('_') and col != 'id']
-            dicts = []
-            for obj in objects:
-                assert type(obj) == cls
-                dicts.append({col: getattr(obj, col) for col in cols})
-            self.flush()
-            res = self.execute(table.insert(dicts, returning=[table.c.id]))
-            ids = sorted(x[0] for x in res)
-            for obj, obj_id in zip(objects, ids):
-                obj.id = obj_id
-            self.expire_all()
-
-
-__engine = None
-__sessionmaker = None
-
-
-def get_engine():
-    global __engine
-    if __engine:
-        return __engine
-    db_url = get_config('db_url', None) or URL(**get_config('database_config'))
-    __engine = create_engine(db_url, echo=False, pool_size=10)
-    return __engine
-
-
-def get_sessionmaker():
-    global __sessionmaker
-    if __sessionmaker:
-        return __sessionmaker
-    __sessionmaker = sessionmaker(bind=get_engine(), autocommit=False,
-                                  class_=KoscheiDbSession, query_cls=Query)
-    return __sessionmaker
-
-
-def Session(*args, **kwargs):
-    return get_sessionmaker()(*args, **kwargs)
-
-
-def get_or_create(db, table, **cond):
-    """
-    Returns a row from table that satisfies cond or a new row if no such row
-    exists yet. Can still cause IntegrityError in concurrent environment.
-    """
-    item = db.query(table).filter_by(**cond).first()
-    if not item:
-        item = table(**cond)
-        db.add(item)
-    return item
-
-
-class CompressedKeyArray(TypeDecorator):
-    impl = BYTEA
-
-    def process_bind_param(self, value, _):
-        if value is None:
-            return None
-        value = sorted(value)
-        offset = 0
-        for i in range(len(value)):
-            value[i] -= offset
-            offset += value[i]
-        array = bytearray()
-        for item in value:
-            assert item > 0
-            array += struct.pack(">I", item)
-        return zlib.compress(str(array))
-
-    def process_result_value(self, value, _):
-        if value is None:
-            return None
-        res = []
-        uncompressed = zlib.decompress(value)
-        for i in range(0, len(uncompressed), 4):
-            res.append(struct.unpack(">I", str(uncompressed[i:i + 4]))[0])
-        offset = 0
-        for i in range(len(res)):
-            res[i] += offset
-            offset = res[i]
-        return res
+from koschei.db import Base, CompressedKeyArray
 
 
 class User(Base):
@@ -556,16 +411,6 @@ class Dependency(Base):
     inevra = (id, name, epoch, version, release, arch)
 
 
-Index('ix_build_running', Build.package_id, unique=True,
-      postgresql_where=(Build.state == Build.RUNNING))
-Index('ix_build_composite', Build.package_id, Build.id.desc())
-Index('ix_package_group_name', PackageGroup.namespace, PackageGroup.name,
-      unique=True)
-Index('ix_dependency_composite', *Dependency.nevra, unique=True)
-Index('ix_package_collection_id', Package.collection_id, Package.tracked,
-      postgresql_where=(~Package.blocked))
-
-
 class DependencyChange(object):
     # not an actual table
     id = Column(Integer, primary_key=True)
@@ -591,6 +436,7 @@ class AppliedChange(DependencyChange, Base):
     __tablename__ = 'applied_change'
     build_id = Column(ForeignKey('build.id', ondelete='CASCADE'), index=True,
                       nullable=False)
+    build = None  # backref
     # needs to be nullable because we delete old builds
     prev_build_id = Column(ForeignKey('build.id', ondelete='SET NULL'),
                            index=True)
@@ -624,100 +470,16 @@ class RepoMapping(Base):
     task_id = Column(Integer, nullable=False)  # newRepo task ID
 
 
-# Triggers
+# Indices
+Index('ix_build_running', Build.package_id, unique=True,
+      postgresql_where=(Build.state == Build.RUNNING))
+Index('ix_build_composite', Build.package_id, Build.id.desc())
+Index('ix_package_group_name', PackageGroup.namespace, PackageGroup.name,
+      unique=True)
+Index('ix_dependency_composite', *Dependency.nevra, unique=True)
+Index('ix_package_collection_id', Package.collection_id, Package.tracked,
+      postgresql_where=(~Package.blocked))
 
-trigger = DDL("""
-              CREATE OR REPLACE FUNCTION update_last_complete_build()
-                  RETURNS TRIGGER AS $$
-              BEGIN
-                  UPDATE package
-                  SET last_complete_build_id = lcb.id,
-                      last_complete_build_state = lcb.state
-                  FROM (SELECT id, state
-                        FROM build
-                        WHERE package_id = NEW.package_id
-                              AND (state = 3 OR state = 5)
-                        ORDER BY id DESC
-                        LIMIT 1) AS lcb
-                  WHERE package.id = NEW.package_id;
-                  RETURN NEW;
-              END $$ LANGUAGE plpgsql;
-              CREATE OR REPLACE FUNCTION update_last_build()
-                  RETURNS TRIGGER AS $$
-              BEGIN
-                  UPDATE package
-                  SET last_build_id = lb.id
-                  FROM (SELECT id, state, started
-                        FROM build
-                        WHERE package_id = NEW.package_id
-                        ORDER BY id DESC
-                        LIMIT 1) AS lb
-                  WHERE package.id = NEW.package_id;
-                  RETURN NEW;
-              END $$ LANGUAGE plpgsql;
-              CREATE OR REPLACE FUNCTION update_last_build_del()
-                  RETURNS TRIGGER AS $$
-              BEGIN
-                  UPDATE package
-                  SET last_build_id = lb.id
-                  FROM (SELECT id, state, started
-                        FROM build
-                        WHERE package_id = OLD.package_id
-                              AND build.id != OLD.id
-                        ORDER BY id DESC
-                        LIMIT 1) AS lb
-                  WHERE package.id = OLD.package_id;
-                  RETURN OLD;
-              END $$ LANGUAGE plpgsql;
-
-              CREATE OR REPLACE FUNCTION update_all_blocked()
-                  RETURNS TRIGGER AS $$
-              BEGIN
-                  UPDATE base_package
-                  SET all_blocked = q.all_blocked
-                  FROM (SELECT base_id, BOOL_AND(blocked) AS all_blocked
-                        FROM package
-                        GROUP BY base_id) AS q
-                  WHERE id = q.base_id;
-                  RETURN NULL;
-              END $$ LANGUAGE plpgsql;
-
-
-              CREATE TRIGGER update_last_complete_build_trigger
-                  AFTER INSERT ON build FOR EACH ROW
-                  WHEN (NEW.state = 3 OR NEW.state = 5)
-                  EXECUTE PROCEDURE update_last_complete_build();
-              CREATE TRIGGER update_last_build_trigger
-                  AFTER INSERT ON build FOR EACH ROW
-                  EXECUTE PROCEDURE update_last_build();
-              CREATE TRIGGER update_last_complete_build_trigger_up
-                  AFTER UPDATE ON build FOR EACH ROW
-                  WHEN (OLD.state != NEW.state)
-                  EXECUTE PROCEDURE update_last_complete_build();
-              CREATE TRIGGER update_last_build_trigger_del
-                  BEFORE DELETE ON build FOR EACH ROW
-                  EXECUTE PROCEDURE update_last_build_del();
-              CREATE TRIGGER update_all_blocked_trigger
-                  AFTER INSERT OR DELETE OR UPDATE OF blocked ON package
-                  FOR EACH STATEMENT
-                  EXECUTE PROCEDURE update_all_blocked();
-              """)
-
-listen(Base.metadata, 'after_create', trigger.execute_if(dialect='postgresql'))
-
-
-def grant_db_access(_, conn, *args, **kwargs):
-    user = get_config('unpriv_db_username', None)
-    if user:
-        conn.execute("""
-                     GRANT SELECT, INSERT, UPDATE, DELETE
-                     ON ALL TABLES IN SCHEMA PUBLIC TO {user};
-                     GRANT SELECT, USAGE ON ALL SEQUENCES
-                     IN SCHEMA PUBLIC TO {user};
-                     """.format(user=user))
-
-
-listen(Table, 'after_create', grant_db_access)
 
 # Relationships
 Package.last_complete_build = relationship(

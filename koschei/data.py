@@ -20,10 +20,10 @@
 
 from sqlalchemy import insert
 
+from koschei.db import get_or_create
 from koschei.models import (Package, BasePackage, PackageGroup,
                             PackageGroupRelation, GroupACL, User,
-                            Collection, CollectionGroupRelation,
-                            get_or_create)
+                            Collection, CollectionGroupRelation)
 
 
 class PackagesDontExist(Exception):

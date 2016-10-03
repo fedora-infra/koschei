@@ -30,9 +30,9 @@ from mock import Mock
 from datetime import datetime
 
 from test import testdir, config
-from koschei.models import (get_engine, Base, Session, Package, Build,
-                            Collection, BasePackage, PackageGroupRelation,
-                            PackageGroup, GroupACL, User)
+from koschei.db import get_engine, create_all, Base, Session
+from koschei.models import (Package, Build, Collection, BasePackage,
+                            PackageGroupRelation, PackageGroup, GroupACL, User)
 
 workdir = '.workdir'
 
@@ -92,7 +92,7 @@ class DBTest(AbstractTest):
                     cur.execute("ALTER DATABASE {0} SET {1} TO '{2}'".format(dbname,
                                                                              option,
                                                                              value))
-        Base.metadata.create_all(get_engine())
+        create_all()
 
     def __init__(self, *args, **kwargs):
         super(DBTest, self).__init__(*args, **kwargs)

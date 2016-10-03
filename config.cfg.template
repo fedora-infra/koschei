@@ -166,6 +166,8 @@ config = {
         "static_folder": "@DATADIR@/static",
         # URL where static resources are available
         "static_url": "/static",
+        # generic directory for uncategorized resources
+        "datadir": "@DATADIR@",
     },
     "flask": {
         # secret key for authentication, you want to override this
