@@ -222,6 +222,7 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %files admin
 %{_bindir}/%{name}-admin
 %{_datadir}/%{name}/alembic/
+%{_datadir}/%{name}/*.sql
 %{_datadir}/%{name}/alembic.ini
 %{_sysconfdir}/bash_completion.d
 %config(noreplace) %{_sysconfdir}/%{name}/config-admin.cfg
