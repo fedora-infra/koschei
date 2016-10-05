@@ -27,16 +27,12 @@ from koschei.db import Base, CompressedKeyArray
 
 
 class User(Base):
-    __tablename__ = 'user'
-
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
     admin = Column(Boolean, nullable=False, server_default=false())
 
 
 class Collection(Base):
-    __tablename__ = 'collection'
-
     id = Column(Integer, primary_key=True)
     order = Column(Integer, nullable=False, server_default="100")
     # name used in machine context (urls, fedmsg), e.g. "f24"
@@ -78,7 +74,6 @@ class Collection(Base):
 
 
 class CollectionGroup(Base):
-    __tablename__ = 'collection_group'
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
     display_name = Column(String, nullable=False)
@@ -88,7 +83,6 @@ class CollectionGroup(Base):
 
 
 class CollectionGroupRelation(Base):
-    __tablename__ = 'collection_group_relation'
     group_id = Column(
         Integer,
         ForeignKey('collection_group.id', ondelete='CASCADE'),
@@ -102,7 +96,6 @@ class CollectionGroupRelation(Base):
 
 
 class BasePackage(Base):
-    __tablename__ = 'base_package'
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
     packages = relationship('Package', backref='base', passive_deletes=True)
@@ -130,7 +123,6 @@ def get_package_state(tracked, blocked, resolved, last_complete_build_state):
 
 
 class Package(Base):
-    __tablename__ = 'package'
     __table_args__ = (
         UniqueConstraint('base_id', 'collection_id',
                          name='package_unique_in_collection'),
@@ -195,7 +187,6 @@ class Package(Base):
         state = self.state_string
         return state if state in ('ok', 'failing', 'unresolved') else 'ignored'
 
-
     @property
     def has_running_build(self):
         return self.last_build_id != self.last_complete_build_id
@@ -212,7 +203,6 @@ class Package(Base):
 
 
 class KojiTask(Base):
-    __tablename__ = 'koji_task'
     __table_args__ = (CheckConstraint('state BETWEEN 0 AND 5',
                                       name='koji_task_state_check'),)
 
@@ -253,7 +243,6 @@ class KojiTask(Base):
 
 
 class PackageGroupRelation(Base):
-    __tablename__ = 'package_group_relation'
     group_id = Column(Integer, ForeignKey('package_group.id',
                                           ondelete='CASCADE'),
                       primary_key=True)  # there should be index on whole PK
@@ -262,8 +251,6 @@ class PackageGroupRelation(Base):
 
 
 class GroupACL(Base):
-    __tablename__ = 'group_acl'
-
     group_id = Column(Integer, ForeignKey('package_group.id',
                                           ondelete='CASCADE'),
                       primary_key=True)
@@ -273,8 +260,6 @@ class GroupACL(Base):
 
 
 class PackageGroup(Base):
-    __tablename__ = 'package_group'
-
     id = Column(Integer, primary_key=True)
     namespace = Column(String)
     name = Column(String, nullable=False)
@@ -304,7 +289,6 @@ class PackageGroup(Base):
 
 
 class Build(Base):
-    __tablename__ = 'build'
     __table_args__ = (
         CheckConstraint('state IN (2, 3, 5)', name='build_state_check'),
         CheckConstraint('state = 2 OR repo_id IS NOT NULL', name='build_repo_id_check'),
@@ -382,8 +366,6 @@ class Build(Base):
 
 
 class ResolutionChange(Base):
-    __tablename__ = 'resolution_change'
-
     id = Column(Integer, primary_key=True)
     resolved = Column(Boolean, nullable=False)
     timestamp = Column(DateTime, nullable=False, server_default=func.clock_timestamp())
@@ -396,7 +378,6 @@ class ResolutionChange(Base):
 
 
 class ResolutionProblem(Base):
-    __tablename__ = 'resolution_problem'
     id = Column(Integer, primary_key=True)
     resolution_id = Column(
         Integer,
@@ -412,7 +393,6 @@ class ResolutionProblem(Base):
 
 
 class Dependency(Base):
-    __tablename__ = 'dependency'
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     epoch = Column(Integer)
@@ -447,7 +427,6 @@ class DependencyChange(object):
 
 
 class AppliedChange(DependencyChange, Base):
-    __tablename__ = 'applied_change'
     build_id = Column(ForeignKey('build.id', ondelete='CASCADE'), index=True,
                       nullable=False)
     build = None  # backref
@@ -457,7 +436,6 @@ class AppliedChange(DependencyChange, Base):
 
 
 class UnappliedChange(DependencyChange, Base):
-    __tablename__ = 'unapplied_change'
     package_id = Column(ForeignKey('package.id', ondelete='CASCADE'),
                         index=True, nullable=False)
     prev_build_id = Column(ForeignKey('build.id', ondelete='CASCADE'),
@@ -465,20 +443,17 @@ class UnappliedChange(DependencyChange, Base):
 
 
 class BuildrootProblem(Base):
-    __tablename__ = 'buildroot_problem'
     id = Column(Integer, primary_key=True)
     collection_id = Column(ForeignKey(Collection.id, ondelete='CASCADE'), index=True)
     problem = Column(String, nullable=False)
 
 
 class AdminNotice(Base):
-    __tablename__ = 'admin_notice'
     key = Column(String, primary_key=True)
     content = Column(String, nullable=False)
 
 
 class RepoMapping(Base):
-    __tablename__ = 'repo_mapping'
     secondary_id = Column(Integer, primary_key=True)  # repo_id on secondary
     primary_id = Column(Integer)  # repo_id on primary, not known at the beginning
     task_id = Column(Integer, nullable=False)  # newRepo task ID

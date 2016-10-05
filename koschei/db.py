@@ -16,6 +16,7 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+import re
 import os
 import struct
 import zlib
@@ -23,7 +24,7 @@ import zlib
 import sqlalchemy
 
 from sqlalchemy import create_engine, Table, DDL
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine.url import URL
 from sqlalchemy.event import listen
@@ -33,7 +34,13 @@ from sqlalchemy.dialects.postgresql import BYTEA
 from .config import get_config
 
 
-Base = declarative_base()
+class Base(object):
+    # pylint: disable=no-self-argument,no-member
+    @declared_attr
+    def __tablename__(cls):
+        return re.sub(r'([A-Z]+)', lambda s: '_' + s.group(0).lower(), cls.__name__)[1:]
+
+Base = declarative_base(cls=Base)
 
 
 class Query(sqlalchemy.orm.Query):
@@ -187,6 +194,7 @@ def grant_db_access(_, conn, *args, **kwargs):
 
 
 listen(Table, 'after_create', grant_db_access)
+
 
 def create_all():
     load_ddl()
