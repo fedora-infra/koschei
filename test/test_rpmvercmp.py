@@ -105,5 +105,5 @@ class RpmVercmpTest(DBTest):
         self.assertItemsEqual([], result)
 
     def test_operator(self):
-        result = self.db.query(literal_column("'2' <# '11'")).scalar()
+        result = self.db.query(literal_column("'2' <# '11'").label('r')).scalar()
         self.assertIs(True, result)
