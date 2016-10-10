@@ -26,6 +26,8 @@ import rpm
 import time
 import socket
 import six
+import fcntl
+import errno
 
 from six.moves.queue import Queue
 from threading import Thread
@@ -110,6 +112,104 @@ def sd_notify(msg):
         sock.sendto(msg, sock_path)
     finally:
         sock.close()
+
+
+class FileLock(object):
+    """
+    File lock object using fcntl locking.
+    Doesn't lock the file given, but creates an auxiliary file with .lock
+    suffix. Expected to be used as context manager.
+
+    Warning: POSIX locks are not recursive.
+
+    :directory: in which directory to create the lock file
+    :name: lock object name, will be appended .lock suffix
+    :immediate: whether to lock when initializing, or leave it up to user
+    :exclusive: whether the lock will be exclusive or shared
+    """
+    def __init__(self, directory, name, immediate=True, exclusive=True):
+        self.lock_name = '.{0}.lock'.format(name)
+        self.lock_path = os.path.join(directory, self.lock_name)
+        self.lock_file = None
+        self.exclusive = exclusive
+        self.exclusive_locked = False
+        self.locked = False
+        self.log = logging.getLogger(type(self).__name__)
+        if immediate:
+            self.lock()
+
+    def _get_type_flag(self, exclusive):
+        if exclusive is None:
+            exclusive = self.exclusive
+        return fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
+
+    def lock(self, exclusive=None, _other_flags=0):
+        """
+        Locks the lock file (creates the file if doesn't exist)
+
+        :exclusive: overrides exclusive setting for the object
+        """
+        while True:
+            if not self.lock_file:
+                self.lock_file = open(self.lock_path, 'a+')
+            try:
+                fcntl.lockf(self.lock_file.fileno(),
+                            self._get_type_flag(exclusive) | _other_flags)
+                our_inode = os.fstat(self.lock_file.fileno()).st_ino
+                try:
+                    disk_inode = os.stat(self.lock_path).st_ino
+                except Exception:
+                    disk_inode = -1
+                if our_inode != disk_inode:
+                    # we locked a file that got unlinked in the meantime, try again
+                    self.lock_file.close()
+                    self.lock_file = None
+                    continue
+                if exclusive is True or (exclusive is None and self.exclusive is True):
+                    self.exclusive_locked = True
+                self.locked = True
+                self.log.debug("Locked %s (ex=%s)" % (self.lock_path,
+                                                      self.exclusive_locked))
+                return True
+            except Exception as e:
+                # for nonblocking
+                if getattr(e, 'errno', None) in (errno.EAGAIN, errno.EACCES):
+                    return False
+                self.unlock()
+                raise
+
+    def try_lock(self, exclusive=None):
+        """
+        Tries to lock like lock method, but doesn't block. Return True when
+        locking was successful.
+        """
+        return self.lock(exclusive=exclusive, _other_flags=fcntl.LOCK_NB)
+
+    def unlock(self):
+        """
+        Unlock the file.
+        """
+        if self.exclusive_locked:
+            try:
+                os.unlink(self.lock_path)
+            except Exception:
+                pass  # nothing to do about the exception
+        self.exclusive_locked = False
+        if self.lock_file:
+            self.lock_file.close()  # unlocks
+        self.lock_file = None
+        if self.locked:
+            self.log.debug("Unlocked %s" % self.lock_path)
+        self.locked = False
+
+    def __del__(self):
+        self.unlock()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.unlock()
 
 
 # Utility class for time measurement

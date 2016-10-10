@@ -7,6 +7,7 @@ from datetime import datetime
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from koschei import util
+from koschei.util import *
 from koschei import plugin
 from koschei.db import *
 from koschei.models import *
