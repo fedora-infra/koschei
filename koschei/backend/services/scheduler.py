@@ -23,12 +23,10 @@ import time
 
 from sqlalchemy import (func, union_all, extract, cast, Integer, case, null,
                         literal_column, text, Column)
-from sqlalchemy.sql.functions import coalesce
-
 from koschei.config import get_config
 from koschei.backend import Backend, koji_util
 from koschei.backend.service import KojiService
-from koschei.models import Package, Build, UnappliedChange, Collection
+from koschei.models import Package, Build, Collection
 
 
 def hours_since(what):
@@ -106,9 +104,10 @@ class Scheduler(KojiService):
                                 Integer).label('curr_priority')
         priorities = self.db.query(pkg_id, current_priority)\
                             .group_by(pkg_id).subquery()
-        priority_expr = (func.coalesce(priorities.c.curr_priority
-                                       * Collection.priority_coefficient, 0)
-                         + Package.manual_priority + Package.static_priority)
+        computed_priority = func.coalesce(priorities.c.curr_priority *
+                                          Collection.priority_coefficient, 0)
+        priority_expr = (computed_priority + Package.manual_priority +
+                         Package.static_priority)
         return self.db.query(Package.id, priority_expr)\
                       .join(Package.collection)\
                       .outerjoin(priorities, Package.id == priorities.c.pkg_id)\
@@ -138,8 +137,8 @@ class Scheduler(KojiService):
     def main(self):
         prioritized = self.get_priorities()
         self.db.rollback()  # no-op, ends the transaction
-        if (time.time() - self.calculation_timestamp
-                > get_config('priorities.calculation_interval')):
+        if (time.time() - self.calculation_timestamp >
+                get_config('priorities.calculation_interval')):
             self.persist_priorities(prioritized)
         incomplete_builds = self.get_incomplete_builds_query().count()
         if incomplete_builds >= get_config('koji_config.max_builds'):
@@ -154,12 +153,12 @@ class Scheduler(KojiService):
 
         for package_id, priority in prioritized:
             if priority < get_config('priorities.build_threshold'):
-                self.log.debug("Not scheduling: no package above threshold")
+                self.log.info("Not scheduling: no package above threshold")
                 return
             package = self.db.query(Package).get(package_id)
             if not package.collection.latest_repo_resolved:
-                self.log.debug("Skipping {}: {} buildroot not resolved"
-                               .format(package, package.collection))
+                self.log.info("Skipping {}: {} buildroot not resolved"
+                              .format(package, package.collection))
                 continue
 
             # a package was chosen

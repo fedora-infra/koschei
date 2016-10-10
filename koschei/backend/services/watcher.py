@@ -39,7 +39,7 @@ class Watcher(KojiService):
     def consume(self, topic, msg):
         content = msg['msg']
         if content.get('instance') == get_config('fedmsg.instance'):
-            self.log.info('consuming ' + topic)
+            self.log.debug('consuming ' + topic)
             if topic == self.get_topic('task.state.change'):
                 self.update_build_state(content)
             elif topic == self.get_topic('tag'):

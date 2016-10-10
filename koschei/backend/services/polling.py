@@ -37,7 +37,7 @@ class Polling(KojiService):
                                           koji_sessions=self.koji_sessions)
 
     def poll_builds(self):
-        self.log.debug('Polling running Koji tasks...')
+        self.log.info('Polling running Koji tasks...')
         running_builds = self.db.query(Build)\
                                 .filter_by(state=Build.RUNNING)
 
@@ -47,9 +47,9 @@ class Polling(KojiService):
         for task_info, build in zip(infos, running_builds):
             try:
                 name = build.package.name
-                self.log.debug('Polling task {id} ({name}): task_info={info}'
-                               .format(id=build.task_id, name=name,
-                                       info=task_info))
+                self.log.info('Polling task {id} ({name}): task_info={info}'
+                              .format(id=build.task_id, name=name,
+                                      info=task_info))
                 state = koji.TASK_STATES[task_info['state']]
                 self.backend.update_build_state(build, state)
             except (StaleDataError, ObjectDeletedError):
@@ -59,14 +59,14 @@ class Polling(KojiService):
 
     def main(self):
         self.poll_builds()
-        self.log.debug('Polling Koji packages...')
+        self.log.info('Polling Koji packages...')
         self.backend.refresh_packages()
         self.db.commit()
         self.db.close()
         plugin.dispatch_event('polling_event', self.backend)
         self.db.commit()
         self.db.close()
-        self.log.debug('Polling latest real builds...')
+        self.log.info('Polling latest real builds...')
         self.backend.refresh_latest_builds()
         self.db.commit()
-        self.log.debug('Polling finished')
+        self.log.info('Polling finished')

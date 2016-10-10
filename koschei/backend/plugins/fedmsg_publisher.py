@@ -22,7 +22,7 @@ import logging
 from koschei.config import get_config
 from koschei.plugin import listen_event
 
-log = logging.getLogger('koschei.fedmsg_publisher')
+log = logging.getLogger('koschei.plugin.fedmsg_publisher')
 
 
 @listen_event('package_state_change')

@@ -40,7 +40,8 @@ class Service(object):
 
     def __init__(self, log=None, db=None):
         self.log = log or logging.getLogger(
-            'koschei.' + self.__class__.__name__.lower())
+            '{}.{}'.format(type(self).__module__, type(self).__name__),
+        )
         self.db = db or Session()
 
     def main(self):

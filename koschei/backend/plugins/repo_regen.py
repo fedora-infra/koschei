@@ -24,7 +24,7 @@ from koschei.backend import koji_util
 from koschei.models import Collection, RepoMapping
 from koschei.plugin import listen_event
 
-log = logging.getLogger('koschei.repo_regen_plugin')
+log = logging.getLogger('koschei.plugin.repo_regen')
 
 
 def ensure_tag(koji_session, tag_name):
@@ -36,7 +36,7 @@ def ensure_tag(koji_session, tag_name):
 
 @listen_event('polling_event')
 def poll_secondary_repo(backend):
-    log.debug("Polling new external repo")
+    log.info("Polling new external repo")
     db = backend.db
     primary = backend.koji_sessions['primary']
     secondary = backend.koji_sessions['secondary']

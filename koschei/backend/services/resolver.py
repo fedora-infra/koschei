@@ -229,7 +229,7 @@ class Resolver(KojiService):
                                       koji.REPO_STATES['EXPIRED']):
                 desc.build_tag = repo_info['tag_name']
             else:
-                self.log.debug('Repo {} is dead, skipping'.format(desc.repo_id))
+                self.log.info('Repo {} is dead, skipping'.format(desc.repo_id))
 
     def get_packages(self, collection, expunge=True):
         packages = self.db.query(Package)\

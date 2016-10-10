@@ -44,7 +44,7 @@ class ServiceTest(AbstractTest):
     def test_create_log(self):
         with patch('logging.getLogger') as log:
             s = MyService(db=Mock())
-            log.assert_called_once_with('koschei.myservice')
+            log.assert_called_once_with('test.service_test.MyService')
             self.assertIs(log(), s.log)
 
     def test_run(self):

@@ -97,13 +97,14 @@ def get_last_srpm(koji_session, tag, name):
 
 def koji_scratch_build(session, target, name, source, build_opts):
     build_opts = prepare_build_opts(build_opts)
-    logging.info('Intiating koji build for %(name)s:\n\tsource=%(source)s\
-                 \n\ttarget=%(target)s\n\tbuild_opts=%(build_opts)s',
-                 dict(name=name, target=target, source=source,
-                      build_opts=build_opts))
+    log = logging.getLogger('koschei.backend.koji_util')
+    log.info('Intiating koji build for %(name)s:\n\tsource=%(source)s'
+             '\n\ttarget=%(target)s\n\tbuild_opts=%(build_opts)s',
+             dict(name=name, target=target, source=source,
+                  build_opts=build_opts))
     task_id = session.build(source, target, build_opts,
                             priority=get_config('koji_config.task_priority'))
-    logging.info('Submitted koji scratch build for %s, task_id=%d', name, task_id)
+    log.info('Submitted koji scratch build for %s, task_id=%d', name, task_id)
     return task_id
 
 

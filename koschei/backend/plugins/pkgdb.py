@@ -26,7 +26,7 @@ from koschei.models import Package
 from koschei.config import get_config
 from koschei.plugin import listen_event
 
-log = logging.getLogger('koschei.pkgdb_plugin')
+log = logging.getLogger('koschei.plugin.pkgdb')
 
 __cache = None
 

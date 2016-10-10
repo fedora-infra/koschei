@@ -94,6 +94,7 @@ class Stopwatch(object):
             parent._children.append(self)
         if start:
             self.start()
+        self.log = logging.getLogger('koschei.util.StopWatch.' + name)
 
     def start(self):
         assert not self._started
@@ -129,7 +130,7 @@ class Stopwatch(object):
                 s = str(t % 60) + " h " + s
             return s
 
-        logging.debug('{} time: {}'.format(self._name, human_readable_time(self._time)))
+        self.log.info('{} time: {}'.format(self._name, human_readable_time(self._time)))
 
         for child in self._children:
             child.display()

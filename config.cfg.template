@@ -220,7 +220,7 @@ config = {
         "version": 1,
         "loggers": {
             "": {
-                "level": "DEBUG",
+                "level": "INFO",
                 "handlers": ["stderr"],
             },
         },
