@@ -18,6 +18,7 @@
 
 import contextlib
 import os
+import json
 
 import librepo
 from mock import patch
@@ -46,6 +47,11 @@ class RepoCacheTest(DBTest):
                 KojiRepoDescriptor('primary', 'build_tag', repo)
             os.makedirs(os.path.join('repodata', str(desc)))
         os.mkdir('repodata/not-repo')
+        with open('repodata/index.json', 'w') as index:
+            json.dump(dict(
+                version=repo_cache.RepoCache.INDEX_VERSION,
+                entries={str(d): 'ready' for d in self.descriptors.values()},
+            ), index)
 
     def test_read_from_disk(self):
         with mocks() as (librepo_mock, sack_mock):

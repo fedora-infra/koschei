@@ -185,13 +185,14 @@ class CoprResolver(Service):
                     build_tag=collection.build_tag,
                 )
                 self.set_source_repo_url(request)
-                sack_before = self.session.repo_cache.get_sack(repo_descriptor)
-                if not sack_before:
-                    raise RuntimeError("Couldn't download koji repo")
-                sack_after = self.session.repo_cache.get_sack(repo_descriptor)
-                self.add_repo_to_sack(request, sack_after)
-                self.resolve_request(request, sack_before, sack_after)
-                self.db.commit()
+                with self.session.repo_cache.get_sack(repo_descriptor) as sack_before:
+                    if not sack_before:
+                        raise RuntimeError("Couldn't download koji repo")
+                    # the lock is not recursive, it overwrites the lock we already hold
+                    with self.session.repo_cache.get_sack(repo_descriptor) as sack_after:
+                        self.add_repo_to_sack(request, sack_after)
+                        self.resolve_request(request, sack_before, sack_after)
+                        self.db.commit()
             except RequestProcessingError as e:
                 request.state = 'failed'
                 request.error = str(e)

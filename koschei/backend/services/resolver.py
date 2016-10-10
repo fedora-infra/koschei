@@ -400,32 +400,32 @@ class Resolver(Service):
             self.session.secondary_koji_for(collection),
             [p.srpm_nvra for p in packages],
         )
-        sack = self.session.repo_cache.get_sack(repo_descriptor)
-        if not sack:
-            self.log.error('Cannot generate repo: {}'.format(repo_id))
-            self.db.rollback()
-            return
-        build_group = self.get_build_group(collection)
-        resolved, base_problems, _ = self.resolve_dependencies(sack, [], build_group)
-        resolution_time.stop()
-        self.db.query(BuildrootProblem)\
-            .filter_by(collection_id=collection.id)\
-            .delete()
-        collection.latest_repo_resolved = resolved
-        if not resolved:
-            self.log.info("Build group not resolvable for {}"
-                          .format(collection.name))
-            collection.latest_repo_id = repo_id
-            self.db.execute(BuildrootProblem.__table__.insert(),
-                            [{'collection_id': collection.id, 'problem': problem}
-                             for problem in base_problems])
+        with self.session.repo_cache.get_sack(repo_descriptor) as sack:
+            if not sack:
+                self.log.error('Cannot generate repo: {}'.format(repo_id))
+                self.db.rollback()
+                return
+            build_group = self.get_build_group(collection)
+            resolved, base_problems, _ = self.resolve_dependencies(sack, [], build_group)
+            resolution_time.stop()
+            self.db.query(BuildrootProblem)\
+                .filter_by(collection_id=collection.id)\
+                .delete()
+            collection.latest_repo_resolved = resolved
+            if not resolved:
+                self.log.info("Build group not resolvable for {}"
+                              .format(collection.name))
+                collection.latest_repo_id = repo_id
+                self.db.execute(BuildrootProblem.__table__.insert(),
+                                [{'collection_id': collection.id, 'problem': problem}
+                                 for problem in base_problems])
+                self.db.commit()
+                return
             self.db.commit()
-            return
-        self.db.commit()
-        self.log.info("Resolving dependencies...")
-        resolution_time.start()
-        self.generate_dependency_changes(sack, collection, packages, brs, repo_id)
-        resolution_time.stop()
+            self.log.info("Resolving dependencies...")
+            resolution_time.start()
+            self.generate_dependency_changes(sack, collection, packages, brs, repo_id)
+            resolution_time.stop()
         collection.latest_repo_id = repo_id
         self.db.commit()
         total_time.stop()
@@ -499,21 +499,22 @@ class Resolver(Service):
                                                    builds_to_process,
                                                    buildrequires),
                                               lambda item: item[0]):
-            sack = self.session.repo_cache.get_sack(repo_descriptor)
-            if sack:
-                for _, build, brs in group:
-                    build_group = self.get_build_group(collection)
-                    _, _, curr_deps = self.resolve_dependencies(sack, brs, build_group)
-                    try:
-                        self.process_build(sack, build, curr_deps)
-                        self.db.commit()
-                    except (StaleDataError, ObjectDeletedError):
-                        # build deleted concurrently
-                        self.db.rollback()
-            else:
-                self.log.info("Repo id=%d not available, skipping",
-                              repo_descriptor.repo_id)
-            sack = None
+            with self.session.repo_cache.get_sack(repo_descriptor) as sack:
+                if sack:
+                    for _, build, brs in group:
+                        build_group = self.get_build_group(collection)
+                        _, _, curr_deps = self.resolve_dependencies(
+                            sack, brs, build_group)
+                        try:
+                            self.process_build(sack, build, curr_deps)
+                            self.db.commit()
+                        except (StaleDataError, ObjectDeletedError):
+                            # build deleted concurrently
+                            self.db.rollback()
+                else:
+                    self.log.info("Repo id=%d not available, skipping",
+                                  repo_descriptor.repo_id)
+                sack = None
         self.db.query(Build)\
             .filter_by(repo_id=None)\
             .filter(Build.state.in_(Build.FINISHED_STATES))\
