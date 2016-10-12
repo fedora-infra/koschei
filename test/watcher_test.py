@@ -71,7 +71,7 @@ class WatcherTest(DBTest):
         koji_mock = KojiMock()
         koji_mock.getTaskInfo = Mock(return_value=rnv_task)
         koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
-        package = self.prepare_packages(['rnv'])[0]
+        package = self.prepare_packages('rnv')[0]
         build = self.prepare_build('rnv', False)
         build.repo_id = 1
         build.epoch = None

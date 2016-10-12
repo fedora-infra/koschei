@@ -152,7 +152,7 @@ class DBTest(AbstractTest):
         self.db.commit()
         return pkg, build
 
-    def prepare_packages(self, pkg_names):
+    def prepare_packages(self, *pkg_names):
         pkgs = []
         for name in pkg_names:
             pkg = self.db.query(Package).filter_by(name=name).first()
@@ -172,7 +172,7 @@ class DBTest(AbstractTest):
         }
         if isinstance(state, bool):
             state = states[state]
-        self.prepare_packages([pkg_name])
+        self.prepare_packages(pkg_name)
         package_id = self.db.query(Package.id).filter_by(name=pkg_name).scalar()
         build = Build(package_id=package_id, state=state,
                       repo_id=repo_id or (1 if state != Build.RUNNING else None),
@@ -196,7 +196,7 @@ class DBTest(AbstractTest):
 
     def prepare_group(self, name, content=(), namespace=None, owners=('john.doe',)):
         users = [self.prepare_user(name=username) for username in owners]
-        packages = self.prepare_packages(content)
+        packages = self.prepare_packages(*content)
         group = PackageGroup(name=name, namespace=namespace)
         self.db.add(group)
         self.db.commit()

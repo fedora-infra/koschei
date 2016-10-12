@@ -77,7 +77,7 @@ class FrontendTest(DBTest):
 
     @authenticate(admin=True)
     def test_cancel_build(self):
-        self.prepare_packages(['groovy'])
+        self.prepare_packages('groovy')
         build = self.prepare_build('groovy')
         url = 'build/{0}/cancel'.format(build.id)
         reply = self.client.post(url, follow_redirects=True)
@@ -88,7 +88,7 @@ class FrontendTest(DBTest):
 
     @authenticate(admin=False)
     def test_cancel_build_unauthorized(self):
-        self.prepare_packages(['groovy'])
+        self.prepare_packages('groovy')
         build = self.prepare_build('groovy')
         url = 'build/{0}/cancel'.format(build.id)
         reply = self.client.post(url, follow_redirects=True)
@@ -98,7 +98,7 @@ class FrontendTest(DBTest):
 
     @authenticate(admin=True)
     def test_cancel_build_not_running(self):
-        self.prepare_packages(['groovy'])
+        self.prepare_packages('groovy')
         build = self.prepare_build('groovy', True)
         url = 'build/{0}/cancel'.format(build.id)
         reply = self.client.post(url, follow_redirects=True)
@@ -109,7 +109,7 @@ class FrontendTest(DBTest):
 
     @authenticate(admin=True)
     def test_cancel_build_pending(self):
-        self.prepare_packages(['groovy'])
+        self.prepare_packages('groovy')
         build = self.prepare_build('groovy')
         build.cancel_requested = True
         self.db.commit()
@@ -130,7 +130,7 @@ class FrontendTest(DBTest):
 
     @authenticate
     def test_add_package(self):
-        pkg = self.prepare_packages(['xpp3'])[0]
+        pkg = self.prepare_packages('xpp3')[0]
         pkg.tracked = False
         self.db.commit()
         reply = self.client.post('add_packages',

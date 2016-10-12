@@ -26,7 +26,7 @@ from koschei import data
 class DataTest(DBTest):
     def test_set_group_contents(self):
         group = PackageGroup(name='foo')
-        bar, a1, a2, a3 = self.prepare_packages(['bar', 'a1', 'a2', 'a3'])
+        bar, a1, a2, a3 = self.prepare_packages('bar', 'a1', 'a2', 'a3')
         self.db.add(group)
         self.db.flush()
         rel = PackageGroupRelation(group_id=group.id, base_id=bar.base_id)
@@ -43,7 +43,7 @@ class DataTest(DBTest):
         group = PackageGroup(name='foo')
         self.db.add(group)
         self.db.flush()
-        bar, a1, a2, a3 = self.prepare_packages(['bar', 'a1', 'a2', 'a3'])
+        bar, a1, a2, a3 = self.prepare_packages('bar', 'a1', 'a2', 'a3')
         rel = PackageGroupRelation(group_id=group.id, base_id=bar.base_id)
         self.db.add(rel)
         self.db.commit()

@@ -143,8 +143,8 @@ class SchedulerTest(DBTest):
             self.assertAlmostEqual(exp, item.priority, places=-1)
 
     def test_failed_build_priority(self):
-        pkgs = self.prepare_packages(['rnv', 'eclipse', 'fop', 'freemind', 'i3',
-                                      'maven', 'firefox'])
+        pkgs = self.prepare_packages('rnv', 'eclipse', 'fop', 'freemind', 'i3',
+                                     'maven', 'firefox')
         self.prepare_build('rnv', True)
         self.prepare_build('eclipse', False)
         self.prepare_build('i3', True)
@@ -169,7 +169,7 @@ class SchedulerTest(DBTest):
         self.assertItemsEqual([(pkgs[0].id, 200), (pkgs[6].id, 200)], query.all())
 
     def test_coefficient(self):
-        rnv, eclipse, fop = self.prepare_packages(['rnv', 'eclipse', 'fop'])
+        rnv, eclipse, fop = self.prepare_packages('rnv', 'eclipse', 'fop')
         eclipse_coll = Collection(name='eclipse', display_name='eclipse',
                                   build_tag='foo', dest_tag='foo', target='foo',
                                   priority_coefficient=0.1)

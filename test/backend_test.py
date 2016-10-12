@@ -50,7 +50,7 @@ class BackendTest(DBTest):
     def test_update_state(self):
         self.koji_session.getTaskInfo = Mock(return_value=rnv_task)
         self.koji_session.getTaskChildren = Mock(return_value=rnv_subtasks)
-        package = self.prepare_packages(['rnv'])[0]
+        package = self.prepare_packages('rnv')[0]
         self.prepare_build('rnv', False)
         running_build = self.prepare_build('rnv')
         running_build.task_id = rnv_task['id']
@@ -70,7 +70,7 @@ class BackendTest(DBTest):
     def test_update_state_existing_task(self):
         self.koji_session.getTaskInfo = Mock(return_value=rnv_task)
         self.koji_session.getTaskChildren = Mock(return_value=rnv_subtasks)
-        package = self.prepare_packages(['rnv'])[0]
+        package = self.prepare_packages('rnv')[0]
         self.prepare_build('rnv', False)
         running_build = self.prepare_build('rnv')
         running_build.task_id = rnv_task['id']
@@ -97,7 +97,7 @@ class BackendTest(DBTest):
     def test_update_state_inconsistent(self):
         self.koji_session.getTaskInfo = Mock(return_value=rnv_task)
         self.koji_session.getTaskChildren = Mock(return_value=inconsistent_subtask)
-        package = self.prepare_packages(['rnv'])[0]
+        package = self.prepare_packages('rnv')[0]
         self.prepare_build('rnv', False)
         running_build = self.prepare_build('rnv')
         running_build.task_id = rnv_task['id']
@@ -115,7 +115,7 @@ class BackendTest(DBTest):
     def test_refresh_latest_builds(self):
         self.secondary_koji.getTaskInfo = Mock(return_value=rnv_task)
         self.secondary_koji.getTaskChildren = Mock(return_value=rnv_subtasks)
-        package = self.prepare_packages(['rnv'])[0]
+        package = self.prepare_packages('rnv')[0]
         build = self.prepare_build('rnv', False)
         build.repo_id = 1
         build.epoch = None
@@ -140,7 +140,7 @@ class BackendTest(DBTest):
     def test_refresh_latest_builds_already_present(self):
         self.secondary_koji.getTaskInfo = Mock(return_value=rnv_task)
         self.secondary_koji.getTaskChildren = Mock(return_value=rnv_subtasks)
-        self.prepare_packages(['rnv'])
+        self.prepare_packages('rnv')
         build = self.prepare_build('rnv', False)
         build.real = True
         build.repo_id = 460889
@@ -160,7 +160,7 @@ class BackendTest(DBTest):
         for subtask in subtasks:
             del subtask['request']
         self.secondary_koji.getTaskChildren = Mock(return_value=subtasks)
-        self.prepare_packages(['rnv'])
+        self.prepare_packages('rnv')
         build = self.prepare_build('rnv', False)
         build.real = True
         build.repo_id = 460889
@@ -177,7 +177,7 @@ class BackendTest(DBTest):
     def test_refresh_latest_builds_skip_old(self):
         self.secondary_koji.getTaskInfo = Mock(return_value=rnv_task)
         self.secondary_koji.getTaskChildren = Mock(return_value=rnv_subtasks)
-        self.prepare_packages(['rnv'])
+        self.prepare_packages('rnv')
         build = self.prepare_build('rnv', False)
         build.real = True
         build.epoch = None
@@ -192,7 +192,7 @@ class BackendTest(DBTest):
             self.assertEquals(1, self.db.query(Build).count())
 
     def test_cancel_timed_out(self):
-        self.prepare_packages(['rnv'])
+        self.prepare_packages('rnv')
         running_build = self.prepare_build('rnv')
         running_build.started = datetime.now() - timedelta(999)
         self.db.commit()
@@ -202,7 +202,7 @@ class BackendTest(DBTest):
         self.assertEquals(0, self.db.query(Build).count())
 
     def test_cancel_requested(self):
-        self.prepare_packages(['rnv'])
+        self.prepare_packages('rnv')
         running_build = self.prepare_build('rnv')
         running_build.cancel_requested = True
         self.db.commit()
@@ -211,7 +211,7 @@ class BackendTest(DBTest):
         self.assertEquals(0, self.db.query(Build).count())
 
     def test_refresh_packages(self):
-        self.prepare_packages(['eclipse'])
+        self.prepare_packages('eclipse')
         self.secondary_koji.listPackages.return_value = package_list
         self.backend.refresh_packages()
         eclipse = self.db.query(Package).filter_by(name='eclipse').one()

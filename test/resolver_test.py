@@ -207,7 +207,7 @@ class ResolverTest(DBTest):
                                  repo_cache=self.repo_mock)
 
     def prepare_foo_build(self, repo_id=666, version='4'):
-        self.prepare_packages(['foo'])
+        self.prepare_packages('foo')
         foo_build = self.prepare_build('foo', True, repo_id=repo_id, resolved=None)
         foo_build.version = version
         foo_build.release = '1.fc22'
@@ -215,7 +215,7 @@ class ResolverTest(DBTest):
         return foo_build
 
     def test_dont_resolve_against_old_build_when_new_is_running(self):
-        foo = self.prepare_packages(['foo'])[0]
+        foo = self.prepare_packages('foo')[0]
         build = self.prepare_build('foo', False, repo_id=2)
         build.deps_resolved = True
         self.prepare_build('foo', None, repo_id=None)
@@ -224,7 +224,7 @@ class ResolverTest(DBTest):
             self.assertIsNone(self.resolver.get_build_for_comparison(foo))
 
     def test_skip_unresolved_failed_build(self):
-        foo = self.prepare_packages(['foo'])[0]
+        foo = self.prepare_packages('foo')[0]
         b1 = self.prepare_build('foo', False, repo_id=2, resolved=True)
         self.prepare_build('foo', False, repo_id=3, resolved=False)
         self.db.commit()
@@ -255,7 +255,7 @@ class ResolverTest(DBTest):
         self.assertTrue(foo_build.deps_resolved)
 
     def test_resolution_fail(self):
-        self.prepare_packages(['bar'])
+        self.prepare_packages('bar')
         b = self.prepare_build('bar', True, repo_id=666, resolved=False)
         b.epoch = 1
         b.version = '2'
@@ -427,7 +427,7 @@ class ResolverTest(DBTest):
 
     def test_broken_buildroot(self):
         self.prepare_old_build()
-        self.prepare_packages(['bar'])
+        self.prepare_packages('bar')
         with patch('koschei.backend.koji_util.get_build_group',
                    return_value=['bar']):
             with patch('koschei.backend.koji_util.get_rpm_requires',

@@ -48,14 +48,14 @@ class ModelTest(DBTest):
 
     def test_group_cardinality_blocked(self):
         group = self.prepare_group('xyzzy', content=['foo', 'bar', 'baz'])
-        self.prepare_packages(['bar'])[0].blocked = True
+        self.prepare_packages('bar')[0].blocked = True
         self.db.commit()
         self.assertEqual(2, group.package_count)
 
     def test_group_cardinality_partially_blocked(self):
         # Package xalan-j2 is blocked in one collection only.
         group = self.prepare_group('xyzzy', content=['xalan-j2'])
-        self.prepare_packages(['xalan-j2'])[0].blocked = True
+        self.prepare_packages('xalan-j2')[0].blocked = True
         self.db.commit()
         new_collection = Collection(name="new", display_name="New",
                                     target='foo', dest_tag="tag2",
@@ -72,7 +72,7 @@ class ModelTest(DBTest):
     def test_group_cardinality_fully_blocked(self):
         # Package xalan-j2 is blocked in all collections.
         group = self.prepare_group('xyzzy', content=['xalan-j2'])
-        self.prepare_packages(['xalan-j2'])[0].blocked = True
+        self.prepare_packages('xalan-j2')[0].blocked = True
         self.db.commit()
         new_collection = Collection(name="new", display_name="New",
                                     target='foo', dest_tag="tag2",

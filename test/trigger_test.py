@@ -24,7 +24,7 @@ from koschei.models import Build
 class TriggerTest(DBTest):
 
     def test_new(self):
-        [p, e] = self.prepare_packages(['rnv', 'eclipse'])
+        [p, e] = self.prepare_packages('rnv', 'eclipse')
         b = self.prepare_build('rnv')
         self.assertIsNone(p.last_complete_build_id)
         self.assertIsNone(p.last_complete_build_state)
@@ -34,7 +34,7 @@ class TriggerTest(DBTest):
         self.assertIsNone(e.last_build_id)
 
     def test_update(self):
-        [p, _] = self.prepare_packages(['rnv', 'eclipse'])
+        [p, _] = self.prepare_packages('rnv', 'eclipse')
         b = self.prepare_build('rnv')
         self.assertEqual(b.id, p.last_build_id)
         b.state = Build.FAILED
@@ -44,7 +44,7 @@ class TriggerTest(DBTest):
         self.assertEqual(b.state, p.last_complete_build_state)
 
     def test_complete(self):
-        [p, e] = self.prepare_packages(['rnv', 'eclipse'])
+        [p, e] = self.prepare_packages('rnv', 'eclipse')
         b = self.prepare_build('rnv', True)
         self.assertEqual(b.id, p.last_complete_build_id)
         self.assertEqual(b.state, p.last_complete_build_state)
@@ -54,7 +54,7 @@ class TriggerTest(DBTest):
         self.assertIsNone(e.last_build_id)
 
     def test_failed(self):
-        [p, e] = self.prepare_packages(['rnv', 'eclipse'])
+        [p, e] = self.prepare_packages('rnv', 'eclipse')
         b = self.prepare_build('eclipse', False)
         self.assertEqual(b.id, e.last_complete_build_id)
         self.assertEqual(b.state, e.last_complete_build_state)
@@ -62,7 +62,7 @@ class TriggerTest(DBTest):
         self.assertIsNone(p.last_complete_build_state)
 
     def test_running(self):
-        [p, e] = self.prepare_packages(['rnv', 'eclipse'])
+        [p, e] = self.prepare_packages('rnv', 'eclipse')
         be = self.prepare_build('eclipse', False)
         br = self.prepare_build('rnv', True)
         b3 = self.prepare_build('eclipse')
@@ -75,7 +75,7 @@ class TriggerTest(DBTest):
         self.assertEqual(b3.id, e.last_build_id)
 
     def test_delete_new(self):
-        [e] = self.prepare_packages(['eclipse'])
+        [e] = self.prepare_packages('eclipse')
         b1 = self.prepare_build('eclipse', False)
         b2 = self.prepare_build('eclipse', True)
         b3 = self.prepare_build('eclipse', None)
@@ -89,12 +89,12 @@ class TriggerTest(DBTest):
         self.db.delete(b2)
 
     def test_all_blocked_insert(self):
-        [p, e] = self.prepare_packages(['rnv', 'eclipse'])
+        [p, e] = self.prepare_packages('rnv', 'eclipse')
         self.assertFalse(p.base.all_blocked)
         self.assertFalse(e.base.all_blocked)
 
     def test_all_blocked_update(self):
-        [_, e] = self.prepare_packages(['rnv', 'eclipse'])
+        [_, e] = self.prepare_packages('rnv', 'eclipse')
         e.blocked = True
         self.db.commit()
         self.assertTrue(e.base.all_blocked)
