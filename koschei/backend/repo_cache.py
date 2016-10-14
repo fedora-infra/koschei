@@ -21,58 +21,16 @@ import logging
 import os
 import shutil
 from collections import OrderedDict
-from functools import total_ordering
 
 import hawkey
 import librepo
 
-from koschei.config import get_config, get_koji_config
+from koschei.config import get_config
+from koschei.backend.repo_util import KojiRepoDescriptor
 
 log = logging.getLogger('koschei.repo_cache')
 
 REPO_404 = 19
-
-
-@total_ordering
-class RepoDescriptor(object):
-    def __init__(self, koji_id, build_tag, repo_id):
-        self.koji_id = koji_id
-        self.build_tag = build_tag
-        self.repo_id = repo_id
-
-    @staticmethod
-    def from_string(name):
-        parts = name.split('-')
-        if len(parts) < 3 or not parts[-1].isdigit():
-            return None
-        return RepoDescriptor(parts[0], '-'.join(parts[1:-1]), int(parts[-1]))
-
-    def __str__(self):
-        return '{}-{}-{}'.format(self.koji_id, self.build_tag, self.repo_id)
-
-    def __hash__(self):
-        return hash((self.koji_id, self.build_tag, self.repo_id))
-
-    def __eq__(self, other):
-        try:
-            return (self.koji_id == other.koji_id and
-                    self.build_tag == other.build_tag and
-                    self.repo_id == other.repo_id)
-        except AttributeError:
-            return False
-
-    def __ne__(self, other):
-        return not self == other
-
-    def __lt__(self, other):
-        return self.repo_id < other.repo_id
-
-    def make_url(self):
-        arch = get_config('dependency.repo_arch')
-        topurl = get_koji_config(self.koji_id, 'topurl')
-        url = '{topurl}/repos/{build_tag}/{repo_id}/{arch}'
-        return url.format(topurl=topurl, build_tag=self.build_tag,
-                          repo_id=self.repo_id, arch=arch)
 
 
 class RepoCache(object):
@@ -90,7 +48,7 @@ class RepoCache(object):
         """ Read cached repos from disk. Remove directories which names
         are not parseable as repo descriptor strings. """
         log.debug('Reading cached repos from disk...')
-        for repo_descriptor, repo_path in [(RepoDescriptor.from_string(repo_name),
+        for repo_descriptor, repo_path in [(KojiRepoDescriptor.from_string(repo_name),
                                             os.path.join(self._repos_dir, repo_name))
                                            for repo_name in os.listdir(self._repos_dir)]:
             if repo_descriptor:
@@ -116,7 +74,7 @@ class RepoCache(object):
         h.destdir = repo_dir
         # pylint:disable=no-member
         h.repotype = librepo.LR_YUMREPO
-        h.urls = [repo_descriptor.make_url()]
+        h.urls = [repo_descriptor.url]
         h.yumdlist = ['primary', 'filelists', 'group', 'group_gz']
         h.perform(librepo.Result())
 

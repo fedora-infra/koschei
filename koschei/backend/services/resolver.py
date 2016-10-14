@@ -30,7 +30,8 @@ from sqlalchemy.sql import insert
 from koschei import util
 from koschei.config import get_config
 from koschei.backend import Backend, koji_util, depsolve
-from koschei.backend.repo_cache import RepoCache, RepoDescriptor
+from koschei.backend.repo_util import KojiRepoDescriptor
+from koschei.backend.repo_cache import RepoCache
 from koschei.models import (Package, Dependency, UnappliedChange,
                             AppliedChange, Collection, ResolutionProblem,
                             Build, BuildrootProblem, RepoMapping,
@@ -441,8 +442,8 @@ class Resolver(KojiService):
         generate_dependency_changes_time.display()
 
     def create_repo_descriptor(self, secondary_mode, repo_id):
-        return RepoDescriptor('secondary' if secondary_mode else 'primary',
-                              None, repo_id)
+        return KojiRepoDescriptor('secondary' if secondary_mode else 'primary',
+                                  None, repo_id)
 
     def process_build(self, sack, entry, curr_deps):
         self.log.info("Processing build {}".format(entry.id))
