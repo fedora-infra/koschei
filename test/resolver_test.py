@@ -17,18 +17,16 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-import os
-import shutil
 from unittest import skipIf
 
 import hawkey
 import koji
-import librepo
 from mock import Mock, patch
 
-from test.common import DBTest, testdir, KojiMock
+from test.common import DBTest, KojiMock, RepoCacheMock
 from koschei.backend import koji_util
 from koschei.backend.services.resolver import Resolver, DependencyCache
+from koschei.backend.repo_util import KojiRepoDescriptor
 from koschei.models import (Dependency, UnappliedChange, AppliedChange, Package,
                             ResolutionProblem, BuildrootProblem, ResolutionChange)
 
@@ -45,21 +43,9 @@ FOO_DEPS = [
 ]
 
 
-def get_sack(url='repo'):
-    # hawkey sacks cannot be easily populated from within python and mocking
-    # hawkey queries would be too complicated, therefore using real repos
-    h = librepo.Handle()
-    h.local = True
-    h.repotype = librepo.LR_YUMREPO
-    h.urls = [url]
-    h.yumdlist = ['primary']
-    repodata = h.perform(librepo.Result()).yum_repo
-    repo = hawkey.Repo('test')
-    repo.repomd_fn = repodata['repomd']
-    repo.primary_fn = repodata['primary']
-    sack = hawkey.Sack(arch='x86_64')
-    sack.load_yum_repo(repo)
-    return sack
+def get_sack():
+    desc = KojiRepoDescriptor(koji_id='primary', repo_id=123, build_tag='f25-build')
+    return RepoCacheMock().get_sack(desc)
 
 
 # pylint:disable=unbalanced-tuple-unpacking
@@ -188,25 +174,21 @@ class DependencyCacheTest(DBTest):
 class ResolverTest(DBTest):
     def __init__(self, *args, **kwargs):
         super(ResolverTest, self).__init__(*args, **kwargs)
-        self.repo_mock = None
 
     def setUp(self):
         super(ResolverTest, self).setUp()
-        shutil.copytree(os.path.join(testdir, 'test_repo'), 'repo')
-        self.repo_mock = Mock()
-        self.repo_mock.get_sack.return_value = get_sack()
         self.koji_mock = KojiMock()
-        self.koji_mock.repoInfo.return_value = {'id': 123, 'tag_name': 'f24-build',
+        self.koji_mock.repoInfo.return_value = {'id': 123, 'tag_name': 'f25-build',
                                                 'state': koji.REPO_STATES['READY']}
         self.sec_koji_mock = KojiMock()
-        self.sec_koji_mock.repoInfo.return_value = {'id': 123, 'tag_name': 'f24-build',
+        self.sec_koji_mock.repoInfo.return_value = {'id': 123, 'tag_name': 'f25-build',
                                                     'state': koji.REPO_STATES['READY']}
         self.resolver = Resolver(db=self.db,
                                  koji_sessions={'primary': self.koji_mock,
                                                 'secondary': self.sec_koji_mock},
-                                 repo_cache=self.repo_mock)
+                                 repo_cache=RepoCacheMock())
 
-    def prepare_foo_build(self, repo_id=666, version='4'):
+    def prepare_foo_build(self, repo_id=123, version='4'):
         self.prepare_packages('foo')
         foo_build = self.prepare_build('foo', True, repo_id=repo_id, resolved=None)
         foo_build.version = version
@@ -256,7 +238,7 @@ class ResolverTest(DBTest):
 
     def test_resolution_fail(self):
         self.prepare_packages('bar')
-        b = self.prepare_build('bar', True, repo_id=666, resolved=False)
+        b = self.prepare_build('bar', True, repo_id=123, resolved=False)
         b.epoch = 1
         b.version = '2'
         b.release = '2'
@@ -286,7 +268,7 @@ class ResolverTest(DBTest):
 
     def test_differences(self):
         self.prepare_old_build()
-        build = self.prepare_foo_build(repo_id=666, version='4')
+        build = self.prepare_foo_build(repo_id=123, version='4')
         with patch('koschei.backend.koji_util.get_build_group',
                    return_value=['R']):
             with patch('koschei.backend.koji_util.get_rpm_requires',
@@ -305,7 +287,7 @@ class ResolverTest(DBTest):
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
             with patch('koschei.backend.koji_util.get_rpm_requires',
                        return_value=[['F', 'A'], ['nonexistent']]):
-                self.resolver.generate_repo(self.collection, 666)
+                self.resolver.generate_repo(self.collection, 123)
         self.db.expire_all()
         foo = self.db.query(Package).filter_by(name='foo').first()
         self.assertTrue(foo.resolved)
@@ -321,7 +303,7 @@ class ResolverTest(DBTest):
         self.assertFalse(self.db.query(ResolutionProblem)
                          .filter_by(resolution_id=resolution_id).count())
         self.assertTrue(self.collection.latest_repo_resolved)
-        self.assertEqual(666, self.collection.latest_repo_id)
+        self.assertEqual(123, self.collection.latest_repo_id)
 
     def test_result_history(self):
         self.prepare_old_build()
@@ -331,7 +313,7 @@ class ResolverTest(DBTest):
                 # first run, success
                 with patch('koschei.backend.koji_util.get_rpm_requires',
                            return_value=[['F', 'A']]):
-                    self.resolver.generate_repo(self.collection, 666)
+                    self.resolver.generate_repo(self.collection, 123)
                 foo = self.db.query(Package).filter_by(name='foo').one()
                 result = self.db.query(ResolutionChange)\
                     .filter_by(package_id=foo.id).one()
@@ -342,7 +324,7 @@ class ResolverTest(DBTest):
                 # second run, fail
                 with patch('koschei.backend.koji_util.get_rpm_requires',
                            return_value=[['F', 'nonexistent']]):
-                    self.resolver.generate_repo(self.collection, 667)
+                    self.resolver.generate_repo(self.collection, 124)
                 foo = self.db.query(Package).filter_by(name='foo').one()
                 result = self.db.query(ResolutionChange).filter_by(package_id=foo.id)\
                     .filter(ResolutionChange.id > result.id).one()
@@ -367,7 +349,7 @@ class ResolverTest(DBTest):
                 # third run, still fail, should not produce additional RR
                 with patch('koschei.backend.koji_util.get_rpm_requires',
                            return_value=[['F', 'nonexistent']]):
-                    self.resolver.generate_repo(self.collection, 668)
+                    self.resolver.generate_repo(self.collection, 125)
                 foo = self.db.query(Package).filter_by(name='foo').one()
                 self.assertFalse(foo.resolved)
                 self.assertEquals(0, self.db.query(ResolutionChange)
@@ -378,7 +360,7 @@ class ResolverTest(DBTest):
                 # fourth run, fail with different problems, should produce RR
                 with patch('koschei.backend.koji_util.get_rpm_requires',
                            return_value=[['F', 'getrekt']]):
-                    self.resolver.generate_repo(self.collection, 669)
+                    self.resolver.generate_repo(self.collection, 126)
                 foo = self.db.query(Package).filter_by(name='foo').one()
                 self.assertFalse(foo.resolved)
                 result = self.db.query(ResolutionChange).filter_by(package_id=foo.id)\
@@ -391,7 +373,7 @@ class ResolverTest(DBTest):
                 # fifth run, back to normal
                 with patch('koschei.backend.koji_util.get_rpm_requires',
                            return_value=[['F', 'A']]):
-                    self.resolver.generate_repo(self.collection, 670)
+                    self.resolver.generate_repo(self.collection, 127)
                 foo = self.db.query(Package).filter_by(name='foo').one()
                 result = self.db.query(ResolutionChange).filter_by(package_id=foo.id)\
                     .filter(ResolutionChange.id > result.id).one()
@@ -416,7 +398,7 @@ class ResolverTest(DBTest):
                 # sixth run, shouldn't produce additional RR
                 with patch('koschei.backend.koji_util.get_rpm_requires',
                            return_value=[['F', 'A']]):
-                    self.resolver.generate_repo(self.collection, 671)
+                    self.resolver.generate_repo(self.collection, 128)
                 foo = self.db.query(Package).filter_by(name='foo').one()
                 self.assertIsNone(self.db.query(ResolutionChange)
                                   .filter_by(package_id=foo.id)
@@ -433,10 +415,10 @@ class ResolverTest(DBTest):
             with patch('koschei.backend.koji_util.get_rpm_requires',
                        return_value=[['nonexistent']]):
                 with patch('fedmsg.publish') as fedmsg_mock:
-                    self.resolver.generate_repo(self.collection, 666)
+                    self.resolver.generate_repo(self.collection, 123)
                     self.assertFalse(fedmsg_mock.called)
             self.assertFalse(self.collection.latest_repo_resolved)
-            self.assertEquals(666, self.collection.latest_repo_id)
+            self.assertEquals(123, self.collection.latest_repo_id)
             self.assertIn('nonexistent',
                           ''.join(p.problem for p in self.db.query(BuildrootProblem)))
 
@@ -445,7 +427,7 @@ class ResolverTest(DBTest):
                    return_value=['R']):
             with patch('koschei.backend.koji_util.get_rpm_requires',
                        return_value=[['F', 'A']]):
-                self.resolver.generate_repo(self.collection, 667)
+                self.resolver.generate_repo(self.collection, 124)
             self.assertTrue(self.collection.latest_repo_resolved)
             self.assertEquals(0, self.db.query(BuildrootProblem).count())
 

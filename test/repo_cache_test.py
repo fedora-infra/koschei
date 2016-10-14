@@ -24,6 +24,7 @@ from mock import patch
 
 from test.common import DBTest
 from koschei.backend import repo_cache
+from koschei.backend.repo_util import KojiRepoDescriptor
 
 
 @contextlib.contextmanager
@@ -42,7 +43,7 @@ class RepoCacheTest(DBTest):
         self.descriptors = {}
         for repo in self.repos:
             desc = self.descriptors[repo] = \
-                repo_cache.RepoDescriptor('primary', 'build_tag', repo)
+                KojiRepoDescriptor('primary', 'build_tag', repo)
             os.makedirs(os.path.join('repodata', str(desc)))
         os.mkdir('repodata/not-repo')
 
@@ -62,14 +63,14 @@ class RepoCacheTest(DBTest):
     def test_download(self):
         with mocks() as (librepo_mock, _):
             cache = repo_cache.RepoCache()
-            cache.get_sack(repo_cache.RepoDescriptor('primary', 'build_tag', 1))
+            cache.get_sack(KojiRepoDescriptor('primary', 'build_tag', 1))
             self.assertEqual(2, librepo_mock.perform.call_count)
 
     def test_reuse(self):
         cache = repo_cache.RepoCache()
         with mocks() as (librepo_mock, _):
-            cache.get_sack(repo_cache.RepoDescriptor('primary', 'build_tag', 1))
+            cache.get_sack(KojiRepoDescriptor('primary', 'build_tag', 1))
         with mocks() as (librepo_mock, _):
-            cache.get_sack(repo_cache.RepoDescriptor('primary', 'build_tag', 1))
+            cache.get_sack(KojiRepoDescriptor('primary', 'build_tag', 1))
             # In-memory caching of sacks is not supported any longer
             self.assertEqual(1, librepo_mock.perform.call_count)

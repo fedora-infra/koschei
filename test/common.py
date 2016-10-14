@@ -33,6 +33,8 @@ from test import testdir, config
 from koschei.db import get_engine, create_all, Base, Session
 from koschei.models import (Package, Build, Collection, BasePackage,
                             PackageGroupRelation, PackageGroup, GroupACL, User)
+from koschei.backend import repo_util
+
 
 workdir = '.workdir'
 
@@ -241,3 +243,10 @@ class KojiMock(Mock):
                for key, args, kwargs in self._mcall_list]
         self._mcall_list = []
         return ret
+
+
+class RepoCacheMock(object):
+    def get_sack(self, desc):
+        if 123 < desc.repo_id < 130:
+            desc = repo_util.KojiRepoDescriptor(desc.koji_id, desc.build_tag, 123)
+        return repo_util.load_sack(os.path.join(testdir, 'repos'), desc)
