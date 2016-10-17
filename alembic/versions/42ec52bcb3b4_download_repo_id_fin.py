@@ -5,6 +5,7 @@ Revises: 258ebf8f2f2a
 Create Date: 2014-08-27 22:04:17.383227
 
 """
+from __future__ import print_function
 
 # revision identifiers, used by Alembic.
 revision = '42ec52bcb3b4'
@@ -52,7 +53,7 @@ def upgrade():
         proc += len(builds)
         s.flush()
         off += step
-        print "processed {} builds".format(proc)
+        print("processed {} builds".format(proc))
 
 def downgrade():
     pass
