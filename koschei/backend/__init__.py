@@ -17,7 +17,7 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 from datetime import datetime, timedelta
-from itertools import izip
+from six.moves import zip as izip
 
 import koji
 from sqlalchemy.exc import IntegrityError
@@ -160,7 +160,7 @@ def register_real_builds(session, collection, package_build_infos):
                 for build, tasks in build_tasks.items():
                     if not build.repo_id:
                         del build_tasks[build]
-                chunk = build_tasks.keys()
+                chunk = list(build_tasks.keys())
                 session.db.bulk_insert(chunk)
                 for build, tasks in build_tasks.items():
                     for task in tasks:

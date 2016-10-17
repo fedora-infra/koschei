@@ -17,6 +17,7 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 import koji
+import six
 
 from copy import deepcopy
 from datetime import datetime, timedelta
@@ -59,8 +60,8 @@ class BackendTest(DBTest):
                                           session=self.session,
                                           package=package,
                                           prev_state='failing', new_state='ok')
-            self.assertItemsEqual([(x['id'],) for x in rnv_subtasks],
-                                  self.db.query(KojiTask.task_id))
+            six.assertCountEqual(self, [(x['id'],) for x in rnv_subtasks],
+                                 self.db.query(KojiTask.task_id))
 
     def test_update_state_existing_task(self):
         self.session.koji_mock.getTaskInfo = Mock(return_value=rnv_task)
@@ -88,8 +89,8 @@ class BackendTest(DBTest):
             event.assert_called_once_with('package_state_change',
                                           session=self.session, package=package,
                                           prev_state='failing', new_state='ok')
-            self.assertItemsEqual([(x['id'],) for x in rnv_subtasks],
-                                  self.db.query(KojiTask.task_id))
+            six.assertCountEqual(self, [(x['id'],) for x in rnv_subtasks],
+                                 self.db.query(KojiTask.task_id))
 
     # Regression test for https://github.com/msimacek/koschei/issues/27
     def test_update_state_inconsistent(self):
@@ -133,8 +134,8 @@ class BackendTest(DBTest):
                                          request=True)
             self.assertEqual('ok', package.state_string)
             self.assertEquals(460889, package.last_complete_build.repo_id)
-            self.assertItemsEqual([(x['id'],) for x in rnv_subtasks],
-                                  self.db.query(KojiTask.task_id))
+            six.assertCountEqual(self, [(x['id'],) for x in rnv_subtasks],
+                                 self.db.query(KojiTask.task_id))
 
     def test_refresh_latest_builds_already_present(self):
         self.session.sec_koji_mock.getTaskInfo = Mock(return_value=rnv_task)
@@ -151,7 +152,7 @@ class BackendTest(DBTest):
         self.db.commit()
         with patch('koschei.backend.dispatch_event'):
             backend.refresh_latest_builds(self.session)
-            self.assertEquals(1, self.db.query(Build).count())
+            self.assertEqual(1, self.db.query(Build).count())
 
     def test_refresh_latest_builds_no_repo_id(self):
         self.session.sec_koji_mock.getTaskInfo = Mock(return_value=rnv_task)
@@ -171,7 +172,7 @@ class BackendTest(DBTest):
         self.db.commit()
         with patch('koschei.backend.dispatch_event'):
             backend.refresh_latest_builds(self.session)
-            self.assertEquals(1, self.db.query(Build).count())
+            self.assertEqual(1, self.db.query(Build).count())
 
     def test_refresh_latest_builds_skip_old(self):
         self.session.sec_koji_mock.getTaskInfo = Mock(return_value=rnv_task)
@@ -188,7 +189,7 @@ class BackendTest(DBTest):
         self.db.commit()
         with patch('koschei.backend.dispatch_event'):
             backend.refresh_latest_builds(self.session)
-            self.assertEquals(1, self.db.query(Build).count())
+            self.assertEqual(1, self.db.query(Build).count())
 
     def test_cancel_timed_out(self):
         self.prepare_packages('rnv')
@@ -198,7 +199,7 @@ class BackendTest(DBTest):
         self.session.koji_mock.cancelTask = Mock(side_effect=koji.GenericError)
         backend.update_build_state(self.session, running_build, 'FREE')
         self.session.koji_mock.cancelTask.assert_called_once_with(running_build.task_id)
-        self.assertEquals(0, self.db.query(Build).count())
+        self.assertEqual(0, self.db.query(Build).count())
 
     def test_cancel_requested(self):
         self.prepare_packages('rnv')
@@ -207,7 +208,7 @@ class BackendTest(DBTest):
         self.db.commit()
         backend.update_build_state(self.session, running_build, 'ASSIGNED')
         self.session.koji_mock.cancelTask.assert_called_once_with(running_build.task_id)
-        self.assertEquals(0, self.db.query(Build).count())
+        self.assertEqual(0, self.db.query(Build).count())
 
     def test_refresh_packages(self):
         self.prepare_packages('eclipse')

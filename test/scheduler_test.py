@@ -16,6 +16,8 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+import six
+
 from contextlib import contextmanager
 from datetime import timedelta, datetime
 
@@ -159,11 +161,11 @@ class SchedulerTest(DBTest):
         self.prepare_build('maven', False, resolved=False)
         query = self.get_scheduler().get_failed_build_priority_query()
         # fop has 1 failed build with no previous one, should it be prioritized?
-        # self.assertItemsEqual([(pkgs[0].id, 200), (pkgs[1].id, 200)],
+        # six.assertCountEqual(self, [(pkgs[0].id, 200), (pkgs[1].id, 200)],
         #                       query.all())
 
         # schedules rnv and firefox
-        self.assertItemsEqual([(pkgs[0].id, 200), (pkgs[6].id, 200)], query.all())
+        six.assertCountEqual(self, [(pkgs[0].id, 200), (pkgs[6].id, 200)], query.all())
 
     def test_coefficient(self):
         rnv, eclipse, fop = self.prepare_packages('rnv', 'eclipse', 'fop')
@@ -186,11 +188,11 @@ class SchedulerTest(DBTest):
         sched.get_time_priority_query = mock_prio
 
         priorities = sched.get_priorities()
-        self.assertEquals(eclipse.id, priorities[0][0])
+        self.assertEqual(eclipse.id, priorities[0][0])
         self.assertAlmostEqual(520, priorities[0][1], places=1)
-        self.assertEquals(rnv.id, priorities[1][0])
+        self.assertEqual(rnv.id, priorities[1][0])
         self.assertAlmostEqual(200, priorities[1][1], places=1)
-        self.assertEquals(fop.id, priorities[2][0])
+        self.assertEqual(fop.id, priorities[2][0])
         self.assertAlmostEqual(0, priorities[2][1], places=1)
         self.assertEqual(3, len(priorities))
 
@@ -201,13 +203,13 @@ class SchedulerTest(DBTest):
                           Column('pkg_id', Integer), Column('priority', Integer))
             conn = self.db.connection()
             table.create(bind=conn)
-            priorities = {name: prio for name, prio in kwargs.items() if '_' not in name}
-            builds = {name[:-len("_build")]: state for name, state in kwargs.items()
+            priorities = {name: prio for name, prio in list(kwargs.items()) if '_' not in name}
+            builds = {name[:-len("_build")]: state for name, state in list(kwargs.items())
                       if name.endswith('_build')}
-            states = {name[:-len('_state')]: state for name, state in kwargs.items()
+            states = {name[:-len('_state')]: state for name, state in list(kwargs.items())
                       if name.endswith('_state')}
             pkgs = []
-            for name in priorities.keys():
+            for name in list(priorities.keys()):
                 pkg = self.db.query(Package).filter_by(name=name).first()
                 if not pkg:
                     pkg = Package(name=name, tracked=states.get(name) != 'ignored',

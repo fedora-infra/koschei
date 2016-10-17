@@ -51,7 +51,7 @@ class FrontendTest(DBTest):
         reply = self.client.get('/')
         self.assertEqual(200, reply.status_code)
         self.assertEqual('text/html; charset=utf-8', reply.content_type)
-        normalized_data = ' '.join(reply.data.split())
+        normalized_data = ' '.join(reply.data.decode('utf-8').split())
         self.assertIn('<!DOCTYPE html>', normalized_data)
         self.assertIn('Packages from 1 to 0 from total 0', normalized_data)
         self.assertIn('Package summary', normalized_data)
@@ -68,7 +68,7 @@ class FrontendTest(DBTest):
     def test_documentation(self):
         reply = self.client.get('documentation')
         self.assertEqual(200, reply.status_code)
-        self.assertIn('How it works?', reply.data)
+        self.assertIn('How it works?', reply.data.decode('utf-8'))
 
     def test_login(self):
         reply = self.client.get('login')
@@ -82,7 +82,7 @@ class FrontendTest(DBTest):
         url = 'build/{0}/cancel'.format(build.id)
         reply = self.client.post(url, follow_redirects=True)
         self.assertEqual(200, reply.status_code)
-        self.assertIn('Cancelation request sent.', reply.data)
+        self.assertIn('Cancelation request sent.', reply.data.decode('utf-8'))
         self.db.expire(build)
         self.assertTrue(build.cancel_requested)
 
@@ -103,7 +103,7 @@ class FrontendTest(DBTest):
         url = 'build/{0}/cancel'.format(build.id)
         reply = self.client.post(url, follow_redirects=True)
         self.assertEqual(200, reply.status_code)
-        self.assertIn('Only running builds can be canceled.', reply.data)
+        self.assertIn('Only running builds can be canceled.', reply.data.decode('utf-8'))
         self.db.expire(build)
         self.assertFalse(build.cancel_requested)
 
@@ -116,7 +116,7 @@ class FrontendTest(DBTest):
         url = 'build/{0}/cancel'.format(build.id)
         reply = self.client.post(url, follow_redirects=True)
         self.assertEqual(200, reply.status_code)
-        self.assertIn('Build already has pending cancelation request.', reply.data)
+        self.assertIn('Build already has pending cancelation request.', reply.data.decode('utf-8'))
         self.db.expire(build)
         self.assertTrue(build.cancel_requested)
 
@@ -126,7 +126,7 @@ class FrontendTest(DBTest):
                                  data=dict(packages='SimplyHTML'),
                                  follow_redirects=True)
         self.assertEqual(200, reply.status_code)
-        self.assertIn('Packages don&#39;t exist: SimplyHTML', reply.data)
+        self.assertIn('Packages don&#39;t exist: SimplyHTML', reply.data.decode('utf-8'))
 
     @authenticate
     def test_add_package(self):
@@ -137,5 +137,5 @@ class FrontendTest(DBTest):
                                  data=dict(packages='xpp3'),
                                  follow_redirects=True)
         self.assertEqual(200, reply.status_code)
-        self.assertIn('Packages added: xpp3', reply.data)
+        self.assertIn('Packages added: xpp3', reply.data.decode('utf-8'))
         self.assertTrue(pkg.tracked)

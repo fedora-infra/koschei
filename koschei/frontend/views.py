@@ -18,7 +18,7 @@
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 import re
-import urllib
+import six.moves.urllib as urllib
 from datetime import datetime
 from functools import wraps
 from textwrap import dedent
@@ -64,7 +64,7 @@ def page_args(clear=False, **kwargs):
     # the supposedly unnecessary call to items() is needed
     unfiltered = kwargs if clear else dict(request.args.items(), **kwargs)
     args = {k: v for k, v in unfiltered.items() if v is not None}
-    encoded = urllib.urlencode(args).replace('...', "' + this.value + '")
+    encoded = urllib.parse.urlencode(args).replace('...', "' + this.value + '")
     if encoded:
         return '?' + encoded
     return ''
@@ -107,7 +107,7 @@ def generate_links(package):
                 if value is None:
                     raise AttributeError()  # continue the outer loop
                 url = url.replace('{' + interp + '}',
-                                  escape(urllib.quote_plus(str(value))))
+                                  escape(urllib.parse.quote_plus(str(value))))
             output.append('<a href="{url}">{name}</a>'.format(
                 name=escape(name),
                 url=escape(url),
@@ -137,7 +137,7 @@ def get_global_notices():
             notices.append("Base buildroot for {} is not installable. "
                            "Dependency problems:<br/>".format(collection) +
                            '<br/>'.join((p.problem for p in problems)))
-    notices = map(Markup, notices)
+    notices = list(map(Markup, notices))
     return notices
 
 
@@ -424,7 +424,7 @@ def unified_package_view(template, query_fn=None, **template_args):
     order_names, order = get_order(order_map, order_name)
 
     page = query.order_by(*order).paginate(packages_per_page)
-    page.items = map(UnifiedPackage, page.items)
+    page.items = list(map(UnifiedPackage, page.items))
     populate_package_groups(page.items)
     return render_template(template, packages=page.items, page=page,
                            order=order_names, collection=None, **template_args)
@@ -620,7 +620,7 @@ class ListFieldMixin(object):
     def process_formdata(self, values):
         # pylint:disable=W0201
         values = values and values[0]
-        self.data = filter(None, self.split_re.split(values or ''))
+        self.data = [x for x in self.split_re.split(values or '') if x]
 
 
 class ListField(ListFieldMixin, StringField):
@@ -881,7 +881,7 @@ def bugreport(name):
     template = get_config('bugreport.template')
     bug = {key: template[key].format(**variables) for key in template.keys()}
     bug['comment'] = dedent(bug['comment']).strip()
-    query = urllib.urlencode(bug)
+    query = urllib.parse.urlencode(bug)
     bugreport_url = get_config('bugreport.url').format(query=query)
     return redirect(bugreport_url)
 

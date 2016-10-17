@@ -18,6 +18,8 @@
 
 # pylint: disable=unbalanced-tuple-unpacking,blacklisted-name
 
+import six
+
 from test.common import DBTest
 from koschei.models import PackageGroup, PackageGroupRelation
 from koschei import data
@@ -35,7 +37,7 @@ class DataTest(DBTest):
         content = ['a1', 'a2', 'a3']
         data.set_group_content(self.session, group, content, append=False)
 
-        self.assertItemsEqual([a1.base_id, a2.base_id, a3.base_id],
+        six.assertCountEqual(self, [a1.base_id, a2.base_id, a3.base_id],
                               self.db.query(PackageGroupRelation.base_id)
                               .filter_by(group_id=group.id).all_flat())
 
@@ -50,7 +52,7 @@ class DataTest(DBTest):
         content = ['a1', 'a2', 'a3']
         data.set_group_content(self.session, group, content, append=True)
 
-        self.assertItemsEqual([bar.base_id, a1.base_id, a2.base_id, a3.base_id],
+        six.assertCountEqual(self, [bar.base_id, a1.base_id, a2.base_id, a3.base_id],
                               self.db.query(PackageGroupRelation.base_id)
                               .filter_by(group_id=group.id).all_flat())
 

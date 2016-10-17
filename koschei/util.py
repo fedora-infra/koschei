@@ -25,8 +25,9 @@ import logging
 import rpm
 import time
 import socket
+import six
 
-from Queue import Queue
+from six.moves.queue import Queue
 from threading import Thread
 
 
@@ -49,7 +50,7 @@ def is_build_newer(current_build, task_info):
     ) < 0
 
 
-class parallel_generator(object):
+class parallel_generator(six.Iterator):
     sentinel = object()
 
     def __init__(self, generator, queue_size=1000):
@@ -75,7 +76,7 @@ class parallel_generator(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         item = self.queue.get()
         if item is self.sentinel:
             raise self.worker_exception  # StopIteration in case of success

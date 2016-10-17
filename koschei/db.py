@@ -20,6 +20,7 @@ import re
 import os
 import struct
 import zlib
+import six
 
 import sqlalchemy
 
@@ -147,6 +148,17 @@ def get_or_create(db, table, **cond):
 class CompressedKeyArray(TypeDecorator):
     impl = BYTEA
 
+    def _compress(self, payload):
+        if six.PY2:
+            payload = str(payload)
+        return zlib.compress(payload)
+
+    def _decompress(self, compressed):
+        payload = zlib.decompress(compressed)
+        if six.PY2:
+            payload = str(payload)
+        return payload
+
     def process_bind_param(self, value, _):
         if value is None:
             return None
@@ -159,15 +171,15 @@ class CompressedKeyArray(TypeDecorator):
         for item in value:
             assert item > 0
             array += struct.pack(">I", item)
-        return zlib.compress(str(array))
+        return self._compress(array)
 
     def process_result_value(self, value, _):
         if value is None:
             return None
         res = []
-        uncompressed = zlib.decompress(value)
+        uncompressed = self._decompress(value)
         for i in range(0, len(uncompressed), 4):
-            res.append(struct.unpack(">I", str(uncompressed[i:i + 4]))[0])
+            res.append(struct.unpack(">I", uncompressed[i:i + 4])[0])
         offset = 0
         for i in range(len(res)):
             res[i] += offset

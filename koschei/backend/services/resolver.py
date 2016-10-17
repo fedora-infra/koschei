@@ -20,7 +20,8 @@
 import koji
 
 from collections import OrderedDict, namedtuple
-from itertools import izip, groupby
+from itertools import groupby
+from six.moves import zip as izip
 
 from sqlalchemy.orm import joinedload, undefer
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
@@ -83,7 +84,7 @@ def create_dependency_changes(deps1, deps2, **rest):
         change.update(curr_version=dep.version, curr_epoch=dep.epoch,
                       curr_release=dep.release, distance=dep.distance)
         changes[dep.name] = change
-    return changes.values() if changes else []
+    return list(changes.values()) if changes else []
 
 
 class DependencyCache(object):
@@ -491,7 +492,7 @@ class Resolver(Service):
              for b in builds_to_process]
         )
         if len(builds) > 100:
-            buildrequires = util.parallel_generator(buildrequires, queue_size=None)
+            buildrequires = util.parallel_generator(buildrequires, queue_size=0)
         for repo_descriptor, group in groupby(izip(repos_to_process,
                                                    builds_to_process,
                                                    buildrequires),

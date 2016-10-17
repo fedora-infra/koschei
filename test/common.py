@@ -171,7 +171,7 @@ class DBTest(AbstractTest):
             with conn.cursor() as cur:
                 cur.execute("DROP DATABASE IF EXISTS {0}".format(dbname))
                 cur.execute("CREATE DATABASE {0}".format(dbname))
-                for option, value in DBTest.POSTGRES_OPTS.iteritems():
+                for option, value in DBTest.POSTGRES_OPTS.items():
                     cur.execute("ALTER DATABASE {0} SET {1} TO '{2}'".format(dbname,
                                                                              option,
                                                                              value))
@@ -203,7 +203,7 @@ class DBTest(AbstractTest):
         super(DBTest, self).setUp()
         tables = Base.metadata.tables
         conn = get_engine().connect()
-        for table in tables.values():
+        for table in list(tables.values()):
             conn.execute(table.delete())
             if hasattr(table.c, 'id'):
                 conn.execute("ALTER SEQUENCE {}_id_seq RESTART".format(table.name))

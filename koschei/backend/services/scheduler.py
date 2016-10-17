@@ -97,7 +97,7 @@ class Scheduler(Service):
 
     def get_priorities(self):
         incomplete_builds = self.get_incomplete_builds_query()
-        queries = self.get_priority_queries().values()
+        queries = list(self.get_priority_queries().values())
         union_query = union_all(*queries).alias('un')
         pkg_id = union_query.c.pkg_id
         current_priority = cast(func.sum(union_query.c.priority),

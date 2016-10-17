@@ -52,7 +52,7 @@ def load_config(config_paths, ignore_env=False):
             with open(config_path) as config_file:
                 code = compile(config_file.read(), config_path, 'exec')
                 conf_locals = {}
-                exec code in conf_locals
+                exec(code, conf_locals)
                 if 'config' in conf_locals:
                     return conf_locals['config']
         else:

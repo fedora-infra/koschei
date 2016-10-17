@@ -16,6 +16,8 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+import six
+
 from mock import Mock, patch
 
 from test.common import DBTest, service_ctor
@@ -94,6 +96,6 @@ class WatcherTest(DBTest):
         with patch('fedmsg.tail_messages', tail_messages_mock):
             Watcher(self.session).main()
         self.assertEqual('ok', package.state_string)
-        self.assertEquals(460889, package.last_complete_build.repo_id)
-        self.assertItemsEqual([(x['id'],) for x in rnv_subtasks],
+        self.assertEqual(460889, package.last_complete_build.repo_id)
+        six.assertCountEqual(self, [(x['id'],) for x in rnv_subtasks],
                               self.db.query(KojiTask.task_id))
