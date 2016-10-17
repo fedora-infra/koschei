@@ -17,6 +17,8 @@
 #
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
+from __future__ import print_function
+
 # Set Koschei monitoring flag for <PACKAGES> to <VALUE> in pkgdb2 instance at
 # <PKGDB_URL>.  Login credentials are provided in <FAS_CONF> file.
 # Requires: packagedb-cli >= 2.9.
@@ -27,7 +29,7 @@ FAS_CONF = '/etc/fas.conf'
 
 
 from pkgdb2client import PkgDB
-from ConfigParser import ConfigParser
+from six.moves.configparser import ConfigParser
 
 # Obtain FAS credentials
 conf = ConfigParser()
@@ -43,6 +45,6 @@ pkgdb.login(login, password)
 for package in PACKAGES:
     result = pkgdb.set_koschei_status(package, VALUE)
     message = result.get('messages', 'Invalid output')
-    print "%s: %s" % (package, message)
+    print("%s: %s" % (package, message))
 
-print "Done."
+print("Done.")

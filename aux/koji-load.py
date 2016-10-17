@@ -18,6 +18,9 @@
 #
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
+from __future__ import print_function
+from six.moves import range as xrange
+
 import koji
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -56,4 +59,4 @@ def gather_data(env):
 with ThreadPoolExecutor(max_workers=16) as executor:
     result = [f.result() for f in [executor.submit(gather_data, env) for env in sorted(koji_urls.keys())]]
     for a, b in zip(*result):
-        print "   ".join([a, b])
+        print("   ".join([a, b]))
