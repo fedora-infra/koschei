@@ -27,7 +27,7 @@ __config = {}
 
 def merge_dict(d1, d2):
     ret = d1.copy()
-    for k, v in d2.items():
+    for k, v in list(d2.items()):
         if k in ret and isinstance(v, dict) and isinstance(ret[k], dict):
             ret[k] = merge_dict(ret[k], v)
         else:
@@ -52,7 +52,7 @@ def load_config(config_paths, ignore_env=False):
             with open(config_path) as config_file:
                 code = compile(config_file.read(), config_path, 'exec')
                 conf_locals = {}
-                exec code in conf_locals
+                exec(code, conf_locals)
                 if 'config' in conf_locals:
                     return conf_locals['config']
         else:

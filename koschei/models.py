@@ -18,6 +18,7 @@
 
 import struct
 import zlib
+import six
 
 import sqlalchemy
 
@@ -88,7 +89,7 @@ class KoscheiDbSession(sqlalchemy.orm.session.Session):
         if objects:
             cls = type(objects[0])
             table = cls.__table__
-            cols = [col for col in objects[0].__dict__.keys() if not
+            cols = [col for col in list(objects[0].__dict__.keys()) if not
                     col.startswith('_') and col != 'id']
             dicts = []
             for obj in objects:
@@ -143,6 +144,17 @@ def get_or_create(db, table, **cond):
 class CompressedKeyArray(TypeDecorator):
     impl = BYTEA
 
+    def _compress(self, payload):
+        if six.PY2:
+            payload = str(payload)
+        return zlib.compress(payload)
+
+    def _decompress(self, compressed):
+        payload = zlib.decompress(compressed)
+        if six.PY2:
+            payload = str(payload)
+        return payload
+
     def process_bind_param(self, value, _):
         if value is None:
             return None
@@ -155,15 +167,15 @@ class CompressedKeyArray(TypeDecorator):
         for item in value:
             assert item > 0
             array += struct.pack(">I", item)
-        return zlib.compress(str(array))
+        return self._compress(array)
 
     def process_result_value(self, value, _):
         if value is None:
             return None
         res = []
-        uncompressed = zlib.decompress(value)
+        uncompressed = self._decompress(value)
         for i in range(0, len(uncompressed), 4):
-            res.append(struct.unpack(">I", str(uncompressed[i:i + 4]))[0])
+            res.append(struct.unpack(">I", uncompressed[i:i + 4])[0])
         offset = 0
         for i in range(len(res)):
             res[i] += offset
@@ -445,7 +457,7 @@ class Build(Base):
     COMPLETE = STATE_MAP['complete']
     CANCELED = STATE_MAP['canceled']
     FAILED = STATE_MAP['failed']
-    REV_STATE_MAP = {v: k for k, v in STATE_MAP.items()}
+    REV_STATE_MAP = {v: k for k, v in list(STATE_MAP.items())}
 
     FINISHED_STATES = [COMPLETE, FAILED, CANCELED]
     STATES = [RUNNING] + FINISHED_STATES

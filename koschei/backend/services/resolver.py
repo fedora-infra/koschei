@@ -18,7 +18,8 @@
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 from collections import OrderedDict, namedtuple
-from itertools import izip, groupby
+from six.moves import zip as izip
+from itertools import groupby
 
 import koji
 from koschei.backend.koji_util import itercall
@@ -208,7 +209,7 @@ class Resolver(KojiService):
             change.update(curr_version=dep.version, curr_epoch=dep.epoch,
                           curr_release=dep.release, distance=dep.distance)
             changes[dep.name] = change
-        return changes.values() if changes else []
+        return list(changes.values()) if changes else []
 
     def get_prev_build_for_comparison(self, build):
         return self.db.query(Build)\
@@ -318,7 +319,7 @@ class Resolver(KojiService):
                     .filter(Package.id.in_(to_update))\
                     .update({'resolved': val})
         packages = self.db.query(Package)\
-            .filter(Package.id.in_(changed.iterkeys()))\
+            .filter(Package.id.in_(iter(changed.keys())))\
             .options(joinedload(Package.last_complete_build))\
             .all() if changed else []
         state_changes = {}
@@ -335,7 +336,7 @@ class Resolver(KojiService):
 
         if state_changes:
             for package in self.db.query(Package)\
-                .filter(Package.id.in_(state_changes.iterkeys()))\
+                .filter(Package.id.in_(iter(state_changes.keys())))\
                 .options(joinedload(Package.groups),
                          joinedload(Package.collection)):
                 prev_state, new_state = state_changes[package.id]
@@ -403,7 +404,7 @@ class Resolver(KojiService):
             self.secondary_session_for(collection),
             [p.srpm_nvra for p in packages]
         )
-        brs = util.parallel_generator(brs, queue_size=None)
+        brs = util.parallel_generator(brs, queue_size=0)
         try:
             sack = self.repo_cache.get_sack(repo_descriptor)
             if not sack:

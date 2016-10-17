@@ -30,6 +30,7 @@ BuildRequires:       python-flask-sqlalchemy
 BuildRequires:       python-flask-wtf
 BuildRequires:       python-jinja2
 BuildRequires:       python-dogpile-cache
+BuildRequires:       python-six
 %endif
 
 %description
@@ -42,6 +43,7 @@ provides a web interface to the results.
 Summary:        Acutual python code for koschei backend and frontend
 Requires:       python-sqlalchemy
 Requires:       python-psycopg2
+Requires:       python-six
 Requires:       rpm-python
 Requires(pre):  shadow-utils
 Obsoletes:      %{name} < 1.5.1

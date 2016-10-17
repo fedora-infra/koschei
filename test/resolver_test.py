@@ -19,6 +19,7 @@
 
 import os
 import shutil
+import six
 from unittest import skipIf
 
 import hawkey
@@ -85,20 +86,20 @@ class DependencyCacheTest(DBTest):
         cache = DependencyCache(10)
         # from db
         dep1, dep2 = cache.get_by_ids(self.db, [2, 3])
-        self.assertEquals(self.dep(2), dep1)
-        self.assertEquals(self.dep(3), dep2)
+        self.assertEqual(self.dep(2), dep1)
+        self.assertEqual(self.dep(3), dep2)
         hash(dep1)
         hash(dep2)
         # from cache
         dep1, dep2 = cache.get_by_ids(None, [2, 3])
-        self.assertEquals(self.dep(2), dep1)
-        self.assertEquals(self.dep(3), dep2)
+        self.assertEqual(self.dep(2), dep1)
+        self.assertEqual(self.dep(3), dep2)
         hash(dep1)
         hash(dep2)
         # mixed
         dep1, dep2 = cache.get_by_ids(self.db, [2, 1])
-        self.assertEquals(self.dep(2), dep1)
-        self.assertEquals(self.dep(1), dep2)
+        self.assertEqual(self.dep(2), dep1)
+        self.assertEqual(self.dep(1), dep2)
         hash(dep1)
         hash(dep2)
 
@@ -106,38 +107,38 @@ class DependencyCacheTest(DBTest):
         cache = DependencyCache(10)
         # from db
         dep1, dep2 = cache.get_or_create_nevras(self.db, [self.nevra(2), self.nevra(3)])
-        self.assertEquals(self.dep(2), dep1)
-        self.assertEquals(self.dep(3), dep2)
+        self.assertEqual(self.dep(2), dep1)
+        self.assertEqual(self.dep(3), dep2)
         hash(dep1)
         hash(dep2)
         # from cache
         dep1, dep2 = cache.get_or_create_nevras(None, [self.nevra(2), self.nevra(3)])
-        self.assertEquals(self.dep(2), dep1)
-        self.assertEquals(self.dep(3), dep2)
+        self.assertEqual(self.dep(2), dep1)
+        self.assertEqual(self.dep(3), dep2)
         hash(dep1)
         hash(dep2)
         # insert
         dep1, dep2 = cache.get_or_create_nevras(self.db, [self.nevra(4), self.nevra(5)])
-        self.assertEquals(self.dep(4), dep1)
-        self.assertEquals(self.dep(5), dep2)
+        self.assertEqual(self.dep(4), dep1)
+        self.assertEqual(self.dep(5), dep2)
         hash(dep1)
         hash(dep2)
         # mixed
         dep1, dep2, dep3 = cache.get_or_create_nevras(self.db, [self.nevra(6),
                                                                 self.nevra(4),
                                                                 self.nevra(2)])
-        self.assertEquals(self.dep(6), dep1)
-        self.assertEquals(self.dep(4), dep2)
-        self.assertEquals(self.dep(2), dep3)
+        self.assertEqual(self.dep(6), dep1)
+        self.assertEqual(self.dep(4), dep2)
+        self.assertEqual(self.dep(2), dep3)
         hash(dep1)
         hash(dep2)
         hash(dep3)
 
         # now get them by id
         dep1, dep2, dep3 = cache.get_by_ids(self.db, [dep1.id, dep2.id, dep3.id])
-        self.assertEquals(self.dep(6), dep1)
-        self.assertEquals(self.dep(4), dep2)
-        self.assertEquals(self.dep(2), dep3)
+        self.assertEqual(self.dep(6), dep1)
+        self.assertEqual(self.dep(4), dep2)
+        self.assertEqual(self.dep(2), dep3)
         hash(dep1)
         hash(dep2)
         hash(dep3)
@@ -154,7 +155,7 @@ class DependencyCacheTest(DBTest):
         self.db.commit()
         # refetch
         dep = cache.get_by_ids(self.db, [2])[0]
-        self.assertEquals('bar', dep.name)
+        self.assertEqual('bar', dep.name)
         # still cached
         cache.get_by_ids(None, [3])
 
@@ -162,26 +163,26 @@ class DependencyCacheTest(DBTest):
         cache = DependencyCache(2)
         # from db
         dep1, dep2 = cache.get_or_create_nevras(self.db, [self.nevra(2), self.nevra(3)])
-        self.assertEquals(self.dep(2), dep1)
-        self.assertEquals(self.dep(3), dep2)
+        self.assertEqual(self.dep(2), dep1)
+        self.assertEqual(self.dep(3), dep2)
         # one mode
         dep1 = cache.get_or_create_nevras(self.db, [self.nevra(1)])[0]
-        self.assertEquals(self.dep(1), dep1)
+        self.assertEqual(self.dep(1), dep1)
         hash(dep1)
         # from cache
         dep3 = cache.get_or_create_nevras(None, [self.nevra(3)])[0]
-        self.assertEquals(self.dep(3), dep3)
+        self.assertEqual(self.dep(3), dep3)
         hash(dep3)
 
         self.db.query(Dependency).filter_by(version="2").update({'name': 'bar'})
         self.db.commit()
         # 2 should be expired, this should insert new
         dep = cache.get_or_create_nevras(self.db, [self.nevra(2)])[0]
-        self.assertEquals('foo', dep.name)
+        self.assertEqual('foo', dep.name)
         hash(dep)
         # still cached
         dep3 = cache.get_or_create_nevras(None, [self.nevra(3)])[0]
-        self.assertEquals(self.dep(3), dep3)
+        self.assertEqual(self.dep(3), dep3)
         hash(dep3)
 
 
@@ -243,7 +244,7 @@ class ResolverTest(DBTest):
                                     Dependency.version, Dependency.release,
                                     Dependency.arch)\
             .filter(Dependency.id.in_(foo_build.dependency_keys)).all()
-        self.assertItemsEqual(FOO_DEPS, actual_deps)
+        six.assertCountEqual(self, FOO_DEPS, actual_deps)
 
     def test_virtual_in_group(self):
         foo_build = self.prepare_foo_build()
@@ -298,7 +299,7 @@ class ResolverTest(DBTest):
         actual_changes = self.db.query(c.build_id, c.dep_name, c.prev_epoch,
                                        c.curr_epoch, c.prev_version, c.curr_version,
                                        c.prev_release, c.curr_release, c.distance).all()
-        self.assertItemsEqual(expected_changes, actual_changes)
+        six.assertCountEqual(self, expected_changes, actual_changes)
 
     def test_repo_generation(self):
         self.prepare_old_build()
@@ -315,7 +316,7 @@ class ResolverTest(DBTest):
         actual_changes = self.db.query(c.package_id, c.dep_name, c.prev_epoch,
                                        c.curr_epoch, c.prev_version, c.curr_version,
                                        c.prev_release, c.curr_release, c.distance).all()
-        self.assertItemsEqual(expected_changes, actual_changes)
+        six.assertCountEqual(self, expected_changes, actual_changes)
         resolution_id = self.db.query(ResolutionChange.id)\
             .filter_by(package_id=foo.id).subquery()
         self.assertFalse(self.db.query(ResolutionProblem)
@@ -370,7 +371,7 @@ class ResolverTest(DBTest):
                     self.resolver.generate_repo(self.collection, 668)
                 foo = self.db.query(Package).filter_by(name='foo').one()
                 self.assertFalse(foo.resolved)
-                self.assertEquals(0, self.db.query(ResolutionChange)
+                self.assertEqual(0, self.db.query(ResolutionChange)
                                   .filter_by(package_id=foo.id)
                                   .filter(ResolutionChange.id > result.id).count())
                 self.assertFalse(fedmsg_mock.called)
@@ -397,7 +398,7 @@ class ResolverTest(DBTest):
                     .filter(ResolutionChange.id > result.id).one()
                 self.assertTrue(foo.resolved)
                 self.assertTrue(result.resolved)
-                self.assertEquals([], result.problems)
+                self.assertEqual([], result.problems)
                 fedmsg_mock.assert_called_once_with(
                     modname='koschei',
                     msg={'koji_instance': 'primary',
@@ -436,7 +437,7 @@ class ResolverTest(DBTest):
                     self.resolver.generate_repo(self.collection, 666)
                     self.assertFalse(fedmsg_mock.called)
             self.assertFalse(self.collection.latest_repo_resolved)
-            self.assertEquals(666, self.collection.latest_repo_id)
+            self.assertEqual(666, self.collection.latest_repo_id)
             self.assertIn('nonexistent',
                           ''.join(p.problem for p in self.db.query(BuildrootProblem)))
 
@@ -447,7 +448,7 @@ class ResolverTest(DBTest):
                        return_value=[['F', 'A']]):
                 self.resolver.generate_repo(self.collection, 667)
             self.assertTrue(self.collection.latest_repo_resolved)
-            self.assertEquals(0, self.db.query(BuildrootProblem).count())
+            self.assertEqual(0, self.db.query(BuildrootProblem).count())
 
     def test_buildrequires(self):
         call_result = [{'flags': 0, 'name': 'maven-local', 'type': 0, 'version': ''},
@@ -472,10 +473,10 @@ class ResolverTest(DBTest):
             sack = get_sack()
             (resolved, problems, deps) = \
                 self.resolver.resolve_dependencies(sack, ['/bin/csh'], ['R'])
-            self.assertItemsEqual([], problems)
+            six.assertCountEqual(self, [], problems)
             self.assertTrue(resolved)
             self.assertIsNotNone(deps)
-            self.assertItemsEqual(['B', 'C', 'R'], [dep.name for dep in deps])
+            six.assertCountEqual(self, ['B', 'C', 'R'], [dep.name for dep in deps])
 
     # qt-x11 requires (sni-qt(x86-64) if plasma-workspace)
     # since plasma-workspace is not installed, sni-qt should not be instaled either
@@ -486,10 +487,10 @@ class ResolverTest(DBTest):
             sack = get_sack()
             (resolved, problems, deps) = \
                 self.resolver.resolve_dependencies(sack, ['qt-x11'], ['R'])
-            self.assertItemsEqual([], problems)
+            six.assertCountEqual(self, [], problems)
             self.assertTrue(resolved)
             self.assertIsNotNone(deps)
-            self.assertItemsEqual(['qt-x11', 'R'], [dep.name for dep in deps])
+            six.assertCountEqual(self, ['qt-x11', 'R'], [dep.name for dep in deps])
 
     # qt-x11 requires (sni-qt(x86-64) if plasma-workspace)
     # since plasma-workspace is installed, sni-qt should be instaled too
@@ -502,8 +503,8 @@ class ResolverTest(DBTest):
                 self.resolver.resolve_dependencies(sack,
                                                    ['qt-x11', 'plasma-workspace'],
                                                    ['R'])
-            self.assertItemsEqual([], problems)
+            six.assertCountEqual(self, [], problems)
             self.assertTrue(resolved)
             self.assertIsNotNone(deps)
-            self.assertItemsEqual(['qt-x11', 'plasma-workspace', 'sni-qt', 'R'],
+            six.assertCountEqual(self, ['qt-x11', 'plasma-workspace', 'sni-qt', 'R'],
                                   [dep.name for dep in deps])

@@ -19,7 +19,7 @@
 
 import logging
 import re
-import urllib
+import six.moves.urllib as urllib
 from datetime import datetime
 from functools import wraps
 from textwrap import dedent
@@ -62,9 +62,9 @@ def page_args(clear=False, **kwargs):
     if 'order_by' in kwargs:
         kwargs['order_by'] = proc_order(kwargs['order_by'])
     # the supposedly unnecessary call to items() is needed
-    unfiltered = kwargs if clear else dict(request.args.items(), **kwargs)
-    args = {k: v for k, v in unfiltered.items() if v is not None}
-    encoded = urllib.urlencode(args).replace('...', "' + this.value + '")
+    unfiltered = kwargs if clear else dict(list(request.args.items()), **kwargs)
+    args = {k: v for k, v in list(unfiltered.items()) if v is not None}
+    encoded = urllib.parse.urlencode(args).replace('...', "' + this.value + '")
     if encoded:
         return '?' + encoded
     return ''
@@ -105,7 +105,7 @@ def generate_links(package):
                 if value is None:
                     raise AttributeError()  # continue the outer loop
                 url = url.replace('{' + interp + '}',
-                                  escape(urllib.quote_plus(str(value))))
+                                  escape(urllib.parse.quote_plus(str(value))))
             output.append('<a href="{url}">{name}</a>'.format(name=name, url=url))
         except AttributeError:
             continue
@@ -132,7 +132,7 @@ def get_global_notices():
             notices.append("Base buildroot for {} is not installable. "
                            "Dependency problems:<br/>".format(collection) +
                            '<br/>'.join((p.problem for p in problems)))
-    notices = map(Markup, notices)
+    notices = list(map(Markup, notices))
     return notices
 
 
@@ -204,7 +204,7 @@ def populate_package_groups(packages):
         filter_expr |= GroupACL.user_id == g.user.id
     query = db.query(PackageGroupRelation)\
         .options(contains_eager(PackageGroupRelation.group))\
-        .filter(PackageGroupRelation.base_id.in_(base_map.keys()))\
+        .filter(PackageGroupRelation.base_id.in_(list(base_map.keys())))\
         .join(PackageGroup)\
         .filter(filter_expr)\
         .order_by(PackageGroup.namespace, PackageGroup.name)
@@ -389,7 +389,7 @@ def unified_package_view(template, query_fn=None, **template_args):
     order_names, order = get_order(order_map, order_name)
 
     page = query.order_by(*order).paginate(packages_per_page)
-    page.items = map(UnifiedPackage, page.items)
+    page.items = list(map(UnifiedPackage, page.items))
     populate_package_groups(page.items)
     return render_template(template, packages=page.items, page=page,
                            order=order_names, collection=None, **template_args)
@@ -586,7 +586,7 @@ class ListFieldMixin(object):
     def process_formdata(self, values):
         # pylint:disable=W0201
         values = values and values[0]
-        self.data = filter(None, self.split_re.split(values or ''))
+        self.data = [_f for _f in self.split_re.split(values or '') if _f]
 
 
 class ListField(ListFieldMixin, StringField):
@@ -625,7 +625,7 @@ class EmptyForm(Form):
     def validate_or_flash(self):
         if self.validate_on_submit():
             return True
-        flash(', '.join(x for i in self.errors.values() for x in i))
+        flash(', '.join(x for i in list(self.errors.values()) for x in i))
         return False
 
 
@@ -796,7 +796,7 @@ def edit_package(name):
         package = db.query(Package)\
             .filter_by(name=name, collection_id=collection.id)\
             .first_or_404()
-        for key, prev_val in form.items():
+        for key, prev_val in list(form.items()):
             if key.startswith('group-prev-'):
                 group = db.query(PackageGroup).get_or_404(int(key[len('group-prev-'):]))
                 new_val = form.get('group-{}'.format(group.id))
@@ -839,9 +839,9 @@ def bugreport(name):
     variables['url'] = request.url_root.replace(request.script_root, '').rstrip('/') \
         + url_for('package_detail', name=package.name)
     template = get_config('bugreport.template')
-    bug = {key: template[key].format(**variables) for key in template.keys()}
+    bug = {key: template[key].format(**variables) for key in list(template.keys())}
     bug['comment'] = dedent(bug['comment']).strip()
-    query = urllib.urlencode(bug)
+    query = urllib.parse.urlencode(bug)
     bugreport_url = get_config('bugreport.url').format(query=query)
     return redirect(bugreport_url)
 

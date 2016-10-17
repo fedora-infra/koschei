@@ -17,7 +17,7 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 from datetime import datetime, timedelta
-from itertools import izip
+from six.moves import zip as izip
 
 import koji
 from sqlalchemy.exc import IntegrityError
@@ -127,12 +127,12 @@ class Backend(KojiService):
             while True:
                 try:
                     build_tasks = self.sync_tasks(collection, chunk, real=True)
-                    for build, tasks in build_tasks.items():
+                    for build, tasks in list(build_tasks.items()):
                         if not build.repo_id:
                             del build_tasks[build]
-                    chunk = build_tasks.keys()
+                    chunk = list(build_tasks.keys())
                     self.db.bulk_insert(chunk)
-                    for build, tasks in build_tasks.items():
+                    for build, tasks in list(build_tasks.items()):
                         for task in tasks:
                             task.build_id = build.id
                     self.insert_koji_tasks(build_tasks)
@@ -328,7 +328,7 @@ class Backend(KojiService):
         return build_tasks
 
     def insert_koji_tasks(self, tasks):
-        tasks = [task for build_task in tasks.values() for task in build_task]
+        tasks = [task for build_task in list(tasks.values()) for task in build_task]
         build_ids = [t.build_id for t in tasks]
         if build_ids:
             assert all(build_ids)
@@ -370,7 +370,7 @@ class Backend(KojiService):
             to_add = []
             for pkg_dict in koji_packages:
                 name = pkg_dict['package_name']
-                if name not in bases.iterkeys():
+                if name not in iter(bases.keys()):
                     base = BasePackage(name=name)
                     bases[name] = base
                     to_add.append(base)
