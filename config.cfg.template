@@ -232,6 +232,9 @@ config = {
                 "level": "INFO",
                 "handlers": ["stderr"],
             },
+            "dogpile.core.dogpile": {
+                "level": "INFO",
+            },
         },
         "handlers": {
             "stderr": {
