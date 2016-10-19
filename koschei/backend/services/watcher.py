@@ -20,18 +20,16 @@
 import fedmsg
 import requests
 
-from koschei import plugin
+from koschei import plugin, backend
 from koschei.config import get_config
-from koschei.backend import Backend, service
-from koschei.backend.service import KojiService
+from koschei.backend import service
+from koschei.backend.service import Service
 from koschei.models import Build, Package
 
 
-class Watcher(KojiService):
-    def __init__(self, backend=None, *args, **kwargs):
-        super(Watcher, self).__init__(*args, **kwargs)
-        self.backend = backend or Backend(log=self.log, db=self.db,
-                                          koji_sessions=self.koji_sessions)
+class Watcher(Service):
+    def __init__(self, session):
+        super(Watcher, self).__init__(session)
 
     def get_topic(self, name):
         return '{}.{}'.format(get_config('fedmsg.topic'), name)
@@ -51,15 +49,18 @@ class Watcher(KojiService):
         build = self.db.query(Build).filter_by(task_id=task_id).first()
         if build:
             state = msg['new']
-            self.backend.update_build_state(build, state)
+            backend.update_build_state(self.session, build, state)
 
     def register_real_build(self, msg):
         pkg = self.db.query(Package).filter_by(name=msg['name']).first()
         if pkg:
-            newer_build = self.backend.get_newer_build_if_exists(pkg)
+            newer_build = backend.get_newer_build_if_exists(self.session, pkg)
             if newer_build:
-                self.backend.register_real_builds(pkg.collection,
-                                                  [(pkg.id, newer_build)])
+                backend.register_real_builds(
+                    self.session,
+                    pkg.collection,
+                    [(pkg.id, newer_build)],
+                )
 
     def notify_watchdog(self):
         if not get_config('services.watcher.watchdog'):
@@ -73,8 +74,7 @@ class Watcher(KojiService):
                 try:
                     if topic.startswith(get_config('fedmsg.topic') + '.'):
                         self.consume(topic, msg)
-                    plugin.dispatch_event('fedmsg_event', topic, msg, db=self.db,
-                                          koji_sessions=self.koji_sessions)
+                    plugin.dispatch_event('fedmsg_event', self.session, topic, msg)
                 finally:
                     self.db.rollback()
         except requests.exceptions.ConnectionError:

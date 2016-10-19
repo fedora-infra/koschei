@@ -24,8 +24,8 @@ import socket
 import time
 import resource
 
-from koschei.config import get_config
 from koschei.db import Session
+from koschei.config import get_config
 from koschei.backend.koji_util import KojiSession
 
 
@@ -37,12 +37,12 @@ def load_service(name):
 
 
 class Service(object):
-
-    def __init__(self, log=None, db=None):
-        self.log = log or logging.getLogger(
+    def __init__(self, session):
+        self.session = session
+        self.db = session.db
+        self.log = session.log = logging.getLogger(
             '{}.{}'.format(type(self).__module__, type(self).__name__),
         )
-        self.db = db or Session()
 
     def main(self):
         raise NotImplementedError()
@@ -75,34 +75,6 @@ class Service(object):
             ret = subcls.find_service(name)
             if ret:
                 return ret
-
-
-class KojiService(Service):
-    koji_anonymous = True
-
-    def __init__(self, koji_sessions=None, **kwargs):
-        super(KojiService, self).__init__(**kwargs)
-        if koji_sessions:
-            self.koji_sessions = koji_sessions
-        else:
-            primary_koji = KojiSession(anonymous=self.koji_anonymous)
-            secondary_koji = primary_koji
-            if get_config('secondary_koji_config'):
-                secondary_koji = KojiSession(koji_id='secondary')
-
-            self.koji_sessions = {
-                'primary': primary_koji,
-                'secondary': secondary_koji
-            }
-
-    def secondary_session_for(self, collection):
-        """
-        Returns secondary session for secondary mode and primary otherwise.
-
-        :param: collection collection object
-        """
-        return self.koji_sessions['secondary' if collection.secondary_mode
-                                  else 'primary']
 
 
 def sd_notify(msg):

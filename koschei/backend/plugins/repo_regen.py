@@ -35,11 +35,11 @@ def ensure_tag(koji_session, tag_name):
 
 
 @listen_event('polling_event')
-def poll_secondary_repo(backend):
+def poll_secondary_repo(session):
     log.info("Polling new external repo")
-    db = backend.db
-    primary = backend.koji_sessions['primary']
-    secondary = backend.koji_sessions['secondary']
+    db = session.db
+    primary = session.koji('primary')
+    secondary = session.koji('secondary')
     for collection in db.query(Collection).filter_by(secondary_mode=True):
         ensure_tag(primary, collection.dest_tag)
         ensure_tag(primary, collection.build_tag)

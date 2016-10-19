@@ -33,7 +33,7 @@ class DataTest(DBTest):
         self.db.add(rel)
         self.db.commit()
         content = ['a1', 'a2', 'a3']
-        data.set_group_content(self.db, group, content, append=False)
+        data.set_group_content(self.session, group, content, append=False)
 
         self.assertItemsEqual([a1.base_id, a2.base_id, a3.base_id],
                               self.db.query(PackageGroupRelation.base_id)
@@ -48,7 +48,7 @@ class DataTest(DBTest):
         self.db.add(rel)
         self.db.commit()
         content = ['a1', 'a2', 'a3']
-        data.set_group_content(self.db, group, content, append=True)
+        data.set_group_content(self.session, group, content, append=True)
 
         self.assertItemsEqual([bar.base_id, a1.base_id, a2.base_id, a3.base_id],
                               self.db.query(PackageGroupRelation.base_id)
@@ -60,5 +60,5 @@ class DataTest(DBTest):
         self.db.add(group)
         self.db.flush()
         with self.assertRaises(data.PackagesDontExist) as exc:
-            data.set_group_content(self.db, group, ['bar', 'a1', 'a2'])
+            data.set_group_content(self.session, group, ['bar', 'a1', 'a2'])
         self.assertItemsEqual({'a1', 'a2'}, exc.exception.packages)

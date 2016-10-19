@@ -24,13 +24,13 @@ from __future__ import print_function
 import re
 import os
 import sys
+import logging
 import argparse
 
-from koschei import data
-from koschei.db import get_engine, create_all, Session
+from koschei import data, backend
+from koschei.db import get_engine, create_all
 from koschei.models import (Package, PackageGroup, AdminNotice, Collection,
                             CollectionGroup)
-from koschei.backend import koji_util, Backend
 from koschei.config import load_config, get_config
 
 
@@ -40,9 +40,7 @@ load_config(['/usr/share/koschei/config.cfg',
 
 
 class Command(object):
-    needs_db = True
-    needs_koji = False
-    needs_koji_login = False
+    needs_session = True
 
     def setup_parser(self, parser):
         pass
@@ -64,23 +62,22 @@ def main():
     args = main_parser.parse_args()
     cmd = args.cmd
     kwargs = vars(args)
+    log = logging.getLogger('koschei.admin')
+    session = backend.KoscheiBackendSession()
+    session.log = log
     del kwargs['cmd']
-    if cmd.needs_db:
-        kwargs['db'] = db = Session()
-    if cmd.needs_koji or cmd.needs_koji_login:
-        primary = koji_util.KojiSession(anonymous=not cmd.needs_koji_login)
-        secondary = koji_util.KojiSession(anonymous=True, koji_id='secondary')
-        kwargs['koji_sessions'] = {'primary': primary, 'secondary': secondary}
+    if cmd.needs_session:
+        kwargs['session'] = session
     cmd.execute(**kwargs)
-    if cmd.needs_db:
-        db.commit()
-        db.close()
+    if cmd.needs_session:
+        session.db.commit()
+        session.db.close()
 
 
 class CreateDb(Command):
     """ Creates database tables """
 
-    needs_db = False
+    needs_session = False
 
     def execute(self):
         from alembic.config import Config
@@ -99,11 +96,13 @@ class Cleanup(Command):
                             "older than N months",
                             default=6)
 
-    def execute(self, db, older_than):
+    def execute(self, session, older_than):
         if older_than < 2:
             sys.exit("Minimal allowed value is 2 months")
-        db.execute("ALTER TABLE build DISABLE TRIGGER update_last_build_trigger_del")
-        db.execute("""
+        session.db.execute(
+            "ALTER TABLE build DISABLE TRIGGER update_last_build_trigger_del"
+        )
+        session.db.execute("""
             CREATE TEMPORARY TABLE excluded_build_ids AS (
                 SELECT last_build_id AS id FROM package
                 UNION
@@ -111,18 +110,20 @@ class Cleanup(Command):
             );
             CREATE UNIQUE INDEX ON excluded_build_ids(id);
         """)
-        build_res = db.execute("""
+        build_res = session.db.execute("""
             DELETE FROM build WHERE started < now() - '{months} month'::interval
                 AND NOT EXISTS (
                     SELECT 1 FROM excluded_build_ids
                     WHERE excluded_build_ids.id = build.id)
         """.format(months=older_than))
-        resolution_res = db.execute("""
+        resolution_res = session.db.execute("""
             DELETE FROM resolution_change
                 WHERE "timestamp" < now() - '{months} month':: interval
         """.format(months=older_than))
-        db.execute("ALTER TABLE build ENABLE TRIGGER update_last_build_trigger_del")
-        db.commit()
+        session.db.execute(
+            "ALTER TABLE build ENABLE TRIGGER update_last_build_trigger_del"
+        )
+        session.db.commit()
         print("Deleted {} builds".format(build_res.rowcount))
         print("Deleted {} resolution changes".format(resolution_res.rowcount))
 
@@ -133,21 +134,21 @@ class SetNotice(Command):
     def setup_parser(self, parser):
         parser.add_argument('content')
 
-    def execute(self, db, content):
+    def execute(self, session, content):
         key = 'global_notice'
         content = content.strip()
-        notice = db.query(AdminNotice).filter_by(key=key).first()
+        notice = session.db.query(AdminNotice).filter_by(key=key).first()
         notice = notice or AdminNotice(key=key)
         notice.content = content
-        db.add(notice)
+        session.db.add(notice)
 
 
 class ClearNotice(Command):
     """ Clears current admin notice """
 
-    def execute(self, db):
+    def execute(self, session):
         key = 'global_notice'
-        db.query(AdminNotice).filter_by(key=key).delete()
+        session.db.query(AdminNotice).filter_by(key=key).delete()
 
 
 class AddPkg(Command):
@@ -157,15 +158,15 @@ class AddPkg(Command):
         parser.add_argument('names', nargs='+')
         parser.add_argument('-c', '--collection', required=True)
 
-    def execute(self, db, names, collection):
+    def execute(self, session, names, collection):
         if collection:
-            collection = db.query(Collection)\
+            collection = session.db.query(Collection)\
                 .filter_by(name=collection)\
                 .first()
             if not collection:
                 sys.exit("Collection not found")
         try:
-            data.track_packages(db, collection, names)
+            data.track_packages(session, collection, names)
         except data.PackagesDontExist as e:
             sys.exit(str(e))
 
@@ -177,18 +178,18 @@ class AddGroup(Command):
         parser.add_argument('pkgs', nargs='*')
         parser.add_argument('-m', '--maintainer', nargs='*')
 
-    def execute(self, db, group, pkgs, maintainer):
+    def execute(self, session, group, pkgs, maintainer):
         namespace, name = PackageGroup.parse_name(group)
-        if (db.query(PackageGroup)
+        if (session.db.query(PackageGroup)
                 .filter_by(namespace=namespace, name=name)
                 .count()):
             sys.exit("Group already exists")
         group_obj = PackageGroup(name=name, namespace=namespace)
-        db.add(group_obj)
-        db.flush()
+        session.db.add(group_obj)
+        session.db.flush()
         try:
-            data.set_group_content(db, group, pkgs)
-            data.set_group_maintainers(db, group, maintainer)
+            data.set_group_content(session, group, pkgs)
+            data.set_group_maintainers(session, group, maintainer)
         except data.PackagesDontExist as e:
             sys.exit(str(e))
 
@@ -201,8 +202,8 @@ class SetPriority(Command):
         parser.add_argument('value')
         parser.add_argument('--static', action='store_true')
 
-    def execute(self, db, names, value, static):
-        pkgs = db.query(Package)\
+    def execute(self, session, names, value, static):
+        pkgs = session.db.query(Package)\
             .filter(Package.name.in_(names)).all()
         if len(names) != len(pkgs):
             not_found = set(names).difference(pkg.name for pkg in pkgs)
@@ -226,16 +227,16 @@ class SetArchOverride(Command):
         parser.add_argument('--group', action='store_true',
                             help="Apply on entire group instead of single package")
 
-    def execute(self, db, name, arch_override, group):
+    def execute(self, session, name, arch_override, group):
         if group:
-            group_obj = db.query(PackageGroup)\
-                                  .filter_by(name=name).first()
+            group_obj = session.db.query(PackageGroup)\
+                .filter_by(name=name).first()
             if not group_obj:
                 sys.exit("Group {} not found".format(name))
             for pkg in group_obj.packages:
                 pkg.arch_override = arch_override
         else:
-            pkg = db.query(Package).filter_by(name=name).first()
+            pkg = session.db.query(Package).filter_by(name=name).first()
             if not pkg:
                 sys.exit("Package {} not found".format(name))
             pkg.arch_override = arch_override
@@ -252,13 +253,13 @@ class GroupCommandParser(object):
                             help="Appends to existing list of packages instead "
                             "of overwriting it")
 
-    def set_group_content(self, db, group, content_from_file, append):
+    def set_group_content(self, session, group, content_from_file, append):
 
         def from_fo(fo):
             content = filter(None, fo.read().split())
             if not content:
                 sys.exit("Group content empty")
-            data.set_group_content(db, group, content, append)
+            data.set_group_content(session, group, content, append)
 
         if content_from_file == '-':
             from_fo(sys.stdin)
@@ -276,16 +277,16 @@ class CreateGroup(GroupCommandParser, Command):
                             "just name for global groups")
         super(CreateGroup, self).setup_parser(parser)
 
-    def execute(self, db, name, content_from_file, append):
+    def execute(self, session, name, content_from_file, append):
         ns, name = PackageGroup.parse_name(name)
-        group = db.query(PackageGroup)\
+        group = session.db.query(PackageGroup)\
             .filter_by(name=name, namespace=ns or None).first()
         if group:
             sys.exit("Group already exists")
         group = PackageGroup(name=name, namespace=ns)
-        db.add(group)
-        db.flush()
-        self.set_group_content(db, group, content_from_file, append)
+        session.db.add(group)
+        session.db.flush()
+        self.set_group_content(session, group, content_from_file, append)
 
 
 class EditGroup(GroupCommandParser, Command):
@@ -303,10 +304,10 @@ class EditGroup(GroupCommandParser, Command):
                             help="Sets group as global (unsets namespace)")
         super(EditGroup, self).setup_parser(parser)
 
-    def execute(self, db, current_name, new_name, new_namespace,
+    def execute(self, session, current_name, new_name, new_namespace,
                 make_global, content_from_file, append):
         ns, name = PackageGroup.parse_name(current_name)
-        group = db.query(PackageGroup)\
+        group = session.db.query(PackageGroup)\
             .filter_by(name=name, namespace=ns or None).first()
         if not group:
             sys.exit("Group {} not found".format(current_name))
@@ -316,28 +317,28 @@ class EditGroup(GroupCommandParser, Command):
             group.namespace = new_namespace
         if make_global:
             group.namespace = None
-        self.set_group_content(db, group, content_from_file, append)
+        self.set_group_content(session, group, content_from_file, append)
 
 
 class EntityCommand(object):
     # entity needs to be overriden
-    def get(self, db, name, **kwargs):
-        return db.query(self.entity).filter(self.entity.name == name).first()
+    def get(self, session, name, **kwargs):
+        return session.db.query(self.entity).filter(self.entity.name == name).first()
 
 
 class CreateEntityCommand(EntityCommand):
-    def execute(self, db, **kwargs):
-        instance = self.get(db, **kwargs)
+    def execute(self, session, **kwargs):
+        instance = self.get(session, **kwargs)
         if instance:
             sys.exit("Object already exists")
         instance = self.entity(**kwargs)
-        db.add(instance)
+        session.db.add(instance)
         return instance
 
 
 class EditEntityCommand(EntityCommand):
-    def execute(self, db, **kwargs):
-        instance = self.get(db, **kwargs)
+    def execute(self, session, **kwargs):
+        instance = self.get(session, **kwargs)
         if not instance:
             sys.exit("Object not found")
         for key, value in kwargs.items():
@@ -347,11 +348,11 @@ class EditEntityCommand(EntityCommand):
 
 
 class DeleteEntityCommand(EntityCommand):
-    def execute(self, db, **kwargs):
-        instance = self.get(db, **kwargs)
+    def execute(self, session, **kwargs):
+        instance = self.get(session, **kwargs)
         if not instance:
             sys.exit("Object not found")
-        db.delete(instance)
+        session.db.delete(instance)
 
 
 class CollectionModeAction(argparse.Action):
@@ -361,7 +362,6 @@ class CollectionModeAction(argparse.Action):
 
 class CreateOrEditCollectionCommand(object):
     create = True
-    needs_koji = True
 
     def setup_parser(self, parser):
         parser.add_argument('name',
@@ -397,11 +397,11 @@ class CreateOrEditCollectionCommand(object):
                             help="Product version used in bugzilla template")
 
 
-    def set_koji_tags(self, koji_sessions, collection):
+    def set_koji_tags(self, session, collection):
         if collection.secondary_mode:
-            koji_session = koji_sessions['secondary']
+            koji_session = session.koji('secondary')
         else:
-            koji_session = koji_sessions['primary']
+            koji_session = session.koji('primary')
         target_info = koji_session.getBuildTarget(collection.target)
         if not target_info:
             sys.exit("Target not found in Koji")
@@ -413,9 +413,9 @@ class CreateCollection(CreateOrEditCollectionCommand, CreateEntityCommand, Comma
     """ Creates new package collection """
     entity = Collection
 
-    def execute(self, db, koji_sessions, **kwargs):
-        collection = super(CreateCollection, self).execute(db, **kwargs)
-        self.set_koji_tags(koji_sessions, collection)
+    def execute(self, session, **kwargs):
+        collection = super(CreateCollection, self).execute(session, **kwargs)
+        self.set_koji_tags(session, collection)
 
 
 class EditCollection(CreateOrEditCollectionCommand, EditEntityCommand, Command):
@@ -423,12 +423,12 @@ class EditCollection(CreateOrEditCollectionCommand, EditEntityCommand, Command):
     entity = Collection
     create = False
 
-    def execute(self, db, koji_sessions, new_name, **kwargs):
-        collection = super(EditCollection, self).execute(db, **kwargs)
+    def execute(self, session, new_name, **kwargs):
+        collection = super(EditCollection, self).execute(session, **kwargs)
         if new_name:
             collection.name = new_name
         if kwargs['secondary_mode'] is not None or kwargs['target'] is not None:
-            self.set_koji_tags(koji_sessions, collection)
+            self.set_koji_tags(session, collection)
 
 
 class DeleteCollection(Command):
@@ -440,16 +440,16 @@ class DeleteCollection(Command):
                             help="Name identificator")
         parser.add_argument('-f', '--force', action='store_true')
 
-    def execute(self, db, name, force):
-        collection = db.query(Collection).filter_by(name=name).first()
+    def execute(self, session, name, force):
+        collection = session.db.query(Collection).filter_by(name=name).first()
         if not collection:
             sys.exit("Collection not found")
         if (not force and
-                db.query(Package).filter_by(collection_id=collection.id).count()):
+                session.db.query(Package).filter_by(collection_id=collection.id).count()):
             sys.exit("The collection contains packages. Specify --force to delete "
                      "it anyway. It means deleting all the packages build history. "
                      "It cannot be reverted and may take long time to execute")
-        db.delete(collection)
+        session.db.delete(collection)
 
 
 class CreateOrEditCollectionGroupCommand(object):
@@ -465,10 +465,11 @@ class CreateOrEditCollectionGroupCommand(object):
                             help="Signifies that remaining arguments are "
                             "group contents")
 
-    def execute(self, db, contents, **kwargs):
-        group = super(CreateOrEditCollectionGroupCommand, self).execute(db, **kwargs)
+    def execute(self, session, contents, **kwargs):
+        group = super(CreateOrEditCollectionGroupCommand, self)\
+            .execute(session, **kwargs)
         if contents:
-            data.set_collection_group_content(db, group, contents)
+            data.set_collection_group_content(session, group, contents)
 
 
 class CreateCollectionGroup(CreateOrEditCollectionGroupCommand,
@@ -496,9 +497,7 @@ class DeleteCollectionGroup(DeleteEntityCommand, Command):
 
 class Psql(Command):
     """ Convenience to get psql shell connected to koschei DB. """
-
-    needs_backend = False
-    needs_db = False
+    needs_session = False
 
     def setup_parser(self, parser):
         parser.add_argument('args', nargs='*',
@@ -520,18 +519,15 @@ class Psql(Command):
 class SubmitBuild(Command):
     """ Forces scratch-build for given packages to be submitted to Koji. """
 
-    needs_koji_login = True
-
     def setup_parser(self, parser):
         # TODO allow selecting particular collection
         parser.add_argument('names', nargs='+')
 
-    def execute(self, db, koji_sessions, names):
-        pkgs = db.query(Package)\
+    def execute(self, session, names):
+        pkgs = session.db.query(Package)\
             .filter(Package.name.in_(names)).all()
-        backend = Backend(db=db, koji_sessions=koji_sessions)
         for pkg in pkgs:
-            backend.submit_build(pkg)
+            backend.submit_build(session, pkg)
 
 
 if __name__ == '__main__':

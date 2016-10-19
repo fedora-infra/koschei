@@ -39,7 +39,7 @@ from wtforms.validators import Regexp, ValidationError
 
 from koschei import util, plugin, data
 from koschei.config import get_config
-from koschei.frontend import app, db, frontend_config, auth
+from koschei.frontend import app, db, frontend_config, auth, session
 from koschei.models import (Package, Build, PackageGroup, PackageGroupRelation,
                             AdminNotice, BuildrootProblem, BasePackage,
                             GroupACL, Collection, CollectionGroup,
@@ -589,7 +589,7 @@ def group_detail(name=None, namespace=None):
 def user_packages(name):
     names = []
     try:
-        for res in plugin.dispatch_event('get_user_packages', username=name):
+        for res in plugin.dispatch_event('get_user_packages', session, username=name):
             if res:
                 names += res
     except Exception:
@@ -712,8 +712,8 @@ def process_group_form(group=None):
         flash("Group already exists")
         return render_template('edit-group.html', group=group, form=form)
     try:
-        data.set_group_content(db, group, form.packages.data)
-        data.set_group_maintainers(db, group, form.owners.data)
+        data.set_group_content(session, group, form.packages.data)
+        data.set_group_maintainers(session, group, form.owners.data)
     except data.PackagesDontExist as e:
         db.rollback()
         flash(str(e))
@@ -781,10 +781,10 @@ if not frontend_config['auto_tracking']:
                           .first_or_404()
                 if not group.editable:
                     abort(400)
-                data.set_group_content(db, group, names, append=True)
+                data.set_group_content(session, group, names, append=True)
 
             try:
-                added = data.track_packages(db, collection, names)
+                added = data.track_packages(session, collection, names)
             except data.PackagesDontExist as e:
                 db.rollback()
                 flash(str(e))
@@ -897,6 +897,7 @@ def edit_collection(name):
         abort(403)
     # Not implemented
     abort(501)
+
 
 @app.route('/depchange/<dep_name>')
 def depchange(dep_name):

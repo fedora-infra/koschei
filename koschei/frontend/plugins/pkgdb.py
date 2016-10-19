@@ -59,7 +59,7 @@ def query_users_packages(username):
 
 
 @listen_event('get_user_packages')
-def get_user_packages(username):
+def get_user_packages(session, username):
     def create():
         names = query_users_packages(username)
         return names

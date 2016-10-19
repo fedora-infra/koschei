@@ -22,26 +22,21 @@ import koji
 from koschei.backend.koji_util import itercall
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
-from koschei import plugin
-from koschei.backend import Backend
-from koschei.backend.service import KojiService
+from koschei import plugin, backend
+from koschei.backend.service import Service
 from koschei.models import Build
 
 
-class Polling(KojiService):
-    koji_anonymous = False
-
-    def __init__(self, backend=None, *args, **kwargs):
-        super(Polling, self).__init__(*args, **kwargs)
-        self.backend = backend or Backend(log=self.log, db=self.db,
-                                          koji_sessions=self.koji_sessions)
+class Polling(Service):
+    def __init__(self, session):
+        super(Polling, self).__init__(session)
 
     def poll_builds(self):
         self.log.info('Polling running Koji tasks...')
         running_builds = self.db.query(Build)\
                                 .filter_by(state=Build.RUNNING)
 
-        infos = itercall(self.koji_sessions['primary'], running_builds,
+        infos = itercall(self.session.koji('primary'), running_builds,
                          lambda k, b: k.getTaskInfo(b.task_id))
 
         for task_info, build in zip(infos, running_builds):
@@ -51,7 +46,7 @@ class Polling(KojiService):
                               .format(id=build.task_id, name=name,
                                       info=task_info))
                 state = koji.TASK_STATES[task_info['state']]
-                self.backend.update_build_state(build, state)
+                backend.update_build_state(self.session, build, state)
             except (StaleDataError, ObjectDeletedError):
                 # build was deleted concurrently
                 self.db.rollback()
@@ -60,13 +55,13 @@ class Polling(KojiService):
     def main(self):
         self.poll_builds()
         self.log.info('Polling Koji packages...')
-        self.backend.refresh_packages()
+        backend.refresh_packages(self.session)
         self.db.commit()
         self.db.close()
-        plugin.dispatch_event('polling_event', self.backend)
+        plugin.dispatch_event('polling_event', self.session)
         self.db.commit()
         self.db.close()
         self.log.info('Polling latest real builds...')
-        self.backend.refresh_latest_builds()
+        backend.refresh_latest_builds(self.session)
         self.db.commit()
         self.log.info('Polling finished')

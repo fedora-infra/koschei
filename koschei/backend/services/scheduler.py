@@ -23,9 +23,11 @@ import time
 
 from sqlalchemy import (func, union_all, extract, cast, Integer, case, null,
                         literal_column, text, Column)
+
+from koschei import backend
 from koschei.config import get_config
-from koschei.backend import Backend, koji_util
-from koschei.backend.service import KojiService
+from koschei.backend import koji_util
+from koschei.backend.service import Service
 from koschei.models import Package, Build, Collection
 
 
@@ -33,13 +35,11 @@ def hours_since(what):
     return extract('EPOCH', literal_column('clock_timestamp()') - what) / 3600
 
 
-class Scheduler(KojiService):
+class Scheduler(Service):
     koji_anonymous = False
 
-    def __init__(self, backend=None, *args, **kwargs):
-        super(Scheduler, self).__init__(*args, **kwargs)
-        self.backend = backend or Backend(log=self.log, db=self.db,
-                                          koji_sessions=self.koji_sessions)
+    def __init__(self, session):
+        super(Scheduler, self).__init__(session)
         self.calculation_timestamp = 0
 
     def get_dependency_priority_query(self):
@@ -145,7 +145,7 @@ class Scheduler(KojiService):
             self.log.debug("Not scheduling: {} incomplete builds"
                            .format(incomplete_builds))
             return
-        koji_load = koji_util.get_koji_load(self.koji_sessions['primary'])
+        koji_load = koji_util.get_koji_load(self.session.koji('primary'))
         if koji_load > get_config('koji_config.load_threshold'):
             self.log.debug("Not scheduling: {} koji load"
                            .format(koji_load))
@@ -164,7 +164,7 @@ class Scheduler(KojiService):
             # a package was chosen
             self.log.info('Scheduling build for {}, priority {}'
                           .format(package.name, priority))
-            build = self.backend.submit_build(package)
+            build = backend.submit_build(self.session, package)
             package.current_priority = None
             package.scheduler_skip_reason = None
             package.manual_priority = 0

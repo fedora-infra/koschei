@@ -22,6 +22,7 @@ import requests
 import fedmsg.meta
 import dogpile.cache
 
+from koschei import backend
 from koschei.models import Package
 from koschei.config import get_config
 from koschei.plugin import listen_event
@@ -59,7 +60,7 @@ def query_monitored_packages():
 
 
 @listen_event('fedmsg_event')
-def consume_fedmsg(topic, msg, db, **kwargs):
+def consume_fedmsg(session, topic, msg):
     topic_re = re.compile(get_config('pkgdb.topic_re'))
     if topic_re.search(topic):
         if topic.endswith('.pkgdb.package.koschei.update'):
@@ -68,22 +69,22 @@ def consume_fedmsg(topic, msg, db, **kwargs):
             tracked = package['koschei_monitor']
             log.debug('Setting tracking flag for package %s to %r',
                       name, tracked)
-            db.query(Package)\
-              .filter_by(name=name)\
-              .update({'tracked': tracked}, synchronize_session=False)
-            db.expire_all()
-            db.commit()
+            session.db.query(Package)\
+                .filter_by(name=name)\
+                .update({'tracked': tracked}, synchronize_session=False)
+            session.db.expire_all()
+            session.db.commit()
         for username in fedmsg.meta.msg2usernames(msg):
             get_cache().delete(str(username))
 
 
 @listen_event('polling_event')
-def refresh_monitored_packages(backend):
+def refresh_monitored_packages(session):
     try:
         if get_config('pkgdb.sync_tracked'):
             log.debug('Polling monitored packages...')
             packages = query_monitored_packages()
             if packages is not None:
-                backend.sync_tracked(packages)
+                backend.sync_tracked(session, packages)
     except requests.ConnectionError:
         log.exception("Polling monitored packages failed, skipping cycle")

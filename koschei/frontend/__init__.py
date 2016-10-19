@@ -20,8 +20,9 @@ from flask import Flask, abort, request
 from flask_sqlalchemy import BaseQuery, Pagination
 from sqlalchemy.orm import scoped_session, sessionmaker
 
+from koschei.session import KoscheiSession
 from koschei.config import get_config, load_config
-from koschei.db import get_engine, Query
+from koschei.db import Query, get_engine
 
 dirs = get_config('directories')
 app = Flask('koschei', template_folder=dirs['templates'],
@@ -54,9 +55,8 @@ class FrontendQuery(Query, BaseQuery):
 db = scoped_session(sessionmaker(autocommit=False, bind=get_engine(),
                                  query_cls=FrontendQuery))
 
-# Following will make pylint shut up about missing query method
-if False:
-    db.query = lambda *args: None
-    db.add = lambda x: None
-    db.commit = lambda: None
-    db.flush = lambda: None
+
+class KoscheiFrontendSession(KoscheiSession):
+    db = db
+
+session = KoscheiFrontendSession()

@@ -22,7 +22,7 @@ import logging
 import signal
 import sys
 
-from koschei import plugin
+from koschei import plugin, backend
 from koschei.config import load_config
 from koschei.backend import service
 
@@ -60,7 +60,7 @@ def main():
         sys.exit(2)
     signal.signal(signal.SIGTERM, lambda x, y: sys.exit(0))
     try:
-        svc().run_service()
+        svc(backend.KoscheiBackendSession()).run_service()
     except Exception:
         log.exception("Service %s crashed.", args.service)
         raise

@@ -26,7 +26,7 @@ log = logging.getLogger('koschei.plugin.fedmsg_publisher')
 
 
 @listen_event('package_state_change')
-def emit_package_state_update(package, prev_state, new_state):
+def emit_package_state_update(session, package, prev_state, new_state):
     if prev_state == new_state:
         return
     group_names = [group.full_name for group in package.groups]

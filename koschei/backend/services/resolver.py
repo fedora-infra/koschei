@@ -17,21 +17,21 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
+import koji
+
 from collections import OrderedDict, namedtuple
 from itertools import izip, groupby
 
-import koji
-from koschei.backend.koji_util import itercall
-from koschei.backend.service import KojiService
 from sqlalchemy.orm import joinedload, undefer
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 from sqlalchemy.sql import insert
 
-from koschei import util
+from koschei import util, backend
 from koschei.config import get_config
-from koschei.backend import Backend, koji_util, depsolve
+from koschei.backend import koji_util, depsolve
+from koschei.backend.service import Service
+from koschei.backend.koji_util import itercall
 from koschei.backend.repo_util import KojiRepoDescriptor
-from koschei.backend.repo_cache import RepoCache
 from koschei.models import (Package, Dependency, UnappliedChange,
                             AppliedChange, Collection, ResolutionProblem,
                             Build, BuildrootProblem, RepoMapping,
@@ -134,26 +134,18 @@ class DependencyCache(object):
         return res
 
 
-class Resolver(KojiService):
-    def __init__(self, log=None, db=None, koji_sessions=None,
-                 repo_cache=None, backend=None):
-        super(Resolver, self).__init__(log=log, db=db,
-                                       koji_sessions=koji_sessions)
-        self.repo_cache = repo_cache or RepoCache()
-        self.backend = backend or Backend(koji_sessions=self.koji_sessions,
-                                          log=self.log, db=self.db)
-        self.build_groups = {}
+class Resolver(Service):
+    def __init__(self, session):
+        super(Resolver, self).__init__(session)
         capacity = get_config('dependency.dependency_cache_capacity')
         self.dependency_cache = DependencyCache(capacity=capacity)
 
     def get_build_group(self, collection):
-        group = self.build_groups.get(collection.id)
-        if group is None:
-            group = koji_util.get_build_group(self.koji_sessions['primary'],
-                                              collection.build_tag,
-                                              collection.build_group)
-            self.build_groups[collection.id] = group
-        assert group
+        group = koji_util.get_build_group(
+            self.session.koji('primary'),
+            collection.build_tag,
+            collection.build_group,
+        )
         return group
 
     def store_deps(self, installs):
@@ -223,7 +215,7 @@ class Resolver(KojiService):
     def set_descriptor_tags(self, collection, descriptors):
         def koji_call(koji_session, desc):
             koji_session.repoInfo(desc.repo_id)
-        result_gen = itercall(self.secondary_session_for(collection),
+        result_gen = itercall(self.session.secondary_koji_for(collection),
                               descriptors, koji_call)
         for desc, repo_info in izip(descriptors, result_gen):
             if repo_info['state'] in (koji.REPO_STATES['READY'],
@@ -341,9 +333,13 @@ class Resolver(KojiService):
                 .options(joinedload(Package.groups),
                          joinedload(Package.collection)):
                 prev_state, new_state = state_changes[package.id]
-                dispatch_event('package_state_change', package=package,
-                               prev_state=prev_state,
-                               new_state=new_state)
+                dispatch_event(
+                    'package_state_change',
+                    self.session,
+                    package=package,
+                    prev_state=prev_state,
+                    new_state=new_state,
+                )
 
     def generate_dependency_changes(self, sack, collection, packages, brs, repo_id):
         """
@@ -402,12 +398,12 @@ class Resolver(KojiService):
             return
         packages = self.get_packages(collection)
         brs = koji_util.get_rpm_requires(
-            self.secondary_session_for(collection),
+            self.session.secondary_koji_for(collection),
             [p.srpm_nvra for p in packages]
         )
         brs = util.parallel_generator(brs, queue_size=None)
         try:
-            sack = self.repo_cache.get_sack(repo_descriptor)
+            sack = self.session.repo_cache.get_sack(repo_descriptor)
             if not sack:
                 self.log.error('Cannot generate repo: {}'.format(repo_id))
                 self.db.rollback()
@@ -497,7 +493,7 @@ class Resolver(KojiService):
                 .update({'deps_resolved': False}, synchronize_session=False)
             self.db.commit()
         buildrequires = koji_util.get_rpm_requires(
-            self.secondary_session_for(collection),
+            self.session.secondary_koji_for(collection),
             [dict(name=b.name, version=b.version, release=b.release, arch='src')
              for b in builds_to_process]
         )
@@ -507,7 +503,7 @@ class Resolver(KojiService):
                                                    builds_to_process,
                                                    buildrequires),
                                               lambda item: item[0]):
-            sack = self.repo_cache.get_sack(repo_descriptor)
+            sack = self.session.repo_cache.get_sack(repo_descriptor)
             if sack:
                 for _, build, brs in group:
                     build_group = self.get_build_group(collection)
@@ -532,16 +528,16 @@ class Resolver(KojiService):
         for collection in self.db.query(Collection).all():
             self.process_builds(collection)
             curr_repo = koji_util.get_latest_repo(
-                self.secondary_session_for(collection),
+                self.session.secondary_koji_for(collection),
                 collection.build_tag)
             if curr_repo and collection.secondary_mode:
-                self.backend.refresh_repo_mappings()
+                backend.refresh_repo_mappings(self.session)
                 mapping = self.db.query(RepoMapping)\
                     .filter_by(secondary_id=curr_repo['id'])\
                     .first()
                 # don't resolve it if we don't have it on primary yet
                 if not (mapping and mapping.primary_id and
-                        self.koji_sessions['primary']
+                        self.session.koji('primary')
                         .getTaskInfo(mapping.task_id)['state'] ==
                         koji.TASK_STATES['CLOSED']):
                     continue
