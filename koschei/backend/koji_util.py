@@ -128,6 +128,16 @@ def get_build_group(koji_session, tag_name, group_name):
             if not package['blocked'] and package['type'] in ('default', 'mandatory')]
 
 
+def get_build_group_cached(session, koji_session, tag_name, group_name):
+    cache = session.cache('build_group')
+
+    @cache.cache_on_arguments(namespace='build_group-' + koji_session.koji_id)
+    def get_build_group_inner(key):
+        return get_build_group(koji_session, key[0], key[1])
+
+    return get_build_group_inner((tag_name, group_name))
+
+
 def get_rpm_requires(koji_session, nvras):
     deps_list = itercall(koji_session, nvras,
                          lambda k, nvra: k.getRPMDeps(nvra, koji.DEP_REQUIRE))

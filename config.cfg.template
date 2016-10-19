@@ -150,6 +150,9 @@ config = {
     # configuration is passed directly to dogpile.cache, for possible values
     # see its documentation
     "caching": {
+        "build_group": {
+            "backend": "dogpile.cache.memory",
+        },
         "plugin": {
             "pkgdb": {
                 "users": {

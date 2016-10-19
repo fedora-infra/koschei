@@ -141,7 +141,8 @@ class Resolver(Service):
         self.dependency_cache = DependencyCache(capacity=capacity)
 
     def get_build_group(self, collection):
-        group = koji_util.get_build_group(
+        group = koji_util.get_build_group_cached(
+            self.session,
             self.session.koji('primary'),
             collection.build_tag,
             collection.build_group,
