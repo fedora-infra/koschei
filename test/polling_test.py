@@ -17,55 +17,42 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 import koji
-from mock import Mock, call
+from mock import patch, call
 
 from test.common import DBTest
 from koschei.backend.services.polling import Polling
 
 
 class PollingTest(DBTest):
-
-    def get_koji_mock(self, state='CLOSED'):
-        koji_mock = Mock()
-
-        def multiCall():
-            return [[{'state': koji.TASK_STATES[state]}]] * 2
-        koji_mock.multiCall = multiCall
-        return koji_mock
-
     def test_poll_none(self):
         self.prepare_build('rnv', True)
         self.prepare_build('eclipse', False)
-        koji_mock = self.get_koji_mock()
-        backend_mock = Mock()
-        polling = Polling(db=self.db, koji_sessions={'primary': koji_mock,
-                                                     'secondary': koji_mock},
-                          backend=backend_mock)
-        polling.poll_builds()
-        self.assertFalse(koji_mock.getTaskInfo.called)
-        self.assertFalse(backend_mock.update_build_state.called)
+        with patch('koschei.backend.update_build_state') as update_mock:
+            polling = Polling(self.session)
+            polling.poll_builds()
+            self.assertFalse(self.session.koji_mock.getTaskInfo.called)
+            self.assertFalse(update_mock.called)
 
     def test_poll_complete(self):
         build = self.prepare_build('rnv')
-        backend_mock = Mock()
-        koji_mock = self.get_koji_mock()
-        polling = Polling(db=self.db, koji_sessions={'primary': koji_mock,
-                                                     'secondary': koji_mock},
-                          backend=backend_mock)
-        polling.poll_builds()
-        backend_mock.update_build_state.assert_called_once_with(build, 'CLOSED')
+        self.session.koji_mock.getTaskInfo.return_value = \
+            {'state': koji.TASK_STATES['CLOSED']}
+        with patch('koschei.backend.update_build_state') as update_mock:
+            polling = Polling(self.session)
+            polling.poll_builds()
+            update_mock.assert_called_once_with(self.session, build, 'CLOSED')
 
     def test_poll_multiple(self):
         rnv_build = self.prepare_build('rnv')
         eclipse_build = self.prepare_build('eclipse')
         self.prepare_build('expat', False)
-        backend_mock = Mock()
-        koji_mock = self.get_koji_mock(state='FAILED')
-        polling = Polling(db=self.db, koji_sessions={'primary': koji_mock,
-                                                     'secondary': koji_mock},
-                          backend=backend_mock)
-        polling.poll_builds()
-        backend_mock.update_build_state.assert_has_calls(
-            [call(rnv_build, 'FAILED'),
-             call(eclipse_build, 'FAILED')],
-            any_order=True)
+        self.session.koji_mock.getTaskInfo.return_value = \
+            {'state': koji.TASK_STATES['FAILED']}
+        with patch('koschei.backend.update_build_state') as update_mock:
+            polling = Polling(self.session)
+            polling.poll_builds()
+            update_mock.assert_has_calls(
+                [call(self.session, rnv_build, 'FAILED'),
+                 call(self.session, eclipse_build, 'FAILED')],
+                any_order=True,
+            )

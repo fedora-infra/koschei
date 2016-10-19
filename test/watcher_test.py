@@ -44,40 +44,35 @@ class WatcherTest(DBTest):
             yield ('', '', 'org.fedoraproject.prod.buildsys.task.state.change',
                    generate_state_change())
         with patch('fedmsg.tail_messages', tail_messages_mock):
-            Watcher(db=Mock(),
-                    koji_sessions={'primary': Mock(), 'secondary': Mock()}).main()
+            Watcher(self.session).main()
 
     def test_ignored_instance(self):
         def tail_messages_mock():
             yield ('', '', test_topic + '.task.state.change',
                    generate_state_change(instance='ppc'))
         with patch('fedmsg.tail_messages', tail_messages_mock):
-            Watcher(db=Mock(),
-                    koji_sessions={'primary': Mock(), 'secondary': Mock()}).main()
+            Watcher(self.session).main()
 
     def test_task_completed(self):
         def tail_messages_mock():
             yield ('', '', test_topic + '.task.state.change',
                    generate_state_change())
         _, build = self.prepare_basic_data()
-        backend_mock = Mock()
         with patch('fedmsg.tail_messages', tail_messages_mock):
-            Watcher(db=self.db,
-                    koji_sessions={'primary': Mock(), 'secondary': Mock()},
-                    backend=backend_mock).main()
-            backend_mock.update_build_state.assert_called_once_with(build, 'CLOSED')
+            with patch('koschei.backend.update_build_state') as update_mock:
+                Watcher(self.session).main()
+                update_mock.assert_called_once_with(self.session, build, 'CLOSED')
 
     def test_real_build(self):
-        koji_mock = KojiMock()
-        koji_mock.getTaskInfo = Mock(return_value=rnv_task)
-        koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
+        self.session.koji_mock.getTaskInfo = Mock(return_value=rnv_task)
+        self.session.koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
         package = self.prepare_packages('rnv')[0]
         build = self.prepare_build('rnv', False)
         build.repo_id = 1
         build.epoch = None
         build.version = "1.7.11"
         build.release = "9.fc24"
-        koji_mock.listTagged = Mock(return_value=rnv_build_info)
+        self.session.koji_mock.listTagged = Mock(return_value=rnv_build_info)
         self.db.commit()
         msg = {
             'msg': {
@@ -91,11 +86,12 @@ class WatcherTest(DBTest):
                 'version': '1.7.11',
             }
         }
+
         def tail_messages_mock():
             yield '', '', test_topic + '.tag', msg
+
         with patch('fedmsg.tail_messages', tail_messages_mock):
-            Watcher(db=self.db,
-                    koji_sessions={'primary': koji_mock, 'secondary': Mock()}).main()
+            Watcher(self.session).main()
         self.assertEqual('ok', package.state_string)
         self.assertEquals(460889, package.last_complete_build.repo_id)
         self.assertItemsEqual([(x['id'],) for x in rnv_subtasks],

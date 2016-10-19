@@ -31,35 +31,23 @@ class MyService(Service):
         self.__class__.main = main or (lambda inst: 0)
         super(MyService, self).__init__(*args, **kwargs)
 
+
 class ServiceTest(AbstractTest):
     def test_abstract(self):
-        s = Service(log=Mock(), db=Mock())
+        s = Service(session=Mock())
         self.assertRaises(NotImplementedError, s.main)
-
-    def test_create_session(self):
-        with patch('koschei.backend.service.Session') as create:
-            MyService(log=Mock())
-            create.assert_called_once_with()
-
-    def test_create_log(self):
-        with patch('logging.getLogger') as log:
-            s = MyService(db=Mock())
-            log.assert_called_once_with('test.service_test.MyService')
-            self.assertIs(log(), s.log)
 
     def test_run(self):
         with patch('time.sleep') as sleep:
             called = [0]
+
             def main(inst):
                 called[0] += 1
                 if called[0] == 3:
                     raise MyException()
-            mock_log = Mock()
-            mock_db = Mock()
-            s = MyService(main, log=mock_log, db=mock_db)
+            s = MyService(main, session=Mock())
             self.assertRaises(MyException, s.run_service)
             self.assertEqual(3, called[0])
-            self.assertEqual(3, mock_db.close.call_count)
             sleep.assert_has_calls([call(3)] * 2)
 
     def test_find_nonexistent(self):

@@ -23,7 +23,8 @@ import hawkey
 import koji
 from mock import Mock, patch
 
-from test.common import DBTest, KojiMock, RepoCacheMock
+from test.common import DBTest, RepoCacheMock
+from koschei import plugin
 from koschei.backend import koji_util
 from koschei.backend.services.resolver import Resolver, DependencyCache
 from koschei.backend.repo_util import KojiRepoDescriptor
@@ -177,16 +178,18 @@ class ResolverTest(DBTest):
 
     def setUp(self):
         super(ResolverTest, self).setUp()
-        self.koji_mock = KojiMock()
-        self.koji_mock.repoInfo.return_value = {'id': 123, 'tag_name': 'f25-build',
-                                                'state': koji.REPO_STATES['READY']}
-        self.sec_koji_mock = KojiMock()
-        self.sec_koji_mock.repoInfo.return_value = {'id': 123, 'tag_name': 'f25-build',
-                                                    'state': koji.REPO_STATES['READY']}
-        self.resolver = Resolver(db=self.db,
-                                 koji_sessions={'primary': self.koji_mock,
-                                                'secondary': self.sec_koji_mock},
-                                 repo_cache=RepoCacheMock())
+        plugin.load_plugins('backend', ['fedmsg_publisher'])
+        self.session.koji_mock.repoInfo.return_value = {
+            'id': 123,
+            'tag_name': 'f25-build',
+            'state': koji.REPO_STATES['READY'],
+        }
+        self.session.sec_koji_mock.repoInfo.return_value = {
+            'id': 123,
+            'tag_name': 'f25-build',
+            'state': koji.REPO_STATES['READY'],
+        }
+        self.resolver = Resolver(self.session)
 
     def prepare_foo_build(self, repo_id=123, version='4'):
         self.prepare_packages('foo')
@@ -422,7 +425,6 @@ class ResolverTest(DBTest):
             self.assertIn('nonexistent',
                           ''.join(p.problem for p in self.db.query(BuildrootProblem)))
 
-        self.resolver.build_groups = {}
         with patch('koschei.backend.koji_util.get_build_group',
                    return_value=['R']):
             with patch('koschei.backend.koji_util.get_rpm_requires',

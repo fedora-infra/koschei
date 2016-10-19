@@ -30,10 +30,7 @@ from koschei.backend.services.scheduler import Scheduler
 # pylint:disable = too-many-public-methods, unbalanced-tuple-unpacking
 class SchedulerTest(DBTest):
     def get_scheduler(self):
-        backend_mock = Mock()
-        sched = Scheduler(db=self.db,
-                          koji_sessions={'primary': Mock(), 'secondary': Mock()},
-                          backend=backend_mock)
+        sched = Scheduler(self.session)
         return sched
 
     def prepare_depchanges(self):
@@ -244,17 +241,19 @@ class SchedulerTest(DBTest):
         with patch('koschei.backend.koji_util.get_koji_load',
                    Mock(return_value=koji_load)):
             sched = self.get_scheduler()
+
             def get_prio_q():
-                return {i :self.db.query(t.c.pkg_id.label('pkg_id'),
+                return {i: self.db.query(t.c.pkg_id.label('pkg_id'),
                                          t.c.priority.label('priority'))
                         for i, t in enumerate(tables)}
             with patch.object(sched, 'get_priority_queries', get_prio_q):
-                sched.main()
-                if scheduled:
-                    pkg = self.db.query(Package).filter_by(name=scheduled).one()
-                    sched.backend.submit_build.assert_called_once_with(pkg)
-                else:
-                    self.assertFalse(sched.backend.submit_build.called)
+                with patch('koschei.backend.submit_build') as submit_mock:
+                    sched.main()
+                    if scheduled:
+                        pkg = self.db.query(Package).filter_by(name=scheduled).one()
+                        submit_mock.assert_called_once_with(self.session, pkg)
+                    else:
+                        self.assertFalse(submit_mock.called)
 
     def test_low(self):
         with self.prio_table(rnv=10) as table:

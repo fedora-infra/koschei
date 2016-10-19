@@ -33,7 +33,7 @@ from test import testdir, config
 from koschei.db import get_engine, create_all, Base, Session
 from koschei.models import (Package, Build, Collection, BasePackage,
                             PackageGroupRelation, PackageGroup, GroupACL, User)
-from koschei.backend import repo_util
+from koschei.backend import KoscheiBackendSession, repo_util
 
 
 workdir = '.workdir'
@@ -64,6 +64,26 @@ class AbstractTest(unittest.TestCase):
     def get_json_data(name):
         with open(os.path.join(testdir, 'data', name)) as fo:
             return json.load(fo)
+
+
+class KoscheiSessionMock(KoscheiBackendSession):
+    def __init__(self):
+        super(KoscheiSessionMock, self).__init__()
+        self.koji_mock = KojiMock()
+        self.sec_koji_mock = KojiMock()
+        self.repo_cache_mock = RepoCacheMock()
+        self.log = Mock()
+
+    def koji(self, koji_id, anonymous=True):
+        if koji_id == 'primary':
+            return self.koji_mock
+        elif koji_id == 'secondary':
+            return self.sec_koji_mock
+        assert False
+
+    @property
+    def repo_cache(self):
+        return self.repo_cache_mock
 
 
 class DBTest(AbstractTest):
@@ -105,6 +125,7 @@ class DBTest(AbstractTest):
             dest_tag='f25', build_tag="f25-build", priority_coefficient=1.0,
             latest_repo_resolved=True, latest_repo_id=123,
         )
+        self.session = KoscheiSessionMock()
 
     @classmethod
     def setUpClass(cls):
@@ -126,7 +147,7 @@ class DBTest(AbstractTest):
             if hasattr(table.c, 'id'):
                 conn.execute("ALTER SEQUENCE {}_id_seq RESTART".format(table.name))
         conn.close()
-        self.db = Session()
+        self.db = self.session._db = Session()
         self.db.add(self.collection)
         self.db.commit()
 
