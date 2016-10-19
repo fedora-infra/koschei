@@ -398,9 +398,10 @@ class Resolver(Service):
             self.db.rollback()
             return
         packages = self.get_packages(collection)
-        brs = koji_util.get_rpm_requires(
+        brs = koji_util.get_rpm_requires_cached(
+            self.session,
             self.session.secondary_koji_for(collection),
-            [p.srpm_nvra for p in packages]
+            [p.srpm_nvra for p in packages],
         )
         brs = util.parallel_generator(brs, queue_size=None)
         try:
@@ -493,7 +494,8 @@ class Resolver(Service):
                 .filter(Build.id.in_(unavailable_build_ids))\
                 .update({'deps_resolved': False}, synchronize_session=False)
             self.db.commit()
-        buildrequires = koji_util.get_rpm_requires(
+        buildrequires = koji_util.get_rpm_requires_cached(
+            self.session,
             self.session.secondary_koji_for(collection),
             [dict(name=b.name, version=b.version, release=b.release, arch='src')
              for b in builds_to_process]

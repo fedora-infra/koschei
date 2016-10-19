@@ -153,6 +153,13 @@ config = {
         "build_group": {
             "backend": "dogpile.cache.memory",
         },
+        "rpm_requires": {
+            "backend": "dogpile.cache.dbm",
+            "expiration_time": None,
+            "arguments": {
+                "filename": "@CACHEDIR/rpm-requires-cache.dbm"
+            },
+        },
         "plugin": {
             "pkgdb": {
                 "users": {

@@ -158,6 +158,16 @@ def get_rpm_requires(koji_session, nvras):
         yield requires
 
 
+def get_rpm_requires_cached(session, koji_session, nvras):
+    cache = session.cache('rpm_requires')
+
+    @cache.cache_multi_on_arguments(namespace='rpm_requires-' + koji_session.koji_id)
+    def get_rpm_requires_inner(*nvras):
+        return list(get_rpm_requires(koji_session, nvras))
+
+    return get_rpm_requires_inner(*nvras)
+
+
 def get_koji_load(koji_session):
     channel = koji_session.getChannel('default')
     build_arches = get_config('koji_config').get('build_arches')
