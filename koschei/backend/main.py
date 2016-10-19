@@ -17,6 +17,7 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 from __future__ import print_function
 
+import argparse
 import logging
 import signal
 import sys
@@ -38,16 +39,22 @@ def init_fedmsg():
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('service')
+    parser.add_argument('-d', '--debug', action='store_true')
+    parser.add_argument('-s', '--debug-sql', action='store_true')
+    args = parser.parse_args()
+
     load_config(['/usr/share/koschei/config.cfg', '/etc/koschei/config-backend.cfg'])
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+    if args.debug_sql:
+        logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
     log = logging.getLogger('koschei.main')
 
-    if len(sys.argv) < 2:
-        print("Requires service name", file=sys.stderr)
-        sys.exit(2)
-    name = sys.argv[1]
     plugin.load_plugins('backend')
     init_fedmsg()
-    svc = service.load_service(name)
+    svc = service.load_service(args.service)
     if not svc:
         print("No such service", file=sys.stderr)
         sys.exit(2)
@@ -55,7 +62,7 @@ def main():
     try:
         svc().run_service()
     except Exception:
-        log.exception("Service %s crashed.", name)
+        log.exception("Service %s crashed.", args.service)
         raise
     except KeyboardInterrupt:
         sys.exit(0)
