@@ -23,10 +23,9 @@ import os
 import socket
 import time
 import resource
+import re
 
-from koschei.db import Session
 from koschei.config import get_config
-from koschei.backend.koji_util import KojiSession
 
 
 def load_service(name):
@@ -34,6 +33,10 @@ def load_service(name):
     descriptor = imp.find_module(name, [service_dir])
     imp.load_module(name, *descriptor)
     return Service.find_service(name)
+
+
+def convert_name(name):
+    return re.sub(r'([A-Z])', lambda s: '_' + s.group(0).lower(), name)[1:]
 
 
 class Service(object):
@@ -48,7 +51,7 @@ class Service(object):
         raise NotImplementedError()
 
     def run_service(self):
-        name = self.__class__.__name__.lower()
+        name = convert_name(self.__class__.__name__)
         service_config = get_config('services').get(name, {})
         interval = service_config.get('interval', 3)
         self.log.info("{name} started".format(name=name))
@@ -68,7 +71,8 @@ class Service(object):
 
     @classmethod
     def find_service(cls, name):
-        if name == cls.__name__.lower():
+        cname = convert_name(cls.__name__)
+        if name == cname:
             return cls
         # pylint: disable=E1101
         for subcls in cls.__subclasses__():

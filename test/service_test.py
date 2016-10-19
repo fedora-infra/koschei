@@ -55,5 +55,5 @@ class ServiceTest(AbstractTest):
         self.assertIsNone(svc)
 
     def test_find_myservice(self):
-        svc = Service.find_service('myservice')
+        svc = Service.find_service('my_service')
         self.assertIs(MyService, svc)
