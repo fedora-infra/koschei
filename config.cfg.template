@@ -144,15 +144,21 @@ config = {
         "topic_re": r'\.prod\.pkgdb\.',
         # whether to synchronize package tracked status from pkgdb
         "sync_tracked": False,
-        # pkgdb plugin uses dogpile.cache to cache pkgdb query results
-        # the default uses a local file, but it's possible to use other
-        # backends, such as memcached. The configuration is passed directly to
-        # dogpile.cache, for possible values see its documentation
-        "cache": {
-            "backend": "dogpile.cache.dbm",
-            "expiration_time": 600,
-            "arguments": {
-                "filename": "@CACHEDIR@/pkgdb-user-cache.dbm"
+    },
+    # koschei uses dogpile.cache to cache external query results
+    # it's possible to use various backends, such as memcached. The
+    # configuration is passed directly to dogpile.cache, for possible values
+    # see its documentation
+    "caching": {
+        "plugin": {
+            "pkgdb": {
+                "users": {
+                    "backend": "dogpile.cache.dbm",
+                    "expiration_time": 600,
+                    "arguments": {
+                        "filename": "@CACHEDIR/pkgdb-user-cache.dbm"
+                    },
+                },
             },
         },
     },

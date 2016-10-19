@@ -20,7 +20,6 @@ import re
 import logging
 import requests
 import fedmsg.meta
-import dogpile.cache
 
 from koschei import backend
 from koschei.models import Package
@@ -28,17 +27,6 @@ from koschei.config import get_config
 from koschei.plugin import listen_event
 
 log = logging.getLogger('koschei.plugin.pkgdb')
-
-__cache = None
-
-
-def get_cache():
-    global __cache
-    if __cache:
-        return __cache
-    __cache = dogpile.cache.make_region()
-    __cache.configure(**get_config('pkgdb.cache'))
-    return __cache
 
 
 # TODO share this with frontend plugin
@@ -75,7 +63,7 @@ def consume_fedmsg(session, topic, msg):
             session.db.expire_all()
             session.db.commit()
         for username in fedmsg.meta.msg2usernames(msg):
-            get_cache().delete(str(username))
+            session.cache('plugin.pkgdb.users').delete(str(username))
 
 
 @listen_event('polling_event')

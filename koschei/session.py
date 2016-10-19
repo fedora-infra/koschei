@@ -16,6 +16,24 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+import threading
+
+from koschei.config import get_config
+
+
+_cache_creation_lock = threading.Lock()
+
 
 class KoscheiSession(object):
-    pass
+    def __init__(self):
+        self._caches = {}
+
+    def cache(self, cache_id):
+        if cache_id not in self._caches:
+            import dogpile.cache
+            with _cache_creation_lock:
+                if cache_id not in self._caches:
+                    cache = dogpile.cache.make_region()
+                    cache.configure(**get_config('caching.' + cache_id))
+                    self._caches[cache_id] = cache
+        return self._caches[cache_id]

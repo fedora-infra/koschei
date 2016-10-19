@@ -18,7 +18,6 @@
 
 import logging
 import requests
-import dogpile.cache
 
 from koschei.config import get_config
 from koschei.plugin import listen_event
@@ -26,15 +25,6 @@ from koschei.plugin import listen_event
 log = logging.getLogger('koschei.plugin.pkgdb')
 
 __cache = None
-
-
-def get_cache():
-    global __cache
-    if __cache:
-        return __cache
-    __cache = dogpile.cache.make_region()
-    __cache.configure(**get_config('pkgdb.cache'))
-    return __cache
 
 
 # TODO share this with backend plugin
@@ -64,4 +54,4 @@ def get_user_packages(session, username):
         names = query_users_packages(username)
         return names
 
-    return get_cache().get_or_create(str(username), create)
+    return session.cache('plugin.pkgdb.users').get_or_create(str(username), create)
