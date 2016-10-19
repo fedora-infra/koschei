@@ -80,6 +80,7 @@ Requires:       %{name}-common = %{version}-%{release}
 Requires:       koji
 Requires:       python-hawkey
 Requires:       python-librepo
+Requires:       python-dogpile-cache
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
@@ -99,7 +100,6 @@ Requires:       python-dogpile-cache
 Summary:        Fedora-specific Koschei backend plugins
 Requires:       %{name}-backend = %{version}-%{release}
 Requires:       fedmsg
-Requires:       python-dogpile-cache
 Requires:       python-fedmsg-meta-fedora-infrastructure
 Requires(post): systemd
 Requires(preun): systemd
