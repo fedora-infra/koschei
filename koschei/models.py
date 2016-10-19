@@ -17,10 +17,11 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 from sqlalchemy import (Column, Integer, String, Boolean, ForeignKey, DateTime,
-                        Index, Float, CheckConstraint, UniqueConstraint)
+                        Index, Float, CheckConstraint, UniqueConstraint, Enum)
 from sqlalchemy.sql.expression import func, select, join, false, true
 from sqlalchemy.orm import (relationship, column_property,
                             configure_mappers, deferred)
+from sqlalchemy.dialects.postgresql import ARRAY
 
 from .config import get_config
 from koschei.db import Base, CompressedKeyArray
@@ -459,6 +460,84 @@ class RepoMapping(Base):
     task_id = Column(Integer, nullable=False)  # newRepo task ID
 
 
+class CoprRebuildRequest(Base):
+    id = Column(Integer, primary_key=True)
+    user_id = Column(
+        Integer,
+        ForeignKey('user.id', ondelete='CASCADE'),
+        nullable=False,
+    )
+    collection_id = Column(
+        Integer,
+        ForeignKey('collection.id', ondelete='CASCADE'),
+        nullable=False,
+    )
+    repo_source = Column(String, nullable=False)
+    yum_repo = Column(String)  # set by resolver to raw yum repo path
+    timestamp = Column(DateTime, nullable=False,
+                       server_default=func.clock_timestamp())
+    description = Column(String)
+    repo_id = Column(Integer)
+    # how many builds should be scheduled. User can bump this value
+    schedule_count = Column(Integer)
+    scheduler_queue_index = Column(Integer)
+
+    state = Column(Enum(
+        'new',  # just submitted by user
+        'in progress',  # resolved, scheduling in progress
+        'scheduled',  # every build was scheduled
+        'finished',  # every build completed
+        'failed',  # error occured, processing stopped
+        name='rebuild_request_state',
+    ), nullable=False, server_default='new')
+    error = Column(String)
+
+
+class CoprResolutionChange(Base):
+    request_id = Column(
+        Integer,
+        ForeignKey('copr_rebuild_request.id', ondelete='CASCADE'),
+        primary_key=True,
+    )
+    package_id = Column(
+        Integer,
+        ForeignKey('package.id', ondelete='CASCADE'),
+        primary_key=True,
+    )
+    prev_resolved = Column(Boolean, nullable=False)
+    curr_resolved = Column(Boolean, nullable=False)
+    problems = Column(ARRAY(String))
+
+
+class CoprRebuild(Base):
+    # TODO migration
+    __table_args__ = (
+        UniqueConstraint('request_id', 'package_id', 'order',
+                         name='copr_rebuild_order'),
+        CheckConstraint('state IS NULL OR copr_build_id IS NOT NULL',
+                        name='copr_rebuild_scheduled_build_has_copr_id_check'),
+        CheckConstraint('state BETWEEN 2 AND 5',
+                        name='copr_rebuild_state_check'),
+    )
+
+    request_id = Column(
+        Integer,
+        ForeignKey('copr_rebuild_request.id', ondelete='CASCADE'),
+        primary_key=True,
+    )
+    package_id = Column(
+        Integer,
+        ForeignKey('package.id', ondelete='CASCADE'),
+        primary_key=True,
+    )
+    copr_build_id = Column(Integer)
+    prev_state = Column(Integer, nullable=False)
+    state = Column(Integer)
+    approved = Column(Boolean)  # TODO what was it again?
+    # set by resolver, can be altered by frontend
+    order = Column(Integer, nullable=False)
+
+
 # Indices
 Index('ix_build_running', Build.package_id, unique=True,
       postgresql_where=(Build.state == Build.RUNNING))
@@ -482,7 +561,6 @@ Package.last_build = relationship(
     primaryjoin=(Build.id == Package.last_build_id),
     uselist=False,
 )
-
 Package.all_builds = relationship(
     Build,
     order_by=Build.id.desc(),
@@ -502,13 +580,11 @@ Build.dependency_changes = relationship(
     order_by=AppliedChange.distance.nullslast(),
     passive_deletes=True,
 )
-
 ResolutionChange.problems = relationship(
     ResolutionProblem,
     backref='result',
     passive_deletes=True,
 )
-
 PackageGroup.package_count = column_property(
     select([func.count()],
            PackageGroupRelation.group_id == PackageGroup.id,
@@ -517,7 +593,6 @@ PackageGroup.package_count = column_property(
     .where(~BasePackage.all_blocked)
     .correlate(PackageGroup).as_scalar(),
     deferred=True)
-
 # pylint: disable=E1101
 BasePackage.groups = relationship(
     PackageGroup,
@@ -556,5 +631,15 @@ CollectionGroup.collections = relationship(
     order_by=(Collection.order, Collection.name.desc()),
     passive_deletes=True,
 )
+CoprRebuildRequest.collection = relationship(Collection)
+CoprRebuildRequest.resolution_changes = relationship(CoprResolutionChange)
+CoprRebuildRequest.rebuilds = relationship(
+    CoprRebuild,
+    order_by=CoprRebuild.order,
+)
+CoprRebuildRequest.user = relationship(User)
+CoprRebuild.package = relationship(Package)
+CoprRebuild.request = relationship(CoprRebuildRequest)
+CoprResolutionChange.package = relationship(Package)
 
 configure_mappers()
