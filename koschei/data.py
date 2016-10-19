@@ -16,8 +16,6 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-#import wtforms
-
 from sqlalchemy import insert
 
 from koschei.db import get_or_create
@@ -67,13 +65,15 @@ def set_group_content(db, group, packages, append=False):
     :param: group PackageGroup object
     :param: packages list of package names to be in given group
     :param: append whether to clear the group first or append to existing content
+    :raises: PackagesDontExist when packages weren't found
     """
     contents = set(packages)
-    base_ids = db.query(BasePackage.id)\
+    bases = db.query(BasePackage.id, BasePackage.name)\
         .filter(BasePackage.name.in_(contents))\
-        .all_flat(set)
-    if len(base_ids) != len(contents):
-        raise RuntimeError("Some packages weren't found")
+        .all()
+    if len(bases) != len(contents):
+        raise PackagesDontExist(contents - {base.name for base in bases})
+    base_ids = {base.id for base in bases}
     if append:
         base_ids -= db.query(PackageGroupRelation.base_id)\
             .filter(PackageGroup.id == group.id)\

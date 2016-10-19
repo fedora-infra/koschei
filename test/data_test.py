@@ -53,3 +53,12 @@ class DataTest(DBTest):
         self.assertItemsEqual([bar.base_id, a1.base_id, a2.base_id, a3.base_id],
                               self.db.query(PackageGroupRelation.base_id)
                               .filter_by(group_id=group.id).all_flat())
+
+    def test_set_group_contents_nonexistent(self):
+        group = PackageGroup(name='foo')
+        self.prepare_packages('bar')
+        self.db.add(group)
+        self.db.flush()
+        with self.assertRaises(data.PackagesDontExist) as exc:
+            data.set_group_content(self.db, group, ['bar', 'a1', 'a2'])
+        self.assertItemsEqual({'a1', 'a2'}, exc.exception.packages)
