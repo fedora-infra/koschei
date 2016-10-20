@@ -18,11 +18,9 @@
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 import fedmsg
-import requests
 
 from koschei import plugin, backend
 from koschei.config import get_config
-from koschei.backend import service
 from koschei.backend.service import Service
 from koschei.models import Build, Package
 
@@ -63,16 +61,11 @@ class Watcher(Service):
                 )
 
     def main(self):
-        try:
-            for _, _, topic, msg in fedmsg.tail_messages():
-                self.notify_watchdog()
-                try:
-                    if topic.startswith(get_config('fedmsg.topic') + '.'):
-                        self.consume(topic, msg)
-                    plugin.dispatch_event('fedmsg_event', self.session, topic, msg)
-                finally:
-                    self.db.rollback()
-        except requests.exceptions.ConnectionError:
-            self.log.exception("Fedmsg watcher exception.")
-            fedmsg.destroy()
-            fedmsg.init()
+        for _, _, topic, msg in fedmsg.tail_messages():
+            self.notify_watchdog()
+            try:
+                if topic.startswith(get_config('fedmsg.topic') + '.'):
+                    self.consume(topic, msg)
+                plugin.dispatch_event('fedmsg_event', self.session, topic, msg)
+            finally:
+                self.db.rollback()
