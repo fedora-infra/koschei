@@ -25,19 +25,36 @@ from collections import defaultdict
 from koschei.config import get_config
 
 loaded = {}
-log = logging.getLogger('koschei.plugin')
 
 listeners = defaultdict(list)
+service_dirs = []
 
 
 def load_plugins(endpoint, only=None):
+    log = logging.getLogger('koschei.plugin')
     if endpoint not in loaded:
         loaded[endpoint] = {}
-        plugin_dir = os.path.join(os.path.dirname(__file__), endpoint, 'plugins')
+        plugin_dir = os.path.join(os.path.dirname(__file__), 'plugins')
         for name in only if only is not None else get_config('plugins'):
-            descriptor = imp.find_module(name, [plugin_dir])
             log.info('Loading %s plugin', name)
-            loaded[endpoint][name] = imp.load_module(name, *descriptor)
+            try:
+                descriptor = imp.find_module(name, [plugin_dir])
+            except ImportError:
+                raise RuntimeError("{} plugin enabled but not installed".format(name))
+            plugin = imp.load_module(name, *descriptor)
+            try:
+                descriptor = imp.find_module(endpoint, plugin.__path__)
+            except ImportError:
+                # plugin exists but doesn't have particular endpoint
+                pass
+            else:
+                loaded[endpoint][name] = imp.load_module(
+                    name + '.' + endpoint,
+                    *descriptor
+                )
+                service_dir = os.path.join(plugin_dir, name, endpoint, 'services')
+                if os.path.isdir(service_dir):
+                    service_dirs.append(service_dir)
 
 
 def listen_event(name):

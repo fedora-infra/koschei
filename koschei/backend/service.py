@@ -23,14 +23,15 @@ import os
 import time
 import resource
 
-from koschei import util
+from koschei import util, plugin
 from koschei.config import get_config
 
 
 def load_service(name):
-    service_dir = os.path.join(os.path.dirname(__file__), 'services')
+    service_dirs = [os.path.join(os.path.dirname(__file__), 'services')]
+    service_dirs += plugin.service_dirs
     try:
-        descriptor = imp.find_module(name, [service_dir])
+        descriptor = imp.find_module(name, service_dirs)
     except ImportError:
         # It may be a plugin
         pass
