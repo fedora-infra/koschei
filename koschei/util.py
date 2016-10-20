@@ -19,9 +19,12 @@
 
 from __future__ import print_function
 
+import os
+import re
 import logging
 import rpm
 import time
+import socket
 
 from Queue import Queue
 from threading import Thread
@@ -31,6 +34,10 @@ def chunks(seq, chunk_size=100):
     while seq:
         yield seq[:chunk_size]
         seq = seq[chunk_size:]
+
+
+def to_snake_case(name):
+    return re.sub(r'([A-Z])', lambda s: '_' + s.group(0).lower(), name)[1:]
 
 
 class parallel_generator(object):
@@ -80,6 +87,19 @@ def compare_evr(evr1, evr2):
 
     evr1, evr2 = ((epoch_to_str(e), v, r) for (e, v, r) in (evr1, evr2))
     return rpm.labelCompare(evr1, evr2)
+
+
+def sd_notify(msg):
+    sock_path = os.environ.get('NOTIFY_SOCKET', None)
+    if not sock_path:
+        raise RuntimeError("NOTIFY_SOCKET not set")
+    if sock_path[0] == '@':
+        sock_path = '\0' + sock_path[1:]
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    try:
+        sock.sendto(msg, sock_path)
+    finally:
+        sock.close()
 
 
 # Utility class for time measurement

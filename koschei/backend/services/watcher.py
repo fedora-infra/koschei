@@ -62,11 +62,6 @@ class Watcher(Service):
                     [(pkg.id, newer_build)],
                 )
 
-    def notify_watchdog(self):
-        if not get_config('services.watcher.watchdog'):
-            return
-        service.sd_notify("WATCHDOG=1")
-
     def main(self):
         try:
             for _, _, topic, msg in fedmsg.tail_messages():

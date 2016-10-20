@@ -20,11 +20,10 @@ import sys
 import imp
 import logging
 import os
-import socket
 import time
 import resource
-import re
 
+from koschei import util
 from koschei.config import get_config
 
 
@@ -35,10 +34,6 @@ def load_service(name):
     return Service.find_service(name)
 
 
-def convert_name(name):
-    return re.sub(r'([A-Z])', lambda s: '_' + s.group(0).lower(), name)[1:]
-
-
 class Service(object):
     def __init__(self, session):
         self.session = session
@@ -47,16 +42,20 @@ class Service(object):
             '{}.{}'.format(type(self).__module__, type(self).__name__),
         )
 
+    @classmethod
+    def get_name(cls):
+        return util.to_snake_case(cls.__name__)
+
     def main(self):
         raise NotImplementedError()
 
     def run_service(self):
-        name = convert_name(self.__class__.__name__)
-        service_config = get_config('services').get(name, {})
+        service_config = get_config('services').get(self.get_name(), {})
         interval = service_config.get('interval', 3)
-        self.log.info("{name} started".format(name=name))
+        self.log.info("{name} started".format(name=self.get_name()))
         memory_limit = service_config.get("memory_limit", None)
         while True:
+            self.notify_watchdog()
             try:
                 self.main()
                 if memory_limit:
@@ -67,12 +66,12 @@ class Service(object):
                         sys.exit(3)
             finally:
                 self.db.close()
+            self.notify_watchdog()
             time.sleep(interval)
 
     @classmethod
     def find_service(cls, name):
-        cname = convert_name(cls.__name__)
-        if name == cname:
+        if name == cls.get_name():
             return cls
         # pylint: disable=E1101
         for subcls in cls.__subclasses__():
@@ -80,15 +79,6 @@ class Service(object):
             if ret:
                 return ret
 
-
-def sd_notify(msg):
-    sock_path = os.environ.get('NOTIFY_SOCKET', None)
-    if not sock_path:
-        raise RuntimeError("NOTIFY_SOCKET not set")
-    if sock_path[0] == '@':
-        sock_path = '\0' + sock_path[1:]
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-    try:
-        sock.sendto(msg, sock_path)
-    finally:
-        sock.close()
+    def notify_watchdog(self):
+        if get_config('services.{}.watchdog'.format(self.get_name()), None):
+            util.sd_notify("WATCHDOG=1")
