@@ -17,32 +17,20 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 import re
-import logging
 import requests
 import fedmsg.meta
+
+from . import query_pkgdb
 
 from koschei import backend
 from koschei.models import Package
 from koschei.config import get_config
 from koschei.plugin import listen_event
 
-log = logging.getLogger('koschei.plugin.pkgdb')
 
-
-# TODO share this with frontend plugin
-def query_pkgdb(url):
-    baseurl = get_config('pkgdb.pkgdb_url')
-    req = requests.get(baseurl + '/' + url)
-    if req.status_code != 200:
-        log.info("pkgdb query failed %s, status=%d",
-                 url, req.status_code)
-        return None
-    return req.json()
-
-
-def query_monitored_packages():
-    log.debug("Requesting list of monitored packages from pkgdb")
-    packages = query_pkgdb('koschei?format=json')
+def query_monitored_packages(session):
+    session.log.debug("Requesting list of monitored packages from pkgdb")
+    packages = query_pkgdb(session, 'koschei?format=json')
     if packages:
         return packages['packages']
 
@@ -55,8 +43,8 @@ def consume_fedmsg(session, topic, msg):
             package = msg['msg']['package']
             name = package['name']
             tracked = package['koschei_monitor']
-            log.debug('Setting tracking flag for package %s to %r',
-                      name, tracked)
+            session.log.debug('Setting tracking flag for package %s to %r',
+                              name, tracked)
             session.db.query(Package)\
                 .filter_by(name=name)\
                 .update({'tracked': tracked}, synchronize_session=False)
@@ -70,9 +58,9 @@ def consume_fedmsg(session, topic, msg):
 def refresh_monitored_packages(session):
     try:
         if get_config('pkgdb.sync_tracked'):
-            log.debug('Polling monitored packages...')
-            packages = query_monitored_packages()
+            session.log.debug('Polling monitored packages...')
+            packages = query_monitored_packages(session)
             if packages is not None:
                 backend.sync_tracked(session, packages)
     except requests.ConnectionError:
-        log.exception("Polling monitored packages failed, skipping cycle")
+        session.log.exception("Polling monitored packages failed, skipping cycle")

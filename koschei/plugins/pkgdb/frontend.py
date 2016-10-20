@@ -16,31 +16,13 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-import logging
-import requests
-
-from koschei.config import get_config
+from . import query_pkgdb
 from koschei.plugin import listen_event
 
-log = logging.getLogger('koschei.plugin.pkgdb')
 
-__cache = None
-
-
-# TODO share this with backend plugin
-def query_pkgdb(url):
-    baseurl = get_config('pkgdb.pkgdb_url')
-    req = requests.get(baseurl + '/' + url)
-    if req.status_code != 200:
-        log.info("pkgdb query failed %s, status=%d",
-                 url, req.status_code)
-        return None
-    return req.json()
-
-
-def query_users_packages(username):
-    log.debug("Requesting pkgdb packages for {}".format(username))
-    packages = query_pkgdb('packager/package/{}'.format(username))
+def query_users_packages(session, username):
+    session.log.debug("Requesting pkgdb packages for {}".format(username))
+    packages = query_pkgdb(session, 'packager/package/{}'.format(username))
     if packages:
         packages = (packages['point of contact'] +
                     packages['co-maintained'] +
@@ -51,7 +33,7 @@ def query_users_packages(username):
 @listen_event('get_user_packages')
 def get_user_packages(session, username):
     def create():
-        names = query_users_packages(username)
+        names = query_users_packages(session, username)
         return names
 
     return session.cache('plugin.pkgdb.users').get_or_create(str(username), create)
