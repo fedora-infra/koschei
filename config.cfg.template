@@ -122,7 +122,7 @@ config = {
         },
     },
     # which plugins are loaded (name is their filename without extension)
-    # "plugins": ['fedmsg', 'pkgdb'],
+    # "plugins": ['fedmsg', 'pkgdb', 'copr'],
     "plugins": [],
     # fedora message bus configuration
     "fedmsg": {
@@ -146,6 +146,23 @@ config = {
         "topic_re": r'\.prod\.pkgdb\.',
         # whether to synchronize package tracked status from pkgdb
         "sync_tracked": False,
+    },
+    # copr rebuild plugin
+    "copr": {
+        # URL to copr frontend (used to construct links in UI)
+        "frontend_url": "http://copr-fe-dev.cloud.fedoraproject.org/",
+        # copr user under which builds are done
+        "copr_owner": "koschei",
+        # chroot in which builds are done
+        "chroot_name": "custom-1-x86_64",
+        # path to copr config with API token
+        "config_path": "@CONFDIR@/copr-config",
+        # maximum number of copr builds running at the same time
+        "max_builds": 15,
+        # fedmsg topic to listen to if watcher is enabled, ignored otherwise
+        "fedmsg_topic": "org.fedoraproject.prod.copr.build.end",
+        # suggested number of builds done per-request. User can override
+        "default_schedule_count": 8,
     },
     # koschei uses dogpile.cache to cache external query results
     # it's possible to use various backends, such as memcached. The

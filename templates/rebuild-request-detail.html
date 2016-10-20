@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Koschei - rebuild request {{ request.id }}{% endblock %}
+{% block content %}
+
+<div class="pageHeader">Rebuild request {{ request.id }}</div>
+
+<table class="details">
+    <tr>
+        <th>Submitter</th>
+        <td>{{ request.user.name }}</td>
+    </tr>
+    <tr>
+        <th>State</th>
+        <td>{{ request.state }}</td>
+    </tr>
+    <tr>
+        <th>Collection</th>
+        <td>{{ request.collection }}</td>
+    </tr>
+    <tr>
+        <th>Repo source</th>
+        <td>{{ request.repo_source }}</td>
+    </tr>
+    <tr>
+        <th>Build Copr project</th>
+        <td>
+            {% if request.copr_name %}
+            <a href="{{ copr_frontend_url }}/coprs/{{ copr_username }}/{{ request.copr_name }}">
+                {{ copr_username }}/{{ request.copr_name }}
+            </a>
+            {% else %}
+            Not created yet
+            {% endif %}
+        </td>
+    </tr>
+    <tr>
+        <th>Description</th>
+        <td>{{ request.description }}</td>
+    </tr>
+</table>
+
+{% if request.resolution_changes %}
+<div class="pageHeader">Resolution changes</div>
+<table class="data-list">
+    <tr class="list-header">
+        <th>Package name</th>
+        <th>Previous state</th>
+        <th>Current state</th>
+    </tr>
+    {% for change in request.resolution_changes %}
+    <tr>
+        <td>
+            <a href="{{ url_for('package_detail', name=change.package.name)
+                }}?collection={{ request.collection.name }}">
+                {{ change.package.name }}
+            </a>
+        </td>
+        <td>{{ resolution_state_icon(change.prev_resolved) }}</td>
+        <td>{{ resolution_state_icon(change.curr_resolved) }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+{% set executed_builds = request.rebuilds | selectattr('state') | list %}
+{% set pending_builds = request.rebuilds | selectattr('state', 'none') | list %}
+
+{% if executed_builds %}
+<div class="pageHeader">Rebuilds</div>
+<table class="data-list">
+    <tr class="list-header">
+        <th>Package name</th>
+        <th>Links</th>
+        <th>Previous state</th>
+        <th>Current state</th>
+    </tr>
+    {% for build in executed_builds %}
+    <tr {% if build.prev_state == Build.COMPLETE and build.state == Build.COMPLETE %}
+        class="rebuild-ok"
+        {% elif build.prev_state == Build.FAILED and build.state == Build.COMPLETE %}
+        class="rebuild-fixed"
+        {% elif build.prev_state == Build.COMPLETE and build.state == Build.FAILED %}
+        class="rebuild-broken"
+        {% elif build.prev_state == Build.FAILED and build.state == Build.FAILED %}
+        class="rebuild-failing"
+        {% endif %}
+        >
+        <td>
+            <a href="{{ url_for('package_detail', name=build.package.name)
+                }}?collection={{ request.collection.name }}">
+                {{ build.package.name }}
+            </a>
+        </td>
+        <td>
+            <a href="{{ copr_frontend_url }}/coprs/{{ copr_username
+                }}/{{ request.copr_name }}/build/{{ build.copr_build_id }}">
+                copr build
+            </a>
+        </td>
+        <td>{{ build_state_icon(build.prev_state) }}</td>
+        <td>{{ build_state_icon(build.state) }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+{% if pending_builds  %}
+<div class="pageHeader">Rebuild queue</div>
+<div>
+    By default, koschei schedules only first few builds determined to be most
+    likely affected. Remaining builds are marked in grey and won't be
+    scheduled. You can override this behaviour by either moving paritcular
+    builds to the queue top, or increasing the queue size.
+</div>
+<table class="data-list">
+    <tr class="list-header">
+        <th>Package name</th>
+        <th>Previous state</th>
+        <th></th>
+    </tr>
+    {% for build in pending_builds %}
+    <tr {% if build.order >= request.schedule_count %}
+        class="rebuild-unschedulable"
+        {% endif %}
+        >
+        <td>
+            <a href="{{ url_for('package_detail', name=build.package.name)
+                }}?collection={{ request.collection.name }}">
+                {{ build.package.name }}
+            </a>
+        </td>
+        <td>{{ build_state_icon(build.prev_state) }}</td>
+        <td class="action-column">
+            <form action="{{ url_for('move_rebuild') }}" method="POST">
+                {{ move_form.csrf_token }}
+                <input type="hidden" name="request_id" value="{{ build.request_id }}"/>
+                <input type="hidden" name="package_id" value="{{ build.package_id }}"/>
+                <button name="direction" value="top" type="submit">Move to top</button>
+                <button name="direction" value="bottom" type="submit">Move to bottom</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+{% endblock %}

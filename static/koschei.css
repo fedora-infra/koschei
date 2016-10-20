@@ -587,3 +587,22 @@ span#loginInfo {
     color: #0a0;
     background-color: #efd;
 }
+
+.rebuild-unschedulable {
+    background-color: #eee;
+}
+.rebuild-fixed {
+    background-color: #efd;
+}
+.rebuild-ok {
+}
+.rebuild-failing {
+}
+.rebuild-broken {
+    background-color: #f3dddd;
+}
+
+.action-column {
+    width: 0;
+    white-space: nowrap;
+}

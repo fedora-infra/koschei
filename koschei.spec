@@ -127,6 +127,7 @@ Requires(postun): systemd
 sed 's|@CACHEDIR@|%{_localstatedir}/cache/%{name}|g
      s|@DATADIR@|%{_datadir}/%{name}|g
      s|@VERSION@|%{version}|g
+     s|@CONFDIR@|%{_sysconfdir}/koschei|g
      s|@STATEDIR@|%{_sharedstatedir}/%{name}|g' config.cfg.template > config.cfg
 
 %build

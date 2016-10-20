@@ -33,17 +33,20 @@ from sqlalchemy.orm import (joinedload, subqueryload, undefer, contains_eager,
 from sqlalchemy.sql import exists, func, false, true, cast
 from sqlalchemy.sql.functions import coalesce
 
-from wtforms import StringField, TextAreaField
+from wtforms import StringField, TextAreaField, IntegerField
+from wtforms import validators, widgets
 from wtforms.validators import Regexp, ValidationError
 
 from koschei import util, plugin, data
 from koschei.config import get_config
 from koschei.frontend import app, db, frontend_config, auth, session
-from koschei.models import (Package, Build, PackageGroup, PackageGroupRelation,
-                            AdminNotice, BuildrootProblem, BasePackage,
-                            GroupACL, Collection, CollectionGroup,
-                            AppliedChange, UnappliedChange, ResolutionChange,
-                            get_package_state)
+from koschei.models import (
+    Package, Build, PackageGroup, PackageGroupRelation, AdminNotice,
+    BuildrootProblem, BasePackage, GroupACL, Collection, CollectionGroup,
+    AppliedChange, UnappliedChange, ResolutionChange, CoprRebuildRequest,
+    CoprRebuild,
+    get_package_state,
+)
 
 packages_per_page = frontend_config['packages_per_page']
 builds_per_page = frontend_config['builds_per_page']
@@ -266,8 +269,14 @@ def resolution_state_icon(resolved):
     return icon('cross')
 
 
-def build_state_icon(build):
-    return icon(build.state_string)
+def build_state_icon(build_or_state):
+    if build_or_state is None:
+        return ""
+    if isinstance(build_or_state, int):
+        state_string = Build.REV_STATE_MAP[build_or_state]
+    else:
+        state_string = getattr(build_or_state, 'state_string', build_or_state)
+    return icon(state_string)
 Build.state_icon = property(build_state_icon)
 
 
@@ -294,6 +303,8 @@ def tab(caption, slave=False):
 app.jinja_env.globals.update(
     get_all_tabs=get_all_tabs,
     primary_koji_url=get_config('koji_config.weburl'),
+    copr_frontend_url=get_config('copr.frontend_url'),
+    copr_username=get_config('copr.copr_owner'),
     secondary_koji_url=secondary_koji_url,
     koschei_version=get_config('version'),
     generate_links=generate_links,
@@ -303,6 +314,7 @@ app.jinja_env.globals.update(
     require_login=require_login,
     Package=Package, Build=Build,
     package_state_icon=package_state_icon,
+    build_state_icon=build_state_icon,
     format_evr=format_evr,
     auto_tracking=frontend_config['auto_tracking'])
 
@@ -678,6 +690,20 @@ class AddPackagesForm(EmptyForm):
     group = StrippedStringField('group', [Regexp(group_re, message="Invalid group")])
 
 
+class RebuildRequestForm(EmptyForm):
+    collection = StrippedStringField('collection')
+    copr_name = StrippedStringField('copr_name', [validators.Length(min=1)])
+    description = StrippedStringField('description', widget=widgets.TextArea())
+    schedule_count = IntegerField('schedule_count', [validators.NumberRange(min=0)],
+                                  default=get_config('copr.default_schedule_count'))
+
+
+class MoveRebuildForm(EmptyForm):
+    request_id = IntegerField('request_id')
+    package_id = IntegerField('package_id')
+    direction = StringField('direction', [validators.AnyOf(['top', 'bottom'])])
+
+
 def can_edit_group(group):
     return g.user and (g.user.admin or
                        db.query(exists()
@@ -974,3 +1000,80 @@ def depchange(dep_name):
                            dep_name=dep_name, evr1=evr1, evr2=evr2,
                            is_upgrade=is_upgrade, collection=collection,
                            failed=failed)
+
+
+# TODO think about the URL
+@app.route('/rebuild_request/new', methods=['GET', 'POST'])
+@auth.login_required()
+def new_rebuild_request():
+    form = RebuildRequestForm()
+    if request.method == 'GET':
+        return render_template('new-rebuild-request.html', form=form)
+    else:
+        if form.validate_or_flash():
+            collection = g.collections_by_name.get(form.collection.data)
+            if not collection:
+                abort(404, "Collection not found")
+            repo_source = form.copr_name.data
+            if '/' not in repo_source:
+                repo_source = g.user.name + '/' + repo_source
+            repo_source = 'copr:' + repo_source
+            rebuild_request = CoprRebuildRequest(
+                collection_id=collection.id,
+                user_id=g.user.id,
+                repo_source=repo_source,
+                description=form.description.data or None,
+                schedule_count=form.schedule_count.data,
+            )
+            db.add(rebuild_request)
+            db.commit()
+            return redirect(url_for('rebuild_request_detail',
+                                    request_id=rebuild_request.id))
+        return render_template('new-rebuild-request.html', form=form)
+
+
+@app.route('/rebuild_request/<int:request_id>')
+def rebuild_request_detail(request_id):
+    rebuild_request = db.query(CoprRebuildRequest)\
+        .options(
+            subqueryload('resolution_changes'),
+            joinedload('resolution_changes.package'),
+            subqueryload('rebuilds'),
+            joinedload('rebuilds.package'),
+        ).get_or_404(request_id)
+    return render_template('rebuild-request-detail.html',
+                           request=rebuild_request,
+                           move_form=MoveRebuildForm())
+
+@app.route('/rebuild_request/move_rebuild', methods=['POST'])
+def move_rebuild():
+    form = MoveRebuildForm()
+    if not form.validate_on_submit():
+        abort(400)
+    rebuild = db.query(CoprRebuild)\
+        .filter_by(request_id=form.request_id.data,
+                   package_id=form.package_id.data)\
+        .first_or_404()
+    if form.direction.data == 'top':
+        db.query(CoprRebuild)\
+            .filter(CoprRebuild.request_id == rebuild.request_id)\
+            .filter(CoprRebuild.state == None)\
+            .filter(CoprRebuild.order < rebuild.order)\
+            .update({'order': CoprRebuild.order + 1})
+        rebuild.order = db.query(func.min(CoprRebuild.order) - 1)\
+            .filter(CoprRebuild.request_id == rebuild.request_id)\
+            .filter(CoprRebuild.state == None)\
+            .scalar()
+        # Moving to top should ensure the package will be scheduled
+        rebuild.request.schedule_count += 1
+        rebuild.request.state = 'in progress'
+    elif form.direction.data == 'bottom':
+        db.query(CoprRebuild)\
+            .filter(CoprRebuild.request_id == rebuild.request_id)\
+            .filter(CoprRebuild.order > rebuild.order)\
+            .update({'order': CoprRebuild.order - 1})
+        rebuild.order = db.query(func.max(CoprRebuild.order) + 1)\
+            .filter(CoprRebuild.request_id == rebuild.request_id)\
+            .scalar()
+    db.commit()
+    return redirect(url_for('rebuild_request_detail', request_id=rebuild.request_id))

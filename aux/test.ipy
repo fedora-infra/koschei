@@ -21,7 +21,8 @@ from koschei.backend.main import *
 load_config(['config.cfg.template', 'aux/test-config.cfg'])
 logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 plugin.load_plugins('backend')
-db=Session()
+session = KoscheiBackendSession()
+db=session.db
 k=koji_session=KojiSession(anonymous=True)
 p=db.query(Package).filter_by(name='rnv').order_by(Package.collection_id).first()
 b=db.query(Build).filter_by(package_id=p.id).order_by(desc(Build.started)).first()
