@@ -122,7 +122,7 @@ config = {
         },
     },
     # which plugins are loaded (name is their filename without extension)
-    # "plugins": ['fedmsg_publisher', 'pkgdb'],
+    # "plugins": ['fedmsg', 'pkgdb'],
     "plugins": [],
     # fedora message bus configuration
     "fedmsg": {
@@ -133,6 +133,8 @@ config = {
     },
     # fedmsg publishing plugin
     "fedmsg-publisher": {
+        # whether to enable fedmsg publishing
+        "enabled": False,
         # which modname to publish to
         "modname": "koschei",
     },

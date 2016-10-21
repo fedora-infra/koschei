@@ -35,7 +35,7 @@ class BackendTest(DBTest):
         super(BackendTest, self).setUp()
         self.collection.secondary_mode = True
         self.db.commit()
-        plugin.load_plugins('backend', ['fedmsg_publisher'])
+        plugin.load_plugins('backend', ['fedmsg'])
 
 
     def test_update_state(self):

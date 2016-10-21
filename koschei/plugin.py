@@ -33,12 +33,13 @@ def load_plugins(endpoint, only=None):
     log = logging.getLogger('koschei.plugin')
     plugin_dir = os.path.join(os.path.dirname(__file__), 'plugins')
     for name in only if only is not None else get_config('plugins'):
+        name = name + '_plugin'
         if name not in sys.modules:
             log.info('Loading %s plugin', name)
             try:
                 descriptor = imp.find_module(name, [plugin_dir])
             except ImportError:
-                raise RuntimeError("{} plugin enabled but not installed".format(name))
+                raise RuntimeError("{} enabled but not installed".format(name))
             plugin = imp.load_module(name, *descriptor)
         qualname = name + '.' + endpoint
         if qualname not in sys.modules:

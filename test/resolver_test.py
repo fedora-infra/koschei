@@ -178,7 +178,7 @@ class ResolverTest(DBTest):
 
     def setUp(self):
         super(ResolverTest, self).setUp()
-        plugin.load_plugins('backend', ['fedmsg_publisher'])
+        plugin.load_plugins('backend', ['fedmsg'])
         self.session.koji_mock.repoInfo.return_value = {
             'id': 123,
             'tag_name': 'f25-build',

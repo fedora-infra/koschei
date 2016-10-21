@@ -27,17 +27,6 @@ from koschei.config import load_config
 from koschei.backend import service
 
 
-# TODO: move this to plugins requiring fedmsg
-def init_fedmsg():
-    try:
-        import fedmsg
-        import fedmsg.meta
-        fedmsg_config = fedmsg.config.load_config()
-        fedmsg.meta.make_processors(**fedmsg_config)
-    except ImportError:
-        print("Unable to initialize fedmsg", file=sys.stderr)
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('service')
@@ -53,7 +42,6 @@ def main():
     log = logging.getLogger('koschei.main')
 
     plugin.load_plugins('backend')
-    init_fedmsg()
     svc = service.load_service(args.service)
     if not svc:
         print("No such service", file=sys.stderr)
