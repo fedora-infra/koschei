@@ -88,18 +88,6 @@ class KoscheiBackendSession(KoscheiSession):
         return self._repo_cache
 
 
-# TODO move to util
-def is_build_newer(current_build, task_info):
-    if current_build is None:
-        return True
-    return util.compare_evr((current_build.epoch,
-                             current_build.version,
-                             current_build.release),
-                            (task_info['epoch'],
-                             task_info['version'],
-                             task_info['release'])) < 0
-
-
 def check_package_state(package, prev_state):
     new_state = package.msg_state_string
     if prev_state != new_state:
@@ -152,7 +140,7 @@ def get_newer_build_if_exists(session, package):
     [info] = session.secondary_koji_for(package.collection)\
         .listTagged(package.collection.dest_tag, latest=True,
                     package=package.name, inherit=True) or [None]
-    if info and is_build_newer(package.last_build, info):
+    if info and util.is_build_newer(package.last_build, info):
         return info
 
 
@@ -477,7 +465,7 @@ def refresh_latest_builds(session):
             package_build_infos = []
             for info in to_add:
                 package = name_mapping.get(info['package_name'])
-                if package and is_build_newer(package.last_build, info):
+                if package and util.is_build_newer(package.last_build, info):
                     package_build_infos.append(
                         (name_mapping[info['package_name']].id, info)
                     )

@@ -40,6 +40,15 @@ def to_snake_case(name):
     return re.sub(r'([A-Z])', lambda s: '_' + s.group(0).lower(), name)[1:]
 
 
+def is_build_newer(current_build, task_info):
+    if current_build is None:
+        return True
+    return compare_evr(
+        (current_build.epoch, current_build.version, current_build.release),
+        (task_info['epoch'], task_info['version'], task_info['release'])
+    ) < 0
+
+
 class parallel_generator(object):
     sentinel = object()
 
