@@ -88,10 +88,18 @@ Requires(postun): systemd
 %description backend
 %{summary}.
 
+%package common-fedora
+Summary:        Fedora-specific Koschei plugins (common parts of backend and frontend)
+Requires:       %{name}-common = %{version}-%{release}
+Requires:       python-dogpile-cache
+
+%description common-fedora
+%{summary}.
+
 %package frontend-fedora
 Summary:        Fedora-specific Koschei frontend plugins
 Requires:       %{name}-frontend = %{version}-%{release}
-Requires:       python-dogpile-cache
+Requires:       %{name}-common-fedora = %{version}-%{release}
 
 %description frontend-fedora
 %{summary}.
@@ -99,6 +107,7 @@ Requires:       python-dogpile-cache
 %package backend-fedora
 Summary:        Fedora-specific Koschei backend plugins
 Requires:       %{name}-backend = %{version}-%{release}
+Requires:       %{name}-common-fedora = %{version}-%{release}
 Requires:       fedmsg
 Requires:       python-fedmsg-meta-fedora-infrastructure
 Requires(post): systemd
@@ -213,6 +222,7 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %{python2_sitelib}/*
 %exclude %{python2_sitelib}/*/frontend
 %exclude %{python2_sitelib}/*/backend
+%exclude %{python2_sitelib}/*/plugins
 %dir %{_datadir}/%{name}
 %{_datadir}/%{name}/config.cfg
 %attr(755, %{name}, %{name}) %{_localstatedir}/cache/%{name}
@@ -234,7 +244,6 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %{_datadir}/%{name}/templates
 %{_datadir}/%{name}/%{name}.wsgi
 %{python2_sitelib}/*/frontend
-%exclude %{python2_sitelib}/*/frontend/plugins/pkgdb.py*
 
 %files backend
 %config(noreplace) %{_sysconfdir}/%{name}/config-backend.cfg
@@ -243,19 +252,22 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %exclude %{_libexecdir}/%{name}/*watcher*
 %exclude %{_unitdir}/*watcher*
 %{python2_sitelib}/*/backend
-%exclude %{python2_sitelib}/*/backend/plugins/fedmsg_publisher.py*
-%exclude %{python2_sitelib}/*/backend/plugins/pkgdb.py*
-%exclude %{python2_sitelib}/*/backend/services/watcher.py*
+%{python2_sitelib}/*/plugins/repo_regen_plugin
+
+%files common-fedora
+%{python2_sitelib}/*/plugins/fedmsg_plugin
+%{python2_sitelib}/*/plugins/pkgdb_plugin
+%exclude %{python2_sitelib}/*/plugins/*/backend*
+%exclude %{python2_sitelib}/*/plugins/*/frontend*
 
 %files frontend-fedora
-%{python2_sitelib}/*/frontend/plugins/pkgdb.py*
+%{python2_sitelib}/*/plugins/pkgdb_plugin/frontend*
 
 %files backend-fedora
 %{_libexecdir}/%{name}/*watcher*
 %{_unitdir}/*watcher*
-%{python2_sitelib}/*/backend/plugins/fedmsg_publisher.py*
-%{python2_sitelib}/*/backend/plugins/pkgdb.py*
-%{python2_sitelib}/*/backend/services/watcher.py*
+%{python2_sitelib}/*/plugins/fedmsg_plugin/backend*
+%{python2_sitelib}/*/plugins/pkgdb_plugin/backend*
 
 %changelog
 * Thu Sep 08 2016 Michael Simacek <msimacek@redhat.com> 1.8.2-1
