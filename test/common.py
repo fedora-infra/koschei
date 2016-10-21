@@ -30,10 +30,11 @@ from mock import Mock
 from datetime import datetime
 
 from test import testdir, config
+from koschei import plugin
 from koschei.db import get_engine, create_all, Base, Session
 from koschei.models import (Package, Build, Collection, BasePackage,
                             PackageGroupRelation, PackageGroup, GroupACL, User)
-from koschei.backend import KoscheiBackendSession, repo_util
+from koschei.backend import KoscheiBackendSession, repo_util, service
 
 
 workdir = '.workdir'
@@ -271,3 +272,12 @@ class RepoCacheMock(object):
         if 123 < desc.repo_id < 130:
             desc = repo_util.KojiRepoDescriptor(desc.koji_id, desc.build_tag, 123)
         return repo_util.load_sack(os.path.join(testdir, 'repos'), desc)
+
+
+def service_ctor(name, plugin_name=None, plugin_endpoint='backend'):
+    def inner(*args, **kwargs):
+        if plugin_name:
+            plugin.load_plugins(plugin_endpoint, [plugin_name])
+        ctor = service.load_service(name)
+        return ctor(*args, **kwargs)
+    return inner

@@ -18,12 +18,13 @@
 
 from mock import Mock, patch
 
-from test.common import DBTest, KojiMock
+from test.common import DBTest, KojiMock, service_ctor
 from test.koji_data import *
-from koschei.backend.services.watcher import Watcher
 from koschei.models import KojiTask
 
 test_topic = 'org.fedoraproject.test.buildsys'
+
+Watcher = service_ctor('watcher', plugin_name='fedmsg_watcher')
 
 
 def generate_state_change(instance='primary', task_id=666, old='OPEN', new='CLOSED'):
