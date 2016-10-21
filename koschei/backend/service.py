@@ -30,13 +30,14 @@ from koschei.config import get_config
 def load_service(name):
     service_dirs = [os.path.join(os.path.dirname(__file__), 'services')]
     service_dirs += plugin.service_dirs
-    try:
-        descriptor = imp.find_module(name, service_dirs)
-    except ImportError:
-        # It may be a plugin
-        pass
-    else:
-        imp.load_module(name, *descriptor)
+    if name not in sys.modules:
+        try:
+            descriptor = imp.find_module(name, service_dirs)
+        except ImportError:
+            # It may be a plugin
+            pass
+        else:
+            imp.load_module(name, *descriptor)
     return Service.find_service(name)
 
 
