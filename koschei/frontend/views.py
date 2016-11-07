@@ -240,27 +240,37 @@ def collection_package_view(template, query_fn=None, **template_args):
                            **template_args)
 
 
+def icon(name, title=None):
+    url = url_for('static', filename='images/{}.png'.format(name))
+    return Markup(
+        '<img src="{url}" title="{title}"/>'
+        .format(url=url, title=title or name)
+    )
+
+
 def package_state_icon(package_or_state):
     state_string = getattr(package_or_state, 'state_string', package_or_state)
-    icon = {'ok': 'complete',
-            'failing': 'failed',
-            'unresolved': 'cross',
-            'blocked': 'unknown',
-            'untracked': 'unknown'}.get(state_string, 'unknown')
-    url = url_for('static', filename='images/{}.png'.format(icon))
-    return Markup(
-        '<img src="{url}" title="{state}"/>'
-        .format(url=url, state=state_string)
-    )
+    icon_name = {
+        'ok': 'complete',
+        'failing': 'failed',
+        'unresolved': 'cross',
+        'blocked': 'unknown',
+        'untracked': 'unknown'
+    }.get(state_string, 'unknown')
+    return icon(icon_name, state_string)
 Package.state_icon = property(package_state_icon)
 
 
+def resolution_state_icon(resolved):
+    if resolved is None:
+        return icon('unknown')
+    if resolved is True:
+        return icon('complete')
+    return icon('cross')
+
+
 def build_state_icon(build):
-    url = url_for('static', filename='images/{}.png'.format(build.state_string))
-    return Markup(
-        '<img src="{url}" title="{state}"/>'
-        .format(url=url, state=build.state_string)
-    )
+    return icon(build.state_string)
 Build.state_icon = property(build_state_icon)
 
 
