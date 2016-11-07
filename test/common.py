@@ -29,11 +29,7 @@ import logging
 import requests
 import vcr
 import six
-
-if six.PY2:
-    from xmlrpclib import loads, dumps
-else:
-    from xmlrpc.client import loads, dumps
+import contextlib
 
 from mock import Mock
 from datetime import datetime
@@ -45,6 +41,11 @@ from koschei.models import (Package, Build, Collection, BasePackage,
                             PackageGroupRelation, PackageGroup, GroupACL, User,
                             KojiTask)
 from koschei.backend import KoscheiBackendSession, repo_util, service
+
+if six.PY2:
+    from xmlrpclib import loads, dumps
+else:
+    from xmlrpc.client import loads, dumps
 
 workdir = '.workdir'
 
@@ -340,10 +341,11 @@ class KojiMock(Mock):
 
 
 class RepoCacheMock(object):
+    @contextlib.contextmanager
     def get_sack(self, desc):
         if 123 < desc.repo_id < 130:
             desc = repo_util.KojiRepoDescriptor(desc.koji_id, desc.build_tag, 123)
-        return repo_util.load_sack(os.path.join(testdir, 'repos'), desc)
+        yield repo_util.load_sack(os.path.join(testdir, 'repos'), desc)
 
 
 def service_ctor(name, plugin_name=None, plugin_endpoint='backend'):

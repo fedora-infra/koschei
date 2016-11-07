@@ -48,7 +48,8 @@ FOO_DEPS = [
 
 def get_sack():
     desc = KojiRepoDescriptor(koji_id='primary', repo_id=123, build_tag='f25-build')
-    return RepoCacheMock().get_sack(desc)
+    with RepoCacheMock().get_sack(desc) as sack:
+        return sack
 
 
 # pylint:disable=unbalanced-tuple-unpacking

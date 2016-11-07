@@ -19,9 +19,9 @@
 import contextlib
 import os
 import json
+import collections
 
-import librepo
-from mock import patch
+from mock import patch, Mock
 
 from test.common import DBTest
 from koschei.backend import repo_cache
@@ -31,13 +31,13 @@ from koschei.backend.repo_util import KojiRepoDescriptor
 @contextlib.contextmanager
 def mocks():
     with patch('librepo.Handle') as librepo_mock:
+        librepo_mock.perform.return_value = collections.defaultdict(Mock)
         with patch('hawkey.Sack') as sack_mock:
             with patch('hawkey.Repo'):
                 yield librepo_mock(), sack_mock()
 
 
 class RepoCacheTest(DBTest):
-
     def setUp(self):
         super(RepoCacheTest, self).setUp()
         self.repos = [7, 123, 666, 1024]
@@ -54,29 +54,49 @@ class RepoCacheTest(DBTest):
             ), index)
 
     def test_read_from_disk(self):
-        with mocks() as (librepo_mock, sack_mock):
+        with patch('koschei.backend.repo_util.load_sack') as load_sack:
             cache = repo_cache.RepoCache()
-            sack = cache.get_sack(self.descriptors[666])
-            self.assertIs(True, librepo_mock.local)
-            # pylint:disable=no-member
-            self.assertIs(librepo.LR_YUMREPO, librepo_mock.repotype)
-            self.assertEqual(['primary', 'filelists', 'group'], librepo_mock.yumdlist)
-            self.assertEqual('./repodata/primary-build_tag-666',
-                             librepo_mock.urls[0])
-            self.assertEqual(1, librepo_mock.perform.call_count)
-            self.assertIs(sack_mock, sack)
+            with cache.get_sack(self.descriptors[666]) as sack:
+                pass
+            load_sack.assert_called_once_with('./repodata', self.descriptors[666])
+            self.assertIs(load_sack(), sack)
 
     def test_download(self):
-        with mocks() as (librepo_mock, _):
+        with patch('koschei.backend.repo_util.load_sack') as load_sack:
             cache = repo_cache.RepoCache()
-            cache.get_sack(KojiRepoDescriptor('primary', 'build_tag', 1))
-            self.assertEqual(2, librepo_mock.perform.call_count)
+            desc = KojiRepoDescriptor('primary', 'build_tag', 1)
+            with cache.get_sack(desc) as sack:
+                pass
+            load_sack.assert_called_once_with('./repodata', desc, download=True)
+            self.assertIs(load_sack(), sack)
 
     def test_reuse(self):
-        cache = repo_cache.RepoCache()
-        with mocks() as (librepo_mock, _):
-            cache.get_sack(KojiRepoDescriptor('primary', 'build_tag', 1))
-        with mocks() as (librepo_mock, _):
-            cache.get_sack(KojiRepoDescriptor('primary', 'build_tag', 1))
-            # In-memory caching of sacks is not supported any longer
-            self.assertEqual(1, librepo_mock.perform.call_count)
+        desc = KojiRepoDescriptor('primary', 'build_tag', 1)
+        with patch('koschei.backend.repo_util.load_sack') as load_sack:
+            cache = repo_cache.RepoCache()
+            with cache.get_sack(desc) as sack:
+                pass
+            load_sack.assert_called_once_with('./repodata', desc, download=True)
+            self.assertIs(load_sack(), sack)
+            load_sack.reset_mock()
+            with cache.get_sack(desc) as sack:
+                pass
+            load_sack.assert_called_once_with('./repodata', desc)
+            self.assertIs(load_sack(), sack)
+
+    def test_reuse_existing(self):
+        desc = KojiRepoDescriptor('primary', 'build_tag', 1)
+        with patch('koschei.backend.repo_util.load_sack') as load_sack:
+            cache = repo_cache.RepoCache()
+            with cache.get_sack(desc) as sack:
+                pass
+            load_sack.assert_called_once_with('./repodata', desc, download=True)
+            self.assertIs(load_sack(), sack)
+            load_sack.reset_mock()
+
+            # instantiate new cache
+            cache = repo_cache.RepoCache()
+            with cache.get_sack(desc) as sack:
+                pass
+            load_sack.assert_called_once_with('./repodata', desc)
+            self.assertIs(load_sack(), sack)
