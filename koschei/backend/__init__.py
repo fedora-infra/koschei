@@ -88,14 +88,6 @@ class KoscheiBackendSession(KoscheiSession):
         return self._repo_cache
 
 
-def check_package_state(package, prev_state):
-    new_state = package.msg_state_string
-    if prev_state != new_state:
-        dispatch_event('package_state_change', package=package,
-                       prev_state=prev_state,
-                       new_state=new_state)
-
-
 def submit_build(session, package):
     build = Build(package_id=package.id, state=Build.RUNNING)
     name = package.name
