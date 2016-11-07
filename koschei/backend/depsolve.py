@@ -105,6 +105,16 @@ def run_goal(sack, br, group):
     return False, problems, None
 
 
+class DependencyWithDistance(object):
+    def __init__(self, name, epoch, version, release, arch):
+        self.name = name
+        self.epoch = epoch
+        self.version = version
+        self.release = release
+        self.arch = arch
+        self.distance = None
+
+
 def compute_dependency_distances(sack, br, deps):
     dep_map = {dep.name: dep for dep in deps}
     visited = set()

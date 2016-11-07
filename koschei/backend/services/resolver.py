@@ -86,17 +86,6 @@ def create_dependency_changes(deps1, deps2, **rest):
     return changes.values() if changes else []
 
 
-
-class DependencyWithDistance(object):
-    def __init__(self, name, epoch, version, release, arch):
-        self.name = name
-        self.epoch = epoch
-        self.version = version
-        self.release = release
-        self.arch = arch
-        self.distance = None
-
-
 class DependencyCache(object):
     def __init__(self, capacity):
         self.capacity = capacity
@@ -198,10 +187,12 @@ class Resolver(Service):
         resolved, problems, installs = depsolve.run_goal(sack, br, build_group)
         if resolved:
             problems = []
-            deps = [DependencyWithDistance(name=pkg.name, epoch=pkg.epoch,
-                                           version=pkg.version, release=pkg.release,
-                                           arch=pkg.arch)
-                    for pkg in installs if pkg.arch != 'src']
+            deps = [
+                depsolve.DependencyWithDistance(
+                    name=pkg.name, epoch=pkg.epoch, version=pkg.version,
+                    release=pkg.release, arch=pkg.arch,
+                ) for pkg in installs if pkg.arch != 'src'
+            ]
             depsolve.compute_dependency_distances(sack, br, deps)
         resolve_dependencies_time.stop()
         return (resolved, problems, deps)
