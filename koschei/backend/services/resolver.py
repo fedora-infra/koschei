@@ -405,36 +405,32 @@ class Resolver(Service):
             self.session.secondary_koji_for(collection),
             [p.srpm_nvra for p in packages],
         )
-        brs = util.parallel_generator(brs, queue_size=None)
-        try:
-            sack = self.session.repo_cache.get_sack(repo_descriptor)
-            if not sack:
-                self.log.error('Cannot generate repo: {}'.format(repo_id))
-                self.db.rollback()
-                return
-            build_group = self.get_build_group(collection)
-            resolved, base_problems, _ = self.resolve_dependencies(sack, [], build_group)
-            resolution_time.stop()
-            self.db.query(BuildrootProblem)\
-                .filter_by(collection_id=collection.id)\
-                .delete()
-            collection.latest_repo_resolved = resolved
-            if not resolved:
-                self.log.info("Build group not resolvable for {}"
-                              .format(collection.name))
-                collection.latest_repo_id = repo_id
-                self.db.execute(BuildrootProblem.__table__.insert(),
-                                [{'collection_id': collection.id, 'problem': problem}
-                                 for problem in base_problems])
-                self.db.commit()
-                return
+        sack = self.session.repo_cache.get_sack(repo_descriptor)
+        if not sack:
+            self.log.error('Cannot generate repo: {}'.format(repo_id))
+            self.db.rollback()
+            return
+        build_group = self.get_build_group(collection)
+        resolved, base_problems, _ = self.resolve_dependencies(sack, [], build_group)
+        resolution_time.stop()
+        self.db.query(BuildrootProblem)\
+            .filter_by(collection_id=collection.id)\
+            .delete()
+        collection.latest_repo_resolved = resolved
+        if not resolved:
+            self.log.info("Build group not resolvable for {}"
+                          .format(collection.name))
+            collection.latest_repo_id = repo_id
+            self.db.execute(BuildrootProblem.__table__.insert(),
+                            [{'collection_id': collection.id, 'problem': problem}
+                             for problem in base_problems])
             self.db.commit()
-            self.log.info("Resolving dependencies...")
-            resolution_time.start()
-            self.generate_dependency_changes(sack, collection, packages, brs, repo_id)
-            resolution_time.stop()
-        finally:
-            brs.stop()
+            return
+        self.db.commit()
+        self.log.info("Resolving dependencies...")
+        resolution_time.start()
+        self.generate_dependency_changes(sack, collection, packages, brs, repo_id)
+        resolution_time.stop()
         collection.latest_repo_id = repo_id
         self.db.commit()
         total_time.stop()
