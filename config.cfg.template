@@ -26,9 +26,9 @@ config = {
         "login_method": "ssl_login",
         # arguments passed to the login method
         "login_args": {
-            "cert": "/etc/koschei/fedora.cert",
-            "ca": "/etc/koschei/fedora-server-ca.cert",
-            "serverca": "/etc/koschei/fedora-server-ca.cert",
+            # "cert": "/etc/koschei/fedora.cert",
+            # "ca": "/etc/koschei/fedora-server-ca.cert",
+            # "serverca": "/etc/koschei/fedora-server-ca.cert",
         },
         # maximum number of koschei builds running at the same time
         "max_builds": 30,
