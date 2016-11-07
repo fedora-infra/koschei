@@ -53,6 +53,40 @@ ResolutionOutput = namedtuple('ResolutionOutput',
                                'problems', 'changes'])
 
 
+def create_dependency_changes(deps1, deps2, **rest):
+    if not deps1 or not deps2:
+        # TODO packages with no deps
+        return []
+
+    def key(dep):
+        return (dep.name, dep.epoch, dep.version, dep.release)
+
+    def new_change(**values):
+        change = dict(prev_version=None, prev_epoch=None,
+                      prev_release=None, curr_version=None,
+                      curr_epoch=None, curr_release=None)
+        change.update(rest)
+        change.update(values)
+        return change
+
+    old = util.set_difference(deps1, deps2, key)
+    new = util.set_difference(deps2, deps1, key)
+
+    changes = {}
+    for dep in old:
+        change = new_change(dep_name=dep.name,
+                            prev_version=dep.version, prev_epoch=dep.epoch,
+                            prev_release=dep.release, distance=None)
+        changes[dep.name] = change
+    for dep in new:
+        change = changes.get(dep.name) or new_change(dep_name=dep.name)
+        change.update(curr_version=dep.version, curr_epoch=dep.epoch,
+                      curr_release=dep.release, distance=dep.distance)
+        changes[dep.name] = change
+    return changes.values() if changes else []
+
+
+
 class DependencyWithDistance(object):
     def __init__(self, name, epoch, version, release, arch):
         self.name = name
@@ -171,38 +205,6 @@ class Resolver(Service):
             depsolve.compute_dependency_distances(sack, br, deps)
         resolve_dependencies_time.stop()
         return (resolved, problems, deps)
-
-    def create_dependency_changes(self, deps1, deps2, **rest):
-        if not deps1 or not deps2:
-            # TODO packages with no deps
-            return []
-
-        def key(dep):
-            return (dep.name, dep.epoch, dep.version, dep.release)
-
-        def new_change(**values):
-            change = dict(prev_version=None, prev_epoch=None,
-                          prev_release=None, curr_version=None,
-                          curr_epoch=None, curr_release=None)
-            change.update(rest)
-            change.update(values)
-            return change
-
-        old = util.set_difference(deps1, deps2, key)
-        new = util.set_difference(deps2, deps1, key)
-
-        changes = {}
-        for dep in old:
-            change = new_change(dep_name=dep.name,
-                                prev_version=dep.version, prev_epoch=dep.epoch,
-                                prev_release=dep.release, distance=None)
-            changes[dep.name] = change
-        for dep in new:
-            change = changes.get(dep.name) or new_change(dep_name=dep.name)
-            change.update(curr_version=dep.version, curr_epoch=dep.epoch,
-                          curr_release=dep.release, distance=dep.distance)
-            changes[dep.name] = change
-        return changes.values() if changes else []
 
     def get_prev_build_for_comparison(self, build):
         return self.db.query(Build)\
@@ -363,7 +365,7 @@ class Resolver(Service):
                     prev_deps = self.dependency_cache.get_by_ids(
                         self.db, prev_build.dependency_keys)
                     create_dependency_changes_time.start()
-                    changes = self.create_dependency_changes(
+                    changes = create_dependency_changes(
                         prev_deps, curr_deps, package_id=package.id,
                         prev_build_id=prev_build.id)
                     create_dependency_changes_time.stop()
@@ -455,9 +457,9 @@ class Resolver(Service):
         if prev and prev.dependency_keys:
             prev_deps = self.dependency_cache.get_by_ids(self.db, prev.dependency_keys)
             if prev_deps and curr_deps:
-                changes = self.create_dependency_changes(prev_deps, curr_deps,
-                                                         build_id=entry.id,
-                                                         prev_build_id=prev.id)
+                changes = create_dependency_changes(prev_deps, curr_deps,
+                                                    build_id=entry.id,
+                                                    prev_build_id=prev.id)
                 if changes:
                     self.db.execute(AppliedChange.__table__.insert(), changes)
         self.db.query(Build)\
