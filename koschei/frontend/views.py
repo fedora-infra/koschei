@@ -496,7 +496,6 @@ def package_detail(name):
         package.available_groups = [group for group, checked in user_groups if
                                     not checked]
 
-    entries_per_page = 20
     last_seen_ts = request.args.get('last_seen_ts')
     if last_seen_ts:
         try:
@@ -514,7 +513,7 @@ def package_detail(name):
         .options(subqueryload(Build.dependency_changes),
                  subqueryload(Build.build_arch_tasks))\
         .order_by(Build.started.desc())\
-        .limit(entries_per_page)\
+        .limit(builds_per_page)\
         .all()
     resolutions = db.query(ResolutionChange)\
         .filter_by(package_id=package.id)\
@@ -522,19 +521,19 @@ def package_detail(name):
                 if last_seen_ts else true())\
         .options(joinedload(ResolutionChange.problems))\
         .order_by(ResolutionChange.timestamp.desc())\
-        .limit(entries_per_page)\
+        .limit(builds_per_page)\
         .all()
 
     entries = sorted(
         builds + resolutions,
         key=lambda x: getattr(x, 'started', None) or getattr(x, 'timestamp'),
         reverse=True,
-    )[:entries_per_page]
+    )[:builds_per_page]
 
     return render_template("package-detail.html", package=package,
                            entries=entries, all_packages=all_packages,
                            is_continuation=bool(last_seen_ts),
-                           is_last=len(entries) < entries_per_page)
+                           is_last=len(entries) < builds_per_page)
 
 
 @app.route('/build/<int:build_id>')
