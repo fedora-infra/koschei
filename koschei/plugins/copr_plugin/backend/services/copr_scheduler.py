@@ -70,9 +70,7 @@ class CoprScheduler(Service):
             collection.build_group,
         )
 
-    def create_copr_project(self, request):
-        request.copr_name = 'koschei-{}'.format(request.id)
-
+    def create_copr_project(self, request, copr_name):
         koji_repo = KojiRepoDescriptor(self.get_koji_id(request.collection),
                                        request.collection.build_tag,
                                        request.repo_id)
@@ -80,36 +78,36 @@ class CoprScheduler(Service):
         try:
             # there may be leftover project from crashed process
             copr_client.delete_project(
-                projectname=request.copr_name,
+                projectname=copr_name,
                 username=self.copr_owner,
             )
         except CoprRequestException:
             pass
 
         copr_client.create_project(
-            projectname=request.copr_name,
+            projectname=copr_name,
             username=self.copr_owner,
             chroots=[self.chroot_name],
             disable_createrepo=True,
             enable_net=False,
             repos=[request.yum_repo, koji_repo.url],
+            unlisted_on_hp=True,
         )
 
         copr_client.modify_project_chroot_details(
-            projectname=request.copr_name,
+            projectname=copr_name,
             username=self.copr_owner,
             chrootname=self.chroot_name,
             pkgs=self.get_chroot_packages(request.collection),
         )
-        self.log.info("Created copr project " + request.copr_name)
+        self.log.debug("Created copr project " + copr_name)
 
     def schedule_rebuild(self, rebuild):
         srpm_url = self.get_srpm_url(rebuild.package)
-        if not rebuild.request.copr_name:
-            self.create_copr_project(rebuild.request)
-            self.db.commit()
+        copr_name = 'koschei-{}'.format(rebuild.id)
+        self.create_copr_project(rebuild.request, copr_name)
         copr_build = copr_client.create_new_build(
-            projectname=rebuild.request.copr_name,
+            projectname=copr_name,
             username=self.copr_owner,
             pkgs=[srpm_url],
             background=True,

@@ -22,18 +22,6 @@
         <td>{{ request.repo_source }}</td>
     </tr>
     <tr>
-        <th>Build Copr project</th>
-        <td>
-            {% if request.copr_name %}
-            <a href="{{ copr_frontend_url }}/coprs/{{ copr_username }}/{{ request.copr_name }}">
-                {{ copr_username }}/{{ request.copr_name }}
-            </a>
-            {% else %}
-            Not created yet
-            {% endif %}
-        </td>
-    </tr>
-    <tr>
         <th>Description</th>
         <td>{{ request.description }}</td>
     </tr>
@@ -93,7 +81,7 @@
         </td>
         <td>
             <a href="{{ copr_frontend_url }}/coprs/{{ copr_username
-                }}/{{ request.copr_name }}/build/{{ build.copr_build_id }}">
+                }}/koschei-{{ build.id }}/build/{{ build.copr_build_id }}">
                 copr build
             </a>
         </td>
