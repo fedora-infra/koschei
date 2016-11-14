@@ -27,7 +27,7 @@ import sys
 import logging
 import argparse
 
-from koschei import data, backend
+from koschei import data, backend, plugin
 from koschei.db import get_engine, create_all
 from koschei.models import (Package, PackageGroup, AdminNotice, Collection,
                             CollectionGroup)
@@ -41,6 +41,7 @@ load_config(['/usr/share/koschei/config.cfg',
 
 class Command(object):
     needs_session = True
+    load_plugins = False
 
     def setup_parser(self, parser):
         pass
@@ -66,6 +67,8 @@ def main():
     session = backend.KoscheiBackendSession()
     session.log = log
     del kwargs['cmd']
+    if cmd.load_plugins:
+        plugin.load_plugins('backend')
     if cmd.needs_session:
         kwargs['session'] = session
     cmd.execute(**kwargs)
@@ -89,6 +92,8 @@ class CreateDb(Command):
 
 class Cleanup(Command):
     """ Cleans old builds and resolution changes from the database """
+
+    load_plugins = True
 
     def setup_parser(self, parser):
         parser.add_argument('--older-than', type=int,
@@ -117,6 +122,7 @@ class Cleanup(Command):
             DELETE FROM resolution_change
                 WHERE "timestamp" < now() - '{months} month':: interval
         """.format(months=older_than))
+        plugin.dispatch_event('cleanup', session)
         session.db.commit()
         print("Deleted {} builds".format(build_res.rowcount))
         print("Deleted {} resolution changes".format(resolution_res.rowcount))
