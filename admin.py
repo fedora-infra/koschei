@@ -99,9 +99,6 @@ class Cleanup(Command):
     def execute(self, session, older_than):
         if older_than < 2:
             sys.exit("Minimal allowed value is 2 months")
-        session.db.execute(
-            "ALTER TABLE build DISABLE TRIGGER update_last_build_trigger_del"
-        )
         session.db.execute("""
             CREATE TEMPORARY TABLE excluded_build_ids AS (
                 SELECT last_build_id AS id FROM package
@@ -120,9 +117,6 @@ class Cleanup(Command):
             DELETE FROM resolution_change
                 WHERE "timestamp" < now() - '{months} month':: interval
         """.format(months=older_than))
-        session.db.execute(
-            "ALTER TABLE build ENABLE TRIGGER update_last_build_trigger_del"
-        )
         session.db.commit()
         print("Deleted {} builds".format(build_res.rowcount))
         print("Deleted {} resolution changes".format(resolution_res.rowcount))
