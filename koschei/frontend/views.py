@@ -17,7 +17,6 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-import logging
 import re
 import urllib
 from datetime import datetime
@@ -45,8 +44,6 @@ from koschei.models import (Package, Build, PackageGroup, PackageGroupRelation,
                             GroupACL, Collection, CollectionGroup,
                             AppliedChange, UnappliedChange, ResolutionChange,
                             get_package_state)
-
-log = logging.getLogger('koschei.views')
 
 packages_per_page = frontend_config['packages_per_page']
 builds_per_page = frontend_config['builds_per_page']
@@ -603,7 +600,7 @@ def user_packages(name):
                 names += res
     except Exception:
         flash("Error retrieving user's packages")
-        log.exception("Error retrieving user's packages")
+        session.log.exception("Error retrieving user's packages")
 
     def query_fn(query):
         return query.filter(BasePackage.name.in_(names))

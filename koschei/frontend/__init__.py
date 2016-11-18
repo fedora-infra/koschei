@@ -16,6 +16,8 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+import logging
+
 from flask import Flask, abort, request
 from flask_sqlalchemy import BaseQuery, Pagination
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -58,5 +60,7 @@ db = scoped_session(sessionmaker(autocommit=False, bind=get_engine(),
 
 class KoscheiFrontendSession(KoscheiSession):
     db = db
+    log = logging.getLogger('koschei.frontend')
+
 
 session = KoscheiFrontendSession()
