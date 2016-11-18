@@ -104,6 +104,8 @@ class AbstractTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(AbstractTest, self).__init__(*args, **kwargs)
         os.chdir(testdir)
+        if 'http_proxy' in os.environ:
+            del os.environ['http_proxy']
         # self.koji_session = RecordedKojiSession('http://koji.fedoraproject.org/kojihub')
         # self.koji_sessions = dict(primary=self.koji_session, secondary=self.koji_session)
         self.oldpwd = os.getcwd()
