@@ -60,7 +60,7 @@ def lookup_current_user():
     g.user = None
     user_name = session.get('user', None)
     if user_name:
-        g.user = db.query(m.User).filter_by(name=user_name).one()
+        g.user = db.query(m.User).filter_by(name=user_name).first()
 
 
 @app.route('/logout')
