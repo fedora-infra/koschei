@@ -163,6 +163,8 @@ config = {
         "fedmsg_topic": "org.fedoraproject.prod.copr.build.end",
         # suggested number of builds done per-request. User can override
         "default_schedule_count": 8,
+        # prefix of created projects
+        "name_prefix": "k",
     },
     # koschei uses dogpile.cache to cache external query results
     # it's possible to use various backends, such as memcached. The

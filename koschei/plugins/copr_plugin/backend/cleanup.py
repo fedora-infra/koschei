@@ -39,14 +39,15 @@ def copr_cleanup(session, older_than):
             .filter(CoprRebuild.request_id.in_(to_delete_ids))\
             .all()
         for rebuild in rebuilds:
+            project = '{}-{}'.format(get_config('copr.name_prefix'), rebuild.id)
             try:
                 copr_client.delete_project(
                     username=get_config('copr.copr_owner'),
-                    projectname='koschei-{}'.format(rebuild.id),
+                    projectname=project,
                 )
             except CoprException as e:
-                session.log.warn("Cannot delete copr project koschei-{}: {}"
-                                 .format(rebuild.id, e))
+                session.log.warn("Cannot delete copr project {}: {}"
+                                 .format(project, e))
                 if rebuild.id in to_delete_ids:
                     to_delete_ids.remove(rebuild.id)
     if to_delete_ids:
