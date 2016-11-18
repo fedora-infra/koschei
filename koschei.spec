@@ -32,6 +32,7 @@ BuildRequires:       python-flask-wtf
 BuildRequires:       python-jinja2
 BuildRequires:       python-dogpile-cache
 BuildRequires:       python-six
+BuildRequires:       python-copr
 %endif
 
 %description
@@ -120,6 +121,30 @@ Requires(postun): systemd
 %description backend-fedora
 %{summary}.
 
+%package common-copr
+Summary:        Koschei plugin for user rebuilds in Copr (common part)
+Requires:       %{name}-common = %{version}-%{release}
+
+%description common-copr
+%{summary}.
+
+%package backend-copr
+Summary:        Koschei plugin for user rebuilds in Copr (backend part)
+Requires:       %{name}-backend = %{version}-%{release}
+Requires:       %{name}-copr-common = %{version}-%{release}
+Requires:       python-copr
+
+%description backend-copr
+%{summary}.
+
+%package frontend-copr
+Summary:        Koschei plugin for user rebuilds in Copr (frontend part)
+Requires:       %{name}-frontend = %{version}-%{release}
+Requires:       %{name}-copr-common = %{version}-%{release}
+
+%description frontend-copr
+%{summary}.
+
 
 %prep
 %setup -q -n %{name}-%{name}-%{version}-%{upstreamrel}
@@ -171,6 +196,8 @@ ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-scheduler
 ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-watcher
 ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-polling
 ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-resolver
+ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-copr-resolver
+ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-copr-scheduler
 
 install -dm 755 %{buildroot}%{_sysconfdir}/bash_completion.d/
 install -p -m 644 koschei-admin.bash %{buildroot}%{_sysconfdir}/bash_completion.d/
@@ -221,6 +248,18 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %postun backend-fedora
 %systemd_postun %{name}-watcher.service
 
+%post backend-copr
+%systemd_post %{name}-copr-resolver.service
+%systemd_post %{name}-copr-scheduler.service
+
+%preun backend-copr
+%systemd_preun %{name}-copr-resolver.service
+%systemd_preun %{name}-copr-scheduler.service
+
+%postun backend-copr
+%systemd_postun %{name}-copr-resolver.service
+%systemd_postun %{name}-copr-scheduler.service
+
 %files common
 %license LICENSE.txt
 %{python2_sitelib}/*
@@ -251,10 +290,13 @@ dummy = posix.readlink(dir) and os.remove(dir)
 
 %files backend
 %config(noreplace) %{_sysconfdir}/%{name}/config-backend.cfg
-%{_libexecdir}/%{name}
-%{_unitdir}/*
-%exclude %{_libexecdir}/%{name}/*watcher*
-%exclude %{_unitdir}/*watcher*
+%dir %{_libexecdir}/%{name}
+%{_libexecdir}/%{name}/koschei-scheduler
+%{_libexecdir}/%{name}/koschei-polling
+%{_libexecdir}/%{name}/koschei-resolver
+%{_unitdir}/koschei-scheduler.service
+%{_unitdir}/koschei-polling.service
+%{_unitdir}/koschei-resolver.service
 %{python2_sitelib}/*/backend
 %{python2_sitelib}/*/plugins/repo_regen_plugin
 
@@ -268,10 +310,25 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %{python2_sitelib}/*/plugins/pkgdb_plugin/frontend*
 
 %files backend-fedora
-%{_libexecdir}/%{name}/*watcher*
-%{_unitdir}/*watcher*
+%{_libexecdir}/%{name}/koschei-watcher
+%{_unitdir}/koschei-watcher.service
 %{python2_sitelib}/*/plugins/fedmsg_plugin/backend*
 %{python2_sitelib}/*/plugins/pkgdb_plugin/backend*
+
+%files common-copr
+%{python2_sitelib}/*/plugins/copr_plugin/backend*
+%exclude %{python2_sitelib}/*/plugins/*/backend*
+%exclude %{python2_sitelib}/*/plugins/*/frontend*
+
+%files frontend-copr
+%{python2_sitelib}/*/plugins/copr_plugin/frontend*
+
+%files backend-copr
+%{_libexecdir}/%{name}/koschei-copr-resolver
+%{_libexecdir}/%{name}/koschei-copr-scheduler
+%{_unitdir}/koschei-copr-resolver.service
+%{_unitdir}/koschei-copr-scheduler.service
+%{python2_sitelib}/*/plugins/copr_plugin/backend*
 
 %changelog
 * Thu Sep 08 2016 Michael Simacek <msimacek@redhat.com> 1.8.2-1

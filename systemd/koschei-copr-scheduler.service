@@ -1,0 +1,13 @@
+[Unit]
+Description=Koschei - Fedora Continuous Integration - copr build scheduler
+After=syslog.target network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/libexec/koschei/koschei-copr-scheduler -m koschei.backend.main copr_scheduler
+User=koschei
+Group=koschei
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
