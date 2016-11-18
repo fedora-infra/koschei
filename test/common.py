@@ -25,6 +25,13 @@ import unittest
 import shutil
 import json
 import psycopg2
+import logging
+import requests
+import vcr
+
+from xmlrpclib import loads, dumps
+# For Python 3 use this instead:
+#from xmlrpc.client import loads, dumps
 
 from mock import Mock
 from datetime import datetime
@@ -36,8 +43,56 @@ from koschei.models import (Package, Build, Collection, BasePackage,
                             PackageGroupRelation, PackageGroup, GroupACL, User)
 from koschei.backend import KoscheiBackendSession, repo_util, service
 
-
 workdir = '.workdir'
+
+my_vcr = vcr.VCR(
+    cassette_library_dir=os.path.join(testdir, 'data'),
+    serializer='json',
+    path_transformer=vcr.VCR.ensure_suffix('.vcr.json'),
+)
+
+
+class RecordedKojiSession(object):
+    def __init__(self, server):
+        self._server = server
+        self.multicall = False
+        self._calls = []
+
+    def __getattr__(self, name):
+        def encode_args(args, kwargs):
+            kwargs['__starstar'] = True
+            return args + (kwargs,)
+
+        def method(*args, **kwargs):
+            if name != 'multiCall':
+                logging.debug("XML-RPC method {}: args={}, kwargs={}"
+                              .format(name, args, kwargs))
+            xml_request = dumps(encode_args(args, kwargs), name, allow_none=True)
+            reply = requests.post(self._server, xml_request,
+                                  headers={'Content-Type': 'text/xml'})
+            [[result], _] = loads(reply.content)
+            # logging.debug("XML-RPC result: {}".format(result))
+            return result
+
+        def method1(*args, **kwargs):
+            logging.debug("XML-RPC multicall method {}: args={}, kwargs={}"
+                          .format(name, args, kwargs))
+            kwargs['__starstar'] = True
+            self._calls.append({'methodName': name, 'params': encode_args(args, kwargs)})
+
+        if self.multicall:
+            return method1
+        return method
+
+    def multiCall(self):
+        assert self.multicall
+        self.multicall = False
+        try:
+            if not self._calls:
+                return []
+            return self.__getattr__('multiCall')(self._calls)
+        finally:
+            self._calls = []
 
 
 class AbstractTest(unittest.TestCase):
@@ -45,6 +100,9 @@ class AbstractTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(AbstractTest, self).__init__(*args, **kwargs)
         os.chdir(testdir)
+        # self.koji_session = RecordedKojiSession('http://koji.fedoraproject.org/kojihub')
+        # self.koji_sessions = dict(primary=self.koji_session, secondary=self.koji_session)
+        self.oldpwd = os.getcwd()
 
     def _rm_workdir(self):
         try:

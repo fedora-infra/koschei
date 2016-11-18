@@ -16,6 +16,7 @@ BuildRequires:  systemd
 
 %if %{with tests}
 BuildRequires:       python-nose
+BuildRequires:       python-vcrpy
 BuildRequires:       python-mock
 BuildRequires:       python-sqlalchemy
 BuildRequires:       koji
