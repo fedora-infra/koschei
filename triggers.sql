@@ -11,7 +11,8 @@ BEGIN
                 AND (state = 3 OR state = 5)
           ORDER BY id DESC
           LIMIT 1) AS lcb
-    WHERE package.id = NEW.package_id;
+    WHERE package.id = NEW.package_id
+        AND last_complete_build_id IS DISTINCT FROM lcb.id;
     RETURN NEW;
 END $$ LANGUAGE plpgsql;
 
@@ -25,7 +26,8 @@ BEGIN
           WHERE package_id = NEW.package_id
           ORDER BY id DESC
           LIMIT 1) AS lb
-    WHERE package.id = NEW.package_id;
+    WHERE package.id = NEW.package_id
+        AND last_build_id IS DISTINCT FROM lb.id;
     RETURN NEW;
 END $$ LANGUAGE plpgsql;
 
@@ -40,7 +42,8 @@ BEGIN
                 AND build.id != OLD.id
           ORDER BY id DESC
           LIMIT 1) AS lb
-    WHERE package.id = OLD.package_id;
+    WHERE package.id = OLD.package_id
+        AND last_build_id IS DISTINCT FROM lb.id;
     RETURN OLD;
 END $$ LANGUAGE plpgsql;
 
@@ -52,7 +55,8 @@ BEGIN
     FROM (SELECT base_id, BOOL_AND(blocked) AS all_blocked
           FROM package
           GROUP BY base_id) AS q
-    WHERE id = q.base_id;
+    WHERE id = q.base_id
+        AND base_package.all_blocked IS DISTINCT FROM q.all_blocked;
     RETURN NULL;
 END $$ LANGUAGE plpgsql;
 
