@@ -22,12 +22,15 @@ import koji
 
 from mock import patch
 
-from test.common import testdir, DBTest, service_ctor
+from test.common import testdir, DBTest, service_ctor, my_vcr
 from koschei.models import Build, CoprRebuildRequest
 from koschei.backend.repo_util import get_repo
 
 
 CoprResolver = service_ctor('copr_resolver', 'copr')
+
+REPO_URL = 'http://copr-be-dev.cloud.fedoraproject.org/results/msimacek/'\
+    'input/fedora-26-x86_64/'
 
 
 def get_repo_mock(repo_dir, descriptor, download=False):
@@ -52,12 +55,13 @@ class CoprResolverTest(DBTest):
         self.request = CoprRebuildRequest(
             user_id=self.prepare_user(name='user').id,
             collection_id=self.collection.id,
-            repo_source='copr_repo',
+            repo_source='copr:msimacek/input',
         )
         self.db.add(self.request)
         self.db.commit()
         self.resolver = CoprResolver(self.session)
 
+    @my_vcr.use_cassette('copr_resolver1')
     @patch('koschei.backend.repo_util.get_repo', side_effect=get_repo_mock)
     @patch('koschei.backend.koji_util.get_rpm_requires_cached',
            return_value=[
@@ -75,6 +79,7 @@ class CoprResolverTest(DBTest):
         self.db.commit()
         self.resolver.main()
         self.assertEqual(123, self.request.repo_id)
+        self.assertEqual(REPO_URL, self.request.yum_repo)
 
         for c in self.request.resolution_changes:
             print('{} {}>{} {}'.format(c.package.name,
