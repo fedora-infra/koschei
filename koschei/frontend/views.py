@@ -24,7 +24,6 @@ from functools import wraps
 from textwrap import dedent
 
 from flask import abort, render_template, request, url_for, redirect, g, flash
-from flask_wtf import Form
 from jinja2 import Markup, escape
 from sqlalchemy import Integer
 from sqlalchemy.exc import IntegrityError
@@ -33,18 +32,13 @@ from sqlalchemy.orm import (joinedload, subqueryload, undefer, contains_eager,
 from sqlalchemy.sql import exists, func, false, true, cast
 from sqlalchemy.sql.functions import coalesce
 
-from wtforms import StringField, TextAreaField, IntegerField
-from wtforms import validators, widgets
-from wtforms.validators import Regexp, ValidationError
-
 from koschei import util, plugin, data
 from koschei.config import get_config
-from koschei.frontend import app, db, frontend_config, auth, session
+from koschei.frontend import app, db, frontend_config, auth, session, forms
 from koschei.models import (
     Package, Build, PackageGroup, PackageGroupRelation, AdminNotice,
     BuildrootProblem, BasePackage, GroupACL, Collection, CollectionGroup,
-    AppliedChange, UnappliedChange, ResolutionChange, CoprRebuildRequest,
-    CoprRebuild,
+    AppliedChange, UnappliedChange, ResolutionChange,
     get_package_state,
 )
 
@@ -303,8 +297,6 @@ def tab(caption, slave=False):
 app.jinja_env.globals.update(
     get_all_tabs=get_all_tabs,
     primary_koji_url=get_config('koji_config.weburl'),
-    copr_frontend_url=get_config('copr.frontend_url'),
-    copr_username=get_config('copr.copr_owner'),
     secondary_koji_url=secondary_koji_url,
     koschei_version=get_config('version'),
     generate_links=generate_links,
@@ -555,7 +547,7 @@ def build_detail(build_id):
                        subqueryload(Build.build_arch_tasks))\
               .filter_by(id=build_id).first_or_404()
     return render_template("build-detail.html", build=build,
-                           cancel_form=EmptyForm())
+                           cancel_form=forms.EmptyForm())
 
 
 @app.route('/build/<int:build_id>/cancel', methods=['POST'])
@@ -565,7 +557,7 @@ def cancel_build(build_id):
     if not g.user.admin:
         abort(403)
     build = db.query(Build).filter_by(id=build_id).first_or_404()
-    if EmptyForm().validate_or_flash():
+    if forms.EmptyForm().validate_or_flash():
         if build.state != Build.RUNNING:
             flash("Only running builds can be canceled.")
         elif build.cancel_requested:
@@ -620,90 +612,6 @@ def user_packages(name):
     return package_view("user-packages.html", query_fn, username=name)
 
 
-class StrippedStringField(StringField):
-    def process_formdata(self, values):
-        # pylint:disable=W0201
-        self.data = values and values[0].strip()
-
-
-class ListFieldMixin(object):
-    split_re = re.compile(r'[ \t\n\r,]+')
-
-    def process_formdata(self, values):
-        # pylint:disable=W0201
-        values = values and values[0]
-        self.data = [x for x in self.split_re.split(values or '') if x]
-
-
-class ListField(ListFieldMixin, StringField):
-    def _value(self):
-        return ', '.join(self.data or ())
-
-
-class ListAreaField(ListFieldMixin, TextAreaField):
-    def _value(self):
-        return '\n'.join(self.data or ())
-
-
-name_re = re.compile(r'^[a-zA-Z0-9.+_-]+$')
-group_re = re.compile(r'^([a-zA-Z0-9.+_-]+(/[a-zA-Z0-9.+_-]+)?)?$')
-
-
-class NameListValidator(object):
-    def __init__(self, message):
-        self.message = message
-
-    def __call__(self, _, field):
-        if not all(map(name_re.match, field.data)):
-            raise ValidationError(self.message)
-
-
-class NonEmptyList(object):
-    def __init__(self, message):
-        self.message = message
-
-    def __call__(self, _, field):
-        if not field.data:
-            raise ValidationError(self.message)
-
-
-class EmptyForm(Form):
-    def validate_or_flash(self):
-        if self.validate_on_submit():
-            return True
-        flash(', '.join(x for i in self.errors.values() for x in i))
-        return False
-
-
-class GroupForm(EmptyForm):
-    name = StrippedStringField('name', [Regexp(name_re, message="Invalid group name")])
-    packages = ListAreaField('packages', [NonEmptyList("Empty group not allowed"),
-                                          NameListValidator("Invalid package list")])
-    owners = ListField('owners', [NonEmptyList("Group must have an owner"),
-                                  NameListValidator("Invalid owner list")])
-
-
-class AddPackagesForm(EmptyForm):
-    packages = ListAreaField('packages', [NonEmptyList("No packages given"),
-                                          NameListValidator("Invalid package list")])
-    collection = StrippedStringField('collection')
-    group = StrippedStringField('group', [Regexp(group_re, message="Invalid group")])
-
-
-class RebuildRequestForm(EmptyForm):
-    collection = StrippedStringField('collection')
-    copr_name = StrippedStringField('copr_name', [validators.Length(min=1)])
-    description = StrippedStringField('description', widget=widgets.TextArea())
-    schedule_count = IntegerField('schedule_count', [validators.NumberRange(min=0)],
-                                  default=get_config('copr.default_schedule_count'))
-
-
-class MoveRebuildForm(EmptyForm):
-    request_id = IntegerField('request_id')
-    package_id = IntegerField('package_id')
-    direction = StringField('direction', [validators.AnyOf(['top', 'bottom'])])
-
-
 def can_edit_group(group):
     return g.user and (g.user.admin or
                        db.query(exists()
@@ -718,11 +626,11 @@ def process_group_form(group=None):
         if group:
             obj = dict(name=group.name, owners=[u.name for u in group.owners],
                        packages=[p.name for p in group.packages])
-            form = GroupForm(**obj)
+            form = forms.GroupForm(**obj)
         else:
-            form = GroupForm(owners=[g.user.name])
+            form = forms.GroupForm(owners=[g.user.name])
         return render_template('edit-group.html', group=group, form=form)
-    form = GroupForm()
+    form = forms.GroupForm()
     # check permissions
     if group and not group.editable:
         flash("You don't have permission to edit this group")
@@ -782,7 +690,7 @@ def delete_group(name, namespace=None):
               .options(joinedload(PackageGroup.packages))\
               .filter_by(name=name, namespace=namespace).first_or_404()
     if request.method == 'POST':
-        if EmptyForm().validate_or_flash() and group.editable:
+        if forms.EmptyForm().validate_or_flash() and group.editable:
             db.delete(group)
             db.commit()
             return redirect(url_for('groups_overview'))
@@ -795,7 +703,7 @@ if not frontend_config['auto_tracking']:
     @tab('Add packages')
     @auth.login_required()
     def add_packages():
-        form = AddPackagesForm()
+        form = forms.AddPackagesForm()
         if request.method == 'POST':
             if not form.validate_or_flash():
                 return render_template("add-packages.html", form=form)
@@ -1000,80 +908,3 @@ def depchange(dep_name):
                            dep_name=dep_name, evr1=evr1, evr2=evr2,
                            is_upgrade=is_upgrade, collection=collection,
                            failed=failed)
-
-
-# TODO think about the URL
-@app.route('/rebuild_request/new', methods=['GET', 'POST'])
-@auth.login_required()
-def new_rebuild_request():
-    form = RebuildRequestForm()
-    if request.method == 'GET':
-        return render_template('new-rebuild-request.html', form=form)
-    else:
-        if form.validate_or_flash():
-            collection = g.collections_by_name.get(form.collection.data)
-            if not collection:
-                abort(404, "Collection not found")
-            repo_source = form.copr_name.data
-            if '/' not in repo_source:
-                repo_source = g.user.name + '/' + repo_source
-            repo_source = 'copr:' + repo_source
-            rebuild_request = CoprRebuildRequest(
-                collection_id=collection.id,
-                user_id=g.user.id,
-                repo_source=repo_source,
-                description=form.description.data or None,
-                schedule_count=form.schedule_count.data,
-            )
-            db.add(rebuild_request)
-            db.commit()
-            return redirect(url_for('rebuild_request_detail',
-                                    request_id=rebuild_request.id))
-        return render_template('new-rebuild-request.html', form=form)
-
-
-@app.route('/rebuild_request/<int:request_id>')
-def rebuild_request_detail(request_id):
-    rebuild_request = db.query(CoprRebuildRequest)\
-        .options(
-            subqueryload('resolution_changes'),
-            joinedload('resolution_changes.package'),
-            subqueryload('rebuilds'),
-            joinedload('rebuilds.package'),
-        ).get_or_404(request_id)
-    return render_template('rebuild-request-detail.html',
-                           request=rebuild_request,
-                           move_form=MoveRebuildForm())
-
-@app.route('/rebuild_request/move_rebuild', methods=['POST'])
-def move_rebuild():
-    form = MoveRebuildForm()
-    if not form.validate_on_submit():
-        abort(400)
-    rebuild = db.query(CoprRebuild)\
-        .filter_by(request_id=form.request_id.data,
-                   package_id=form.package_id.data)\
-        .first_or_404()
-    if form.direction.data == 'top':
-        db.query(CoprRebuild)\
-            .filter(CoprRebuild.request_id == rebuild.request_id)\
-            .filter(CoprRebuild.state == None)\
-            .filter(CoprRebuild.order < rebuild.order)\
-            .update({'order': CoprRebuild.order + 1})
-        rebuild.order = db.query(func.min(CoprRebuild.order) - 1)\
-            .filter(CoprRebuild.request_id == rebuild.request_id)\
-            .filter(CoprRebuild.state == None)\
-            .scalar()
-        # Moving to top should ensure the package will be scheduled
-        rebuild.request.schedule_count += 1
-        rebuild.request.state = 'in progress'
-    elif form.direction.data == 'bottom':
-        db.query(CoprRebuild)\
-            .filter(CoprRebuild.request_id == rebuild.request_id)\
-            .filter(CoprRebuild.order > rebuild.order)\
-            .update({'order': CoprRebuild.order - 1})
-        rebuild.order = db.query(func.max(CoprRebuild.order) + 1)\
-            .filter(CoprRebuild.request_id == rebuild.request_id)\
-            .scalar()
-    db.commit()
-    return redirect(url_for('rebuild_request_detail', request_id=rebuild.request_id))
