@@ -21,7 +21,7 @@ from __future__ import print_function
 import math
 import time
 
-from sqlalchemy import (func, union_all, extract, cast, Integer, case, null,
+from sqlalchemy import (func, union_all, extract, cast, Integer,
                         literal_column, text, Column)
 
 from koschei import backend
@@ -108,7 +108,7 @@ class Scheduler(Service):
                                           Collection.priority_coefficient, 0)
         priority_expr = (computed_priority + Package.manual_priority +
                          Package.static_priority)
-        return self.db.query(Package.id, priority_expr)\
+        return self.db.query(Package.id, priority_expr, Package.current_priority)\
                       .join(Package.collection)\
                       .outerjoin(priorities, Package.id == priorities.c.pkg_id)\
                       .filter((Package.resolved == True) |
@@ -122,12 +122,20 @@ class Scheduler(Service):
     def persist_priorities(self, prioritized):
         if not prioritized:
             return
-        self.lock_package_table()
-        # pylint: disable=E1101
-        self.db.execute(Package.__table__.update()
-                        .values(current_priority=case(prioritized,
-                                                      value=Package.id,
-                                                      else_=null())))
+        threshold = get_config('priorities.priority_update_threshold', 100)
+        to_update = [{'package_id': package_id, 'priority': priority}
+                     for (package_id, priority, prev_prio) in prioritized
+                     if abs((priority or 0) - (prev_prio or 0)) > threshold]
+        if to_update:
+            self.lock_package_table()
+            self.db.execute(
+                text("""
+                    UPDATE package
+                    SET current_priority = :priority
+                    WHERE id = :package_id
+                """),
+                to_update,
+            )
         self.db.commit()
         self.calculation_timestamp = time.time()
 
@@ -151,7 +159,7 @@ class Scheduler(Service):
                            .format(koji_load))
             return
 
-        for package_id, priority in prioritized:
+        for package_id, priority, _ in prioritized:
             if priority < get_config('priorities.build_threshold'):
                 self.log.info("Not scheduling: no package above threshold")
                 return

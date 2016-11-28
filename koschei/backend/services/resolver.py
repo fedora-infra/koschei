@@ -300,7 +300,8 @@ class Resolver(Service):
         changed = {r.package_id: r for r in chunk
                    if r.resolved != r.prev_resolved}
         for val in True, False:
-            to_update = [r.package_id for r in chunk if r.resolved is val]
+            to_update = [r.package_id for r in chunk
+                         if r.resolved is val and r.prev_resolved is not val]
             if to_update:
                 self.db.query(Package)\
                     .filter(Package.id.in_(to_update))\
