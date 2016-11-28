@@ -104,10 +104,9 @@ class CoprScheduler(Service):
 
     def schedule_rebuild(self, rebuild):
         srpm_url = self.get_srpm_url(rebuild.package)
-        copr_name = '{}-{}'.format(get_config('copr.name_prefix'), rebuild.id)
-        self.create_copr_project(rebuild.request, copr_name)
+        self.create_copr_project(rebuild.request, rebuild.copr_name)
         copr_build = copr_client.create_new_build(
-            projectname=copr_name,
+            projectname=rebuild.copr_name,
             username=self.copr_owner,
             pkgs=[srpm_url],
             background=True,

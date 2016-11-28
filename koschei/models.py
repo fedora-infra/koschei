@@ -537,6 +537,14 @@ class CoprRebuild(Base):
     # set by resolver, can be altered by frontend
     order = Column(Integer, nullable=False)
 
+    @property
+    def copr_name(self):
+        return '{}-{}-{}'.format(
+            get_config('copr.name_prefix'),
+            self.request_id,
+            self.package_id,
+        )
+
 
 # Indices
 Index('ix_build_running', Build.package_id, unique=True,

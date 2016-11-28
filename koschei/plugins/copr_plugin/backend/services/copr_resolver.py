@@ -114,13 +114,13 @@ class CoprResolver(Service):
         )
         rebuilds = []
         resolution_changes = []
+        build_group = koji_util.get_build_group_cached(
+            self.session,
+            self.session.koji('primary'),
+            request.collection.build_tag,
+            request.collection.build_group,
+        )
         for package, brs in izip(packages, br_gen):
-            build_group = koji_util.get_build_group_cached(
-                self.session,
-                self.session.koji('primary'),
-                request.collection.build_tag,
-                request.collection.build_group,
-            )
             resolved1, _, installs1 = \
                 depsolve.run_goal(sack_before, brs, build_group)
             resolved2, problems2, installs2 = \
