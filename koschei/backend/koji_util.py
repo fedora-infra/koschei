@@ -168,19 +168,26 @@ def get_rpm_requires_cached(session, koji_session, nvras):
     return get_rpm_requires_inner(*nvras)
 
 
-def get_koji_load(koji_session):
+def get_koji_load(koji_session, arches):
     channel = koji_session.getChannel('default')
     build_arches = get_config('koji_config').get('build_arches')
-    hosts = koji_session.listHosts(build_arches, channel['id'], enabled=True)
+    noarch = len(arches) == 1 and arches[0] == 'noarch'
+    if noarch or not arches:
+        arches = build_arches
+    arches = [arch for arch in set(arches) & set(build_arches)]
+    hosts = koji_session.listHosts(arches, channel['id'], enabled=True)
+    min_load = 1
     max_load = 0
-    assert build_arches
-    for arch in build_arches:
+    assert arches
+    for arch in arches:
         arch_hosts = [host for host in hosts if arch in host['arches']]
         capacity = sum(host['capacity'] for host in arch_hosts)
         load = sum(min(host['task_load'], host['capacity']) if host['ready']
                    else host['capacity'] for host in arch_hosts)
-        max_load = max(max_load, load / capacity if capacity else 1.0)
-    return max_load
+        arch_load = load / capacity if capacity else 1.0
+        min_load = min(min_load, arch_load)
+        max_load = max(max_load, arch_load)
+    return min_load if noarch else max_load
 
 
 def get_latest_repo(koji_session, build_tag):

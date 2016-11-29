@@ -28,7 +28,7 @@ from koschei import backend
 from koschei.config import get_config
 from koschei.backend import koji_util
 from koschei.backend.service import Service
-from koschei.models import Package, Build, Collection
+from koschei.models import Package, Build, Collection, KojiTask
 
 
 def hours_since(what):
@@ -153,11 +153,6 @@ class Scheduler(Service):
             self.log.debug("Not scheduling: {} incomplete builds"
                            .format(incomplete_builds))
             return
-        koji_load = koji_util.get_koji_load(self.session.koji('primary'))
-        if koji_load > get_config('koji_config.load_threshold'):
-            self.log.debug("Not scheduling: {} koji load"
-                           .format(koji_load))
-            return
 
         for package_id, priority, _ in prioritized:
             if priority < get_config('priorities.build_threshold'):
@@ -170,6 +165,16 @@ class Scheduler(Service):
                 continue
 
             # a package was chosen
+            arches = self.db.query(KojiTask.arch)\
+                .filter_by(build_id=package.last_build_id)\
+                .all()
+            arches = [arch for [arch] in arches]
+            koji_load = koji_util.get_koji_load(self.session.koji('primary'), arches)
+            if koji_load > get_config('koji_config.load_threshold'):
+                self.log.debug("Not scheduling {}: {} koji load"
+                               .format(package, koji_load))
+                return
+
             self.log.info('Scheduling build for {}, priority {}'
                           .format(package.name, priority))
             build = backend.submit_build(self.session, package)

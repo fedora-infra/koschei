@@ -40,7 +40,8 @@ from test import testdir, config
 from koschei import plugin
 from koschei.db import get_engine, create_all, Base, Session
 from koschei.models import (Package, Build, Collection, BasePackage,
-                            PackageGroupRelation, PackageGroup, GroupACL, User)
+                            PackageGroupRelation, PackageGroup, GroupACL, User,
+                            KojiTask)
 from koschei.backend import KoscheiBackendSession, repo_util, service
 
 workdir = '.workdir'
@@ -69,7 +70,8 @@ class RecordedKojiSession(object):
                               .format(name, args, kwargs))
             xml_request = dumps(encode_args(args, kwargs), name, allow_none=True)
             reply = requests.post(self._server, xml_request,
-                                  headers={'Content-Type': 'text/xml'})
+                                  headers={'Content-Type': 'text/xml'},
+                                  verify=False)
             [[result], _] = loads(reply.content)
             # logging.debug("XML-RPC result: {}".format(result))
             return result
@@ -246,7 +248,7 @@ class DBTest(AbstractTest):
         self.db.commit()
         return pkgs
 
-    def prepare_build(self, pkg_name, state=None, repo_id=None, resolved=True):
+    def prepare_build(self, pkg_name, state=None, repo_id=None, resolved=True, arches=()):
         states = {
             True: Build.COMPLETE,
             False: Build.FAILED,
@@ -264,6 +266,14 @@ class DBTest(AbstractTest):
                       deps_resolved=resolved)
         self.task_id_counter += 1
         self.db.add(build)
+        self.db.commit()
+        for arch in arches:
+            koji_task = KojiTask(task_id=7541,
+                                 arch=arch,
+                                 state=1,
+                                 started=datetime.fromtimestamp(123),
+                                 build_id=build.id)
+            self.db.add(koji_task)
         self.db.commit()
         return build
 
