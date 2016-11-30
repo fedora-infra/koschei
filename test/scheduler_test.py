@@ -25,7 +25,9 @@ from mock import Mock, patch
 from sqlalchemy import Table, Column, Integer, MetaData
 
 from test.common import DBTest
-from koschei.models import UnappliedChange, AppliedChange, Build, Package, Collection, KojiTask
+from koschei.models import (
+    UnappliedChange, AppliedChange, Build, Package, Collection, KojiTask,
+)
 from koschei.backend.services.scheduler import Scheduler
 
 
@@ -245,9 +247,9 @@ class SchedulerTest(DBTest):
             sched = self.get_scheduler()
 
             def get_prio_q():
-                return {i: self.db.query(t.c.pkg_id.label('pkg_id'),
-                                         t.c.priority.label('priority'))
-                        for i, t in enumerate(tables)}
+                return [self.db.query(t.c.pkg_id.label('pkg_id'),
+                                      t.c.priority.label('priority'))
+                        for t in tables]
             with patch.object(sched, 'get_priority_queries', get_prio_q):
                 with patch('koschei.backend.submit_build') as submit_mock:
                     sched.main()
@@ -337,7 +339,8 @@ class SchedulerTest(DBTest):
     def test_load_arches(self):
         arches = ['x86_64', 'ppc64le', 'alpha']
         package = self.prepare_build('rnv', True, arches=arches).package
-        with patch('koschei.backend.koji_util.get_koji_load') as load_mock:
+        with patch('koschei.backend.koji_util.get_koji_load',
+                   return_value=0) as load_mock:
             with patch('koschei.backend.submit_build') as submit_mock:
                 self.get_scheduler().main()
                 load_mock.assert_called_with(self.session.koji('primary'),

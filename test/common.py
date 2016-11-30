@@ -28,10 +28,12 @@ import psycopg2
 import logging
 import requests
 import vcr
+import six
 
-from xmlrpclib import loads, dumps
-# For Python 3 use this instead:
-#from xmlrpc.client import loads, dumps
+if six.PY2:
+    from xmlrpclib import loads, dumps
+else:
+    from xmlrpc.client import loads, dumps
 
 from mock import Mock
 from datetime import datetime

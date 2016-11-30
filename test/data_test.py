@@ -63,4 +63,4 @@ class DataTest(DBTest):
         self.db.flush()
         with self.assertRaises(data.PackagesDontExist) as exc:
             data.set_group_content(self.session, group, ['bar', 'a1', 'a2'])
-        self.assertItemsEqual({'a1', 'a2'}, exc.exception.packages)
+        six.assertCountEqual(self, {'a1', 'a2'}, exc.exception.packages)

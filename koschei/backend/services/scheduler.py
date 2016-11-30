@@ -86,19 +86,18 @@ class Scheduler(Service):
         ).group_by(sub.c.pkg_id).having(func.count(sub.c.pkg_id) == 2)
 
     def get_priority_queries(self):
-        return {
-            'dependency': self.get_dependency_priority_query(),
-            'time': self.get_time_priority_query(),
-            'failed_build': self.get_failed_build_priority_query(),
-        }
+        return [
+            self.get_dependency_priority_query(),
+            self.get_time_priority_query(),
+            self.get_failed_build_priority_query(),
+        ]
 
     def get_incomplete_builds_query(self):
         return self.db.query(Build.package_id).filter(Build.state == Build.RUNNING)
 
     def get_priorities(self):
         incomplete_builds = self.get_incomplete_builds_query()
-        queries = list(self.get_priority_queries().values())
-        union_query = union_all(*queries).alias('un')
+        union_query = union_all(*self.get_priority_queries()).alias('un')
         pkg_id = union_query.c.pkg_id
         current_priority = cast(func.sum(union_query.c.priority),
                                 Integer).label('curr_priority')

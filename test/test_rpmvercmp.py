@@ -16,6 +16,8 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+import six
+
 from sqlalchemy import literal_column
 
 from test.common import DBTest
@@ -102,7 +104,7 @@ class RpmVercmpTest(DBTest):
                 (VALUES {values}) AS q(a, b, exp)
             WHERE exp != rpmvercmp(a, b)
         """.format(values=RPM_DATA.rstrip(',\n '))).fetchall()
-        self.assertItemsEqual([], result)
+        six.assertCountEqual(self, [], result)
 
     def test_operator(self):
         result = self.db.query(literal_column("'2' <# '11'").label('r')).scalar()

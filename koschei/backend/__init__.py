@@ -157,7 +157,7 @@ def register_real_builds(session, collection, package_build_infos):
         while True:
             try:
                 build_tasks = sync_tasks(session, collection, chunk, real=True)
-                for build, tasks in build_tasks.items():
+                for build, tasks in list(build_tasks.items()):
                     if not build.repo_id:
                         del build_tasks[build]
                 chunk = list(build_tasks.keys())
@@ -414,7 +414,7 @@ def refresh_packages(session):
         to_add = []
         for pkg_dict in koji_packages:
             name = pkg_dict['package_name']
-            if name not in bases.iterkeys():
+            if name not in bases.keys():
                 base = BasePackage(name=name)
                 bases[name] = base
                 to_add.append(base)

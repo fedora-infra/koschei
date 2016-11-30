@@ -308,7 +308,7 @@ class Resolver(Service):
                     .filter(Package.id.in_(to_update))\
                     .update({'resolved': val})
         packages = self.db.query(Package)\
-            .filter(Package.id.in_(changed.iterkeys()))\
+            .filter(Package.id.in_(changed))\
             .options(joinedload(Package.last_complete_build))\
             .all() if changed else []
         state_changes = {}
@@ -325,7 +325,7 @@ class Resolver(Service):
 
         if state_changes:
             for package in self.db.query(Package)\
-                .filter(Package.id.in_(state_changes.iterkeys()))\
+                .filter(Package.id.in_(state_changes))\
                 .options(joinedload(Package.groups),
                          joinedload(Package.collection)):
                 prev_state, new_state = state_changes[package.id]
