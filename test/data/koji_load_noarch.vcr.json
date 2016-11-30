@@ -1,0 +1,129 @@
+{
+    "version": 1,
+    "interactions": [
+        {
+            "request": {
+                "body": "<?xml version='1.0'?>\n<methodCall>\n<methodName>getChannel</methodName>\n<params>\n<param>\n<value><string>default</string></value>\n</param>\n<param>\n<value><struct>\n<member>\n<name>__starstar</name>\n<value><boolean>1</boolean></value>\n</member>\n</struct></value>\n</param>\n</params>\n</methodCall>\n",
+                "headers": {
+                    "Content-Length": [
+                        "291"
+                    ],
+                    "Accept-Encoding": [
+                        "gzip, deflate"
+                    ],
+                    "Accept": [
+                        "*/*"
+                    ],
+                    "User-Agent": [
+                        "python-requests/2.10.0"
+                    ],
+                    "Connection": [
+                        "keep-alive"
+                    ],
+                    "Content-Type": [
+                        "text/xml"
+                    ]
+                },
+                "method": "POST",
+                "uri": "https://koji.stg.fedoraproject.org/kojihub"
+            },
+            "response": {
+                "status": {
+                    "message": "OK",
+                    "code": 200
+                },
+                "headers": {
+                    "apptime": [
+                        "D=2525"
+                    ],
+                    "content-length": [
+                        "267"
+                    ],
+                    "keep-alive": [
+                        "timeout=5, max=100"
+                    ],
+                    "server": [
+                        "Apache/2.4.6 (Red Hat Enterprise Linux) OpenSSL/1.0.1e-fips mod_auth_gssapi/1.4.0 mod_auth_kerb/5.4 mod_wsgi/3.4 Python/2.7.5"
+                    ],
+                    "appserver": [
+                        "koji01.stg.phx2.fedoraproject.org"
+                    ],
+                    "connection": [
+                        "Keep-Alive"
+                    ],
+                    "date": [
+                        "Wed, 30 Nov 2016 12:13:55 GMT"
+                    ],
+                    "content-type": [
+                        "text/xml"
+                    ]
+                },
+                "body": {
+                    "string": "<?xml version='1.0'?>\n<methodResponse>\n<params>\n<param>\n<value><struct>\n<member>\n<name>id</name>\n<value><int>1</int></value>\n</member>\n<member>\n<name>name</name>\n<value><string>default</string></value>\n</member>\n</struct></value>\n</param>\n</params>\n</methodResponse>\n"
+                }
+            }
+        },
+        {
+            "request": {
+                "body": "<?xml version='1.0'?>\n<methodCall>\n<methodName>listHosts</methodName>\n<params>\n<param>\n<value><array><data>\n<value><string>x86_64</string></value>\n<value><string>i386</string></value>\n<value><string>armhfp</string></value>\n</data></array></value>\n</param>\n<param>\n<value><int>1</int></value>\n</param>\n<param>\n<value><struct>\n<member>\n<name>__starstar</name>\n<value><boolean>1</boolean></value>\n</member>\n<member>\n<name>enabled</name>\n<value><boolean>1</boolean></value>\n</member>\n</struct></value>\n</param>\n</params>\n</methodCall>\n",
+                "headers": {
+                    "Content-Length": [
+                        "531"
+                    ],
+                    "Accept-Encoding": [
+                        "gzip, deflate"
+                    ],
+                    "Accept": [
+                        "*/*"
+                    ],
+                    "User-Agent": [
+                        "python-requests/2.10.0"
+                    ],
+                    "Connection": [
+                        "keep-alive"
+                    ],
+                    "Content-Type": [
+                        "text/xml"
+                    ]
+                },
+                "method": "POST",
+                "uri": "https://koji.stg.fedoraproject.org/kojihub"
+            },
+            "response": {
+                "status": {
+                    "message": "OK",
+                    "code": 200
+                },
+                "headers": {
+                    "apptime": [
+                        "D=2830"
+                    ],
+                    "content-length": [
+                        "7274"
+                    ],
+                    "keep-alive": [
+                        "timeout=5, max=100"
+                    ],
+                    "server": [
+                        "Apache/2.4.6 (Red Hat Enterprise Linux) OpenSSL/1.0.1e-fips mod_auth_gssapi/1.4.0 mod_auth_kerb/5.4 mod_wsgi/3.4 Python/2.7.5"
+                    ],
+                    "appserver": [
+                        "koji01.stg.phx2.fedoraproject.org"
+                    ],
+                    "connection": [
+                        "Keep-Alive"
+                    ],
+                    "date": [
+                        "Wed, 30 Nov 2016 12:13:56 GMT"
+                    ],
+                    "content-type": [
+                        "text/xml"
+                    ]
+                },
+                "body": {
+                    "string": "<?xml version='1.0'?>\n<methodResponse>\n<params>\n<param>\n<value><array><data>\n<value><struct>\n<member>\n<name>comment</name>\n<value><nil/></value></member>\n<member>\n<name>capacity</name>\n<value><double>2.0</double></value>\n</member>\n<member>\n<name>name</name>\n<value><string>koji01.stg.phx2.fedoraproject.org</string></value>\n</member>\n<member>\n<name>enabled</name>\n<value><boolean>1</boolean></value>\n</member>\n<member>\n<name>arches</name>\n<value><string>i386 x86_64</string></value>\n</member>\n<member>\n<name>task_load</name>\n<value><double>0.0</double></value>\n</member>\n<member>\n<name>ready</name>\n<value><boolean>0</boolean></value>\n</member>\n<member>\n<name>user_id</name>\n<value><int>2971</int></value>\n</member>\n<member>\n<name>id</name>\n<value><int>223</int></value>\n</member>\n<member>\n<name>description</name>\n<value><nil/></value></member>\n</struct></value>\n<value><struct>\n<member>\n<name>comment</name>\n<value><nil/></value></member>\n<member>\n<name>capacity</name>\n<value><double>2.0</double></value>\n</member>\n<member>\n<name>name</name>\n<value><string>pkgs01.stg.phx2.fedoraproject.org</string></value>\n</member>\n<member>\n<name>enabled</name>\n<value><boolean>1</boolean></value>\n</member>\n<member>\n<name>arches</name>\n<value><string>x86_64</string></value>\n</member>\n<member>\n<name>task_load</name>\n<value><double>0.0</double></value>\n</member>\n<member>\n<name>ready</name>\n<value><boolean>0</boolean></value>\n</member>\n<member>\n<name>user_id</name>\n<value><int>3662</int></value>\n</member>\n<member>\n<name>id</name>\n<value><int>230</int></value>\n</member>\n<member>\n<name>description</name>\n<value><nil/></value></member>\n</struct></value>\n<value><struct>\n<member>\n<name>comment</name>\n<value><nil/></value></member>\n<member>\n<name>capacity</name>\n<value><double>2.0</double></value>\n</member>\n<member>\n<name>name</name>\n<value><string>buildvm-01.stg.phx2.fedoraproject.org</string></value>\n</member>\n<member>\n<name>enabled</name>\n<value><boolean>1</boolean></value>\n</member>\n<member>\n<name>arches</name>\n<value><string>i386 x86_64</string></value>\n</member>\n<member>\n<name>task_load</name>\n<value><double>1.58313032437</double></value>\n</member>\n<member>\n<name>ready</name>\n<value><boolean>1</boolean></value>\n</member>\n<member>\n<name>user_id</name>\n<value><int>2970</int></value>\n</member>\n<member>\n<name>id</name>\n<value><int>224</int></value>\n</member>\n<member>\n<name>description</name>\n<value><nil/></value></member>\n</struct></value>\n<value><struct>\n<member>\n<name>comment</name>\n<value><nil/></value></member>\n<member>\n<name>capacity</name>\n<value><double>2.0</double></value>\n</member>\n<member>\n<name>name</name>\n<value><string>buildvm-04.stg.phx2.fedoraproject.org</string></value>\n</member>\n<member>\n<name>enabled</name>\n<value><boolean>1</boolean></value>\n</member>\n<member>\n<name>arches</name>\n<value><string>i386 x86_64</string></value>\n</member>\n<member>\n<name>task_load</name>\n<value><double>1.58313032437</double></value>\n</member>\n<member>\n<name>ready</name>\n<value><boolean>1</boolean></value>\n</member>\n<member>\n<name>user_id</name>\n<value><int>3653</int></value>\n</member>\n<member>\n<name>id</name>\n<value><int>227</int></value>\n</member>\n<member>\n<name>description</name>\n<value><nil/></value></member>\n</struct></value>\n<value><struct>\n<member>\n<name>comment</name>\n<value><nil/></value></member>\n<member>\n<name>capacity</name>\n<value><double>2.0</double></value>\n</member>\n<member>\n<name>name</name>\n<value><string>buildvm-03.stg.phx2.fedoraproject.org</string></value>\n</member>\n<member>\n<name>enabled</name>\n<value><boolean>1</boolean></value>\n</member>\n<member>\n<name>arches</name>\n<value><string>i386 x86_64</string></value>\n</member>\n<member>\n<name>task_load</name>\n<value><double>0.0</double></value>\n</member>\n<member>\n<name>ready</name>\n<value><boolean>1</boolean></value>\n</member>\n<member>\n<name>user_id</name>\n<value><int>3652</int></value>\n</member>\n<member>\n<name>id</name>\n<value><int>226</int></value>\n</member>\n<member>\n<name>description</name>\n<value><nil/></value></member>\n</struct></value>\n<value><struct>\n<member>\n<name>comment</name>\n<value><nil/></value></member>\n<member>\n<name>capacity</name>\n<value><double>2.0</double></value>\n</member>\n<member>\n<name>name</name>\n<value><string>buildvm-02.stg.phx2.fedoraproject.org</string></value>\n</member>\n<member>\n<name>enabled</name>\n<value><boolean>1</boolean></value>\n</member>\n<member>\n<name>arches</name>\n<value><string>i386 x86_64</string></value>\n</member>\n<member>\n<name>task_load</name>\n<value><double>0.0</double></value>\n</member>\n<member>\n<name>ready</name>\n<value><boolean>1</boolean></value>\n</member>\n<member>\n<name>user_id</name>\n<value><int>3651</int></value>\n</member>\n<member>\n<name>id</name>\n<value><int>225</int></value>\n</member>\n<member>\n<name>description</name>\n<value><nil/></value></member>\n</struct></value>\n<value><struct>\n<member>\n<name>comment</name>\n<value><nil/></value></member>\n<member>\n<name>capacity</name>\n<value><double>2.0</double></value>\n</member>\n<member>\n<name>name</name>\n<value><string>buildvm-05.stg.phx2.fedoraproject.org</string></value>\n</member>\n<member>\n<name>enabled</name>\n<value><boolean>1</boolean></value>\n</member>\n<member>\n<name>arches</name>\n<value><string>i386 x86_64</string></value>\n</member>\n<member>\n<name>task_load</name>\n<value><double>0.0</double></value>\n</member>\n<member>\n<name>ready</name>\n<value><boolean>1</boolean></value>\n</member>\n<member>\n<name>user_id</name>\n<value><int>3654</int></value>\n</member>\n<member>\n<name>id</name>\n<value><int>228</int></value>\n</member>\n<member>\n<name>description</name>\n<value><nil/></value></member>\n</struct></value>\n<value><struct>\n<member>\n<name>comment</name>\n<value><nil/></value></member>\n<member>\n<name>capacity</name>\n<value><double>2.0</double></value>\n</member>\n<member>\n<name>name</name>\n<value><string>arm01-builder22.arm.fedoraproject.org</string></value>\n</member>\n<member>\n<name>enabled</name>\n<value><boolean>1</boolean></value>\n</member>\n<member>\n<name>arches</name>\n<value><string>armhfp</string></value>\n</member>\n<member>\n<name>task_load</name>\n<value><double>1.58313032437</double></value>\n</member>\n<member>\n<name>ready</name>\n<value><boolean>1</boolean></value>\n</member>\n<member>\n<name>user_id</name>\n<value><int>3250</int></value>\n</member>\n<member>\n<name>id</name>\n<value><int>189</int></value>\n</member>\n<member>\n<name>description</name>\n<value><nil/></value></member>\n</struct></value>\n<value><struct>\n<member>\n<name>comment</name>\n<value><nil/></value></member>\n<member>\n<name>capacity</name>\n<value><double>2.0</double></value>\n</member>\n<member>\n<name>name</name>\n<value><string>arm01-builder23.arm.fedoraproject.org</string></value>\n</member>\n<member>\n<name>enabled</name>\n<value><boolean>1</boolean></value>\n</member>\n<member>\n<name>arches</name>\n<value><string>armhfp</string></value>\n</member>\n<member>\n<name>task_load</name>\n<value><double>3.16626064874</double></value>\n</member>\n<member>\n<name>ready</name>\n<value><boolean>0</boolean></value>\n</member>\n<member>\n<name>user_id</name>\n<value><int>3249</int></value>\n</member>\n<member>\n<name>id</name>\n<value><int>188</int></value>\n</member>\n<member>\n<name>description</name>\n<value><nil/></value></member>\n</struct></value>\n</data></array></value>\n</param>\n</params>\n</methodResponse>\n"
+                }
+            }
+        }
+    ]
+}

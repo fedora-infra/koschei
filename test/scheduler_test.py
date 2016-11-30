@@ -23,7 +23,7 @@ from mock import Mock, patch
 from sqlalchemy import Table, Column, Integer, MetaData
 
 from test.common import DBTest
-from koschei.models import UnappliedChange, AppliedChange, Build, Package, Collection
+from koschei.models import UnappliedChange, AppliedChange, Build, Package, Collection, KojiTask
 from koschei.backend.services.scheduler import Scheduler
 
 
@@ -326,3 +326,18 @@ class SchedulerTest(DBTest):
         self.collection.latest_repo_resolved = None
         with self.prio_table(rnv=256, rnv_state=None) as table:
             self.assert_scheduled([table], scheduled=None)
+
+    def test_load_not_determined_when_no_schedulable_packages(self):
+        with patch('koschei.backend.koji_util.get_koji_load') as load_mock:
+            self.get_scheduler().main()
+            load_mock.assert_not_called()
+
+    def test_load_arches(self):
+        arches = ['x86_64', 'ppc64le', 'alpha']
+        package = self.prepare_build('rnv', True, arches=arches).package
+        with patch('koschei.backend.koji_util.get_koji_load') as load_mock:
+            with patch('koschei.backend.submit_build') as submit_mock:
+                self.get_scheduler().main()
+                load_mock.assert_called_with(self.session.koji('primary'),
+                                             arches)
+                submit_mock.assert_called_once_with(self.session, package)
