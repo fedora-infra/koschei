@@ -16,6 +16,8 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+from __future__ import print_function, absolute_import
+
 import fedmsg
 
 from koschei.config import get_config

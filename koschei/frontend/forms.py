@@ -17,6 +17,8 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
+from __future__ import print_function, absolute_import
+
 import re
 
 from flask import flash

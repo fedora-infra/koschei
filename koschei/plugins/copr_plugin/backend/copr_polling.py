@@ -16,6 +16,8 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+from __future__ import print_function, absolute_import
+
 from koschei.config import get_config
 from koschei.plugin import listen_event
 from koschei.models import CoprRebuild, Build

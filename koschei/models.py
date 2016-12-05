@@ -16,6 +16,8 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+from __future__ import print_function, absolute_import
+
 from sqlalchemy import (Column, Integer, String, Boolean, ForeignKey, DateTime,
                         Index, Float, CheckConstraint, UniqueConstraint, Enum)
 from sqlalchemy.sql.expression import func, select, join, false, true

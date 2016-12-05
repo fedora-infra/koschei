@@ -16,6 +16,8 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+from __future__ import print_function, absolute_import
+
 from sqlalchemy import insert
 
 from koschei.db import get_or_create

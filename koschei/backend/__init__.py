@@ -16,6 +16,8 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+from __future__ import print_function, absolute_import
+
 from datetime import datetime, timedelta
 from six.moves import zip as izip
 

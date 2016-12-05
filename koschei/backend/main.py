@@ -15,7 +15,8 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 # Author: Michael Simacek <msimacek@redhat.com>
-from __future__ import print_function
+
+from __future__ import print_function, absolute_import
 
 import argparse
 import logging
