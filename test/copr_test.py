@@ -16,6 +16,7 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+import six
 import os
 import hawkey
 import koji
@@ -87,7 +88,8 @@ class CoprResolverTest(DBTest):
                                        c.curr_resolved,
                                        c.problems))
 
-        self.assertItemsEqual(
+        six.assertCountEqual(
+            self,
             # [(True, False), (False, True)], # needs repo overriding
             [(False, True)],
             [(c.prev_resolved, c.curr_resolved)

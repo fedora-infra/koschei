@@ -21,7 +21,7 @@ from __future__ import print_function, absolute_import, division
 import re
 import os
 import hawkey
-from itertools import izip
+from six.moves import zip as izip
 from collections import defaultdict
 from functools import cmp_to_key
 
