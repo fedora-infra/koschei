@@ -152,10 +152,10 @@ class Stopwatch(object):
 
         def human_readable_time(t):
             s = str(t % 60) + " s"
-            t = int(t / 60)
+            t = t // 60
             if t:
                 s = str(t % 60) + " min " + s
-            t = int(t / 60)
+            t = t // 60
             if t:
                 s = str(t % 60) + " h " + s
             return s

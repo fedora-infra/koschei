@@ -256,7 +256,7 @@ class GroupCommandParser(object):
     def set_group_content(self, session, group, content_from_file, append):
 
         def from_fo(fo):
-            content = filter(None, fo.read().split())
+            content = [x for x in fo.read().split() if x]
             if not content:
                 sys.exit("Group content empty")
             data.set_group_content(session, group, content, append)
@@ -396,7 +396,6 @@ class CreateOrEditCollectionCommand(object):
         parser.add_argument('--bugzilla-version',
                             help="Product version used in bugzilla template")
 
-
     def set_koji_tags(self, session, collection):
         if collection.secondary_mode:
             koji_session = session.koji('secondary')
@@ -483,7 +482,6 @@ class EditCollectionGroup(CreateOrEditCollectionGroupCommand,
     """ Modifies existing package collection group """
     create = False
     entity = CollectionGroup
-
 
 
 class DeleteCollectionGroup(DeleteEntityCommand, Command):
