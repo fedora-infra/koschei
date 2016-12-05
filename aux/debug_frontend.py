@@ -50,5 +50,5 @@ def after_cursor_execute(conn, cursor, statement,
     logger.debug("Total Time: %.02fms" % (total*1000))
 
 
-application.run(debug=True)
 application.jinja_env.auto_reload = True
+application.run(debug=True)
