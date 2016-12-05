@@ -35,6 +35,18 @@ def merge_dict(d1, d2):
     return ret
 
 
+def parse_config(config_path):
+    if os.path.exists(config_path):
+        with open(config_path) as config_file:
+            code = compile(config_file.read(), config_path, 'exec')
+            conf_vars = {}
+            exec(code, conf_vars)
+            if 'config' in conf_vars:
+                return conf_vars['config']
+    else:
+        raise RuntimeError("Config file not found: {}".format(config_path))
+
+
 def load_config(config_paths, ignore_env=False):
     """
     Loads configuration from given files and merges the recursively into one
@@ -47,16 +59,6 @@ def load_config(config_paths, ignore_env=False):
             whether to enable overriding the paths by environment
             variable
     """
-    def parse_config(config_path):
-        if os.path.exists(config_path):
-            with open(config_path) as config_file:
-                code = compile(config_file.read(), config_path, 'exec')
-                conf_locals = {}
-                exec(code, globals(), conf_locals)
-                if 'config' in conf_locals:
-                    return conf_locals['config']
-        else:
-            raise RuntimeError("Config file not found: {}".format(config_path))
     config = {}
     if not ignore_env and 'KOSCHEI_CONFIG' in os.environ:
         config_paths = os.environ['KOSCHEI_CONFIG'].split(':')
