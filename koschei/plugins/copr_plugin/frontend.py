@@ -52,6 +52,15 @@ class EditRebuildForm(EmptyForm):
 user_rebuilds_tab = Tab('User rebuilds', 60)
 
 
+@app.route('/rebuild_request/list')
+@auth.login_required()
+@user_rebuilds_tab.master
+def list_rebuild_requests():
+    requests = db.query(CoprRebuildRequest)\
+        .filter(CoprRebuildRequest.user_id == g.user.id)\
+        .all()
+    return render_template('list-rebuild-requests.html',
+                           requests=requests)
 
 
 @app.route('/rebuild_request/new', methods=['GET', 'POST'])

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div>
+    <div class="pageHeader">Your rebuild requests</div>
+    <table class="data-list">
+        <tr class="list-header">
+            <th></th>
+            <th>
+                Timestamp
+            </th>
+            <th>
+                Repo source
+            </th>
+            <th>
+                State
+            </th>
+        </tr>
+        {% for request in requests %}
+        <tr>
+            <td>
+                <a href="{{ url_for('rebuild_request_detail', request_id=request.id) }}">
+                    Details
+                </a>
+            <td>
+                {{ request.timestamp | date }}
+            </td>
+            <td>
+                {{ request.repo_source }}
+            </td>
+            <td>
+                {{ request.state }}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}
