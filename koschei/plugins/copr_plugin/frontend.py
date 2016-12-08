@@ -43,10 +43,10 @@ class RebuildRequestForm(EmptyForm):
                                   default=get_config('copr.default_schedule_count'))
 
 
-class MoveRebuildForm(EmptyForm):
+class EditRebuildForm(EmptyForm):
     request_id = IntegerField('request_id')
     package_id = IntegerField('package_id')
-    direction = StringField('direction', [validators.AnyOf(['top', 'bottom'])])
+    action = StringField('action', [validators.AnyOf(['move-top', 'remove'])])
 
 
 user_rebuilds_tab = Tab('User rebuilds', 60)
@@ -95,20 +95,20 @@ def rebuild_request_detail(request_id):
     ).get_or_404(request_id)
     return render_template('rebuild-request-detail.html',
                            request=rebuild_request,
-                           move_form=MoveRebuildForm())
+                           form=EditRebuildForm())
 
 
-@app.route('/rebuild_request/move_rebuild', methods=['POST'])
+@app.route('/rebuild_request/edit_rebuild', methods=['POST'])
 @auth.login_required()
-def move_rebuild():
-    form = MoveRebuildForm()
+def edit_rebuild():
+    form = EditRebuildForm()
     if not form.validate_on_submit():
         abort(400)
     rebuild = db.query(CoprRebuild)\
         .filter_by(request_id=form.request_id.data,
                    package_id=form.package_id.data)\
         .first_or_404()
-    if form.direction.data == 'top':
+    if form.action.data == 'move-top':
         db.query(CoprRebuild)\
             .filter(CoprRebuild.request_id == rebuild.request_id)\
             .filter(CoprRebuild.state == None)\
@@ -121,13 +121,11 @@ def move_rebuild():
         # Moving to top should ensure the package will be scheduled
         rebuild.request.schedule_count += 1
         rebuild.request.state = 'in progress'
-    elif form.direction.data == 'bottom':
+    elif form.action.data == 'remove':
         db.query(CoprRebuild)\
             .filter(CoprRebuild.request_id == rebuild.request_id)\
             .filter(CoprRebuild.order > rebuild.order)\
             .update({'order': CoprRebuild.order - 1})
-        rebuild.order = db.query(func.max(CoprRebuild.order) + 1)\
-            .filter(CoprRebuild.request_id == rebuild.request_id)\
-            .scalar()
+        db.delete(rebuild)
     db.commit()
     return redirect(url_for('rebuild_request_detail', request_id=rebuild.request_id))
