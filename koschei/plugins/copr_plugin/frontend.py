@@ -24,9 +24,8 @@ from sqlalchemy import func
 from sqlalchemy.orm import joinedload, subqueryload
 
 from koschei.config import get_config
-from koschei.frontend import auth, db
+from koschei.frontend import app, auth, db, Tab
 from koschei.frontend.forms import StrippedStringField, EmptyForm
-from koschei.frontend.views import app
 from koschei.models import CoprRebuildRequest, CoprRebuild
 
 
@@ -50,9 +49,14 @@ class MoveRebuildForm(EmptyForm):
     direction = StringField('direction', [validators.AnyOf(['top', 'bottom'])])
 
 
-# TODO think about the URL
+user_rebuilds_tab = Tab('User rebuilds', 60)
+
+
+
+
 @app.route('/rebuild_request/new', methods=['GET', 'POST'])
 @auth.login_required()
+@user_rebuilds_tab
 def new_rebuild_request():
     form = RebuildRequestForm()
     if request.method == 'GET':
@@ -81,6 +85,7 @@ def new_rebuild_request():
 
 
 @app.route('/rebuild_request/<int:request_id>')
+@user_rebuilds_tab
 def rebuild_request_detail(request_id):
     rebuild_request = db.query(CoprRebuildRequest).options(
         subqueryload('resolution_changes'),

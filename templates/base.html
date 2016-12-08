@@ -63,18 +63,15 @@
                 <div id="mainNav">
                     <h4 class="hide">Main Site Links:</h4>
                     <ul>
-                        {% for tab_name, tab_caption in get_all_tabs() %}
-                        <li {% if g.current_tab == tab_name %}id="activeTab"{% endif %}>
-                            <a href="{{ url_for(tab_name) }}">{{ tab_caption }}</a>
-                        </li>
-                        {% endfor %}
-                        <li {% if g.current_tab == 'my_packages' %}id="activeTab"{% endif %}>
-                            {% if g.user %}
-                            <a href="{{ url_for('user_packages', name=g.user.name) }}">My packages</a>
+                        {% for tab in get_tabs() %}
+                        <li {% if g.current_tab == tab %}id="activeTab"{% endif %}>
+                            {% if not tab.requires_user or g.user %}
+                            <a href="{{ tab.url }}">{{ tab.name }}</a>
                             {% else %}
-                            <div>My packages</div>
+                            <div>{{ tab.name }}</div>
                             {% endif %}
                         </li>
+                        {% endfor %}
                     </ul>
                 </div>
 

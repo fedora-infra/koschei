@@ -20,7 +20,9 @@ from __future__ import print_function, absolute_import
 
 import logging
 
-from flask import Flask, abort, request
+from functools import wraps
+
+from flask import Flask, abort, request, g, url_for
 from flask_sqlalchemy import BaseQuery, Pagination
 from sqlalchemy.orm import scoped_session, sessionmaker
 
@@ -66,3 +68,45 @@ class KoscheiFrontendSession(KoscheiSession):
 
 
 session = KoscheiFrontendSession()
+
+
+tabs = []
+
+
+class Tab(object):
+    def __init__(self, name, order=0, requires_user=False):
+        self.name = name
+        self.order = order
+        self.requires_user = requires_user
+        self.master_endpoint = None
+        for i, tab in enumerate(tabs):
+            if tab.order > order:
+                tabs.insert(i, self)
+                break
+        else:
+            tabs.append(self)
+
+    def __call__(self, fn):
+        @wraps(fn)
+        def decorated(*args, **kwargs):
+            g.current_tab = self
+            return fn(*args, **kwargs)
+        return decorated
+
+    def master(self, fn):
+        self.master_endpoint = fn
+        return self(fn)
+
+    @property
+    def url(self):
+        name = self.master_endpoint.__name__
+        if self.requires_user:
+            return url_for(name, username=g.user.name)
+        return url_for(name)
+
+    @staticmethod
+    def get_tabs():
+        return [t for t in tabs if t.master_endpoint]
+
+
+app.jinja_env.globals['get_tabs'] = Tab.get_tabs

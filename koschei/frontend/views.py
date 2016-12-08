@@ -22,7 +22,6 @@ from __future__ import print_function, absolute_import
 import re
 import six.moves.urllib as urllib
 from datetime import datetime
-from functools import wraps
 from textwrap import dedent
 
 from flask import abort, render_template, request, url_for, redirect, g, flash
@@ -36,7 +35,7 @@ from sqlalchemy.sql.functions import coalesce
 
 from koschei import util, plugin, data
 from koschei.config import get_config
-from koschei.frontend import app, db, frontend_config, auth, session, forms
+from koschei.frontend import app, db, frontend_config, auth, session, forms, Tab
 from koschei.models import (
     Package, Build, PackageGroup, PackageGroupRelation, AdminNotice,
     BuildrootProblem, BasePackage, GroupACL, Collection, CollectionGroup,
@@ -276,28 +275,7 @@ def build_state_icon(build_or_state):
 Build.state_icon = property(build_state_icon)
 
 
-tabs = []
-
-
-def get_all_tabs():
-    return tabs
-
-
-def tab(caption, slave=False):
-    def decorator(fn):
-        if not slave:
-            tabs.append((fn.__name__, caption))
-
-        @wraps(fn)
-        def decorated(*args, **kwargs):
-            g.current_tab = fn.__name__
-            return fn(*args, **kwargs)
-        return decorated
-    return decorator
-
-
 app.jinja_env.globals.update(
-    get_all_tabs=get_all_tabs,
     primary_koji_url=get_config('koji_config.weburl'),
     secondary_koji_url=secondary_koji_url,
     koschei_version=get_config('version'),
@@ -436,8 +414,17 @@ def unified_package_view(template, query_fn=None, **template_args):
                            order=order_names, collection=None, **template_args)
 
 
+# tab definitions
+collection_tab = Tab('Collections', 0)
+package_tab = Tab('Packages', 10)
+group_tab = Tab('Groups', 20)
+add_packages_tab = Tab('Add packages', 30)
+my_packages_tab = Tab('My packages', 50, requires_user=True)
+documentation_tab = Tab('Documentation', 1000)
+
+
 @app.route('/collections')
-@tab('Collections')
+@collection_tab.master
 def collection_list():
     groups = db.query(CollectionGroup)\
         .options(joinedload(CollectionGroup.collections))\
@@ -449,13 +436,13 @@ def collection_list():
 
 
 @app.route('/packages')
-@tab('Packages')
+@package_tab.master
 def package_list():
     return package_view("list-packages.html")
 
 
 @app.route('/')
-@tab('Packages', slave=True)
+@package_tab
 def frontpage():
     return app.view_functions[frontend_config['frontpage']](
         **frontend_config['frontpage_kwargs']
@@ -463,7 +450,7 @@ def frontpage():
 
 
 @app.route('/package/<name>')
-@tab('Packages', slave=True)
+@package_tab
 def package_detail(name):
     collection = g.current_collections[0]
     packages = {p.collection_id: p for p in db.query(Package).filter_by(name=name)}
@@ -540,7 +527,7 @@ def package_detail(name):
 
 
 @app.route('/build/<int:build_id>')
-@tab('Packages', slave=True)
+@package_tab
 def build_detail(build_id):
     # pylint: disable=E1101
     build = db.query(Build)\
@@ -553,7 +540,7 @@ def build_detail(build_id):
 
 
 @app.route('/build/<int:build_id>/cancel', methods=['POST'])
-@tab('Packages', slave=True)
+@package_tab
 @auth.login_required()
 def cancel_build(build_id):
     if not g.user.admin:
@@ -572,7 +559,7 @@ def cancel_build(build_id):
 
 
 @app.route('/groups')
-@tab('Groups')
+@group_tab.master
 def groups_overview():
     groups = db.query(PackageGroup)\
                .options(undefer(PackageGroup.package_count))\
@@ -583,7 +570,7 @@ def groups_overview():
 
 @app.route('/groups/<name>')
 @app.route('/groups/<namespace>/<name>')
-@tab('Group', slave=True)
+@group_tab
 def group_detail(name=None, namespace=None):
     group = db.query(PackageGroup)\
               .filter_by(name=name, namespace=namespace).first_or_404()
@@ -596,14 +583,18 @@ def group_detail(name=None, namespace=None):
     return package_view("group-detail.html", query_fn=query_fn, group=group)
 
 
-@app.route('/user/<name>')
-@tab('Packages', slave=True)
-def user_packages(name):
+@app.route('/user/<username>')
+@package_tab
+@my_packages_tab.master
+def user_packages(username):
     names = []
     try:
-        for res in plugin.dispatch_event('get_user_packages', session, username=name):
-            if res:
-                names += res
+        results = plugin.dispatch_event('get_user_packages',
+                                        session,
+                                        username=username)
+        for result in results:
+            if result:
+                names += result
     except Exception:
         flash("Error retrieving user's packages")
         session.log.exception("Error retrieving user's packages")
@@ -611,7 +602,7 @@ def user_packages(name):
     def query_fn(query):
         return query.filter(BasePackage.name.in_(names))
 
-    return package_view("user-packages.html", query_fn, username=name)
+    return package_view("user-packages.html", query_fn, username=username)
 
 
 def can_edit_group(group):
@@ -667,7 +658,7 @@ def process_group_form(group=None):
 
 
 @app.route('/add_group', methods=['GET', 'POST'])
-@tab('Group', slave=True)
+@group_tab
 @auth.login_required()
 def add_group():
     return process_group_form()
@@ -675,7 +666,7 @@ def add_group():
 
 @app.route('/groups/<name>/edit', methods=['GET', 'POST'])
 @app.route('/groups/<namespace>/<name>/edit', methods=['GET', 'POST'])
-@tab('Group', slave=True)
+@group_tab
 @auth.login_required()
 def edit_group(name, namespace=None):
     group = db.query(PackageGroup)\
@@ -702,7 +693,7 @@ def delete_group(name, namespace=None):
 
 if not frontend_config['auto_tracking']:
     @app.route('/add_packages', methods=['GET', 'POST'])
-    @tab('Add packages')
+    @add_packages_tab.master
     @auth.login_required()
     def add_packages():
         form = forms.AddPackagesForm()
@@ -739,13 +730,13 @@ if not frontend_config['auto_tracking']:
 
 
 @app.route('/documentation')
-@tab('Documentation')
+@documentation_tab.master
 def documentation():
     return render_template("documentation.html")
 
 
 @app.route('/search')
-@tab('Packages', slave=True)
+@package_tab
 def search():
     term = request.args.get('q')
     if term:
@@ -823,7 +814,7 @@ def bugreport(name):
 
 
 @app.route('/collection/<name>')
-@tab('Collections', slave=True)
+@collection_tab
 def collection_detail(name):
     for collection in g.collections:
         if collection.name == name:
