@@ -18,6 +18,8 @@
 
 from __future__ import print_function, absolute_import
 
+import shutil
+
 from copr.exceptions import CoprException
 from sqlalchemy import literal_column
 
@@ -38,6 +40,7 @@ def copr_cleanup(session, older_than):
     if to_delete_ids:
         rebuilds = session.db.query(CoprRebuild)\
             .filter(CoprRebuild.request_id.in_(to_delete_ids))\
+            .filter(CoprRebuild.copr_build_id != None)\
             .all()
         for rebuild in rebuilds:
             try:
@@ -46,12 +49,15 @@ def copr_cleanup(session, older_than):
                     projectname=rebuild.copr_name,
                 )
             except CoprException as e:
-                session.log.warn("Cannot delete copr project {}: {}"
-                                 .format(rebuild.copr_name, e))
-                if rebuild.request_id in to_delete_ids:
-                    to_delete_ids.remove(rebuild.request_id)
+                if 'does not exist' not in str(e):
+                    session.log.warn("Cannot delete copr project {}: {}"
+                                     .format(rebuild.copr_name, e))
+                    if rebuild.request_id in to_delete_ids:
+                        to_delete_ids.remove(rebuild.request_id)
     if to_delete_ids:
-        session.query(CoprRebuildRequest)\
+        session.db.query(CoprRebuildRequest)\
             .filter(CoprRebuildRequest.id.in_(to_delete_ids))\
             .delete()
+        for request_id in to_delete_ids:
+            shutil.rmtree(get_request_cachedir(request_id), ignore_errors=True)
         session.log.info("Deleted {} copr requests".format(len(to_delete_ids)))

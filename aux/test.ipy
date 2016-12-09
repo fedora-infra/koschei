@@ -22,6 +22,7 @@ load_config(['config.cfg.template', 'aux/test-config.cfg'])
 logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 plugin.load_plugins('backend')
 session = KoscheiBackendSession()
+session.log = logging.getLogger()
 db=session.db
 k=koji_session=KojiSession(anonymous=True)
 p=db.query(Package).filter_by(name='rnv').order_by(Package.collection_id).first()
