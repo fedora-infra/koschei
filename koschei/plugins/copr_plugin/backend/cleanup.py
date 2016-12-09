@@ -25,8 +25,7 @@ from koschei.config import get_config
 from koschei.plugin import listen_event
 from koschei.models import CoprRebuild, CoprRebuildRequest
 
-# pylint:disable=import-error
-from copr_plugin import copr_client
+from .common import copr_client, get_request_cachedir
 
 
 @listen_event('cleanup')

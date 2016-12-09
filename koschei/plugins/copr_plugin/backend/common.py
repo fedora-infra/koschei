@@ -16,5 +16,31 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-# event listeners
-from . import copr_polling, cleanup
+from __future__ import print_function, absolute_import
+
+import os
+import copr
+
+from koschei.config import get_config
+from koschei.models import CoprRebuildRequest
+
+copr_client = copr.client.CoprClient.create_from_file_config(
+    get_config('copr.config_path')
+)
+
+
+class RequestProcessingError(Exception):
+    pass
+
+
+def get_request_cachedir(request_or_id):
+    "Returns path to request cache directory"
+    if isinstance(request_or_id, CoprRebuildRequest):
+        request_id = request_or_id.id
+    else:
+        request_id = request_or_id
+    return os.path.join(
+        get_config('directories.cachedir'),
+        'user_repos',
+        'copr-request-{}'.format(request_id),
+    )

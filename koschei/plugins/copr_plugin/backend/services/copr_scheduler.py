@@ -28,8 +28,9 @@ from koschei.backend import koji_util
 from koschei.backend.service import Service
 from koschei.backend.repo_util import KojiRepoDescriptor
 
-# pylint:disable=import-error
-from copr_plugin import copr_client
+from koschei.plugins.copr_plugin.backend.common import (
+    copr_client,
+)
 
 
 class CoprScheduler(Service):

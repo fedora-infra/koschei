@@ -36,11 +36,9 @@ from koschei.backend import depsolve, koji_util, repo_util
 from koschei.backend.service import Service
 from koschei.backend.repo_util import KojiRepoDescriptor
 
-from copr_plugin import copr_client
-
-
-class RequestProcessingError(Exception):
-    pass
+from koschei.plugins.copr_plugin.backend.common import (
+    copr_client, RequestProcessingError
+)
 
 
 class CoprRepoDescriptor(object):
