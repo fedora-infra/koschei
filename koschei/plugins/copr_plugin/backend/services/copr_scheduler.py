@@ -147,6 +147,7 @@ class CoprScheduler(Service):
             .update({'scheduler_queue_index': last_index})
 
         build_count = self.db.query(CoprRebuild)\
+            .filter(CoprRebuild.request_id == request.id)\
             .filter(CoprRebuild.copr_build_id != None)\
             .count()
         if build_count >= request.schedule_count:
