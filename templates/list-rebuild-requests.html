@@ -33,5 +33,8 @@
         </tr>
         {% endfor %}
     </table>
+    <form action="{{ url_for('new_rebuild_request') }}" method="GET">
+        <button type="submit">New rebuild request</button>
+    </form>
 </div>
 {% endblock %}
