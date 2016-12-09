@@ -21,6 +21,7 @@ from __future__ import print_function, absolute_import, division
 import re
 import os
 import hawkey
+
 from six.moves import zip as izip
 from collections import defaultdict
 from functools import cmp_to_key
@@ -34,10 +35,9 @@ from koschei.models import (Package, CoprRebuildRequest, CoprRebuild,
 from koschei.config import get_config
 from koschei.backend import depsolve, koji_util, repo_util
 from koschei.backend.service import Service
-from koschei.backend.repo_util import KojiRepoDescriptor
 
 from koschei.plugins.copr_plugin.backend.common import (
-    copr_client, RequestProcessingError
+    copr_client, RequestProcessingError, prepare_comps, repo_descriptor_for_request,
 )
 
 
@@ -71,8 +71,14 @@ class CoprResolver(Service):
             raise RequestProcessingError("Input project doesn't have suitable chroot. "
                                          "Needs one of: " + ','.join(input_chroots))
 
+    def get_user_repo_descriptor(self, request):
+        return CoprRepoDescriptor(
+            str(request),
+            request.yum_repo,
+        )
+
     def add_repo_to_sack(self, request, sack):
-        desc = CoprRepoDescriptor('copr-request-{}'.format(request.id), request.yum_repo)
+        desc = self.get_user_repo_descriptor(request)
         repo_dir = os.path.join(get_config('directories.cachedir'), 'user_repos')
         repo = repo_util.get_repo(repo_dir, desc, download=True)
         if not repo:
@@ -179,11 +185,7 @@ class CoprResolver(Service):
             try:
                 collection = request.collection
                 request.repo_id = collection.latest_repo_id
-                repo_descriptor = KojiRepoDescriptor(
-                    koji_id='secondary' if collection.secondary_mode else 'primary',
-                    repo_id=request.repo_id,
-                    build_tag=collection.build_tag,
-                )
+                repo_descriptor = repo_descriptor_for_request(request)
                 self.set_source_repo_url(request)
                 with self.session.repo_cache.get_sack(repo_descriptor) as sack_before:
                     if not sack_before:
@@ -191,6 +193,7 @@ class CoprResolver(Service):
                     # the lock is not recursive, it overwrites the lock we already hold
                     with self.session.repo_cache.get_sack(repo_descriptor) as sack_after:
                         self.add_repo_to_sack(request, sack_after)
+                        prepare_comps(request, repo_descriptor)
                         self.resolve_request(request, sack_before, sack_after)
                         self.db.commit()
             except RequestProcessingError as e:

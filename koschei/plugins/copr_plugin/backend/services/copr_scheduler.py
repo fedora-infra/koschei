@@ -19,17 +19,18 @@
 
 from __future__ import print_function, absolute_import
 
+import os
+
 from sqlalchemy.sql.expression import func
 from copr.exceptions import CoprRequestException
 
 from koschei.models import Build, CoprRebuildRequest, CoprRebuild
 from koschei.config import get_config, get_koji_config
-from koschei.backend import koji_util
 from koschei.backend.service import Service
 from koschei.backend.repo_util import KojiRepoDescriptor
 
 from koschei.plugins.copr_plugin.backend.common import (
-    copr_client,
+    copr_client, get_request_comps_path, repo_descriptor_for_request, prepare_comps
 )
 
 
@@ -59,20 +60,6 @@ class CoprScheduler(Service):
         return srpm_url.format(topurl=self.get_topurl(package.collection),
                                path=self.get_rpm_path(srpm_nvra))
 
-    def get_comps_url(self, collection, repo_id):
-        url = '{topurl}/repos/{build_tag}/{repo_id}/groups/comps.xml'
-        return url.format(topurl=self.get_topurl(collection),
-                          build_tag=collection.build_tag,
-                          repo_id=repo_id)
-
-    def get_chroot_packages(self, collection):
-        return koji_util.get_build_group_cached(
-            self.session,
-            self.session.koji('primary'),
-            collection.build_tag,
-            collection.build_group,
-        )
-
     def create_copr_project(self, request, copr_name):
         koji_repo = KojiRepoDescriptor(self.get_koji_id(request.collection),
                                        request.collection.build_tag,
@@ -97,11 +84,21 @@ class CoprScheduler(Service):
             unlisted_on_hp=True,
         )
 
-        copr_client.modify_project_chroot_details(
+        comps = get_request_comps_path(request)
+        if not os.path.isfile(comps):
+            # this may download and load whole repo, not just comps, but it
+            # should only happen after we lose storage, such as when respawning
+            # the machine, so it's not worth optimizing
+            repo_descriptor = repo_descriptor_for_request(request)
+            self.session.repo_cache.get_sack(repo_descriptor)
+            prepare_comps(request, repo_descriptor)
+
+        copr_client.edit_chroot(
             projectname=copr_name,
-            username=self.copr_owner,
+            ownername=self.copr_owner,  # such API consistency
             chrootname=self.chroot_name,
-            pkgs=self.get_chroot_packages(request.collection),
+            upload_comps=comps,
+            packages='@' + request.collection.build_group,
         )
         self.log.debug("Created copr project " + copr_name)
 

@@ -20,9 +20,11 @@ from __future__ import print_function, absolute_import
 
 import os
 import copr
+import glob
 
 from koschei.config import get_config
 from koschei.models import CoprRebuildRequest
+from koschei.backend.repo_util import KojiRepoDescriptor
 
 copr_client = copr.client.CoprClient.create_from_file_config(
     get_config('copr.config_path')
@@ -44,3 +46,32 @@ def get_request_cachedir(request_or_id):
         'user_repos',
         'copr-request-{}'.format(request_id),
     )
+
+
+def get_request_comps_path(request):
+    "Returns path to comps.xml file for given request"
+    return os.path.join(get_request_cachedir(request), 'comps.xml')
+
+
+def repo_descriptor_for_request(request):
+    collection = request.collection
+    return KojiRepoDescriptor(
+        koji_id='secondary' if collection.secondary_mode else 'primary',
+        repo_id=request.repo_id,
+        build_tag=collection.build_tag,
+    )
+
+
+def prepare_comps(request, descriptor):
+    # TODO get this from repo cache API
+    comps_glob = os.path.join(
+        get_config('directories.cachedir'),
+        'repodata',
+        str(descriptor),
+        'repodata',
+        '*-comps.xml'
+    )
+    comps = glob.glob(comps_glob)[0]
+    target = get_request_comps_path(request)
+    # hardlink
+    os.link(comps, target)

@@ -32,7 +32,7 @@ BuildRequires:       python-flask-wtf
 BuildRequires:       python-jinja2
 BuildRequires:       python-dogpile-cache
 BuildRequires:       python-six
-BuildRequires:       python-copr
+BuildRequires:       python-copr >= 1.75
 %endif
 
 %description
@@ -132,7 +132,7 @@ Requires:       %{name}-common = %{version}-%{release}
 Summary:        Koschei plugin for user rebuilds in Copr (backend part)
 Requires:       %{name}-backend = %{version}-%{release}
 Requires:       %{name}-copr-common = %{version}-%{release}
-Requires:       python-copr
+Requires:       python-copr >= 1.75
 
 %description backend-copr
 %{summary}.

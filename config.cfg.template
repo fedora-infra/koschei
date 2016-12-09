@@ -267,6 +267,11 @@ config = {
             "dogpile.core.dogpile": {
                 "level": "INFO",
             },
+            "copr": {
+                # copr logs every exception as error, even though it's expected
+                # and handled
+                "level": "CRITICAL",
+            },
         },
         "handlers": {
             "stderr": {

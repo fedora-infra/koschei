@@ -514,6 +514,9 @@ class CoprRebuildRequest(Base):
     ), nullable=False, server_default='new')
     error = Column(String)
 
+    def __str__(self):
+        return 'copr-request-{}'.format(self.id)
+
 
 class CoprResolutionChange(Base):
     request_id = Column(
