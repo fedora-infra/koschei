@@ -150,7 +150,11 @@ config = {
     # copr rebuild plugin
     "copr": {
         # URL to copr frontend (used to construct links in UI)
-        "frontend_url": "http://copr-fe-dev.cloud.fedoraproject.org/",
+        "frontend_url": "http://copr.fedorainfracloud.org/",
+        # URL to build.log
+        "build_log_url": "https://copr-be.cloud.fedoraproject.org/results/"
+                         "{copr_owner}/{copr_name}/{copr_chroot}/"
+                         "{build_id:08d}-{package_name}/build.log.gz",
         # copr user under which builds are done
         "copr_owner": "koschei",
         # chroot in which builds are done

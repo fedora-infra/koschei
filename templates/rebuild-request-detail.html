@@ -57,8 +57,8 @@
 <div class="pageHeader">Rebuilds</div>
 <table class="data-list">
     <tr class="list-header">
-        <th>Package name</th>
-        <th>Links</th>
+        <th>Package</th>
+        <th colspan="2">Links</th>
         <th>Previous state</th>
         <th>Current state</th>
     </tr>
@@ -80,9 +80,16 @@
             </a>
         </td>
         <td>
-            <a href="{{ copr_frontend_url }}/coprs/{{ copr_username
+            <a href="{{ copr_frontend_url }}/coprs/{{ copr_owner
                 }}/{{ build.copr_name }}/build/{{ build.copr_build_id }}">
                 copr build
+            </a>
+        </td>
+        <td>
+            <a href="{{ build_log_url.format(copr_owner=copr_owner,
+                copr_chroot=copr_chroot_name, copr_name=build.copr_name,
+                build_id=build.copr_build_id, package_name=build.package.name) }}">
+                build.log
             </a>
         </td>
         <td>{{ build_state_icon(build.prev_state) }}</td>

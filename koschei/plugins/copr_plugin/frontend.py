@@ -31,7 +31,9 @@ from koschei.models import CoprRebuildRequest, CoprRebuild
 
 app.jinja_env.globals.update(
     copr_frontend_url=get_config('copr.frontend_url'),
-    copr_username=get_config('copr.copr_owner'),
+    copr_owner=get_config('copr.copr_owner'),
+    copr_chroot_name=get_config('copr.chroot_name'),
+    build_log_url=get_config('copr.build_log_url'),
 )
 
 
