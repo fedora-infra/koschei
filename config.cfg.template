@@ -18,9 +18,9 @@ config = {
 
     # primary instance:
     "koji_config": {
-        "server": "http://koji.fedoraproject.org/kojihub",
-        "topurl": "http://kojipkgs.fedoraproject.org",
-        "weburl": "http://koji.fedoraproject.org/koji",
+        "server": "https://koji.fedoraproject.org/kojihub",
+        "topurl": "https://kojipkgs.fedoraproject.org",
+        "weburl": "https://koji.fedoraproject.org/koji",
         "srpm_relative_path_root": "..",
         # name of login method on KojiSession
         "login_method": "ssl_login",
