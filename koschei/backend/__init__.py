@@ -108,7 +108,7 @@ def submit_build(session, package):
         srpm, srpm_url = srpm_res
         package.manual_priority = 0
         build.task_id = koji_util.koji_scratch_build(
-            session.kkoji('primary'),
+            session.koji('primary'),
             package.collection.target,
             name,
             srpm_url,
