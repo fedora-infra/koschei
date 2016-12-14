@@ -182,7 +182,7 @@ config = {
             "backend": "dogpile.cache.dbm",
             "expiration_time": None,
             "arguments": {
-                "filename": "@CACHEDIR/rpm-requires-cache.dbm"
+                "filename": "@CACHEDIR@/rpm-requires-cache.dbm"
             },
         },
         "plugin": {
@@ -191,7 +191,7 @@ config = {
                     "backend": "dogpile.cache.dbm",
                     "expiration_time": 600,
                     "arguments": {
-                        "filename": "@CACHEDIR/pkgdb-user-cache.dbm"
+                        "filename": "@CACHEDIR@/pkgdb-user-cache.dbm"
                     },
                 },
             },
