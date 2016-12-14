@@ -62,7 +62,7 @@ class KoscheiBackendSession(KoscheiSession):
                 self._koji_sessions[koji_id] = \
                     koji_util.KojiSession(koji_id=koji_id, anonymous=False)
             elif koji_id == 'secondary':
-                if get_config('secondary_koji_config'):
+                if get_config('secondary_mode'):
                     self._koji_sessions[koji_id] = \
                         koji_util.KojiSession(koji_id=koji_id, anonymous=True)
                 else:

@@ -69,6 +69,7 @@ def load_config(config_paths, ignore_env=False):
 
     secondary_koji_config = dict(config['koji_config'])
     secondary_koji_config.update(config.get('secondary_koji_config', {}))
+    config['secondary_mode'] = bool(config.get('secondary_koji_config', False))
     config['secondary_koji_config'] = secondary_koji_config
 
     logging.config.dictConfig(config['logging'])
