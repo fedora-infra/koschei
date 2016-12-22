@@ -242,3 +242,15 @@ class BackendTest(DBTest):
                 backend.submit_build(self.session, package)
                 get_last_srpm.assert_called_once_with(self.session.sec_koji_mock, 'f25', 'rnv')
                 koji_scratch_build.assert_called_once_with(self.session.koji_mock, 'f25', 'rnv', 'the_url', {'arch_override': 'x86_64 alpha'})
+
+    def test_submit_build_arch_exclude(self):
+        package = self.prepare_packages('rnv')[0]
+        package.arch_override = '^x86_64 alpha'
+        self.db.commit()
+        with patch('koschei.backend.koji_util.get_last_srpm', return_value=({'epoch': '111',
+                                                                             'version': '222',
+                                                                             'release': '333'}, 'the_url')) as get_last_srpm:
+            with patch('koschei.backend.koji_util.koji_scratch_build', return_value=7541) as koji_scratch_build:
+                backend.submit_build(self.session, package)
+                get_last_srpm.assert_called_once_with(self.session.sec_koji_mock, 'f25', 'rnv')
+                koji_scratch_build.assert_called_once_with(self.session.koji_mock, 'f25', 'rnv', 'the_url', {'arch_override': 'armhfp i386'})
