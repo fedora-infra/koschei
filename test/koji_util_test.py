@@ -16,12 +16,15 @@
 #
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-from test.common import AbstractTest, RecordedKojiSession, my_vcr
+import koji
+
+from test.common import AbstractTest, my_vcr
 from koschei.backend import koji_util
+
 
 class KojiUtilTest(AbstractTest):
     def setUp(self):
-        self.session = RecordedKojiSession('https://koji.stg.fedoraproject.org/kojihub')
+        self.session = koji.ClientSession('https://koji.stg.fedoraproject.org/kojihub')
 
     @my_vcr.use_cassette('koji_load_all')
     def test_koji_load_all(self):

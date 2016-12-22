@@ -56,50 +56,6 @@ my_vcr = vcr.VCR(
 )
 
 
-class RecordedKojiSession(object):
-    def __init__(self, server):
-        self._server = server
-        self.multicall = False
-        self._calls = []
-
-    def __getattr__(self, name):
-        def encode_args(args, kwargs):
-            kwargs['__starstar'] = True
-            return args + (kwargs,)
-
-        def method(*args, **kwargs):
-            if name != 'multiCall':
-                logging.debug("XML-RPC method {}: args={}, kwargs={}"
-                              .format(name, args, kwargs))
-            xml_request = dumps(encode_args(args, kwargs), name, allow_none=True)
-            reply = requests.post(self._server, xml_request,
-                                  headers={'Content-Type': 'text/xml'},
-                                  verify=False)
-            [[result], _] = loads(reply.content)
-            # logging.debug("XML-RPC result: {}".format(result))
-            return result
-
-        def method1(*args, **kwargs):
-            logging.debug("XML-RPC multicall method {}: args={}, kwargs={}"
-                          .format(name, args, kwargs))
-            kwargs['__starstar'] = True
-            self._calls.append({'methodName': name, 'params': encode_args(args, kwargs)})
-
-        if self.multicall:
-            return method1
-        return method
-
-    def multiCall(self):
-        assert self.multicall
-        self.multicall = False
-        try:
-            if not self._calls:
-                return []
-            return self.__getattr__('multiCall')(self._calls)
-        finally:
-            self._calls = []
-
-
 class AbstractTest(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):

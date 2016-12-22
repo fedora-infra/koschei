@@ -19,7 +19,7 @@ BuildRequires:       python-nose
 BuildRequires:       python-vcrpy
 BuildRequires:       python-mock
 BuildRequires:       python-sqlalchemy
-BuildRequires:       koji
+BuildRequires:       koji >= 1.11
 BuildRequires:       python-hawkey
 BuildRequires:       python-librepo
 BuildRequires:       rpm-python
