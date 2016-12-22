@@ -230,6 +230,8 @@ class BackendTest(DBTest):
                 backend.submit_build(self.session, package)
                 get_last_srpm.assert_called_once_with(self.session.sec_koji_mock, 'f25', 'rnv')
                 koji_scratch_build.assert_called_once_with(self.session.koji_mock, 'f25', 'rnv', 'the_url', {})
+        self.db.commit()
+        self.assertEqual(7541, package.last_build.task_id)
 
     def test_submit_build_arch_override(self):
         package = self.prepare_packages('rnv')[0]
@@ -242,6 +244,8 @@ class BackendTest(DBTest):
                 backend.submit_build(self.session, package)
                 get_last_srpm.assert_called_once_with(self.session.sec_koji_mock, 'f25', 'rnv')
                 koji_scratch_build.assert_called_once_with(self.session.koji_mock, 'f25', 'rnv', 'the_url', {'arch_override': 'x86_64 alpha'})
+        self.db.commit()
+        self.assertEqual(7541, package.last_build.task_id)
 
     def test_submit_build_arch_exclude(self):
         package = self.prepare_packages('rnv')[0]
@@ -254,6 +258,8 @@ class BackendTest(DBTest):
                 backend.submit_build(self.session, package)
                 get_last_srpm.assert_called_once_with(self.session.sec_koji_mock, 'f25', 'rnv')
                 koji_scratch_build.assert_called_once_with(self.session.koji_mock, 'f25', 'rnv', 'the_url', {'arch_override': 'armhfp i386'})
+        self.db.commit()
+        self.assertEqual(7541, package.last_build.task_id)
 
     def test_submit_build_force_archful(self):
         package = self.prepare_packages('rnv')[0]
@@ -266,3 +272,5 @@ class BackendTest(DBTest):
                 backend.submit_build(self.session, package)
                 get_last_srpm.assert_called_once_with(self.session.sec_koji_mock, 'f25', 'rnv')
                 koji_scratch_build.assert_called_once_with(self.session.koji_mock, 'f25', 'rnv', 'the_url', {'arch_override': 'armhfp i386 x86_64'})
+        self.db.commit()
+        self.assertEqual(7541, package.last_build.task_id)
