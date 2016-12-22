@@ -168,11 +168,13 @@ class Scheduler(Service):
                 .filter_by(build_id=package.last_build_id)\
                 .all()
             arches = [arch for [arch] in arches]
-            koji_load = koji_util.get_koji_load(self.session.koji('primary'), arches)
-            if koji_load > get_config('koji_config.load_threshold'):
-                self.log.debug("Not scheduling {}: {} koji load"
-                               .format(package, koji_load))
-                return
+            koji_load_threshold = get_config('koji_config.load_threshold')
+            if koji_load_threshold < 1:
+                koji_load = koji_util.get_koji_load(self.session.koji('primary'), arches)
+                if koji_load > koji_load_threshold:
+                    self.log.debug("Not scheduling {}: {} koji load"
+                                   .format(package, koji_load))
+                    return
 
             self.log.info('Scheduling build for {}, priority {}'
                           .format(package.name, priority))
