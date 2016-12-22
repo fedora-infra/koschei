@@ -26,8 +26,8 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 
 arches = ['x86_64', 'armhfp', 'aarch64', 'ppc64', 'ppc64le']
-koji_urls = {'Production': 'http://koji.fedoraproject.org/kojihub',
-             'Staging': 'http://koji.stg.fedoraproject.org/kojihub'}
+koji_urls = {'Production': 'https://koji.fedoraproject.org/kojihub',
+             'Staging': 'https://koji.stg.fedoraproject.org/kojihub'}
 
 def pretty_table(caption, tab, footer):
     widths = [max([len(str(row[col])) for row in tab]) for col in xrange(0, len(tab[0]))]
