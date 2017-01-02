@@ -150,7 +150,7 @@ config = {
     # copr rebuild plugin
     "copr": {
         # URL to copr frontend (used to construct links in UI)
-        "frontend_url": "http://copr.fedorainfracloud.org/",
+        "frontend_url": "https://copr.fedorainfracloud.org/",
         # URL to build.log
         "build_log_url": "https://copr-be.cloud.fedoraproject.org/results/"
                          "{copr_owner}/{copr_name}/{copr_chroot}/"
@@ -292,9 +292,9 @@ config = {
         {"name": "Bodhi",
          "url": "https://bodhi.fedoraproject.org/updates?packages={package.name}"},
         {"name": "Dist-git",
-         "url": "http://pkgs.fedoraproject.org/cgit/{package.name}.git"},
+         "url": "https://src.fedoraproject.org/cgit/rpms/{package.name}.git"},
         {"name": "Koji",
-         "url": "http://koji.fedoraproject.org/koji/packageinfo?packageID={package.name}"}
+         "url": "https://koji.fedoraproject.org/koji/packageinfo?packageID={package.name}"}
     ],
     # template for bugreports for "File new FTBFS bug" link
     "bugreport": {
