@@ -95,7 +95,13 @@ def submit_build(session, package):
     name = package.name
     build_opts = {}
     if package.arch_override:
-        build_opts = {'arch_override': package.arch_override}
+        override = package.arch_override
+        if override.startswith('^'):
+            excludes = override[1:].split()
+            build_arches = get_config('koji_config').get('build_arches')
+            includes = set(build_arches) - set(excludes)
+            override = ' '.join(sorted(includes))
+        build_opts = {'arch_override': override}
     # on secondary collections SRPMs are taken from secondary, primary
     # needs to be able to build from relative URL constructed against
     # secondary (internal redirect)
