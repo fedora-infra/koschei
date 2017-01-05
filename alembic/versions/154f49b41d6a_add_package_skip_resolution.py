@@ -15,10 +15,11 @@ from alembic import op
 def upgrade():
     op.execute("""
         ALTER TABLE package ADD COLUMN skip_resolution boolean
-            NOT NULL
-            DEFAULT FALSE
             CONSTRAINT package_skip_resolution_check
                 CHECK (NOT skip_resolution OR resolved IS NULL);
+        UPDATE package SET skip_resolution = FALSE;
+        ALTER TABLE package ALTER COLUMN skip_resolution SET NOT NULL;
+        ALTER TABLE package ALTER COLUMN skip_resolution SET DEFAULT FALSE;
     """)
 
 
