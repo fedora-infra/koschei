@@ -38,8 +38,8 @@ class DataTest(DBTest):
         data.set_group_content(self.session, group, content, append=False)
 
         six.assertCountEqual(self, [a1.base_id, a2.base_id, a3.base_id],
-                              self.db.query(PackageGroupRelation.base_id)
-                              .filter_by(group_id=group.id).all_flat())
+                             self.db.query(PackageGroupRelation.base_id)
+                             .filter_by(group_id=group.id).all_flat())
 
     def test_append_group_content(self):
         group = PackageGroup(name='foo')
@@ -53,8 +53,8 @@ class DataTest(DBTest):
         data.set_group_content(self.session, group, content, append=True)
 
         six.assertCountEqual(self, [bar.base_id, a1.base_id, a2.base_id, a3.base_id],
-                              self.db.query(PackageGroupRelation.base_id)
-                              .filter_by(group_id=group.id).all_flat())
+                             self.db.query(PackageGroupRelation.base_id)
+                             .filter_by(group_id=group.id).all_flat())
 
     def test_set_group_contents_nonexistent(self):
         group = PackageGroup(name='foo')
@@ -64,3 +64,17 @@ class DataTest(DBTest):
         with self.assertRaises(data.PackagesDontExist) as exc:
             data.set_group_content(self.session, group, ['bar', 'a1', 'a2'])
         six.assertCountEqual(self, {'a1', 'a2'}, exc.exception.packages)
+
+    def test_track_packages(self):
+        foo, bar = self.prepare_packages('foo', 'bar')
+        foo.tracked = False
+        bar.tracked = False
+        self.db.commit()
+        data.track_packages(self.session, self.collection, ['bar'])
+        self.db.commit()
+        self.assertFalse(foo.tracked)
+        self.assertTrue(bar.tracked)
+
+    def test_track_packages_nonexistent(self):
+        with self.assertRaises(data.PackagesDontExist):
+            data.track_packages(self.session, self.collection, ['bar'])

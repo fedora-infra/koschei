@@ -45,6 +45,7 @@ def track_packages(session, collection, package_names):
     :raises: PackagesDontExist if some of the packages cannot be found
     :return: a list of Package objects that were newly tracked
     """
+    package_names = set(package_names)
     existing = session.db.query(Package)\
         .filter(Package.name.in_(package_names))\
         .filter(Package.collection_id == collection.id)
@@ -52,9 +53,10 @@ def track_packages(session, collection, package_names):
     if nonexistent:
         raise PackagesDontExist(nonexistent)
     to_add = [p for p in existing if not p.tracked]
-    session.db.query(Package)\
-        .filter(Package.id.in_(p.id for p in to_add))\
-        .update({'tracked': True})
+    if to_add:
+        session.db.query(Package)\
+            .filter(Package.id.in_(p.id for p in to_add))\
+            .update({'tracked': True})
     return to_add
 
 
