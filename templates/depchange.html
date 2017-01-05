@@ -4,8 +4,8 @@
 {% block content %}
 <div class="pageHeader">
     Packages which started to fail after
-    {{ dep_name }} {{ 'upgrade' if is_upgrade else 'downgrade' }}
-    from {{ format_evr(*evr1) }} to {{ format_evr(*evr2) }}
+    {{ dep_name }} {{ 'upgrade' if evr1 < evr2 else 'downgrade' }}
+    from {{ evr1 }} to {{ evr2 }}
 </div>
 <table class="data-list">
     <tr class="list-header">

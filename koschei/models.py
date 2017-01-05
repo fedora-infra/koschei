@@ -22,11 +22,12 @@ from sqlalchemy import (Column, Integer, String, Boolean, ForeignKey, DateTime,
                         Index, Float, CheckConstraint, UniqueConstraint, Enum)
 from sqlalchemy.sql.expression import func, select, join, false, true
 from sqlalchemy.orm import (relationship, column_property,
-                            configure_mappers, deferred)
+                            configure_mappers, deferred, composite)
+from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.dialects.postgresql import ARRAY
 
 from .config import get_config
-from koschei.db import Base, CompressedKeyArray
+from koschei.db import Base, CompressedKeyArray, RpmEVR, RpmEVRComparator
 
 
 class User(Base):
@@ -420,13 +421,21 @@ class DependencyChange(object):
     curr_release = Column(String)
     distance = Column(Integer)
 
-    @property
+    @declared_attr
     def prev_evr(self):
-        return self.prev_epoch, self.prev_version, self.prev_release
+        return composite(
+            RpmEVR,
+            self.prev_epoch, self.prev_version, self.prev_release,
+            comparator_factory=RpmEVRComparator,
+        )
 
-    @property
+    @declared_attr
     def curr_evr(self):
-        return self.curr_epoch, self.curr_version, self.curr_release
+        return composite(
+            RpmEVR,
+            self.curr_epoch, self.curr_version, self.curr_release,
+            comparator_factory=RpmEVRComparator,
+        )
 
 
 class AppliedChange(DependencyChange, Base):

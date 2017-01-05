@@ -28,12 +28,14 @@ import sqlalchemy
 
 from sqlalchemy import create_engine, Table, DDL
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, CompositeProperty
 from sqlalchemy.engine.url import URL
 from sqlalchemy.event import listen
 from sqlalchemy.types import TypeDecorator
+from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import BYTEA
 
+from . import util
 from .config import get_config
 
 
@@ -213,3 +215,60 @@ listen(Table, 'after_create', grant_db_access)
 def create_all():
     load_ddl()
     Base.metadata.create_all(get_engine())
+
+
+class CmpMixin(object):
+    def __eq__(self, other):
+        return self._cmp(other) == 0
+
+    def __ne__(self, other):
+        return self._cmp(other) != 0
+
+    def __lt__(self, other):
+        return self._cmp(other) < 0
+
+    def __le__(self, other):
+        return self._cmp(other) <= 0
+
+    def __gt__(self, other):
+        return self._cmp(other) > 0
+
+    def __ge__(self, other):
+        return self._cmp(other) >= 0
+
+
+class RpmEVR(CmpMixin):
+    def __init__(self, epoch, version, release):
+        self.epoch = epoch
+        self.version = version
+        self.release = release
+
+    def __composite_values__(self):
+        return self.epoch, self.version, self.release
+
+    def __repr__(self):
+        return 'EVR({}:{}-{})'.format(self.epoch or 0, self.version, self.release)
+
+    def __str__(self):
+        epoch, version, release = self.__composite_values__()
+        if not version or not release:
+            return ''
+        if len(release) > 16:
+            release = release[:13] + '...'
+        if epoch:
+            return '{}:{}-{}'.format(epoch, version, release)
+        return '{}-{}'.format(version, release)
+
+    def _cmp(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return util.compare_evr(self.__composite_values__(), other.__composite_values__())
+
+
+class RpmEVRComparator(CmpMixin, CompositeProperty.Comparator):
+    def _cmp(self, other):
+        evr = self.__clause_element__().clauses
+        return func.rpmvercmp_evr(
+            evr[0], evr[1], evr[2],
+            other.epoch, other.version, other.release,
+        )

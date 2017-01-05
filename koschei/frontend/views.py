@@ -31,9 +31,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import (joinedload, subqueryload, undefer, contains_eager,
                             aliased)
 from sqlalchemy.sql import exists, func, false, true, cast
-from sqlalchemy.sql.functions import coalesce
 
 from koschei import util, plugin, data
+from koschei.db import RpmEVR
 from koschei.config import get_config
 from koschei.frontend import app, db, frontend_config, auth, session, forms, Tab
 from koschei.models import (
@@ -68,23 +68,14 @@ def page_args(clear=False, **kwargs):
     return ''
 
 
-def format_evr(epoch, version, release):
-    if not version or not release:
-        return ''
-    if len(release) > 16:
-        release = release[:13] + '...'
-    if epoch:
-        return '{}:{}-{}'.format(epoch, version, release)
-    return '{}-{}'.format(version, release)
-
-
 def format_depchange(change):
     if change:
-        prev_evr = (change.prev_epoch, change.prev_version, change.prev_release)
-        curr_evr = (change.curr_epoch, change.curr_version, change.curr_release)
-        is_update = util.compare_evr(prev_evr, curr_evr) < 0
-        return (change.dep_name, format_evr(*prev_evr),
-                '<>'[is_update], format_evr(*curr_evr))
+        return (
+            change.dep_name,
+            str(change.prev_evr),
+            '<>'[change.prev_evr < change.curr_evr],
+            str(change.curr_evr),
+        )
 
     return [''] * 4
 
@@ -287,7 +278,6 @@ app.jinja_env.globals.update(
     Package=Package, Build=Build,
     package_state_icon=package_state_icon,
     build_state_icon=build_state_icon,
-    format_evr=format_evr,
     auto_tracking=frontend_config['auto_tracking'])
 
 app.jinja_env.filters.update(columnize=columnize,
@@ -834,31 +824,24 @@ def edit_collection(name):
 
 @app.route('/depchange/<dep_name>')
 def depchange(dep_name):
+    collection = g.current_collections[0]
     try:
-        collection = g.current_collections[0]
-        evr1 = (int(request.args['epoch1']),
-                request.args['version1'],
-                request.args['release1'])
-        evr2 = (int(request.args['epoch2']),
-                request.args['version2'],
-                request.args['release2'])
+        evr1 = RpmEVR(
+            int(request.args['epoch1']),
+            request.args['version1'],
+            request.args['release1']
+        )
+        evr2 = RpmEVR(
+            int(request.args['epoch2']),
+            request.args['version2'],
+            request.args['release2']
+        )
     except (KeyError, ValueError):
         abort(400)
 
-    prev_evr = (AppliedChange.prev_epoch, AppliedChange.prev_version,
-                AppliedChange.prev_release)
-    curr_evr = (AppliedChange.curr_epoch, AppliedChange.curr_version,
-                AppliedChange.curr_release)
-
-    def op(a, op, b):
-        aug_op = op + '#'
-        return (coalesce(a[0], 0).op(op)(coalesce(b[0], 0)) |
-                (coalesce(a[0], 0).op('=')(coalesce(b[0], 0)) &
-                 func.ROW(a[1], a[2]).op(aug_op)(func.ROW(b[1], b[2]))))
-
     evr_cmp_expr = (
-        (op(prev_evr, '>', evr1) | op(curr_evr, '>', evr1)) &
-        (op(prev_evr, '<', evr2) | op(curr_evr, '<', evr2))
+        ((AppliedChange.prev_evr > evr1) | (AppliedChange.curr_evr > evr1)) &
+        ((AppliedChange.prev_evr < evr2) | (AppliedChange.curr_evr < evr2))
     )
 
     prev_build = aliased(Build)
@@ -868,16 +851,18 @@ def depchange(dep_name):
         .filter(prev_build.package_id == Build.package_id)\
         .limit(1)\
         .correlate().as_scalar()
-    failed = db.query(AppliedChange.dep_name, AppliedChange.prev_epoch,
-                      AppliedChange.prev_version, AppliedChange.prev_release,
-                      AppliedChange.curr_epoch, AppliedChange.curr_version,
-                      AppliedChange.curr_release, AppliedChange.distance,
-                      Build.id.label('build_id'),
-                      Build.state.label('build_state'),
-                      Package.name.label('package_name'),
-                      Package.resolved.label('package_resolved'),
-                      Package.last_complete_build_state.label('package_lb_state'),
-                      subq.label('prev_build_state'))\
+    failed = db.query(
+        AppliedChange.dep_name,
+        AppliedChange.prev_evr,
+        AppliedChange.curr_evr,
+        AppliedChange.distance,
+        Build.id.label('build_id'),
+        Build.state.label('build_state'),
+        Package.name.label('package_name'),
+        Package.resolved.label('package_resolved'),
+        Package.last_complete_build_state.label('package_lb_state'),
+        subq.label('prev_build_state'),
+    )\
         .filter(AppliedChange.dep_name == dep_name)\
         .filter(evr_cmp_expr)\
         .join(AppliedChange.build).join(Build.package)\
@@ -895,9 +880,6 @@ def depchange(dep_name):
             last_complete_build_state=row.package_lb_state,
         )
 
-    is_upgrade = util.compare_evr(evr1, evr2) < 0
-
     return render_template("depchange.html", package_state=package_state,
                            dep_name=dep_name, evr1=evr1, evr2=evr2,
-                           is_upgrade=is_upgrade, collection=collection,
-                           failed=failed)
+                           collection=collection, failed=failed)

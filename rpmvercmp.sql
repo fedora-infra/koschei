@@ -37,79 +37,24 @@ BEGIN
             IF a_seg < b_seg THEN RETURN -1; ELSE RETURN 1; END IF;
         END IF;
     END LOOP;
-    CASE
-        WHEN b_segments[a_len + 1] = '~' THEN RETURN 1;
-        WHEN a_segments[b_len + 1] = '~' THEN RETURN -1;
-        WHEN a_len > b_len THEN RETURN 1;
-        WHEN a_len < b_len THEN RETURN -1;
-        ELSE RETURN 0;
-    END CASE;
+    IF b_segments[a_len + 1] = '~' THEN RETURN 1; END IF;
+    IF a_segments[b_len + 1] = '~' THEN RETURN -1; END IF;
+    IF a_len > b_len THEN RETURN 1; END IF;
+    IF a_len < b_len THEN RETURN -1; END IF;
+    RETURN 0;
 END $$ LANGUAGE plpgsql IMMUTABLE;
 
-CREATE OR REPLACE FUNCTION rpmlt(a varchar, b varchar)
-    RETURNS boolean AS $$
+CREATE OR REPLACE FUNCTION rpmvercmp_evr(epoch1 integer, version1 varchar,release1 varchar,
+                                         epoch2 integer, version2 varchar,release2 varchar)
+    RETURNS integer AS $$
+DECLARE
+    vercmp_result integer;
 BEGIN
-    RETURN rpmvercmp(a, b) < 0;
+    epoch1 := COALESCE(epoch1, 0);
+    epoch2 := COALESCE(epoch2, 0);
+    IF epoch1 < epoch2 THEN RETURN -1; END IF;
+    IF epoch1 > epoch2 THEN RETURN 1; END IF;
+    vercmp_result := rpmvercmp(version1, version2);
+    IF vercmp_result != 0 THEN RETURN vercmp_result; END IF;
+    RETURN rpmvercmp(release1, release2);
 END $$ LANGUAGE plpgsql IMMUTABLE;
-
-CREATE OPERATOR <# (PROCEDURE=rpmlt, LEFTARG=varchar, RIGHTARG=varchar,
-                    COMMUTATOR=">#", NEGATOR=">=#", RESTRICT=scalarltsel,
-                    JOIN=scalarltjoinsel);
-
-CREATE OR REPLACE FUNCTION rpmgt(a varchar, b varchar)
-    RETURNS boolean AS $$
-BEGIN
-    RETURN rpmvercmp(a, b) > 0;
-END $$ LANGUAGE plpgsql IMMUTABLE;
-
-CREATE OPERATOR ># (PROCEDURE=rpmgt, LEFTARG=varchar, RIGHTARG=varchar,
-                    COMMUTATOR="<#", NEGATOR="<=#", RESTRICT=scalargtsel,
-                    JOIN=scalargtjoinsel);
-
-CREATE OR REPLACE FUNCTION rpmle(a varchar, b varchar)
-    RETURNS boolean AS $$
-BEGIN
-    RETURN rpmvercmp(a, b) <= 0;
-END $$ LANGUAGE plpgsql IMMUTABLE;
-
-CREATE OPERATOR <=# (PROCEDURE=rpmle, LEFTARG=varchar, RIGHTARG=varchar,
-                    COMMUTATOR=">=#", NEGATOR=">#", RESTRICT=scalarltsel,
-                    JOIN=scalarltjoinsel);
-
-CREATE OR REPLACE FUNCTION rpmge(a varchar, b varchar)
-    RETURNS boolean AS $$
-BEGIN
-    RETURN rpmvercmp(a, b) >= 0;
-END $$ LANGUAGE plpgsql IMMUTABLE;
-
-CREATE OPERATOR >=# (PROCEDURE=rpmge, LEFTARG=varchar, RIGHTARG=varchar,
-                    COMMUTATOR="<=#", NEGATOR="<#", RESTRICT=scalargtsel,
-                    JOIN=scalargtjoinsel);
-
-CREATE OR REPLACE FUNCTION rpmeq(a varchar, b varchar)
-    RETURNS boolean AS $$
-BEGIN
-    RETURN rpmvercmp(a, b) = 0;
-END $$ LANGUAGE plpgsql IMMUTABLE;
-
-CREATE OPERATOR =# (PROCEDURE=rpmeq, LEFTARG=varchar, RIGHTARG=varchar,
-                    COMMUTATOR="=#", NEGATOR="!=#", RESTRICT=eqsel,
-                    JOIN=eqjoinsel);
-
-CREATE OR REPLACE FUNCTION rpmne(a varchar, b varchar)
-    RETURNS boolean AS $$
-BEGIN
-    RETURN rpmvercmp(a, b) != 0;
-END $$ LANGUAGE plpgsql IMMUTABLE;
-
-CREATE OPERATOR !=# (PROCEDURE=rpmne, LEFTARG=varchar, RIGHTARG=varchar,
-                    COMMUTATOR="!=#", NEGATOR="=#", RESTRICT=neqsel,
-                    JOIN=neqjoinsel);
-
-CREATE OPERATOR CLASS rpmcmp_ops FOR TYPE varchar USING btree AS
-    OPERATOR        1       <#,
-    OPERATOR        2       <=#,
-    OPERATOR        3       =#,
-    OPERATOR        4       >=#,
-    OPERATOR        5       >#,
-    FUNCTION        1       rpmvercmp(varchar, varchar);
