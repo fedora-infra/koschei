@@ -58,7 +58,15 @@ def run_migrations_online():
     )
 
     try:
+        try:
+            connection.execute("SHOW bdr.permit_ddl_locking")
+            bdr = True
+        except Exception:
+            bdr = False
+
         with context.begin_transaction():
+            if bdr:
+                connection.execute("SET LOCAL bdr.permit_ddl_locking = true")
             context.run_migrations()
             grant_db_access(None, connection)
     finally:
