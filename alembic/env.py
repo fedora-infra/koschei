@@ -39,7 +39,10 @@ def run_migrations_offline():
     script output.
 
     """
-    raise NotImplementedError("We don't support offline migrations")
+    with open("migration.sql", 'w') as f:
+        context.configure(output_buffer=f, dialect_name='postgresql')
+        context.run_migrations()
+    print("Written 'migration.sql'")
 
 def run_migrations_online():
     """Run migrations in 'online' mode.
