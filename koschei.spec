@@ -316,7 +316,7 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %{python2_sitelib}/*/plugins/pkgdb_plugin/backend*
 
 %files common-copr
-%{python2_sitelib}/*/plugins/copr_plugin/backend*
+%{python2_sitelib}/*/plugins/copr_plugin
 %exclude %{python2_sitelib}/*/plugins/*/backend*
 %exclude %{python2_sitelib}/*/plugins/*/frontend*
 
