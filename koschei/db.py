@@ -214,9 +214,15 @@ listen(Table, 'after_create', grant_db_access)
 
 def create_all():
     conn = get_engine().connect()
+    try:
+        conn.execute("SHOW bdr.permit_ddl_locking")
+        bdr = True
+    except Exception:
+        bdr = False
     tx = conn.begin()
     try:
-        conn.execute("SET LOCAL bdr.permit_ddl_locking = true")
+        if bdr:
+            conn.execute("SET LOCAL bdr.permit_ddl_locking = true")
         load_ddl()
         Base.metadata.create_all(conn)
         tx.commit()
