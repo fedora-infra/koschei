@@ -213,8 +213,15 @@ listen(Table, 'after_create', grant_db_access)
 
 
 def create_all():
-    load_ddl()
-    Base.metadata.create_all(get_engine())
+    conn = get_engine().connect()
+    tx = conn.begin()
+    try:
+        conn.execute("SET LOCAL bdr.permit_ddl_locking = true")
+        load_ddl()
+        Base.metadata.create_all(conn)
+        tx.commit()
+    finally:
+        tx.rollback()
 
 
 class CmpMixin(object):
