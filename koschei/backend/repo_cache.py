@@ -58,7 +58,8 @@ class RepoCache(FileCache):
             self.log.info('Repo {} was successfully downloaded'
                           .format(repo_descriptor))
         else:
-            self.log.info('Repo {} was not found'.format(repo_descriptor))
+            self.log.info('Repo {} was not found (url={})'
+                          .format(repo_descriptor, repo_descriptor.url))
         return sack
 
     @contextlib.contextmanager
