@@ -61,20 +61,25 @@ BEGIN
 END $$ LANGUAGE plpgsql;
 
 -- triggers
+DROP TRIGGER IF EXISTS update_last_complete_build_trigger ON build;
 CREATE TRIGGER update_last_complete_build_trigger
     AFTER INSERT ON build FOR EACH ROW
     WHEN (NEW.state = 3 OR NEW.state = 5)
     EXECUTE PROCEDURE update_last_complete_build();
+DROP TRIGGER IF EXISTS update_last_build_trigger ON build;
 CREATE TRIGGER update_last_build_trigger
     AFTER INSERT ON build FOR EACH ROW
     EXECUTE PROCEDURE update_last_build();
+DROP TRIGGER IF EXISTS update_last_complete_build_trigger_up ON build;
 CREATE TRIGGER update_last_complete_build_trigger_up
     AFTER UPDATE ON build FOR EACH ROW
     WHEN (OLD.state != NEW.state)
     EXECUTE PROCEDURE update_last_complete_build();
+DROP TRIGGER IF EXISTS update_last_build_trigger_del ON build;
 CREATE TRIGGER update_last_build_trigger_del
     BEFORE DELETE ON build FOR EACH ROW
     EXECUTE PROCEDURE update_last_build_del();
+DROP TRIGGER IF EXISTS update_all_blocked_trigger ON package;
 CREATE TRIGGER update_all_blocked_trigger
     AFTER INSERT OR DELETE OR UPDATE OF blocked ON package
     FOR EACH STATEMENT
