@@ -20,7 +20,6 @@ from __future__ import print_function, absolute_import
 
 import os
 import copr
-import glob
 
 from koschei.config import get_config
 from koschei.models import CoprRebuildRequest
@@ -62,16 +61,8 @@ def repo_descriptor_for_request(request):
     )
 
 
-def prepare_comps(request, descriptor):
-    # TODO get this from repo cache API
-    comps_glob = os.path.join(
-        get_config('directories.cachedir'),
-        'repodata',
-        str(descriptor),
-        'repodata',
-        '*-comps.xml'
-    )
-    comps = glob.glob(comps_glob)[0]
+def prepare_comps(session, request, descriptor):
+    comps = session.repo_cache.get_comps_path(descriptor)
     target = get_request_comps_path(request)
     # hardlink
     os.link(comps, target)

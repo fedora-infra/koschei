@@ -39,11 +39,13 @@ class RepoCache(FileCache):
     """
     def __init__(self):
         self.log = logging.getLogger('koschei.repo_cache.RepoCache')
+        self.cachedir = os.path.join(get_config('directories.cachedir'), 'repodata')
         super(RepoCache, self).__init__(
-            cachedir=os.path.join(get_config('directories.cachedir'), 'repodata'),
+            cachedir=self.cachedir,
             capacity=get_config('dependency.cache_l2_capacity'),
             log=self.log,
         )
+        self.locked = []
 
     # @Override
     def read_item(self, repo_descriptor, cachedir):
@@ -62,7 +64,28 @@ class RepoCache(FileCache):
                           .format(repo_descriptor, repo_descriptor.url))
         return sack
 
+    def get_comps_path(self, repo_descriptor):
+        """
+        Returns path to comps for given repo. The repo first needs to be locked
+        by obtaining the sack.
+        """
+        assert repo_descriptor in self.locked
+        return repo_util.get_comps_path(self.cachedir, repo_descriptor)
+
     @contextlib.contextmanager
     def get_sack(self, repo_descriptor):
+        """
+        Returns a hawkey.Sack for given repo while holding read lock on it.
+        """
+        assert repo_descriptor not in self.locked
         with self.get_item(repo_descriptor) as sack:
+            self.locked.append(repo_descriptor)
             yield sack
+            self.locked.remove(repo_descriptor)
+
+    def get_sack_copy(self, repo_descriptor):
+        """
+        Gets a copy of a sack, for which a lock is already held.
+        """
+        assert repo_descriptor in self.locked
+        return repo_util.load_sack(self.cachedir, repo_descriptor, download=False)

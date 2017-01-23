@@ -6,4 +6,7 @@
   <data type="filelists">
     <location href="repodata/filelists.xml"/>
   </data>
+  <data type="group">
+    <location href="repodata/comps.xml"/>
+  </data>
 </repomd>

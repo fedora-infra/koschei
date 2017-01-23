@@ -303,6 +303,13 @@ class RepoCacheMock(object):
             desc = repo_util.KojiRepoDescriptor(desc.koji_id, desc.build_tag, 123)
         yield repo_util.load_sack(os.path.join(testdir, 'repos'), desc)
 
+    def get_comps_path(self, desc):
+        return os.path.join(testdir, 'repos', str(desc), 'repodata', 'comps.xml')
+
+    def get_sack_copy(self, desc):
+        with self.get_sack(desc) as sack:
+            return sack
+
 
 def service_ctor(name, plugin_name=None, plugin_endpoint='backend'):
     def inner(*args, **kwargs):

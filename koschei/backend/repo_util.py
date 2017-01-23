@@ -108,6 +108,24 @@ def get_repo(repo_dir, repo_descriptor, download=False):
     return repo
 
 
+def get_comps_path(repo_dir, repo_descriptor):
+    """
+    Returns path to comps for given repo in repo_dir. It needs to be downloaded
+    already.
+
+    :repo_dir: path to directory where the repo is stored
+    :repo_descriptor: which repo to obtain
+    """
+    h = librepo.Handle()
+    repo_path = os.path.join(repo_dir, str(repo_descriptor))
+    h.repotype = librepo.LR_YUMREPO
+    h.urls = [repo_path]
+    h.local = True
+    h.yumdlist = ['group']
+    result = h.perform(librepo.Result())
+    return result.yum_repo.get('group')
+
+
 def load_sack(repo_dir, repo_descriptor, download=False):
     """
     Obtain hawkey Sack either by loading from disk, or downloading from

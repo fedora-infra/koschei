@@ -78,6 +78,7 @@ class CoprResolverTest(DBTest):
         for p in packages:
             p.last_complete_build_state = Build.COMPLETE
         self.db.commit()
+        os.makedirs('user_repos/copr-request-1')
         self.resolver.main()
         self.assertEqual(123, self.request.repo_id)
         self.assertEqual(REPO_URL, self.request.yum_repo)

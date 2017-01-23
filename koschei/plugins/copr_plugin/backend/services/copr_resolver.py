@@ -190,12 +190,11 @@ class CoprResolver(Service):
                 with self.session.repo_cache.get_sack(repo_descriptor) as sack_before:
                     if not sack_before:
                         raise RuntimeError("Couldn't download koji repo")
-                    # the lock is not recursive, it overwrites the lock we already hold
-                    with self.session.repo_cache.get_sack(repo_descriptor) as sack_after:
-                        self.add_repo_to_sack(request, sack_after)
-                        prepare_comps(request, repo_descriptor)
-                        self.resolve_request(request, sack_before, sack_after)
-                        self.db.commit()
+                    sack_after = self.session.repo_cache.get_sack_copy(repo_descriptor)
+                    self.add_repo_to_sack(request, sack_after)
+                    prepare_comps(self.session, request, repo_descriptor)
+                    self.resolve_request(request, sack_before, sack_after)
+                    self.db.commit()
             except RequestProcessingError as e:
                 request.state = 'failed'
                 request.error = str(e)

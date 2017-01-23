@@ -91,7 +91,7 @@ class CoprScheduler(Service):
             # the machine, so it's not worth optimizing
             repo_descriptor = repo_descriptor_for_request(request)
             self.session.repo_cache.get_sack(repo_descriptor)
-            prepare_comps(request, repo_descriptor)
+            prepare_comps(self.session, request, repo_descriptor)
 
         copr_client.edit_chroot(
             projectname=copr_name,
