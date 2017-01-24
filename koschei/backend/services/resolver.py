@@ -19,6 +19,8 @@
 
 from __future__ import print_function, absolute_import
 
+import contextlib
+
 import koji
 
 from collections import OrderedDict, namedtuple
@@ -158,6 +160,10 @@ class DependencyCache(object):
                 res.append(dep)
         assert res
         return res
+
+
+class RepoGenerationException(Exception):
+    pass
 
 
 class Resolver(Service):
@@ -377,7 +383,7 @@ class Resolver(Service):
             generate_dependency_changes_time.stop()
         self.persist_resolution_output(results)
 
-    def generate_repo(self, collection, repo_id):
+    def generate_repo(self, sack, collection, repo_id):
         """
         Generates new dependency changes for requested repo using given
         collection. Finishes early when base buildroot is not resolvable.
@@ -388,49 +394,51 @@ class Resolver(Service):
         generate_dependency_changes_time.reset()
         total_time.start()
         self.log.info("Generating new repo")
-        repo_descriptor = self.create_repo_descriptor(collection.secondary_mode, repo_id)
-        self.set_descriptor_tags(collection, [repo_descriptor])
-        if not repo_descriptor.build_tag:
-            self.log.error('Cannot generate repo: {}'.format(repo_id))
-            self.db.rollback()
+        build_group = self.get_build_group(collection)
+        resolved, base_problems, _ = self.resolve_dependencies(sack, [], build_group)
+        resolution_time.stop()
+        self.db.query(BuildrootProblem)\
+            .filter_by(collection_id=collection.id)\
+            .delete()
+        collection.latest_repo_resolved = resolved
+        if not resolved:
+            self.log.info("Build group not resolvable for {}"
+                          .format(collection.name))
+            collection.latest_repo_id = repo_id
+            self.db.execute(BuildrootProblem.__table__.insert(),
+                            [{'collection_id': collection.id, 'problem': problem}
+                             for problem in base_problems])
+            self.db.commit()
             return
+        self.db.commit()
         packages = self.get_packages(collection)
         brs = koji_util.get_rpm_requires_cached(
             self.session,
             self.session.secondary_koji_for(collection),
             [p.srpm_nvra for p in packages],
         )
-        with self.session.repo_cache.get_sack(repo_descriptor) as sack:
-            if not sack:
-                self.log.error('Cannot generate repo: {}'.format(repo_id))
-                self.db.rollback()
-                return
-            build_group = self.get_build_group(collection)
-            resolved, base_problems, _ = self.resolve_dependencies(sack, [], build_group)
-            resolution_time.stop()
-            self.db.query(BuildrootProblem)\
-                .filter_by(collection_id=collection.id)\
-                .delete()
-            collection.latest_repo_resolved = resolved
-            if not resolved:
-                self.log.info("Build group not resolvable for {}"
-                              .format(collection.name))
-                collection.latest_repo_id = repo_id
-                self.db.execute(BuildrootProblem.__table__.insert(),
-                                [{'collection_id': collection.id, 'problem': problem}
-                                 for problem in base_problems])
-                self.db.commit()
-                return
-            self.db.commit()
-            self.log.info("Resolving dependencies...")
-            resolution_time.start()
-            self.generate_dependency_changes(sack, collection, packages, brs, repo_id)
-            resolution_time.stop()
+        self.log.info("Resolving dependencies...")
+        resolution_time.start()
+        self.generate_dependency_changes(sack, collection, packages, brs, repo_id)
+        resolution_time.stop()
         collection.latest_repo_id = repo_id
         self.db.commit()
         total_time.stop()
         total_time.display()
         generate_dependency_changes_time.display()
+
+    @contextlib.contextmanager
+    def prepared_repo(self, collection, repo_id):
+        repo_descriptor = self.create_repo_descriptor(collection.secondary_mode, repo_id)
+        self.set_descriptor_tags(collection, [repo_descriptor])
+        if not repo_descriptor.build_tag:
+            raise RepoGenerationException('Repo {} is dead'.format(repo_id))
+        with self.session.repo_cache.get_sack(repo_descriptor) as sack:
+            if not sack:
+                raise RepoGenerationException(
+                    'Cannot obtain repo sack (repo_id={})'.format(repo_id)
+                )
+            yield sack
 
     def create_repo_descriptor(self, secondary_mode, repo_id):
         return KojiRepoDescriptor('secondary' if secondary_mode else 'primary',
@@ -539,4 +547,10 @@ class Resolver(Service):
                         koji.TASK_STATES['CLOSED']):
                     continue
             if curr_repo and curr_repo['id'] > collection.latest_repo_id:
-                self.generate_repo(collection, curr_repo['id'])
+                repo_id = curr_repo['id']
+                try:
+                    with self.prepared_repo(collection, repo_id) as sack:
+                        self.generate_repo(sack, collection, repo_id)
+                except RepoGenerationException as e:
+                    self.log.exception("Cannot generate new repo (repo_id={})"
+                                       .format(repo_id), e)
