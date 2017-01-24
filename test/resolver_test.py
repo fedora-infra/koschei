@@ -42,8 +42,13 @@ FOO_DEPS = [
     ('D', 2, '8.b', '1.rc1.fc22', 'x86_64'),
     ('E', 0, '0.1', '1.fc22.1', 'noarch'),
     ('F', 0, '1', '1.fc22', 'noarch'),
-    ('R', 0, '3.3', '2.fc22', 'x86_64'), # in build group
+    ('R', 0, '3.3', '2.fc22', 'x86_64'),  # in build group
 ]
+
+REPO = {
+    'id': 123,
+    'state': 1,
+}
 
 
 def get_sack():
@@ -193,6 +198,9 @@ class ResolverTest(DBTest):
             'state': koji.REPO_STATES['READY'],
         }
         self.resolver = Resolver(self.session)
+        self.collection.latest_repo_resolved = None
+        self.collection.latest_repo_id = None
+        self.db.commit()
 
     def prepare_foo_build(self, repo_id=123, version='4'):
         self.prepare_packages('foo')
@@ -261,7 +269,7 @@ class ResolverTest(DBTest):
         old_build.deps_resolved = True
         old_deps = FOO_DEPS[:]
         old_deps[2] = ('C', 1, '2', '1.fc22', 'x86_64')
-        del old_deps[4] # E
+        del old_deps[4]  # E
         dependency_keys = []
         for n, e, v, r, a in old_deps:
             dep = Dependency(arch=a, name=n, epoch=e, version=v, release=r)
@@ -290,10 +298,11 @@ class ResolverTest(DBTest):
 
     def test_repo_generation(self):
         self.prepare_old_build()
-        with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
-            with patch('koschei.backend.koji_util.get_rpm_requires',
-                       return_value=[['F', 'A'], ['nonexistent']]):
-                self.resolver.generate_repo(self.collection, 123)
+        with patch('koschei.backend.koji_util.get_build_group', return_value=['R']), \
+                patch('koschei.backend.koji_util.get_rpm_requires',
+                      return_value=[['F', 'A'], ['nonexistent']]), \
+                patch('koschei.backend.koji_util.get_latest_repo', return_value=REPO):
+            self.resolver.main()
         self.db.expire_all()
         foo = self.db.query(Package).filter_by(name='foo').first()
         self.assertTrue(foo.resolved)
@@ -314,127 +323,142 @@ class ResolverTest(DBTest):
     def test_result_history(self):
         self.prepare_old_build()
         self.prepare_group('bar', ['foo'])
-        with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
-            with patch('fedmsg.publish') as fedmsg_mock:
-                # first run, success
-                with patch('koschei.backend.koji_util.get_rpm_requires',
-                           return_value=[['F', 'A']]):
-                    self.resolver.generate_repo(self.collection, 123)
-                foo = self.db.query(Package).filter_by(name='foo').one()
-                result = self.db.query(ResolutionChange)\
-                    .filter_by(package_id=foo.id).one()
-                self.assertTrue(foo.resolved)
-                self.assertTrue(result.resolved)
-                self.assertEqual([], result.problems)
+        with patch('koschei.backend.koji_util.get_build_group', return_value=['R']), \
+                patch('fedmsg.publish') as fedmsg_mock:
+            # first run, success
+            with patch('koschei.backend.koji_util.get_rpm_requires',
+                       return_value=[['F', 'A']]), \
+                    patch('koschei.backend.koji_util.get_latest_repo',
+                          return_value={'id': 123}):
+                self.resolver.main()
+            foo = self.db.query(Package).filter_by(name='foo').one()
+            result = self.db.query(ResolutionChange)\
+                .filter_by(package_id=foo.id).one()
+            self.assertTrue(foo.resolved)
+            self.assertTrue(result.resolved)
+            self.assertEqual([], result.problems)
 
-                # second run, fail
-                with patch('koschei.backend.koji_util.get_rpm_requires',
-                           return_value=[['F', 'nonexistent']]):
-                    self.resolver.generate_repo(self.collection, 124)
-                foo = self.db.query(Package).filter_by(name='foo').one()
-                result = self.db.query(ResolutionChange).filter_by(package_id=foo.id)\
-                    .filter(ResolutionChange.id > result.id).one()
-                self.assertFalse(foo.resolved)
-                self.assertFalse(result.resolved)
-                self.assertIn('nonexistent', ''.join(map(str, result.problems)))
-                fedmsg_mock.assert_called_once_with(
-                    modname='koschei',
-                    msg={'koji_instance': 'primary',
-                         'repo': 'f25',
-                         'old': 'ok',
-                         'name': 'foo',
-                         'groups': ['bar'],
-                         'collection_name':
-                         'Fedora Rawhide',
-                         'new': 'unresolved',
-                         'collection': 'f25'},
-                    topic='package.state.change',
-                )
-                fedmsg_mock.reset_mock()
+            # second run, fail
+            with patch('koschei.backend.koji_util.get_rpm_requires',
+                       return_value=[['F', 'nonexistent']]), \
+                    patch('koschei.backend.koji_util.get_latest_repo',
+                          return_value={'id': 124}):
+                self.resolver.main()
+            foo = self.db.query(Package).filter_by(name='foo').one()
+            result = self.db.query(ResolutionChange).filter_by(package_id=foo.id)\
+                .filter(ResolutionChange.id > result.id).one()
+            self.assertFalse(foo.resolved)
+            self.assertFalse(result.resolved)
+            self.assertIn('nonexistent', ''.join(map(str, result.problems)))
+            fedmsg_mock.assert_called_once_with(
+                modname='koschei',
+                msg={'koji_instance': 'primary',
+                     'repo': 'f25',
+                     'old': 'ok',
+                     'name': 'foo',
+                     'groups': ['bar'],
+                     'collection_name':
+                     'Fedora Rawhide',
+                     'new': 'unresolved',
+                     'collection': 'f25'},
+                topic='package.state.change',
+            )
+            fedmsg_mock.reset_mock()
 
-                # third run, still fail, should not produce additional RR
-                with patch('koschei.backend.koji_util.get_rpm_requires',
-                           return_value=[['F', 'nonexistent']]):
-                    self.resolver.generate_repo(self.collection, 125)
-                foo = self.db.query(Package).filter_by(name='foo').one()
-                self.assertFalse(foo.resolved)
-                self.assertEqual(0, self.db.query(ResolutionChange)
-                                 .filter_by(package_id=foo.id)
-                                 .filter(ResolutionChange.id > result.id).count())
-                self.assertFalse(fedmsg_mock.called)
+            # third run, still fail, should not produce additional RR
+            with patch('koschei.backend.koji_util.get_rpm_requires',
+                       return_value=[['F', 'nonexistent']]), \
+                    patch('koschei.backend.koji_util.get_latest_repo',
+                          return_value={'id': 125}):
+                self.resolver.main()
+            foo = self.db.query(Package).filter_by(name='foo').one()
+            self.assertFalse(foo.resolved)
+            self.assertEqual(0, self.db.query(ResolutionChange)
+                             .filter_by(package_id=foo.id)
+                             .filter(ResolutionChange.id > result.id).count())
+            self.assertFalse(fedmsg_mock.called)
 
-                # fourth run, fail with different problems, should produce RR
-                with patch('koschei.backend.koji_util.get_rpm_requires',
-                           return_value=[['F', 'getrekt']]):
-                    self.resolver.generate_repo(self.collection, 126)
-                foo = self.db.query(Package).filter_by(name='foo').one()
-                self.assertFalse(foo.resolved)
-                result = self.db.query(ResolutionChange).filter_by(package_id=foo.id)\
-                    .filter(ResolutionChange.id > result.id).one()
-                self.assertNotIn('nonexistent', ''.join(map(str, result.problems)))
-                self.assertIn('getrekt', ''.join(map(str, result.problems)))
-                self.assertFalse(result.resolved)
-                self.assertFalse(fedmsg_mock.called)
+            # fourth run, fail with different problems, should produce RR
+            with patch('koschei.backend.koji_util.get_rpm_requires',
+                       return_value=[['F', 'getrekt']]), \
+                    patch('koschei.backend.koji_util.get_latest_repo',
+                          return_value={'id': 126}):
+                self.resolver.main()
+            foo = self.db.query(Package).filter_by(name='foo').one()
+            self.assertFalse(foo.resolved)
+            result = self.db.query(ResolutionChange).filter_by(package_id=foo.id)\
+                .filter(ResolutionChange.id > result.id).one()
+            self.assertNotIn('nonexistent', ''.join(map(str, result.problems)))
+            self.assertIn('getrekt', ''.join(map(str, result.problems)))
+            self.assertFalse(result.resolved)
+            self.assertFalse(fedmsg_mock.called)
 
-                # fifth run, back to normal
-                with patch('koschei.backend.koji_util.get_rpm_requires',
-                           return_value=[['F', 'A']]):
-                    self.resolver.generate_repo(self.collection, 127)
-                foo = self.db.query(Package).filter_by(name='foo').one()
-                result = self.db.query(ResolutionChange).filter_by(package_id=foo.id)\
-                    .filter(ResolutionChange.id > result.id).one()
-                self.assertTrue(foo.resolved)
-                self.assertTrue(result.resolved)
-                self.assertEqual([], result.problems)
-                fedmsg_mock.assert_called_once_with(
-                    modname='koschei',
-                    msg={'koji_instance': 'primary',
-                         'repo': 'f25',
-                         'old': 'unresolved',
-                         'name': 'foo',
-                         'groups': ['bar'],
-                         'collection_name':
-                         'Fedora Rawhide',
-                         'new': 'ok',
-                         'collection': 'f25'},
-                    topic='package.state.change',
-                )
-                fedmsg_mock.reset_mock()
+            # fifth run, back to normal
+            with patch('koschei.backend.koji_util.get_rpm_requires',
+                       return_value=[['F', 'A']]), \
+                    patch('koschei.backend.koji_util.get_latest_repo',
+                          return_value={'id': 127}):
+                self.resolver.main()
+            foo = self.db.query(Package).filter_by(name='foo').one()
+            result = self.db.query(ResolutionChange).filter_by(package_id=foo.id)\
+                .filter(ResolutionChange.id > result.id).one()
+            self.assertTrue(foo.resolved)
+            self.assertTrue(result.resolved)
+            self.assertEqual([], result.problems)
+            fedmsg_mock.assert_called_once_with(
+                modname='koschei',
+                msg={'koji_instance': 'primary',
+                     'repo': 'f25',
+                     'old': 'unresolved',
+                     'name': 'foo',
+                     'groups': ['bar'],
+                     'collection_name':
+                     'Fedora Rawhide',
+                     'new': 'ok',
+                     'collection': 'f25'},
+                topic='package.state.change',
+            )
+            fedmsg_mock.reset_mock()
 
-                # sixth run, shouldn't produce additional RR
-                with patch('koschei.backend.koji_util.get_rpm_requires',
-                           return_value=[['F', 'A']]):
-                    self.resolver.generate_repo(self.collection, 128)
-                foo = self.db.query(Package).filter_by(name='foo').one()
-                self.assertIsNone(self.db.query(ResolutionChange)
-                                  .filter_by(package_id=foo.id)
-                                  .filter(ResolutionChange.id > result.id)
-                                  .first())
-                self.assertTrue(foo.resolved)
-                self.assertFalse(fedmsg_mock.called)
+            # sixth run, shouldn't produce additional RR
+            with patch('koschei.backend.koji_util.get_rpm_requires',
+                       return_value=[['F', 'A']]), \
+                    patch('koschei.backend.koji_util.get_latest_repo',
+                          return_value={'id': 128}):
+                self.resolver.main()
+            foo = self.db.query(Package).filter_by(name='foo').one()
+            self.assertIsNone(self.db.query(ResolutionChange)
+                              .filter_by(package_id=foo.id)
+                              .filter(ResolutionChange.id > result.id)
+                              .first())
+            self.assertTrue(foo.resolved)
+            self.assertFalse(fedmsg_mock.called)
 
     def test_broken_buildroot(self):
         self.prepare_old_build()
         self.prepare_packages('bar')
-        with patch('koschei.backend.koji_util.get_build_group',
-                   return_value=['bar']):
-            with patch('koschei.backend.koji_util.get_rpm_requires',
-                       return_value=[['nonexistent']]):
-                with patch('fedmsg.publish') as fedmsg_mock:
-                    self.resolver.generate_repo(self.collection, 123)
-                    self.assertFalse(fedmsg_mock.called)
-            self.assertFalse(self.collection.latest_repo_resolved)
-            self.assertEqual(123, self.collection.latest_repo_id)
-            self.assertIn('nonexistent',
-                          ''.join(p.problem for p in self.db.query(BuildrootProblem)))
+        with patch('koschei.backend.koji_util.get_build_group', return_value=['bar']), \
+                patch('koschei.backend.koji_util.get_rpm_requires',
+                      return_value=[['nonexistent']]), \
+                patch('koschei.backend.koji_util.get_latest_repo',
+                      return_value={'id': 123}), \
+                patch('fedmsg.publish') as fedmsg_mock:
+            self.resolver.main()
+            self.assertFalse(fedmsg_mock.called)
+        self.assertFalse(self.collection.latest_repo_resolved)
+        self.assertEqual(123, self.collection.latest_repo_id)
+        self.assertIn('nonexistent',
+                      ''.join(p.problem for p in self.db.query(BuildrootProblem)))
 
-        with patch('koschei.backend.koji_util.get_build_group',
-                   return_value=['R']):
-            with patch('koschei.backend.koji_util.get_rpm_requires',
-                       return_value=[['F', 'A']]):
-                self.resolver.generate_repo(self.collection, 124)
-            self.assertTrue(self.collection.latest_repo_resolved)
-            self.assertEqual(0, self.db.query(BuildrootProblem).count())
+        with patch('koschei.backend.koji_util.get_build_group', return_value=['R']), \
+                patch('koschei.backend.koji_util.get_rpm_requires',
+                      return_value=[['F', 'A']]), \
+                patch('koschei.backend.koji_util.get_latest_repo',
+                      return_value={'id': 124}), \
+                patch('fedmsg.publish'):
+            self.resolver.main()
+        self.assertTrue(self.collection.latest_repo_resolved)
+        self.assertEqual(0, self.db.query(BuildrootProblem).count())
 
     def test_buildrequires(self):
         call_result = [{'flags': 0, 'name': 'maven-local', 'type': 0, 'version': ''},
