@@ -92,7 +92,7 @@ def get_repo(repo_dir, repo_descriptor, download=False):
     h.repotype = librepo.LR_YUMREPO
     h.urls = [repo_descriptor.url if download else repo_path]
     h.local = not download
-    h.yumdlist = ['primary', 'filelists', 'group']
+    h.yumdlist = ['primary', 'filelists', 'group', 'group_gz']
     result = librepo.Result()
     try:
         result = h.perform(result)
