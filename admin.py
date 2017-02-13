@@ -104,25 +104,21 @@ class Cleanup(Command):
     def execute(self, session, older_than):
         if older_than < 2:
             sys.exit("Minimal allowed value is 2 months")
-        session.db.execute("""
-            CREATE TEMPORARY TABLE excluded_build_ids AS (
-                SELECT last_build_id AS id FROM package
-                UNION
-                SELECT last_complete_build_id FROM package
-            );
-            CREATE UNIQUE INDEX ON excluded_build_ids(id);
-        """)
         build_res = session.db.execute("""
             DELETE FROM build WHERE started < now() - '{months} month'::interval
-                AND NOT EXISTS (
-                    SELECT 1 FROM excluded_build_ids
-                    WHERE excluded_build_ids.id = build.id)
+                AND id NOT IN (
+                    SELECT last_build_id AS id FROM package
+                        WHERE last_build_id IS NOT null
+                    UNION
+                    SELECT last_complete_build_id FROM package
+                        WHERE last_complete_build_id IS NOT null
+                )
         """.format(months=older_than))
         resolution_res = session.db.execute("""
             DELETE FROM resolution_change
                 WHERE "timestamp" < now() - '{months} month':: interval
         """.format(months=older_than))
-        plugin.dispatch_event('cleanup', session)
+        plugin.dispatch_event('cleanup', session, older_than)
         session.db.commit()
         print("Deleted {} builds".format(build_res.rowcount))
         print("Deleted {} resolution changes".format(resolution_res.rowcount))
