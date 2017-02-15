@@ -37,7 +37,7 @@ def load_plugins(endpoint, only=None):
     for name in only if only is not None else get_config('plugins'):
         name = name + '_plugin'
         if name not in sys.modules:
-            log.info('Loading %s plugin', name)
+            log.debug('Loading %s plugin', name)
             try:
                 descriptor = imp.find_module(name, [plugin_dir])
             except ImportError:
