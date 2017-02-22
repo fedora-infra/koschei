@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
-{% block title %}Koschei - {{ package.name }}{% endblock %}
+{% block title %}Koschei - {{ base.name }}{% endblock %}
 {% macro change_link(change) %}
 {% if change %}
 <td>
@@ -28,7 +28,7 @@
 {{ change_link(change) }}
 {% endmacro %}
 {% block content %}
-<div class="pageHeader">{{ package.name }}</div>
+<div class="pageHeader">{{ base.name }}</div>
 
 {{ macros.collection_chooser(allow_all=False) }}
 
@@ -49,6 +49,13 @@
     </table>
 </div>
 
+{% if not package %}
+<div class="error">
+    Package doesn't exist in selected collection
+    {{ g.current_collections[0] }}. Please select a different one.
+</div>
+
+{% else %}
 {% set editable = "" if g.user else 'disabled="true"' %}
 <form method="POST" action="{{ url_for('edit_package', name=package.name) }}">
 <input type="hidden" name="collection" value="{{ g.current_collections[0].name }}"/>
@@ -269,6 +276,7 @@
 </table>
 {% if not is_last %}
 <a href="?last_seen_ts={{ (entries[-1].timestamp or entries[-1].started) | epoch }}">Previous history</a>
+{% endif %}
 {% endif %}
 
 {% endblock %}

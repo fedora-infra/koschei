@@ -32,7 +32,7 @@ from sqlalchemy.orm import (joinedload, subqueryload, undefer, contains_eager,
                             aliased)
 from sqlalchemy.sql import exists, func, false, true, cast
 
-from koschei import util, plugin, data
+from koschei import plugin, data
 from koschei.db import RpmEVR
 from koschei.config import get_config
 from koschei.frontend import app, db, frontend_config, auth, session, forms, Tab
@@ -443,7 +443,10 @@ def frontpage():
 @package_tab
 def package_detail(name):
     collection = g.current_collections[0]
-    packages = {p.collection_id: p for p in db.query(Package).filter_by(name=name)}
+    base = db.query(BasePackage).filter_by(name=name).first_or_404()
+    packages = {p.collection_id: p for p in db.query(Package).filter_by(base_id=base.id)}
+
+    # assign packages to collections in the right order
     package = None
     all_packages = []
     for coll in g.collections:
@@ -452,30 +455,31 @@ def package_detail(name):
             all_packages.append((coll, p))
             if coll is collection:
                 package = p
-    if not package:
-        abort(404)
-    package.global_groups = db.query(PackageGroup)\
+
+    # prepare group checkboxes
+    base.global_groups = db.query(PackageGroup)\
         .join(PackageGroupRelation)\
-        .filter(PackageGroupRelation.base_id == package.base_id)\
+        .filter(PackageGroupRelation.base_id == base.id)\
         .filter(PackageGroup.namespace == None)\
         .all()
-    package.user_groups = []
-    package.available_groups = []
+    base.user_groups = []
+    base.available_groups = []
     if g.user:
         user_groups = \
             db.query(PackageGroup,
-                     func.bool_or(PackageGroupRelation.base_id == package.base_id))\
+                     func.bool_or(PackageGroupRelation.base_id == base.id))\
             .outerjoin(PackageGroupRelation)\
             .join(GroupACL)\
             .filter(GroupACL.user_id == g.user.id)\
             .order_by(PackageGroup.namespace.nullsfirst(), PackageGroup.name)\
             .group_by(PackageGroup.id)\
             .distinct().all()
-        package.user_groups = [group for group, checked in user_groups if
-                               checked and group.namespace]
-        package.available_groups = [group for group, checked in user_groups if
-                                    not checked]
+        base.user_groups = [group for group, checked in user_groups
+                            if checked and group.namespace]
+        base.available_groups = [group for group, checked in user_groups
+                                 if not checked]
 
+    # history entry pagination pivot id
     last_seen_ts = request.args.get('last_seen_ts')
     if last_seen_ts:
         try:
@@ -483,37 +487,42 @@ def package_detail(name):
         except ValueError:
             abort(400)
 
-    def to_epoch(col):
+    def to_ts(col):
         return cast(func.extract('EPOCH', col), Integer)
 
-    builds = db.query(Build)\
-        .filter_by(package_id=package.id)\
-        .filter(to_epoch(Build.started) < last_seen_ts
-                if last_seen_ts else true())\
-        .options(subqueryload(Build.dependency_changes),
-                 subqueryload(Build.build_arch_tasks))\
-        .order_by(Build.started.desc())\
-        .limit(builds_per_page)\
-        .all()
-    resolutions = db.query(ResolutionChange)\
-        .filter_by(package_id=package.id)\
-        .filter(to_epoch(ResolutionChange.timestamp) < last_seen_ts
-                if last_seen_ts else true())\
-        .options(joinedload(ResolutionChange.problems))\
-        .order_by(ResolutionChange.timestamp.desc())\
-        .limit(builds_per_page)\
-        .all()
+    entries = None
 
-    entries = sorted(
-        builds + resolutions,
-        key=lambda x: getattr(x, 'started', None) or getattr(x, 'timestamp'),
-        reverse=True,
-    )[:builds_per_page]
+    if package:
+        # prepare history entries - builds and resolution changes
+        builds = db.query(Build)\
+            .filter_by(package_id=package.id)\
+            .filter(to_ts(Build.started) < last_seen_ts
+                    if last_seen_ts else true())\
+            .options(subqueryload(Build.dependency_changes),
+                     subqueryload(Build.build_arch_tasks))\
+            .order_by(Build.started.desc())\
+            .limit(builds_per_page)\
+            .all()
+        resolutions = db.query(ResolutionChange)\
+            .filter_by(package_id=package.id)\
+            .filter(to_ts(ResolutionChange.timestamp) < last_seen_ts
+                    if last_seen_ts else true())\
+            .options(joinedload(ResolutionChange.problems))\
+            .order_by(ResolutionChange.timestamp.desc())\
+            .limit(builds_per_page)\
+            .all()
 
-    return render_template("package-detail.html", package=package,
+        entries = sorted(
+            builds + resolutions,
+            key=lambda x: getattr(x, 'started', None) or getattr(x, 'timestamp'),
+            reverse=True,
+        )[:builds_per_page]
+
+    # Note: package might be None
+    return render_template("package-detail.html", base=base, package=package,
                            entries=entries, all_packages=all_packages,
                            is_continuation=bool(last_seen_ts),
-                           is_last=len(entries) < builds_per_page)
+                           is_last=len(entries) < builds_per_page if package else True)
 
 
 @app.route('/build/<int:build_id>')
