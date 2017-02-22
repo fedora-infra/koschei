@@ -13,7 +13,7 @@
         epoch2=change.curr_epoch or '0',
         version2=change.curr_version,
         release2=change.curr_release,
-        collection=g.current_collections[0].name,
+        collection=collection.name,
         ) }}">
         other affected
     </a>
@@ -32,33 +32,35 @@
 
 {{ macros.collection_chooser(allow_all=False) }}
 
-<div class="states-table">
+<div class="package-collection-chooser {% if collection %}float-right{% endif %}">
+    {% if collection %}
     <h4>State in all collections</h4>
-    <table>
+    {% else %}
+    <h4>Choose a collection</h4>
+    {% endif %}
+    <ul>
         {% for (collection, package) in all_packages  %}
-        <tr>
-            <td>{{ collection }}</td>
-            <td>
-                <a href="{{ url_for('package_detail', name=package.name) }}{{
-                    page_args(clear=True, collection=collection.name) }}">
-                    {{ package.state_icon }}
-                </a>
-            </td>
-        </tr>
+        <li>
+            <a href="{{ url_for('package_detail', name=package.name) }}{{
+                page_args(clear=True, collection=collection.name) }}">
+                {{ package.state_icon }} {{ collection }}
+            </a>
+        </li>
         {% endfor %}
-    </table>
+    </ul>
 </div>
 
-{% if not package %}
+{% if not package and collection %}
+{# collection selected, but package is not in it #}
 <div class="error">
     Package doesn't exist in selected collection
-    {{ g.current_collections[0] }}. Please select a different one.
+    {{ collection }}. Please select a different one.
 </div>
 
-{% else %}
+{% elif package and collection %}
 {% set editable = "" if g.user else 'disabled="true"' %}
 <form method="POST" action="{{ url_for('edit_package', name=package.name) }}">
-<input type="hidden" name="collection" value="{{ g.current_collections[0].name }}"/>
+<input type="hidden" name="collection" value="{{ collection.name }}"/>
 <table class="details">
     <tr>
         <th>Package state</th>
@@ -147,7 +149,7 @@
             {{ generate_links(package) }}
         </td>
     </tr>
-    {% if g.current_collections[0].bugzilla_product and g.current_collections[0].bugzilla_version %}
+    {% if collection.bugzilla_product and collection.bugzilla_version %}
     <tr>
         <th>Bug reports</th>
         <td colspan="4">

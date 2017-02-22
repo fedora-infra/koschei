@@ -442,11 +442,13 @@ def frontpage():
 @app.route('/package/<name>')
 @package_tab
 def package_detail(name):
-    collection = g.current_collections[0]
+    # if there are more collections, keep collection = None, which will display selector
+    collection = g.current_collections[0] if len(g.current_collections) == 1 else None
+
     base = db.query(BasePackage).filter_by(name=name).first_or_404()
     packages = {p.collection_id: p for p in db.query(Package).filter_by(base_id=base.id)}
 
-    # assign packages to collections in the right order
+    # assign packages to collections in the right order, package may stay None
     package = None
     all_packages = []
     for coll in g.collections:
@@ -520,8 +522,8 @@ def package_detail(name):
 
     # Note: package might be None
     return render_template("package-detail.html", base=base, package=package,
-                           entries=entries, all_packages=all_packages,
-                           is_continuation=bool(last_seen_ts),
+                           collection=collection, entries=entries,
+                           all_packages=all_packages, is_continuation=bool(last_seen_ts),
                            is_last=len(entries) < builds_per_page if package else True)
 
 
@@ -833,6 +835,8 @@ def edit_collection(name):
 
 @app.route('/affected-by/<dep_name>')
 def affected_by(dep_name):
+    if len(g.current_collections) != 1:
+        abort(400)
     collection = g.current_collections[0]
     try:
         evr1 = RpmEVR(

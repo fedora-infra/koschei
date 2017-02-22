@@ -572,10 +572,21 @@ span#loginInfo {
     color: #c00;
 }
 
-.states-table {
+.package-collection-chooser {
     border-style: solid;
     border-width: 1px;
     padding: 0px 20px 10px 20px;
+}
+
+.package-collection-chooser img {
+    vertical-align: middle;
+}
+
+.package-collection-chooser ul {
+    list-style-type: none;
+}
+
+.float-right {
     float: right;
 }
 
