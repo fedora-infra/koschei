@@ -822,8 +822,8 @@ def edit_collection(name):
     abort(501)
 
 
-@app.route('/depchange/<dep_name>')
-def depchange(dep_name):
+@app.route('/affected-by/<dep_name>')
+def affected_by(dep_name):
     collection = g.current_collections[0]
     try:
         evr1 = RpmEVR(
@@ -880,6 +880,6 @@ def depchange(dep_name):
             last_complete_build_state=row.package_lb_state,
         )
 
-    return render_template("depchange.html", package_state=package_state,
+    return render_template("affected-by.html", package_state=package_state,
                            dep_name=dep_name, evr1=evr1, evr2=evr2,
                            collection=collection, failed=failed)

@@ -4,11 +4,17 @@
 {% macro change_link(change) %}
 {% if change %}
 <td>
-    <a href="{{ url_for('depchange', dep_name=change.dep_name)
-        }}?epoch1={{ change.prev_epoch or '0' }}&version1={{ change.prev_version
-        }}&release1={{ change.prev_release }}&epoch2={{ change.curr_epoch or '0'
-        }}&version2={{ change.curr_version }}&release2={{ change.curr_release
-        }}&collection={{ g.current_collections[0].name }}">
+    <a href="{{ url_for(
+        'affected_by',
+        dep_name=change.dep_name,
+        epoch1=change.prev_epoch or '0',
+        version1=change.prev_version,
+        release1=change.prev_release,
+        epoch2=change.curr_epoch or '0',
+        version2=change.curr_version,
+        release2=change.curr_release,
+        collection=g.current_collections[0].name,
+        ) }}">
         other affected
     </a>
 </td>
