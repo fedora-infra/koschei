@@ -647,7 +647,7 @@ def process_group_form(group=None):
                             namespace=group.namespace))
 
 
-@app.route('/add_group', methods=['GET', 'POST'])
+@app.route('/add-group', methods=['GET', 'POST'])
 @group_tab
 @auth.login_required()
 def add_group():
@@ -682,7 +682,7 @@ def delete_group(name, namespace=None):
 
 
 if not frontend_config['auto_tracking']:
-    @app.route('/add_packages', methods=['GET', 'POST'])
+    @app.route('/add-packages', methods=['GET', 'POST'])
     @add_packages_tab.master
     @auth.login_required()
     def add_packages():
