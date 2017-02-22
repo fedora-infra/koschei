@@ -26,7 +26,7 @@ from sqlalchemy.orm import joinedload, subqueryload
 from koschei.config import get_config
 from koschei.frontend import app, auth, db, Tab
 from koschei.frontend.forms import StrippedStringField, EmptyForm
-from koschei.models import CoprRebuildRequest, CoprRebuild
+from koschei.models import User, CoprRebuildRequest, CoprRebuild
 
 
 app.jinja_env.globals.update(
@@ -51,21 +51,21 @@ class EditRebuildForm(EmptyForm):
     action = StringField('action', [validators.AnyOf(['move-top', 'remove'])])
 
 
-user_rebuilds_tab = Tab('User rebuilds', 60)
+user_rebuilds_tab = Tab('My user rebuilds', 60, requires_user=True)
 
 
-@app.route('/rebuild_request/list')
-@auth.login_required()
+@app.route('/rebuild-request/user/<username>')
 @user_rebuilds_tab.master
-def list_rebuild_requests():
+def list_rebuild_requests(username):
+    user = db.query(User).filter_by(name=username).first_or_404()
     requests = db.query(CoprRebuildRequest)\
-        .filter(CoprRebuildRequest.user_id == g.user.id)\
+        .filter(CoprRebuildRequest.user_id == user.id)\
         .all()
     return render_template('list-rebuild-requests.html',
-                           requests=requests)
+                           user=user, requests=requests)
 
 
-@app.route('/rebuild_request/new', methods=['GET', 'POST'])
+@app.route('/rebuild-request/new', methods=['GET', 'POST'])
 @auth.login_required()
 @user_rebuilds_tab
 def new_rebuild_request():
@@ -95,7 +95,7 @@ def new_rebuild_request():
         return render_template('new-rebuild-request.html', form=form)
 
 
-@app.route('/rebuild_request/<int:request_id>')
+@app.route('/rebuild-request/<int:request_id>')
 @user_rebuilds_tab
 def rebuild_request_detail(request_id):
     rebuild_request = db.query(CoprRebuildRequest).options(
@@ -109,7 +109,7 @@ def rebuild_request_detail(request_id):
                            form=EditRebuildForm())
 
 
-@app.route('/rebuild_request/edit_rebuild', methods=['POST'])
+@app.route('/rebuild-request/edit-rebuild', methods=['POST'])
 @auth.login_required()
 def edit_rebuild():
     form = EditRebuildForm()
