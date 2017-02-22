@@ -607,3 +607,8 @@ span#loginInfo {
     width: 0;
     white-space: nowrap;
 }
+
+.disclaimer {
+    font-size: 13pt;
+    padding: 25px;
+}

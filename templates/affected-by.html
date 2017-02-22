@@ -4,8 +4,14 @@
 {% block content %}
 <div class="pageHeader">
     Packages which started to fail after
-    {{ dep_name }} {{ 'upgrade' if evr1 < evr2 else 'downgrade' }}
-    from {{ evr1 }} to {{ evr2 }}
+    {{ dep_name }} {{ 'upgrade' if evr1 <= evr2 else 'downgrade' }}
+    from {{ evr1 }} to {{ evr2 }} (in {{ collection }})
+</div>
+<div class="disclaimer">
+    <strong>Disclaimer:</strong> This view simply lists packages which used to
+    build fine, but failed to build after this change occured. Please keep in
+    mind that there were many other dependency changes happening in parallel
+    that could have caused any particular failure.
 </div>
 <table class="data-list">
     <tr class="list-header">
@@ -17,7 +23,6 @@
     </tr>
     {% for row in failed %}
     <tr class="row-odd">
-        {# TODO collection #}
         <td><a href="{{ url_for('package_detail', name=row.package_name) }}?collection={{ collection.name }}">{{ row.package_name }}</a></td>
         <td>{{ package_state_icon(package_state(row)) }}</td>
         <td><a href="{{ url_for('build_detail', build_id=row.build_id) }}">build</a></td>
