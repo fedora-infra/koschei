@@ -1,8 +1,11 @@
 {% extends "base.html" %}
+{% import "macros.html" as macros %}
 {% block title %}Koschei - new rebuild request{% endblock %}
 {% block content %}
 
-<div class="pageHeader">New rebuild request</div>
+{{ macros.user_rebuilds_description() }}
+
+<div class="pageHeader">New user rebuild request</div>
 
 <form method="post" action="{{ url_for('new_rebuild_request') }}">
     {{ form.csrf_token }}
@@ -26,7 +29,7 @@
             <td>{{ form.description(cols=80, rows=4) }}</td>
         </tr>
         <tr>
-            <td><label for="description">Max scheduled builds:</label></td>
+            <td><label for="description">Max scheduled builds (use 0 to suppress automatic build start):</label></td>
             <td>{{ form.schedule_count() }}</td>
         </tr>
     </table>

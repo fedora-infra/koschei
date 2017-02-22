@@ -1,5 +1,9 @@
 {% extends "base.html" %}
+{% import "macros.html" as macros %}
 {% block content %}
+
+{{ macros.user_rebuilds_description() }}
+
 <div>
     <div class="pageHeader">Your rebuild requests</div>
     <table class="data-list">

@@ -183,3 +183,16 @@
     </form>
 </div>
 {% endmacro %}
+
+{% macro user_rebuilds_description() %}
+<div class="description">
+    User rebuilds make it possible to test package updates before they land in
+    the distribution. The input is a copr project that contains packages which
+    the distribution should be tested against. Koschei examines repo from given
+    copr, resolves dependencies of the whole distribution with the repo added
+    and selects few packages which are most likely to be affected to be
+    rebuilt. After the resolution is done, you can make changes to the rebuild
+    queue (add/remove packages). The rebuilds start automatically and are done
+    in koschei managed coprs (i.e. not the one you supplied).
+</div>
+{% endmacro %}

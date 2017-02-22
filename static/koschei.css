@@ -623,3 +623,7 @@ span#loginInfo {
     font-size: 13pt;
     padding: 25px;
 }
+
+.description {
+    padding-bottom: 20px;
+}
