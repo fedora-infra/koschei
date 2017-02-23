@@ -334,6 +334,9 @@ dummy = posix.readlink(dir) and os.remove(dir)
 * Thu Feb 23 2017 Michael Simacek <msimacek@redhat.com> 1.9.0-1
 - Update to upstream version 1.9.0
 
+* Fri Feb 10 2017 Fedora Release Engineering <releng@fedoraproject.org> - 1.8.2-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_26_Mass_Rebuild
+
 * Thu Sep 08 2016 Michael Simacek <msimacek@redhat.com> 1.8.2-1
 - Update to upstream version 1.8.2
 
@@ -345,6 +348,9 @@ dummy = posix.readlink(dir) and os.remove(dir)
 
 * Mon Aug 15 2016 Michael Simacek <msimacek@redhat.com> 1.7.2-1
 - Update to upstream version 1.7.2
+
+* Tue Jul 19 2016 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.7.1-2
+- https://fedoraproject.org/wiki/Changes/Automatic_Provides_for_Python_RPM_Packages
 
 * Fri Jun 17 2016 Michael Simacek <msimacek@redhat.com> 1.7.1-1
 - Update to upstream version 1.7.1
