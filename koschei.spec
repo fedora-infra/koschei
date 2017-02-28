@@ -131,7 +131,7 @@ Requires:       %{name}-common = %{version}-%{release}
 %package backend-copr
 Summary:        Koschei plugin for user rebuilds in Copr (backend part)
 Requires:       %{name}-backend = %{version}-%{release}
-Requires:       %{name}-copr-common = %{version}-%{release}
+Requires:       %{name}-common-copr = %{version}-%{release}
 Requires:       python-copr >= 1.75
 
 %description backend-copr
@@ -140,7 +140,7 @@ Requires:       python-copr >= 1.75
 %package frontend-copr
 Summary:        Koschei plugin for user rebuilds in Copr (frontend part)
 Requires:       %{name}-frontend = %{version}-%{release}
-Requires:       %{name}-copr-common = %{version}-%{release}
+Requires:       %{name}-common-copr = %{version}-%{release}
 
 %description frontend-copr
 %{summary}.
