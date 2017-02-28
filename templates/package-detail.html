@@ -277,7 +277,7 @@
     </tbody>
 </table>
 {% if not is_last %}
-<a href="?last_seen_ts={{ (entries[-1].timestamp or entries[-1].started) | epoch }}">Previous history</a>
+<a href="?last_seen_ts={{ (entries[-1].timestamp or entries[-1].started) | epoch }}&collection={{ collection.name }}">Previous history</a>
 {% endif %}
 {% endif %}
 
