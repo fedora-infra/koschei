@@ -153,7 +153,7 @@
     <tr>
         <th>Bug reports</th>
         <td colspan="4">
-            <a href="{{ url_for('bugreport', name=package.name) }}">File new FTBFS bug</a>
+            <a href="{{ url_for('bugreport', name=package.name, collection=package.collection.name) }}">File new FTBFS bug</a>
         </td>
     </tr>
     {% endif %}

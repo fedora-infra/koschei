@@ -799,6 +799,7 @@ def bugreport(name):
                 .filter(Package.name == name)\
                 .filter(Package.blocked == False)\
                 .filter(Package.last_complete_build_id != None)\
+                .filter(Package.collection_id == g.current_collections[0].id)\
                 .options(joinedload(Package.last_complete_build))\
                 .first() or abort(404)
     variables = package.srpm_nvra or abort(404)
