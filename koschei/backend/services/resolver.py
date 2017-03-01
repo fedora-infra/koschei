@@ -274,7 +274,7 @@ class Resolver(Service):
             .filter(UnappliedChange.package_id.in_(package_ids))\
             .delete()
 
-        already_unresolved = self.db.query(ResolutionChange)\
+        previous_resolutions = self.db.query(ResolutionChange)\
             .filter(ResolutionChange.package_id.in_(package_ids))\
             .options(joinedload(ResolutionChange.problems))\
             .order_by(ResolutionChange.package_id,
@@ -285,7 +285,7 @@ class Resolver(Service):
         problems = []
         changes = []
         problem_map = {r.package_id: set(p.problem for p in r.problems)
-                       for r in already_unresolved}
+                       for r in previous_resolutions}
         for pkg in chunk:
             if (pkg.prev_resolved != pkg.resolved or
                     pkg.resolved is False and pkg.prev_resolved is False and
