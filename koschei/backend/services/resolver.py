@@ -289,7 +289,7 @@ class Resolver(Service):
         for pkg in chunk:
             if (pkg.prev_resolved != pkg.resolved or
                     pkg.resolved is False and pkg.prev_resolved is False and
-                    pkg.problems != problem_map[pkg.package_id]):
+                    pkg.problems != problem_map.get(pkg.package_id)):
                 result = ResolutionChange(package_id=pkg.package_id,
                                           resolved=pkg.resolved)
                 self.db.add(result)
