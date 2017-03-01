@@ -529,28 +529,31 @@ class Resolver(Service):
             .update({'deps_resolved': False}, synchronize_session=False)
         self.db.commit()
 
+    def process_repos(self, collection):
+        curr_repo = koji_util.get_latest_repo(
+            self.session.secondary_koji_for(collection),
+            collection.build_tag)
+        if curr_repo and collection.secondary_mode:
+            backend.refresh_repo_mappings(self.session)
+            mapping = self.db.query(RepoMapping)\
+                .filter_by(secondary_id=curr_repo['id'])\
+                .first()
+            # don't resolve it if we don't have it on primary yet
+            if not (mapping and mapping.primary_id and
+                    self.session.koji('primary')
+                    .getTaskInfo(mapping.task_id)['state'] ==
+                    koji.TASK_STATES['CLOSED']):
+                return
+        if curr_repo and curr_repo['id'] > collection.latest_repo_id:
+            repo_id = curr_repo['id']
+            try:
+                with self.prepared_repo(collection, repo_id) as sack:
+                    self.generate_repo(sack, collection, repo_id)
+            except RepoGenerationException as e:
+                self.log.exception("Cannot generate new repo (repo_id={})"
+                                   .format(repo_id), e)
+
     def main(self):
         for collection in self.db.query(Collection).all():
             self.process_builds(collection)
-            curr_repo = koji_util.get_latest_repo(
-                self.session.secondary_koji_for(collection),
-                collection.build_tag)
-            if curr_repo and collection.secondary_mode:
-                backend.refresh_repo_mappings(self.session)
-                mapping = self.db.query(RepoMapping)\
-                    .filter_by(secondary_id=curr_repo['id'])\
-                    .first()
-                # don't resolve it if we don't have it on primary yet
-                if not (mapping and mapping.primary_id and
-                        self.session.koji('primary')
-                        .getTaskInfo(mapping.task_id)['state'] ==
-                        koji.TASK_STATES['CLOSED']):
-                    continue
-            if curr_repo and curr_repo['id'] > collection.latest_repo_id:
-                repo_id = curr_repo['id']
-                try:
-                    with self.prepared_repo(collection, repo_id) as sack:
-                        self.generate_repo(sack, collection, repo_id)
-                except RepoGenerationException as e:
-                    self.log.exception("Cannot generate new repo (repo_id={})"
-                                       .format(repo_id), e)
+            self.process_repos(collection)

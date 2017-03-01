@@ -1,0 +1,14 @@
+[Unit]
+Description=Koschei - Fedora Continuous Integration - repo dependency resolver
+After=syslog.target network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/libexec/koschei/koschei-repo-resolver -m koschei.backend.main repo_resolver
+User=koschei
+Group=koschei
+Nice=5
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

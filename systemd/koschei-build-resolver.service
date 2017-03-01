@@ -1,0 +1,14 @@
+[Unit]
+Description=Koschei - Fedora Continuous Integration - build dependency resolver
+After=syslog.target network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/libexec/koschei/koschei-build-resolver -m koschei.backend.main build_resolver
+User=koschei
+Group=koschei
+Nice=5
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

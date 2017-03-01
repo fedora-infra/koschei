@@ -32,6 +32,10 @@ class MyService(Service):
         super(MyService, self).__init__(*args, **kwargs)
 
 
+class InheritedService(MyService):
+    pass
+
+
 class ServiceTest(AbstractTest):
     def test_abstract(self):
         s = Service(session=Mock())
@@ -57,3 +61,7 @@ class ServiceTest(AbstractTest):
     def test_find_myservice(self):
         svc = Service.find_service('my_service')
         self.assertIs(MyService, svc)
+
+    def test_find_inherited(self):
+        svc = Service.find_service('inherited_service')
+        self.assertIs(InheritedService, svc)

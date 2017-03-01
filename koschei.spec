@@ -196,6 +196,8 @@ ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-scheduler
 ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-watcher
 ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-polling
 ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-resolver
+ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-build-resolver
+ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-repo-resolver
 ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-copr-resolver
 ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-copr-scheduler
 
@@ -228,16 +230,22 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %systemd_post %{name}-scheduler.service
 %systemd_post %{name}-polling.service
 %systemd_post %{name}-resolver.service
+%systemd_post %{name}-build-resolver.service
+%systemd_post %{name}-repo-resolver.service
 
 %preun backend
 %systemd_preun %{name}-scheduler.service
 %systemd_preun %{name}-polling.service
 %systemd_preun %{name}-resolver.service
+%systemd_preun %{name}-build-resolver.service
+%systemd_preun %{name}-repo-resolver.service
 
 %postun backend
 %systemd_postun %{name}-scheduler.service
 %systemd_postun %{name}-polling.service
 %systemd_postun %{name}-resolver.service
+%systemd_postun %{name}-build-resolver.service
+%systemd_postun %{name}-repo-resolver.service
 
 %post backend-fedora
 %systemd_post %{name}-watcher.service
@@ -294,9 +302,13 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %{_libexecdir}/%{name}/koschei-scheduler
 %{_libexecdir}/%{name}/koschei-polling
 %{_libexecdir}/%{name}/koschei-resolver
+%{_libexecdir}/%{name}/koschei-build-resolver
+%{_libexecdir}/%{name}/koschei-repo-resolver
 %{_unitdir}/koschei-scheduler.service
 %{_unitdir}/koschei-polling.service
 %{_unitdir}/koschei-resolver.service
+%{_unitdir}/koschei-build-resolver.service
+%{_unitdir}/koschei-repo-resolver.service
 %{python2_sitelib}/*/backend
 %{python2_sitelib}/*/plugins/repo_regen_plugin
 
