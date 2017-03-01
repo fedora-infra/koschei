@@ -317,7 +317,7 @@ def get_collections():
         return
     collection_name = request.args.get('collection')
     g.collections = db.query(Collection)\
-        .order_by(Collection.order, Collection.name.desc())\
+        .order_by(Collection.order.desc(), Collection.name.desc())\
         .all()
     for collection in g.collections:
         db.expunge(collection)
