@@ -21,6 +21,7 @@ BuildRequires:       python-mock
 BuildRequires:       python-sqlalchemy
 BuildRequires:       koji >= 1.11
 BuildRequires:       python-hawkey
+BuildRequires:       python-dnf
 BuildRequires:       python-librepo
 BuildRequires:       rpm-python
 BuildRequires:       fedmsg
@@ -83,6 +84,7 @@ Summary:        Koschei backend services
 Requires:       %{name}-common = %{version}-%{release}
 Requires:       koji
 Requires:       python-hawkey
+Requires:       python-dnf
 Requires:       python-librepo
 Requires:       python-dogpile-cache
 Requires(post): systemd

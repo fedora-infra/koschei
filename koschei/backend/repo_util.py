@@ -20,6 +20,7 @@ from __future__ import print_function, absolute_import
 
 import os
 import hawkey
+import dnf.sack
 import librepo
 import shutil
 
@@ -128,7 +129,7 @@ def get_comps_path(repo_dir, repo_descriptor):
 
 def load_sack(repo_dir, repo_descriptor, download=False):
     """
-    Obtain hawkey Sack either by loading from disk, or downloading from
+    Obtain dnf Sack either by loading from disk, or downloading from
     Koji. Builds cache when downloading.
 
     :repo_dir: path to directory where the repo is/should be stored
@@ -137,7 +138,7 @@ def load_sack(repo_dir, repo_descriptor, download=False):
     """
     cache_dir = os.path.join(repo_dir, str(repo_descriptor), 'cache')
     for_arch = get_config('dependency.resolve_for_arch')
-    sack = hawkey.Sack(arch=for_arch, cachedir=cache_dir)
+    sack = dnf.sack.Sack(arch=for_arch, cachedir=cache_dir)
     repo = get_repo(repo_dir, repo_descriptor, download)
     if repo:
         sack.load_yum_repo(repo, load_filelists=True, build_cache=download)
