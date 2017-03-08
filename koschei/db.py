@@ -75,7 +75,7 @@ class Query(sqlalchemy.orm.Query):
         attempting to update.
         """
         mapper = self._only_full_mapper_zero("lock_rows")
-        self.order_by(*mapper.primary_key)\
+        return self.order_by(*mapper.primary_key)\
             .with_lockmode('update')\
             .all()
 

@@ -336,4 +336,7 @@ config = {
     },
     # koschei version interpolated by build. Don't override
     "version": "@VERSION@",
+    # chunk size for real build insertions. Override only if you have
+    # performance problems related to build insertion
+    "real_builds_insert_chunk": 50,
 }

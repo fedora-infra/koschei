@@ -151,58 +151,75 @@ def register_real_builds(session, collection, package_build_infos):
 
     :param: package_build_infos tuples in format (package_id, build_info)
     """
-    # TODO send fedmsg for real builds?
-    state_map = {koji.BUILD_STATES['COMPLETE']: Build.COMPLETE,
-                 koji.BUILD_STATES['FAILED']: Build.FAILED}
-    builds = [Build(task_id=build_info['task_id'], real=True,
-                    version=build_info['version'], epoch=build_info['epoch'],
-                    release=build_info['release'], package_id=package_id,
-                    state=state_map[build_info['state']])
-              for package_id, build_info in package_build_infos]
-    registered = []
-    for chunk in util.chunks(builds, 100):  # TODO configurable
-        retries = 10
-        while True:
-            try:
-                build_tasks = sync_tasks(session, collection, chunk, real=True)
-                for build, tasks in list(build_tasks.items()):
-                    if not build.repo_id:
-                        del build_tasks[build]
-                chunk = list(build_tasks.keys())
-                session.db.bulk_insert(chunk)
-                for build, tasks in build_tasks.items():
-                    for task in tasks:
-                        task.build_id = build.id
-                insert_koji_tasks(session, build_tasks)
-                session.db.commit()
-                registered += chunk
-                break
-            except IntegrityError:
-                retries -= 1
-                if not retries:
-                    raise
-                session.db.rollback()
-                session.log.info("Retrying real build insertion")
-                existing_ids = session.db.query(Build.task_id)\
-                    .filter_by(real=True)\
-                    .filter(Build.task_id.in_(b.task_id for b in chunk))\
-                    .all()
-                existing_ids = {b.task_id for [b] in existing_ids}
-                chunk = [b for b in chunk if b.task_id not in existing_ids]
-
-    if registered:
-        # pylint:disable=unused-variable
-        # used via sqla cache
-        pkgs = session.db.query(Package)\
-            .filter(Package.id.in_(b.package_id for b in registered))\
-            .all()
-        for build in registered:
-            package = session.db.query(Package).get(build.package_id)
+    state_map = {
+        koji.BUILD_STATES['COMPLETE']: Build.COMPLETE,
+        koji.BUILD_STATES['FAILED']: Build.FAILED,
+    }
+    # prepare ORM objects for insertion
+    builds = [
+        Build(
+            real=True,
+            state=state_map[build_info['state']],
+            task_id=build_info['task_id'],
+            epoch=build_info['epoch'],
+            version=build_info['version'],
+            release=build_info['release'],
+            package_id=package_id,
+        )
+        for package_id, build_info in package_build_infos
+    ]
+    # process the input in chunks to prevent locking too many packages at once
+    for chunk in util.chunks(builds, get_config('real_builds_insert_chunk')):
+        # get koji tasks and populate repo_id
+        # format: {build: [koji_task], ...}
+        build_tasks = sync_tasks(session, collection, chunk, real=True)
+        # discard builds with no repo_id, because those cannot be resolved
+        build_tasks = {
+            build: tasks for build, tasks in build_tasks.items() if build.repo_id
+        }
+        if not build_tasks:
+            continue
+        # get and lock packages to prevent concurrent build insertion
+        packages = {
+            p.id: p for p in session.db.query(Package)
+            .filter(Package.id.in_(build.package_id for build in build_tasks))
+            .lock_rows()
+        }
+        # find builds that may have been inserted in parallel
+        # using (package_id, task_id) as lookup key
+        # - task_id might not be enough - different collections may use
+        #   different koji. same package_id implies same collection
+        existing = set(
+            session.db.query(Build.package_id, Build.task_id)
+            .filter(Build.package_id.in_(packages.keys()))
+            .filter(Build.real)
+            .filter(Build.task_id.in_(build.task_id for build in build_tasks))
+        )
+        # discard builds that have already been inserted in parallel
+        build_tasks = {
+            build: tasks for build, tasks in build_tasks.items()
+            if (build.package_id, build.task_id) not in existing
+        }
+        # log what we're doing
+        for build in build_tasks:
+            package = packages[build.package_id]
             session.log.info(
                 'Registering real build {}-{}-{} for collection {} (task_id {})'
-                .format(package.name, build.version, build.release,
-                        session.db.query(Collection).get(package.collection_id),
-                        build.task_id))
+                .format(
+                    package.name, build.version, build.release,
+                    package.collection,
+                    build.task_id,
+                )
+            )
+        # insert valid builds
+        session.db.bulk_insert(build_tasks.keys())
+        # set build_ids of new koji tasks
+        for build, tasks in build_tasks.items():
+            for task in tasks:
+                task.build_id = build.id
+        # insert tasks
+        insert_koji_tasks(session, build_tasks)
+        session.db.commit()
 
 
 def update_build_state(session, build, state):
@@ -466,9 +483,7 @@ def refresh_latest_builds(session):
             for info in to_add:
                 package = name_mapping.get(info['package_name'])
                 if package and util.is_build_newer(package.last_build, info):
-                    package_build_infos.append(
-                        (name_mapping[info['package_name']].id, info)
-                    )
+                    package_build_infos.append((package.id, info))
             if package_build_infos:
                 register_real_builds(session, collection, package_build_infos)
 
