@@ -191,6 +191,23 @@ class BackendTest(DBTest):
             backend.refresh_latest_builds(self.session)
             self.assertEqual(1, self.db.query(Build).count())
 
+    def test_register_real_builds(self):
+        self.session.sec_koji_mock.getTaskInfo = Mock(return_value=rnv_task)
+        self.session.sec_koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
+        package = self.prepare_packages('rnv')[0]
+        build = self.prepare_build('rnv', False)
+        build.repo_id = 1
+        build.epoch = None
+        build.version = "1.7.11"
+        build.release = "9.fc24"
+        self.db.commit()
+        build_infos = [(package.id, rnv_build_info[0])]
+        backend.register_real_builds(self.session, self.collection, build_infos)
+        self.assertEqual(2, self.db.query(Build).count())
+        # now test that it won't insert duplicates
+        backend.register_real_builds(self.session, self.collection, build_infos)
+        self.assertEqual(2, self.db.query(Build).count())
+
     def test_cancel_timed_out(self):
         self.prepare_packages('rnv')
         running_build = self.prepare_build('rnv')
