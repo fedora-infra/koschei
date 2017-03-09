@@ -105,7 +105,9 @@
             <td colspan="2"></td>
             {% endif %}
             <td>
-                {{ package.current_priority or ""}}
+                {% if package.current_priority is not none %}
+                {{ package.current_priority | int }}
+                {% endif %}
             </td>
             {% endif %}
             <td>

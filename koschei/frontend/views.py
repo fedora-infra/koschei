@@ -204,18 +204,24 @@ def package_view(template, query_fn=None, **template_args):
 
 def collection_package_view(template, query_fn=None, **template_args):
     collection = g.current_collections[0]
-    package_query = db.query(Package).filter(Package.collection_id == collection.id)
+    current_prio_expr = Package.current_priority_expression(
+        collection=collection,
+        last_build=Build,  # package is outerjoined with last_build
+    )
+    package_query = db.query(Package, current_prio_expr)\
+        .filter(Package.collection_id == collection.id)
     if query_fn:
         package_query = query_fn(package_query.join(BasePackage))
     untracked = request.args.get('untracked') == '1'
     order_name = request.args.get('order_by', 'running,state,name')
-    # pylint: disable=E1101
-    order_map = {'name': [Package.name],
-                 'state': [Package.resolved, Reversed(Build.state)],
-                 'running': [Package.last_complete_build_id == Package.last_build_id],
-                 'task_id': [Build.task_id],
-                 'started': [Build.started],
-                 'current_priority': [NullsLastOrder(Package.current_priority)]}
+    order_map = {
+        'name': [Package.name],
+        'state': [Package.resolved, Reversed(Build.state)],
+        'running': [Package.last_complete_build_id == Package.last_build_id],
+        'task_id': [Build.task_id],
+        'started': [Build.started],
+        'current_priority': [NullsLastOrder(current_prio_expr)],
+    }
     order_names, order = get_order(order_map, order_name)
 
     if not untracked:
@@ -224,7 +230,11 @@ def collection_package_view(template, query_fn=None, **template_args):
                         .outerjoin(Package.last_build)\
                         .options(contains_eager(Package.last_build))\
                         .order_by(*order)
+
     page = pkgs.paginate(packages_per_page)
+    for pkg, priority in page.items:
+        pkg.current_priority = priority
+    page.items = [pkg for pkg, _ in page.items]
     populate_package_groups(page.items)
     return render_template(template, packages=page.items, page=page,
                            order=order_names, collection=collection,
@@ -500,6 +510,13 @@ def package_detail(name):
     entries = None
 
     if package:
+        # set current priority
+        package.current_priority = db.query(
+            Package.current_priority_expression(
+                collection=package.collection,
+                last_build=package.last_build,
+            )
+        ).filter(Package.id == package.id).scalar()
         # prepare history entries - builds and resolution changes
         builds = db.query(Build)\
             .filter_by(package_id=package.id)\
