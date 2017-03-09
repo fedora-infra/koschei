@@ -55,7 +55,7 @@ DepTuple = namedtuple('DepTuple', ['id', 'name', 'epoch', 'version', 'release',
                                    'arch'])
 ResolutionOutput = namedtuple('ResolutionOutput',
                               ['package_id', 'prev_resolved', 'resolved',
-                               'problems', 'changes'])
+                               'problems', 'changes', 'last_build_id'])
 
 
 def create_dependency_changes(deps1, deps2, **rest):
@@ -261,76 +261,134 @@ class Resolver(Service):
                 # unresolved build, skip it
                 return self.get_prev_build_for_comparison(last_build)
             # not yet processed builds are not considered
+            return None
 
     # pylint: disable=too-many-locals
     def persist_resolution_output(self, chunk):
+        """
+        Stores resolution output into the database and sends fedmsg if needed.
+
+        chunk format:
+        [
+            ResolutionOutput(
+                package_id=123,
+                prev_resolved=False,
+                resolved=True,  # current resolution status
+                changes=[dict(...), ...],  # dependency changes in dict form
+                problems={dict(...), ...},  # dependency problems in dict form,
+                                            # note it's a set
+                last_build_id=456,  # used to detect concurrently inserted builds
+            ),
+        ...]
+        """
         if not chunk:
             return
+
         package_ids = [p.package_id for p in chunk]
-        self.db.query(Package)\
-            .filter(Package.id.in_(package_ids))\
-            .lock_rows()
-        self.db.query(UnappliedChange)\
-            .filter(UnappliedChange.package_id.in_(package_ids))\
-            .delete()
 
-        previous_resolutions = self.db.query(ResolutionChange)\
-            .filter(ResolutionChange.package_id.in_(package_ids))\
-            .options(joinedload(ResolutionChange.problems))\
-            .order_by(ResolutionChange.package_id,
-                      ResolutionChange.timestamp.desc())\
-            .distinct(ResolutionChange.package_id)\
+        # get and lock the packages to be updated
+        packages = {
+            p.id: p for p in self.db.query(Package)
+            .filter(Package.id.in_(package_ids))
+            .order_by(Package.id)  # ordering to prevent deadlocks
+            .with_lockmode('update')
             .all()
+        }
 
-        problems = []
-        changes = []
-        problem_map = {r.package_id: set(p.problem for p in r.problems)
-                       for r in previous_resolutions}
-        for pkg in chunk:
-            if (pkg.prev_resolved != pkg.resolved or
-                    pkg.resolved is False and pkg.prev_resolved is False and
-                    pkg.problems != problem_map.get(pkg.package_id)):
-                result = ResolutionChange(package_id=pkg.package_id,
-                                          resolved=pkg.resolved)
-                self.db.add(result)
-                self.db.flush()
-                problems += [dict(resolution_id=result.id, problem=problem)
-                             for problem in pkg.problems]
-            changes += pkg.changes
-        if problems:
-            self.db.execute(insert(ResolutionProblem, problems))
+        # find latest resolution problems to be compared for change
+        previous_problems = {
+            r.package_id: set(p.problem for p in r.problems)
+            for r in self.db.query(ResolutionChange)
+            .filter(ResolutionChange.package_id.in_(package_ids))
+            .options(joinedload(ResolutionChange.problems))
+            .order_by(ResolutionChange.package_id,
+                      ResolutionChange.timestamp.desc())
+            .distinct(ResolutionChange.package_id)
+            .all()
+        }
 
+        # dependency problems to be persisted
+        # format: [tuple(resolution change (orm objects), problems (strings))]
+        problem_entries = []
+        # dependency changes to be persisted
+        dependency_changes = []
+
+        # state changes for fedmsg. Message sending should be done after commit
+        # format: a dict from id -> (prev_state: string, new_state: string)
+        state_changes = {}
+
+        update_weight = get_config('priorities.package_update')
+
+        # update packages, queue resolution results, changes and problems for insertion
+        for pkg_result in chunk:
+            package_id = pkg_result.package_id
+            package = packages[package_id]
+
+            if pkg_result.last_build_id != package.last_build_id:
+                # there was a build submitted/registered in the meantime,
+                # our results are likely outdated -> discard them
+                continue
+
+            # get state before update
+            prev_state = package.msg_state_string
+            package.resolved = pkg_result.resolved
+            # get state after update
+            new_state = package.msg_state_string
+            # compute dependency priority
+            package.dependency_priority = sum(
+                update_weight / (change['distance'] or 8)
+                for change in pkg_result.changes
+            )
+            if prev_state != new_state:
+                # queue for fedmsg sending after commit
+                state_changes[package_id] = prev_state, new_state
+
+            dependency_changes += pkg_result.changes
+
+            # compare whether there was any change from the previous state
+            # - we should emit a new resolution change only if the resolution
+            # state or the set of dependency problems changed
+            if (
+                    pkg_result.prev_resolved != pkg_result.resolved or (
+                        pkg_result.resolved is False and
+                        pkg_result.prev_resolved is False and
+                        # both are sets, they can be compared directly
+                        pkg_result.problems != previous_problems.get(package_id)
+                    )
+            ):
+                resolution_change = ResolutionChange(
+                    package_id=package_id,
+                    resolved=pkg_result.resolved,
+                )
+                self.db.add(resolution_change)
+                problem_entries.append((resolution_change, pkg_result.problems))
+
+        # populate resolution changes' ids
+        self.db.flush()
+
+        # set problem resolution_ids and prepare dict form
+        to_insert = [
+            dict(resolution_id=resolution_change.id, problem=problem)
+            for resolution_change, problems in problem_entries
+            for problem in problems
+        ]
+
+        # insert dependency problems
+        if to_insert:
+            self.db.execute(insert(ResolutionProblem, to_insert))
+
+        # delete old dependency changes, they'll be replaced with new ones
         self.db.query(UnappliedChange)\
             .filter(UnappliedChange.package_id.in_(package_ids))\
             .delete()
-        if changes:
-            self.db.execute(insert(UnappliedChange, changes))
 
-        changed = {r.package_id: r for r in chunk
-                   if r.resolved != r.prev_resolved}
-        for val in True, False:
-            to_update = [r.package_id for r in chunk
-                         if r.resolved is val and r.prev_resolved is not val]
-            if to_update:
-                self.db.query(Package)\
-                    .filter(Package.id.in_(to_update))\
-                    .update({'resolved': val})
-        packages = self.db.query(Package)\
-            .filter(Package.id.in_(changed))\
-            .options(joinedload(Package.last_complete_build))\
-            .all() if changed else []
-        state_changes = {}
-        for pkg in packages:
-            self.db.expunge(pkg)
-            pkg.resolved = changed[pkg.id].prev_resolved
-            prev_state = pkg.msg_state_string
-            pkg.resolved = changed[pkg.id].resolved
-            new_state = pkg.msg_state_string
-            if prev_state != new_state:
-                state_changes[pkg.id] = prev_state, new_state
+        # insert dependency changes
+        if dependency_changes:
+            self.db.execute(insert(UnappliedChange, dependency_changes))
 
         self.db.commit()
 
+        # emit fedmsg (if enabled)
         if state_changes:
             for package in self.db.query(Package)\
                 .filter(Package.id.in_(state_changes))\
@@ -360,11 +418,12 @@ class Resolver(Service):
         for package, (resolved, curr_problems, curr_deps) in gen:
             generate_dependency_changes_time.start()
             changes = []
+            prev_build = self.get_build_for_comparison(package)
             if curr_deps is not None:
-                prev_build = self.get_build_for_comparison(package)
                 if prev_build and prev_build.dependency_keys:
                     prev_deps = self.dependency_cache.get_by_ids(
-                        self.db, prev_build.dependency_keys)
+                        self.db, prev_build.dependency_keys
+                    )
                     create_dependency_changes_time.start()
                     changes = create_dependency_changes(
                         prev_deps, curr_deps, package_id=package.id,
@@ -376,6 +435,8 @@ class Resolver(Service):
                 resolved=resolved,
                 problems=set(curr_problems),
                 changes=changes,
+                # last_build_id is used to detect concurrently registered builds
+                last_build_id=package.last_build_id,
             ))
             if len(results) > get_config('dependency.persist_chunk_size'):
                 self.persist_resolution_output(results)
