@@ -350,6 +350,34 @@ class ResolverTest(DBTest):
         self.assertEqual(123, self.collection.latest_repo_id)
 
     # pylint: disable=too-many-statements
+    def test_resolve_newly_added_package(self):
+        self.prepare_old_build()
+        self.collection.latest_repo_id = REPO['id']
+        self.collection.latest_repo_resolved = True
+        foo = self.db.query(Package).filter_by(name='foo').first()
+        foo.resolved = None
+        with patch('koschei.backend.koji_util.get_build_group', return_value=['R']), \
+                patch('koschei.backend.koji_util.get_rpm_requires',
+                      return_value=[['F', 'A'], ['nonexistent']]), \
+                patch('koschei.backend.koji_util.get_latest_repo', return_value=REPO):
+            self.resolver.main()
+        self.assertTrue(foo.resolved)
+        self.assertEqual(20, foo.dependency_priority)
+
+    def test_resolve_newly_added_package_unresolved_buildroot(self):
+        self.prepare_old_build()
+        self.collection.latest_repo_id = REPO['id']
+        self.collection.latest_repo_resolved = False
+        foo = self.db.query(Package).filter_by(name='foo').first()
+        foo.resolved = None
+        with patch('koschei.backend.koji_util.get_build_group', return_value=['R']), \
+                patch('koschei.backend.koji_util.get_rpm_requires',
+                      return_value=[['F', 'A'], ['nonexistent']]), \
+                patch('koschei.backend.koji_util.get_latest_repo', return_value=REPO):
+            self.resolver.main()
+        foo = self.db.query(Package).filter_by(name='foo').first()
+        self.assertIsNone(foo.resolved)
+
     def test_result_history(self):
         self.prepare_old_build()
         self.collection.latest_repo_id = None
