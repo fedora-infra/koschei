@@ -179,12 +179,17 @@ def populate_package_groups(packages):
     filter_expr = PackageGroup.namespace == None
     if g.user:
         filter_expr |= GroupACL.user_id == g.user.id
-    query = db.query(PackageGroupRelation)\
-        .options(contains_eager(PackageGroupRelation.group))\
-        .filter(PackageGroupRelation.base_id.in_(base_map.keys()))\
-        .join(PackageGroup)\
-        .filter(filter_expr)\
+    query = (
+        db.query(PackageGroupRelation)
+        .options(contains_eager(PackageGroupRelation.group))
+        .filter(
+            PackageGroupRelation.base_id.in_(base_map.keys())
+            if base_map else false()
+        )
+        .join(PackageGroup)
+        .filter(filter_expr)
         .order_by(PackageGroup.namespace, PackageGroup.name)
+    )
     if g.user:
         query = query.outerjoin(GroupACL)
     for r in query:
@@ -601,7 +606,7 @@ def user_packages(username):
         session.log.exception("Error retrieving user's packages")
 
     def query_fn(query):
-        return query.filter(BasePackage.name.in_(names))
+        return query.filter(BasePackage.name.in_(names) if names else false())
 
     return package_view("user-packages.html", query_fn, username=username)
 
