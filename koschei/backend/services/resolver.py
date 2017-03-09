@@ -30,6 +30,7 @@ from six.moves import zip as izip
 from sqlalchemy.orm import joinedload, undefer
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 from sqlalchemy.sql import insert
+from sqlalchemy.sql.functions import coalesce
 
 from koschei import util, backend
 from koschei.config import get_config
@@ -227,27 +228,6 @@ class Resolver(Service):
             else:
                 self.log.info('Repo {} is dead, skipping'.format(desc.repo_id))
 
-    def get_packages(self, collection, expunge=True):
-        packages = self.db.query(Package)\
-            .filter(~Package.blocked)\
-            .filter(~Package.skip_resolution)\
-            .filter_by(collection_id=collection.id)\
-            .filter(Package.tracked == True)\
-            .filter(Package.last_complete_build_id != None)\
-            .options(joinedload(Package.last_build))\
-            .options(joinedload(Package.last_complete_build))\
-            .options(undefer('*'))\
-            .all()
-        # detaches objects from ORM, prevents spurious queries that hinder
-        # performance
-        if expunge:
-            for p in packages:
-                self.db.expunge(p)
-                self.db.expunge(p.last_build)
-                if p.last_build is not p.last_complete_build:
-                    self.db.expunge(p.last_complete_build)
-        return packages
-
     def get_build_for_comparison(self, package):
         """
         Returns newest build which should be used for dependency
@@ -264,7 +244,7 @@ class Resolver(Service):
             return None
 
     # pylint: disable=too-many-locals
-    def persist_resolution_output(self, chunk):
+    def persist_resolution_output(self, repo_id, chunk):
         """
         Stores resolution output into the database and sends fedmsg if needed.
 
@@ -332,6 +312,7 @@ class Resolver(Service):
             # get state before update
             prev_state = package.msg_state_string
             package.resolved = pkg_result.resolved
+            package.latest_repo_id = repo_id
             # get state after update
             new_state = package.msg_state_string
             # compute dependency priority
@@ -405,7 +386,7 @@ class Resolver(Service):
                     new_state=new_state,
                 )
 
-    def generate_dependency_changes(self, sack, collection, packages, brs, repo_id):
+    def generate_dependency_changes(self, sack, collection, packages, brs):
         """
         Generates and persists dependency changes for given list of packages.
         Emits package state change events.
