@@ -27,10 +27,13 @@ import sys
 import logging
 import argparse
 
+from sqlalchemy.orm import joinedload
+
 from koschei import data, backend, plugin
 from koschei.db import get_engine, create_all
+from koschei.backend import processing
 from koschei.models import (Package, PackageGroup, AdminNotice, Collection,
-                            CollectionGroup)
+                            CollectionGroup, Build)
 from koschei.config import load_config, get_config
 
 
@@ -319,7 +322,7 @@ class EditGroup(GroupCommandParser, Command):
 class EntityCommand(object):
     # entity needs to be overriden
     def get(self, session, name, **kwargs):
-        # pylint:disable=no-member
+        # pylint: disable=no-member
         return session.db.query(self.entity).filter(self.entity.name == name).first()
 
 
@@ -328,7 +331,7 @@ class CreateEntityCommand(EntityCommand):
         instance = self.get(session, **kwargs)
         if instance:
             sys.exit("Object already exists")
-        # pylint:disable=no-member
+        # pylint: disable=no-member
         instance = self.entity(**kwargs)
         session.db.add(instance)
         return instance
@@ -489,6 +492,14 @@ class DeleteCollectionGroup(DeleteEntityCommand, Command):
     def setup_parser(self, parser):
         parser.add_argument('name',
                             help="Name identificator")
+
+
+class RunProcessors(Command):
+    def execute(self, session):
+        builds = session.db.query(Build)\
+            .yield_per(500)
+        for build in builds:
+            processing.run_build_processors(session, build)
 
 
 class Psql(Command):

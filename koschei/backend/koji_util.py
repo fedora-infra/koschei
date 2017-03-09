@@ -19,6 +19,7 @@
 
 from __future__ import print_function, absolute_import, division
 
+import os
 import koji
 import logging
 
@@ -192,3 +193,23 @@ def get_koji_load(koji_session, arches):
 
 def get_latest_repo(koji_session, build_tag):
     return koji_session.getRepo(build_tag, state=koji.REPO_READY)
+
+
+def download_task_output(koji_session, task_id, file_name, out_path):
+    offset = 0
+    tmp_path = out_path + '.part'
+    with open(tmp_path, 'w') as out_file:
+        while True:
+            out = koji_session.downloadTaskOutput(
+                task_id,
+                file_name,
+                size=get_config('koji_config.download_chunk_size'),
+                offset=offset,
+            )
+            if not out:
+                return
+            out_file.write(out)
+            offset += len(out)
+            out = None
+    os.rename(tmp_path, out_path)
+    os.unlink(tmp_path)

@@ -30,7 +30,7 @@ from sqlalchemy.sql import insert
 from koschei import util
 from koschei.session import KoscheiSession
 from koschei.config import get_config
-from koschei.backend import koji_util
+from koschei.backend import koji_util, processing
 from koschei.backend.koji_util import itercall
 from koschei.db import Session
 from koschei.models import (Build, UnappliedChange, KojiTask, Package,
@@ -81,6 +81,11 @@ class KoscheiBackendSession(KoscheiSession):
         return self.koji(
             'secondary' if collection.secondary_mode else 'primary'
         )
+
+    def koji_for_build(self, build):
+        if build.real:
+            return self.secondary_koji_for(build.package.collection)
+        return self.koji('primary')
 
     @property
     def repo_cache(self):
@@ -280,6 +285,7 @@ def update_build_state(session, build, state):
                 session.db.commit()
                 return
             insert_koji_tasks(session, tasks)
+            #processing.run_build_processors(session, build)
             session.db.expire(build.package)
             # lock package so there are no concurrent state changes
             package = session.db.query(Package).filter_by(id=package_id)\

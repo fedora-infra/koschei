@@ -49,6 +49,8 @@ config = {
         # maximum number of items in single koji multicall. Too low values may
         # cause poor performance, too high values may cause timeouts.
         "multicall_chunk_size": 100,
+        # max size of a chunk downloaded when getting task output (logs)
+        "download_chunk_size": 1024 ** 3,
     },
     # secondary koji instance configuration, leave empty if you want default
     # primary mode
@@ -209,6 +211,8 @@ config = {
         "static_url": "/static",
         # generic directory for uncategorized resources
         "datadir": "@DATADIR@",
+        # directory for build logs
+        "build_logs": "@DATADIR@/build_logs",
     },
     "flask": {
         # secret key for authentication, you want to override this
