@@ -306,6 +306,7 @@ class ResolverTest(DBTest):
         self.db.expire_all()
         foo = self.db.query(Package).filter_by(name='foo').first()
         self.assertTrue(foo.resolved)
+        self.assertEqual(20, foo.dependency_priority)
         expected_changes = [(foo.id, 'C', 1, 1, '2', '3', '1.fc22', '1.fc22', 2),
                             (foo.id, 'E', None, 0, None, '0.1', None, '1.fc22.1', 2)]
         c = UnappliedChange
@@ -313,10 +314,12 @@ class ResolverTest(DBTest):
                                        c.curr_epoch, c.prev_version, c.curr_version,
                                        c.prev_release, c.curr_release, c.distance).all()
         six.assertCountEqual(self, expected_changes, actual_changes)
-        resolution_id = self.db.query(ResolutionChange.id)\
-            .filter_by(package_id=foo.id).subquery()
+        resolution_change = self.db.query(ResolutionChange)\
+            .filter_by(package_id=foo.id)\
+            .one()
         self.assertFalse(self.db.query(ResolutionProblem)
-                         .filter_by(resolution_id=resolution_id).count())
+                         .filter_by(resolution_id=resolution_change.id)
+                         .count())
         self.assertTrue(self.collection.latest_repo_resolved)
         self.assertEqual(123, self.collection.latest_repo_id)
 
