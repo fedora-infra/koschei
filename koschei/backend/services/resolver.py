@@ -227,27 +227,6 @@ class Resolver(Service):
             else:
                 self.log.info('Repo {} is dead, skipping'.format(desc.repo_id))
 
-    def get_packages(self, collection, expunge=True):
-        packages = self.db.query(Package)\
-            .filter(~Package.blocked)\
-            .filter(~Package.skip_resolution)\
-            .filter_by(collection_id=collection.id)\
-            .filter(Package.tracked == True)\
-            .filter(Package.last_complete_build_id != None)\
-            .options(joinedload(Package.last_build))\
-            .options(joinedload(Package.last_complete_build))\
-            .options(undefer('*'))\
-            .all()
-        # detaches objects from ORM, prevents spurious queries that hinder
-        # performance
-        if expunge:
-            for p in packages:
-                self.db.expunge(p)
-                self.db.expunge(p.last_build)
-                if p.last_build is not p.last_complete_build:
-                    self.db.expunge(p.last_complete_build)
-        return packages
-
     def get_build_for_comparison(self, package):
         """
         Returns newest build which should be used for dependency
@@ -405,7 +384,7 @@ class Resolver(Service):
                     new_state=new_state,
                 )
 
-    def generate_dependency_changes(self, sack, collection, packages, brs, repo_id):
+    def generate_dependency_changes(self, sack, collection, packages, brs):
         """
         Generates and persists dependency changes for given list of packages.
         Emits package state change events.
@@ -420,8 +399,8 @@ class Resolver(Service):
         for package, (resolved, curr_problems, curr_deps) in gen:
             generate_dependency_changes_time.start()
             changes = []
-            prev_build = self.get_build_for_comparison(package)
             if curr_deps is not None:
+                prev_build = self.get_build_for_comparison(package)
                 if prev_build and prev_build.dependency_keys:
                     prev_deps = self.dependency_cache.get_by_ids(
                         self.db, prev_build.dependency_keys
@@ -446,20 +425,24 @@ class Resolver(Service):
             generate_dependency_changes_time.stop()
         self.persist_resolution_output(results)
 
-    def generate_repo(self, sack, collection, repo_id):
+    def resolve_repo(self, sack, collection, repo_id):
         """
-        Generates new dependency changes for requested repo using given
-        collection. Finishes early when base buildroot is not resolvable.
-        Updates collection resolution metadata (repo_id, base_resolved) after
-        finished. Commits data in increments.
+        Resolves given repo base buildroot. Stores buildroot problems if any.
+        Updates collection metadata (latest_repo_id, latest_repo_resolved).
+        Commits.
+
+        :param: sack sack used for dependency resolution
+        :param: collection collection to which the repo belongs
+        :param: repo_id numeric id of the koji repo
         """
-        total_time.reset()
-        generate_dependency_changes_time.reset()
-        total_time.start()
-        self.log.info("Generating new repo")
+        self.log.info(
+            "Generating new repo (repo_id={}, collection={})".format(
+                repo_id,
+                collection.name,
+            )
+        )
         build_group = self.get_build_group(collection)
         resolved, base_problems, _ = self.resolve_dependencies(sack, [], build_group)
-        resolution_time.stop()
         self.db.query(BuildrootProblem)\
             .filter_by(collection_id=collection.id)\
             .delete()
@@ -476,22 +459,52 @@ class Resolver(Service):
         self.db.commit()
         dispatch_event('collection_state_change', self.session,
                        collection=collection, prev_state=prev_state, new_state=new_state)
-        if resolved:
-            packages = self.get_packages(collection)
-            brs = koji_util.get_rpm_requires_cached(
-                self.session,
-                self.session.secondary_koji_for(collection),
-                [p.srpm_nvra for p in packages],
+
+    def get_packages(self, collection, only_new=False):
+        """
+        Get packages eligible for resolution in new repo for given collection.
+
+        :param: collection collection for which packages are requested
+        :param: only_new whether to consider only packages that weren't
+                         resolved yet
+        """
+        query = (
+            self.db.query(Package)
+            .filter(~Package.blocked)
+            .filter(Package.tracked)
+            .filter(~Package.skip_resolution)
+            .filter(Package.collection_id == collection.id)
+            .filter(Package.last_complete_build_id != None)
+            .options(joinedload(Package.last_build))
+            .options(undefer('last_build.dependency_keys'))
+        )
+        if only_new:
+            query = query.filter(Package.resolved == None)
+        return query.all()
+
+    def resolve_packages(self, sack, collection, packages):
+        """
+        Generates new dependency changes for given packages
+        Commits data in increments.
+        """
+
+        # get buildrequires
+        brs = koji_util.get_rpm_requires_cached(
+            self.session,
+            self.session.secondary_koji_for(collection),
+            [p.srpm_nvra for p in packages],
+        )
+
+        self.log.info(
+            "Resolving dependencies (repo_id={}, collection={}) for {} packages"
+            .format(
+                collection.latest_repo_id,
+                collection.name,
+                len(packages),
             )
-            self.log.info("Resolving dependencies...")
-            resolution_time.start()
-            self.generate_dependency_changes(sack, collection, packages, brs, repo_id)
-            resolution_time.stop()
-            collection.latest_repo_id = repo_id
-            self.db.commit()
-        total_time.stop()
-        total_time.display()
-        generate_dependency_changes_time.display()
+        )
+        self.generate_dependency_changes(sack, collection, packages, brs)
+        self.db.commit()
 
     @contextlib.contextmanager
     def prepared_repo(self, collection, repo_id):
@@ -610,31 +623,67 @@ class Resolver(Service):
             .update({'deps_resolved': False}, synchronize_session=False)
         self.db.commit()
 
-    def process_repos(self, collection):
-        curr_repo = koji_util.get_latest_repo(
+    def get_new_repo_id(self, collection):
+        """
+        Returns a latest repo id that is suitable for new repo resolution or None.
+
+        :param: collection for which collection to query
+        """
+        latest_repo = koji_util.get_latest_repo(
             self.session.secondary_koji_for(collection),
-            collection.build_tag)
-        if curr_repo and collection.secondary_mode:
-            backend.refresh_repo_mappings(self.session)
-            mapping = self.db.query(RepoMapping)\
-                .filter_by(secondary_id=curr_repo['id'])\
-                .first()
-            # don't resolve it if we don't have it on primary yet
-            if not (mapping and mapping.primary_id and
-                    self.session.koji('primary')
-                    .getTaskInfo(mapping.task_id)['state'] ==
-                    koji.TASK_STATES['CLOSED']):
-                return
-        if curr_repo and curr_repo['id'] > collection.latest_repo_id:
-            repo_id = curr_repo['id']
-            try:
-                with self.prepared_repo(collection, repo_id) as sack:
-                    self.generate_repo(sack, collection, repo_id)
-            except RepoGenerationException as e:
-                self.log.exception("Cannot generate new repo (repo_id={})"
-                                   .format(repo_id), e)
+            collection.build_tag,
+        )
+
+        if latest_repo and latest_repo.get('id', 0) > collection.latest_repo_id:
+            if not collection.secondary_mode:
+                return latest_repo['id']
+            else:
+                # in secondary mode, we want to only resolve the repo if it was
+                # already regenerated on primary
+                backend.refresh_repo_mappings(self.session)
+                mapping = self.db.query(RepoMapping)\
+                    .filter_by(secondary_id=latest_repo['id'])\
+                    .first()
+                if (
+                        mapping and
+                        mapping.primary_id and
+                        (
+                            self.session.koji('primary')
+                            .getTaskInfo(mapping.task_id)['state']
+                        ) == koji.TASK_STATES['CLOSED']
+                ):
+                    return latest_repo['id']
+
+    def process_repo(self, collection):
+        """
+        Process repo for given collection.
+        Repo processing means resolving all packages in new repo if such repo
+        is available. Otherwise tries to at leas resolve newly added packages.
+        """
+        repo_id = self.get_new_repo_id(collection)
+
+        if repo_id:
+            # we have repo to resolve, so just try to resolve everything
+            total_time.reset()
+            generate_dependency_changes_time.reset()
+            total_time.start()
+            with self.prepared_repo(collection, repo_id) as sack:
+                resolution_time.start()
+                self.resolve_repo(sack, collection, repo_id)
+                if collection.latest_repo_resolved:
+                    packages = self.get_packages(collection)
+                    self.resolve_packages(sack, collection, packages)
+            total_time.stop()
+            total_time.display()
+            generate_dependency_changes_time.display()
+        elif collection.latest_repo_resolved:
+            # we don't have a new repo, but we can at least resolve new packages
+            new_packages = self.get_packages(collection, only_new=True)
+            if new_packages:
+                with self.prepared_repo(collection, collection.latest_repo_id) as sack:
+                    self.resolve_packages(sack, collection, new_packages)
 
     def main(self):
         for collection in self.db.query(Collection).all():
             self.process_builds(collection)
-            self.process_repos(collection)
+            self.process_repo(collection)
