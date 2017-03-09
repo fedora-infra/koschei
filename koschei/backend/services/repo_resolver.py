@@ -26,4 +26,4 @@ from koschei.backend.services.resolver import Resolver
 class RepoResolver(Resolver):
     def main(self):
         for collection in self.db.query(Collection).all():
-            self.process_repos(collection)
+            self.process_repo(collection)
