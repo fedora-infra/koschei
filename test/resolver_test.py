@@ -241,6 +241,16 @@ class ResolverTest(DBTest):
             .filter(Dependency.id.in_(foo_build.dependency_keys)).all()
         six.assertCountEqual(self, FOO_DEPS, actual_deps)
 
+    def test_unresolved_build_should_bump_priority(self):
+        foo_build = self.prepare_foo_build()
+        self.assertEqual(0, foo_build.package.build_priority)
+        with patch('koschei.backend.koji_util.get_build_group',
+                   return_value=['R']):
+            with patch('koschei.backend.koji_util.get_rpm_requires',
+                       return_value=[['nonexistent', 'A']]):
+                self.resolver.process_builds(self.collection)
+        self.assertEqual(3000, foo_build.package.build_priority)
+
     def test_virtual_in_group(self):
         foo_build = self.prepare_foo_build()
         with patch('koschei.backend.koji_util.get_build_group',
@@ -323,6 +333,7 @@ class ResolverTest(DBTest):
         self.assertTrue(self.collection.latest_repo_resolved)
         self.assertEqual(123, self.collection.latest_repo_id)
 
+    # pylint: disable=too-many-statements
     def test_result_history(self):
         self.prepare_old_build()
         self.prepare_group('bar', ['foo'])

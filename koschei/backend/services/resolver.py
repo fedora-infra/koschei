@@ -505,6 +505,19 @@ class Resolver(Service):
         return KojiRepoDescriptor('secondary' if secondary_mode else 'primary',
                                   None, repo_id)
 
+    def process_unresolved_builds(self, build_ids):
+        """
+        This function bumps priority of packages that have given builds as
+        last.
+        Packages that have last build unresolved cannot be resolved and
+        should be treated as new packages (which they most likely are),
+        because they cannot get priority from dependencies.
+        """
+        priority_value = get_config('priorities.newly_added')
+        self.db.query(Package)\
+            .filter(Package.last_build_id.in_(build_ids))\
+            .update({'build_priority': priority_value})
+
     def process_build(self, sack, entry, curr_deps):
         self.log.info("Processing build {}".format(entry.id))
         prev = self.get_prev_build_for_comparison(entry)
@@ -513,6 +526,7 @@ class Resolver(Service):
             .update({'deps_resolved': curr_deps is not None,
                      'dependency_keys': [dep.id for dep in deps]})
         if curr_deps is None:
+            self.process_unresolved_builds([entry.id])
             return
         if prev and prev.dependency_keys:
             prev_deps = self.dependency_cache.get_by_ids(self.db, prev.dependency_keys)
@@ -554,7 +568,8 @@ class Resolver(Service):
         if unavailable_build_ids:
             self.db.query(Build)\
                 .filter(Build.id.in_(unavailable_build_ids))\
-                .update({'deps_resolved': False}, synchronize_session=False)
+                .update({'deps_resolved': False})
+            self.process_unresolved_builds(unavailable_build_ids)
             self.db.commit()
         buildrequires = koji_util.get_rpm_requires_cached(
             self.session,
