@@ -186,6 +186,9 @@ class Package(Base):
                nullable=True)
     resolved = Column(Boolean)
 
+    # latest repo_id in which the package was resolved (succesfully or not)
+    latest_repo_id = Column(Integer)
+
     # priority calculation input values
     # priority set by (super)user, never reset by koschei
     static_priority = Column(Integer, nullable=False, server_default='0')

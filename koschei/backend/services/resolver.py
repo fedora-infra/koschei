@@ -422,54 +422,83 @@ class Resolver(Service):
                 last_build_id=package.last_build_id,
             ))
             if len(results) > get_config('dependency.persist_chunk_size'):
-                self.persist_resolution_output(results)
+                self.persist_resolution_output(collection.latest_repo_id, results)
                 results = []
             generate_dependency_changes_time.stop()
-        self.persist_resolution_output(results)
+        self.persist_resolution_output(collection.latest_repo_id, results)
 
-    def generate_repo(self, sack, collection, repo_id):
+    def resolve_repo(self, sack, collection, repo_id):
         """
-        Generates new dependency changes for requested repo using given
-        collection. Finishes early when base buildroot is not resolvable.
-        Updates collection resolution metadata (repo_id, base_resolved) after
-        finished. Commits data in increments.
+        Resolves given repo base buildroot. Stores buildroot problems if any.
+        Updates collection metadata (latest_repo_id, latest_repo_resolved).
+        Commits.
+
+        :param: sack sack used for dependency resolution
+        :param: collection collection to which the repo belongs
+        :param: repo_id numeric id of the koji repo
         """
-        total_time.reset()
-        generate_dependency_changes_time.reset()
-        total_time.start()
-        self.log.info("Generating new repo")
+        self.log.info(
+            "Generating new repo (repo_id={}, collection={})".format(
+                repo_id,
+                collection.name,
+            )
+        )
         build_group = self.get_build_group(collection)
         resolved, base_problems, _ = self.resolve_dependencies(sack, [], build_group)
-        resolution_time.stop()
         self.db.query(BuildrootProblem)\
             .filter_by(collection_id=collection.id)\
             .delete()
         collection.latest_repo_resolved = resolved
+        collection.latest_repo_id = repo_id
         if not resolved:
             self.log.info("Build group not resolvable for {}"
                           .format(collection.name))
-            collection.latest_repo_id = repo_id
             self.db.execute(BuildrootProblem.__table__.insert(),
                             [{'collection_id': collection.id, 'problem': problem}
                              for problem in base_problems])
-            self.db.commit()
-            return
         self.db.commit()
-        packages = self.get_packages(collection)
+
+    def get_package_for_resolution_query(self, collection):
+        """
+        Get packages eligible for resolution that weren't resolved in given
+        collection yet
+        """
+        return (
+            self.db.query(Package)
+            .filter(~Package.blocked)
+            .filter(Package.tracked)
+            .filter(~Package.skip_resolution)
+            .filter(Package.collection_id == collection.id)
+            .filter(Package.last_complete_build_id != None)
+            .filter(coalesce(Package.latest_repo_id, 0) < collection.latest_repo_id)
+            .options(joinedload(Package.last_build))
+            .options(joinedload(Package.last_complete_build))
+            .options(undefer('*'))
+        )
+
+    def resolve_packages(self, sack, collection):
+        """
+        Generates new dependency changes for packages in given collection that
+        weren't resolved yet in given repo.
+        Commits data in increments.
+        """
+        packages = self.get_package_for_resolution_query(collection).all()
         brs = koji_util.get_rpm_requires_cached(
             self.session,
             self.session.secondary_koji_for(collection),
             [p.srpm_nvra for p in packages],
         )
-        self.log.info("Resolving dependencies...")
-        resolution_time.start()
-        self.generate_dependency_changes(sack, collection, packages, brs, repo_id)
-        resolution_time.stop()
-        collection.latest_repo_id = repo_id
+
+        self.log.info(
+            "Resolving dependencies (repo_id={}, collection={}) for {} packages"
+            .format(
+                collection.latest_repo_id,
+                collection.name,
+                len(packages),
+            )
+        )
+        self.generate_dependency_changes(sack, collection, packages, brs)
         self.db.commit()
-        total_time.stop()
-        total_time.display()
-        generate_dependency_changes_time.display()
 
     @contextlib.contextmanager
     def prepared_repo(self, collection, repo_id):
@@ -589,28 +618,60 @@ class Resolver(Service):
         self.db.commit()
 
     def process_repos(self, collection):
-        curr_repo = koji_util.get_latest_repo(
+        latest_repo = koji_util.get_latest_repo(
             self.session.secondary_koji_for(collection),
-            collection.build_tag)
-        if curr_repo and collection.secondary_mode:
-            backend.refresh_repo_mappings(self.session)
-            mapping = self.db.query(RepoMapping)\
-                .filter_by(secondary_id=curr_repo['id'])\
-                .first()
-            # don't resolve it if we don't have it on primary yet
-            if not (mapping and mapping.primary_id and
-                    self.session.koji('primary')
-                    .getTaskInfo(mapping.task_id)['state'] ==
-                    koji.TASK_STATES['CLOSED']):
-                return
-        if curr_repo and curr_repo['id'] > collection.latest_repo_id:
-            repo_id = curr_repo['id']
+            collection.build_tag,
+        )
+
+        do_resolve_repo = False
+        repo_id = collection.latest_repo_id
+
+        if latest_repo and latest_repo.get('id', 0) > repo_id:
+            if collection.secondary_mode:
+                backend.refresh_repo_mappings(self.session)
+                mapping = self.db.query(RepoMapping)\
+                    .filter_by(secondary_id=latest_repo['id'])\
+                    .first()
+                # don't resolve it if we don't have it on primary yet
+                if (
+                        mapping and
+                        mapping.primary_id and
+                        (
+                            self.session.koji('primary')
+                            .getTaskInfo(mapping.task_id)['state']
+                        ) == koji.TASK_STATES['CLOSED']
+                ):
+                    do_resolve_repo = True
+            else:
+                do_resolve_repo = True
+
+        if do_resolve_repo:
+            repo_id = latest_repo['id']
+
+        # only obtain the sack when we have a repo or packages to resolve
+        if (
+                # there's a new repo
+                do_resolve_repo or
+                # or there are packages which weren't resolved in the
+                # current (old) repo
+                (
+                    collection.latest_repo_resolved and
+                    self.get_package_for_resolution_query(collection).count()
+                )
+        ):
+            total_time.reset()
+            total_time.start()
             try:
                 with self.prepared_repo(collection, repo_id) as sack:
-                    self.generate_repo(sack, collection, repo_id)
+                    if do_resolve_repo:
+                        self.resolve_repo(sack, collection, repo_id)
+                    if collection.latest_repo_resolved:
+                        self.resolve_packages(sack, collection)
             except RepoGenerationException as e:
                 self.log.exception("Cannot generate new repo (repo_id={})"
                                    .format(repo_id), e)
+            total_time.stop()
+            total_time.display()
 
     def main(self):
         for collection in self.db.query(Collection).all():
