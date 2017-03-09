@@ -170,9 +170,6 @@ class Package(Base):
     # unresolved otherwise
     skip_resolution = Column(Boolean, nullable=False, server_default=false())
 
-    # cached value, populated by scheduler
-    current_priority = Column(Integer)
-
     # denormalized fields, updated by trigger on inser/update (no delete)
     last_complete_build_id = \
         Column(Integer, ForeignKey('build.id', use_alter=True,
