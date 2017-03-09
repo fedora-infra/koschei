@@ -16,18 +16,11 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-import six
-
-from contextlib import contextmanager
-from datetime import timedelta, datetime
-
 from mock import Mock, patch
-from sqlalchemy import Table, Column, Integer, MetaData
+from sqlalchemy import literal_column
 
 from test.common import DBTest
-from koschei.models import (
-    UnappliedChange, AppliedChange, Build, Package, Collection, KojiTask,
-)
+from koschei.models import Build, Package
 from koschei.backend.services.scheduler import Scheduler
 
 
@@ -37,220 +30,63 @@ class SchedulerTest(DBTest):
         sched = Scheduler(self.session)
         return sched
 
-    def prepare_depchanges(self):
-        build1 = self.prepare_build('rnv', True)
-        build2 = self.prepare_build('rnv', True)
-        build3 = self.prepare_build('eclipse', True)
-        chngs = []
-        # update, value 20
-        chngs.append(UnappliedChange(package_id=build1.package_id, dep_name='expat',
-                                     prev_version='2', curr_version='2',
-                                     prev_release='rc1', curr_release='rc2',
-                                     prev_build_id=build2.id,
-                                     distance=1))
-        # update - applied
-        chngs.append(AppliedChange(dep_name='expat',
-                                   prev_version='1', curr_version='2',
-                                   prev_release='1', curr_release='rc1',
-                                   distance=1, build_id=build2.id))
-        # downgrade, value 10
-        chngs.append(UnappliedChange(package_id=build1.package_id, dep_name='gcc',
-                                     prev_version='11', curr_version='9',
-                                     prev_release='19', curr_release='18',
-                                     prev_build_id=build2.id,
-                                     distance=2))
-        # appearance, value 5
-        chngs.append(UnappliedChange(package_id=build1.package_id, dep_name='python',
-                                     prev_version=None, curr_version='3.3',
-                                     prev_release=None, curr_release='11',
-                                     prev_build_id=build2.id,
-                                     distance=4))
-        # null distance, value 2
-        chngs.append(UnappliedChange(package_id=build1.package_id, dep_name='python-lxml',
-                                     prev_version=None, curr_version='3.3',
-                                     prev_release=None, curr_release='11',
-                                     prev_build_id=build2.id,
-                                     distance=None))
-        # not from current build
-        chngs.append(UnappliedChange(package_id=build1.package_id, dep_name='expat',
-                                     prev_version='2', curr_version='2',
-                                     prev_release='rc1', curr_release='rc2',
-                                     prev_build_id=build1.id,
-                                     distance=1))
-
-        # different package - eclipse, value 20
-        chngs.append(UnappliedChange(package_id=build3.package_id, dep_name='maven',
-                                     prev_version='2', curr_version='2',
-                                     prev_release='rc1', curr_release='rc2',
-                                     prev_build_id=build3.id,
-                                     distance=1))
-
-        for chng in chngs:
-            self.db.add(chng)
-        self.db.commit()
-        return build1.package, build3.package
-
-    def assert_priority_query(self, query):
-        columns = query.subquery().c
-        self.assertIn('pkg_id', columns)
-        self.assertIn('priority', columns)
-        self.assertEqual(2, len(columns))
-
-    def test_dependency_priority(self):
-        rnv, eclipse = self.prepare_depchanges()
-        query = self.get_scheduler().get_dependency_priority_query()
-        self.assert_priority_query(query)
-        res = query.all()
-        self.assertIn((rnv.id, 20), res)
-        self.assertIn((rnv.id, 10), res)
-        self.assertIn((rnv.id, 5), res)
-        self.assertIn((rnv.id, 2), res)
-        self.assertIn((eclipse.id, 20), res)
-        self.assertEqual(5, len(res))
-
-    # regression test for #100
-    def test_dependency_priority_unresolved_build_skipped(self):
-        rnv, eclipse = self.prepare_depchanges()
-        self.prepare_build('rnv', resolved=False)
-        query = self.get_scheduler().get_dependency_priority_query()
-        self.assert_priority_query(query)
-        res = query.all()
-        self.assertIn((rnv.id, 20), res)
-        self.assertIn((rnv.id, 10), res)
-        self.assertIn((rnv.id, 5), res)
-        self.assertIn((rnv.id, 2), res)
-        self.assertIn((eclipse.id, 20), res)
-        self.assertEqual(5, len(res))
-
-    def test_time_priority(self):
-        for days in [0, 2, 5, 7, 12]:
-            pkg = Package(name='p{}'.format(days), collection_id=self.collection.id)
+    def prepare_priorities(self, tablename='tmp', **kwargs):
+        priorities = {
+            name: prio for name, prio in list(kwargs.items()) if '_' not in name
+        }
+        builds = {name[:-len("_build")]: state for name, state in list(kwargs.items())
+                  if name.endswith('_build')}
+        states = {name[:-len('_state')]: state for name, state in list(kwargs.items())
+                  if name.endswith('_state')}
+        pkgs = []
+        for name in list(priorities.keys()):
+            pkg = Package(
+                name=name,
+                tracked=states.get(name) != 'ignored',
+                collection_id=self.collection.id,
+                # add 30 to offset time priority which will be -30
+                dependency_priority=priorities[name] + 30,
+            )
             self.ensure_base_package(pkg)
             self.db.add(pkg)
             self.db.flush()
-            build = Build(package_id=pkg.id,
-                          started=datetime.now() - timedelta(days, hours=1),
-                          version='1', release='1.fc25',
-                          task_id=days + 1)
-            self.db.add(build)
+            self.db.add(
+                Build(
+                    package_id=pkg.id,
+                    state=Build.COMPLETE,
+                    task_id=self.task_id_counter,
+                    version='1',
+                    release='1.fc25',
+                    started='2017-10-10 10:00:00',
+                    repo_id=1,
+                )
+            )
+            self.task_id_counter += 1
+            if states.get(name, True) is not None:
+                pkg.resolved = states.get(name) != 'unresolved'
+            pkgs.append((name, pkg))
+            if name in builds:
+                self.db.add(
+                    Build(
+                        package_id=pkg.id,
+                        state=builds[name],
+                        task_id=self.task_id_counter,
+                        version='1',
+                        release='1.fc25',
+                        started='2017-10-10 10:00:00',
+                        repo_id=1 if builds[name] != Build.RUNNING
+                        else None
+                    )
+                )
+                self.task_id_counter += 1
         self.db.commit()
-        query = self.get_scheduler().get_time_priority_query()
-        self.assert_priority_query(query)
-        res = sorted(query.all(), key=lambda x: x.priority)
-        self.assertEqual(5, len(res))
-        expected_prios = [-30.0, 161.339324401, 230.787748579,
-                          256.455946637, 297.675251883]
-        for item, exp in zip(res, expected_prios):
-            self.assertAlmostEqual(exp, item.priority, places=-1)
 
-    def test_failed_build_priority(self):
-        pkgs = self.prepare_packages('rnv', 'eclipse', 'fop', 'freemind', 'i3',
-                                     'maven', 'firefox')
-        self.prepare_build('rnv', True)
-        self.prepare_build('eclipse', False)
-        self.prepare_build('i3', True)
-        self.prepare_build('freemind', False)
-        self.prepare_build('maven', True)
-        self.prepare_build('firefox', True)
-        self.prepare_build('rnv', False)
-        self.prepare_build('eclipse', False)
-        self.prepare_build('fop', False)
-        self.prepare_build('freemind', False)
-        self.prepare_build('maven', False)
-        self.prepare_build('maven_resolved', False)
-        self.prepare_build('freemind', False)
-        self.prepare_build('firefox', True, resolved=False)
-        self.prepare_build('maven', False, resolved=False)
-        query = self.get_scheduler().get_failed_build_priority_query()
-        # fop has 1 failed build with no previous one, should it be prioritized?
-        # six.assertCountEqual(self, [(pkgs[0].id, 200), (pkgs[1].id, 200)],
-        #                       query.all())
-
-        # schedules rnv and firefox
-        six.assertCountEqual(self, [(pkgs[0].id, 200), (pkgs[6].id, 200)], query.all())
-
-    def test_coefficient(self):
-        rnv, eclipse, fop = self.prepare_packages('rnv', 'eclipse', 'fop')
-        eclipse_coll = Collection(name='eclipse', display_name='eclipse',
-                                  build_tag='foo', dest_tag='foo', target='foo',
-                                  priority_coefficient=0.1)
-        self.db.add(eclipse_coll)
-        self.db.flush()
-        eclipse.collection_id = eclipse_coll.id
-        self.prepare_build('rnv', True)
-        self.prepare_build('rnv', False)
-        self.prepare_build('eclipse', True)
-        self.prepare_build('eclipse', False)
-        eclipse.manual_priority = 500
-        sched = self.get_scheduler()
-
-        def mock_prio():
-            return self.db.query(Package.id, Package.manual_priority)\
-                .filter_by(id=12309)
-        sched.get_time_priority_query = mock_prio
-
-        priorities = sched.get_priorities()
-        self.assertEqual(eclipse.id, priorities[0][0])
-        self.assertAlmostEqual(520, priorities[0][1], places=1)
-        self.assertEqual(rnv.id, priorities[1][0])
-        self.assertAlmostEqual(200, priorities[1][1], places=1)
-        self.assertEqual(fop.id, priorities[2][0])
-        self.assertAlmostEqual(0, priorities[2][1], places=1)
-        self.assertEqual(3, len(priorities))
-
-    @contextmanager
-    def prio_table(self, tablename='tmp', **kwargs):
-        try:
-            table = Table(tablename, MetaData(),
-                          Column('pkg_id', Integer), Column('priority', Integer))
-            conn = self.db.connection()
-            table.create(bind=conn)
-            priorities = {name: prio for name, prio in list(kwargs.items()) if '_' not in name}
-            builds = {name[:-len("_build")]: state for name, state in list(kwargs.items())
-                      if name.endswith('_build')}
-            states = {name[:-len('_state')]: state for name, state in list(kwargs.items())
-                      if name.endswith('_state')}
-            pkgs = []
-            for name in list(priorities.keys()):
-                pkg = self.db.query(Package).filter_by(name=name).first()
-                if not pkg:
-                    pkg = Package(name=name, tracked=states.get(name) != 'ignored',
-                                  collection_id=self.collection.id)
-                    self.ensure_base_package(pkg)
-                    self.db.add(pkg)
-                    self.db.flush()
-                    if states.get(name, True) is not None:
-                        pkg.resolved = states.get(name) != 'unresolved'
-                pkgs.append((name, pkg))
-                if name in builds:
-                    self.db.add(Build(package_id=pkg.id, state=builds[name],
-                                      task_id=self.task_id_counter,
-                                      version='1', release='1.fc25',
-                                      started=datetime.fromtimestamp(123),
-                                      repo_id=1 if builds[name] != Build.RUNNING
-                                      else None))
-                    self.task_id_counter += 1
-            # pylint:disable = no-value-for-parameter
-            conn.execute(table.insert(), [{'pkg_id': pkg.id, 'priority': priorities[name]}
-                                          for name, pkg in pkgs])
-            self.db.commit()
-            yield table
-        finally:
-            self.db.rollback()
-            conn = self.db.connection()
-            table.drop(bind=conn, checkfirst=True)
-            self.db.commit()
-
-    def assert_scheduled(self, tables, scheduled, koji_load=0.3):
+    def assert_scheduled(self, scheduled, koji_load=0.3):
         with patch('koschei.backend.koji_util.get_koji_load',
                    Mock(return_value=koji_load)):
             sched = self.get_scheduler()
-
-            def get_prio_q():
-                return [self.db.query(t.c.pkg_id.label('pkg_id'),
-                                      t.c.priority.label('priority'))
-                        for t in tables]
-            with patch.object(sched, 'get_priority_queries', get_prio_q):
+            with patch('sqlalchemy.sql.expression.func.clock_timestamp',
+                       return_value=literal_column("'2017-10-10 10:00:00'")):
                 with patch('koschei.backend.submit_build') as submit_mock:
                     sched.main()
                     if scheduled:
@@ -260,76 +96,65 @@ class SchedulerTest(DBTest):
                         self.assertFalse(submit_mock.called)
 
     def test_low(self):
-        with self.prio_table(rnv=10) as table:
-            self.assert_scheduled([table], scheduled=None)
+        self.prepare_priorities(rnv=10)
+        self.assert_scheduled(None)
 
     def test_submit1(self):
-        with self.prio_table(rnv=256) as table:
-            self.assert_scheduled([table], scheduled='rnv')
+        self.prepare_priorities(rnv=256)
+        self.assert_scheduled('rnv')
 
     def test_submit_no_resolution(self):
-        with self.prio_table(rnv=256, rnv_state=None) as table:
-            self.assert_scheduled([table], scheduled='rnv')
+        self.prepare_priorities(rnv=256, rnv_state=None)
+        self.assert_scheduled('rnv')
 
     def test_load(self):
-        with self.prio_table(rnv=30000) as table:
-            self.assert_scheduled([table], koji_load=0.7, scheduled=None)
+        self.prepare_priorities(rnv=30000)
+        self.assert_scheduled(None, koji_load=0.7)
 
     def test_max_builds(self):
-        with self.prio_table(rnv=30, rnv_build=Build.RUNNING,
-                             eclipse=300, eclipse_build=Build.RUNNING,
-                             expat=400) as table:
-            self.assert_scheduled([table], scheduled=None)
+        self.prepare_priorities(rnv=30, rnv_build=Build.RUNNING,
+                                eclipse=300, eclipse_build=Build.RUNNING,
+                                expat=400)
+        self.assert_scheduled(None)
 
     def test_running1(self):
-        with self.prio_table(rnv=30000, rnv_build=Build.RUNNING) as table:
-            self.assert_scheduled([table], scheduled=None)
+        self.prepare_priorities(rnv=30000, rnv_build=Build.RUNNING)
+        self.assert_scheduled(None)
 
     def test_running2(self):
-        with self.prio_table(eclipse=100, rnv=300, rnv_build=Build.RUNNING) as table:
-            self.assert_scheduled([table], scheduled=None)
+        self.prepare_priorities(eclipse=100, rnv=300, rnv_build=Build.RUNNING)
+        self.assert_scheduled(None)
 
     def test_running3(self):
-        with self.prio_table(eclipse=280, rnv=300, rnv_build=Build.RUNNING) as table:
-            self.assert_scheduled([table], scheduled='eclipse')
+        self.prepare_priorities(eclipse=280, rnv=300, rnv_build=Build.RUNNING)
+        self.assert_scheduled('eclipse')
 
     def test_multiple(self):
-        with self.prio_table(eclipse=280, rnv=300) as table:
-            self.assert_scheduled([table], scheduled='rnv')
+        self.prepare_priorities(eclipse=280, rnv=300)
+        self.assert_scheduled('rnv')
 
     def test_builds(self):
-        with self.prio_table(eclipse=100, rnv=300, rnv_build=Build.COMPLETE,
-                             eclipse_build=Build.RUNNING) as table:
-            self.assert_scheduled([table], scheduled='rnv')
+        self.prepare_priorities(eclipse=100, rnv=300, rnv_build=Build.COMPLETE,
+                                eclipse_build=Build.RUNNING)
+        self.assert_scheduled('rnv')
 
     def test_state1(self):
-        with self.prio_table(rnv=300, rnv_state='unresolved') as table:
-            self.assert_scheduled([table], scheduled=None)
+        self.prepare_priorities(rnv=300, rnv_state='unresolved')
+        self.assert_scheduled(None)
 
     def test_state2(self):
-        with self.prio_table(rnv=300, rnv_state='ignored') as table:
-            self.assert_scheduled([table], scheduled=None)
-
-    def test_union1(self):
-        with self.prio_table(tablename='tmp1', rnv=100) as table1:
-            with self.prio_table(tablename='tmp2', eclipse=280, rnv=200) as table2:
-                self.assert_scheduled([table1, table2], scheduled='rnv')
-
-    def test_union2(self):
-        with self.prio_table(tablename='tmp1', rnv=100) as table1:
-            with self.prio_table(tablename='tmp2', eclipse=300, rnv=200) as table2:
-                with self.prio_table(tablename='tmp3', eclipse=201, rnv=200) as table3:
-                    self.assert_scheduled([table1, table2, table3], scheduled='eclipse')
+        self.prepare_priorities(rnv=300, rnv_state='ignored')
+        self.assert_scheduled(None)
 
     def test_broken_buildroot(self):
         self.collection.latest_repo_resolved = False
-        with self.prio_table(rnv=256, rnv_state=None) as table:
-            self.assert_scheduled([table], scheduled=None)
+        self.prepare_priorities(rnv=256, rnv_state=None)
+        self.assert_scheduled(None)
 
     def test_buildroot_not_yet_resolved(self):
         self.collection.latest_repo_resolved = None
-        with self.prio_table(rnv=256, rnv_state=None) as table:
-            self.assert_scheduled([table], scheduled=None)
+        self.prepare_priorities(rnv=256, rnv_state=None)
+        self.assert_scheduled(None)
 
     def test_load_not_determined_when_no_schedulable_packages(self):
         with patch('koschei.backend.koji_util.get_koji_load') as load_mock:
