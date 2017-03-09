@@ -75,6 +75,8 @@ class parallel_generator(six.Iterator):
         finally:
             self.queue.put(self.sentinel)
 
+    # false positive due to six magic
+    # pylint:disable=non-iterator-returned
     def __iter__(self):
         return self
 

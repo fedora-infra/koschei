@@ -19,12 +19,13 @@
 from __future__ import print_function, absolute_import
 
 import koji
-from koschei.backend.koji_util import itercall
+
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
 from koschei import plugin, backend
-from koschei.backend.service import Service
 from koschei.models import Build
+from koschei.backend.service import Service
+from koschei.backend.koji_util import itercall
 
 
 class Polling(Service):

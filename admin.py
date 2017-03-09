@@ -319,6 +319,7 @@ class EditGroup(GroupCommandParser, Command):
 class EntityCommand(object):
     # entity needs to be overriden
     def get(self, session, name, **kwargs):
+        # pylint:disable=no-member
         return session.db.query(self.entity).filter(self.entity.name == name).first()
 
 
@@ -327,6 +328,7 @@ class CreateEntityCommand(EntityCommand):
         instance = self.get(session, **kwargs)
         if instance:
             sys.exit("Object already exists")
+        # pylint:disable=no-member
         instance = self.entity(**kwargs)
         session.db.add(instance)
         return instance
