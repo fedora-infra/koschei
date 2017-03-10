@@ -335,9 +335,11 @@ class Resolver(Service):
             # get state after update
             new_state = package.msg_state_string
             # compute dependency priority
-            package.dependency_priority = sum(
-                update_weight / (change['distance'] or 8)
-                for change in pkg_result.changes
+            package.dependency_priority = int(
+                sum(
+                    update_weight / (change['distance'] or 8)
+                    for change in pkg_result.changes
+                )
             )
             if prev_state != new_state:
                 # queue for fedmsg sending after commit
