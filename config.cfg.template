@@ -65,7 +65,7 @@ config = {
 
         # Number of package resolution changes (state, depchanges, problems) to
         # be persisted at the same time
-        "persist_chunk_size": 600,
+        "persist_chunk_size": 150,
 
         # How often to report progress of dependency processing
         "perf_report_interval": 60,
