@@ -70,7 +70,7 @@ class Service(object):
                 if memory_limit:
                     current_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
                     if current_memory > memory_limit:
-                        self.log.info("Memory limit reached: {mem}B. Exiting"
+                        self.log.info("Memory limit reached: {mem}KB. Exiting"
                                       .format(mem=current_memory))
                         sys.exit(3)
             finally:
