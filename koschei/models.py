@@ -515,7 +515,7 @@ class Dependency(Base):
     inevra = (id, name, epoch, version, release, arch)
 
 
-class AppliedChange(Base):
+class DependencyChange(Base):
     id = Column(Integer, primary_key=True)
     dep_name = Column(String, nullable=False)
     prev_epoch = Column(Integer)
@@ -524,51 +524,36 @@ class AppliedChange(Base):
     curr_epoch = Column(Integer)
     curr_version = Column(String)
     curr_release = Column(String)
+
+    prev_evr = composite(
+        RpmEVR,
+        prev_epoch, prev_version, prev_release,
+        comparator_factory=RpmEVRComparator,
+    )
+    curr_evr = composite(
+        RpmEVR,
+        curr_epoch, curr_version, curr_release,
+        comparator_factory=RpmEVRComparator,
+    )
+
+
+class AppliedChange(Base):
+    id = Column(Integer, primary_key=True)
+    change_id = Column(Integer, ForeignKey(DependencyChange.id), nullable=False)
     distance = Column(Integer)
 
     build_id = Column(ForeignKey('build.id', ondelete='CASCADE'), index=True,
                       nullable=False)
     build = None  # backref
-    # needs to be nullable because we delete old builds
-    prev_build_id = Column(ForeignKey('build.id', ondelete='SET NULL'),
-                           index=True)
-    prev_evr = composite(
-        RpmEVR,
-        prev_epoch, prev_version, prev_release,
-        comparator_factory=RpmEVRComparator,
-    )
-    curr_evr = composite(
-        RpmEVR,
-        curr_epoch, curr_version, curr_release,
-        comparator_factory=RpmEVRComparator,
-    )
 
 
 class UnappliedChange(Base):
     id = Column(Integer, primary_key=True)
-    dep_name = Column(String, nullable=False)
-    prev_epoch = Column(Integer)
-    prev_version = Column(String)
-    prev_release = Column(String)
-    curr_epoch = Column(Integer)
-    curr_version = Column(String)
-    curr_release = Column(String)
+    change_id = Column(Integer, ForeignKey(DependencyChange.id), nullable=False)
     distance = Column(Integer)
 
     package_id = Column(ForeignKey('package.id', ondelete='CASCADE'),
                         index=True, nullable=False)
-    prev_build_id = Column(ForeignKey('build.id', ondelete='CASCADE'),
-                           index=True, nullable=False)
-    prev_evr = composite(
-        RpmEVR,
-        prev_epoch, prev_version, prev_release,
-        comparator_factory=RpmEVRComparator,
-    )
-    curr_evr = composite(
-        RpmEVR,
-        curr_epoch, curr_version, curr_release,
-        comparator_factory=RpmEVRComparator,
-    )
 
 
 class BuildrootProblem(Base):
@@ -684,7 +669,7 @@ Index('ix_package_group_name', PackageGroup.namespace, PackageGroup.name,
 Index('ix_dependency_composite', *Dependency.nevra, unique=True)
 Index('ix_package_collection_id', Package.collection_id, Package.tracked,
       postgresql_where=(~Package.blocked))
-Index('ix_applied_change_dep_name', AppliedChange.dep_name)
+Index('ix_dependency_change_dep_name', DependencyChange.dep_name)
 
 
 # Relationships
@@ -706,12 +691,15 @@ Package.all_builds = relationship(
     passive_deletes=True,
 )
 Package.unapplied_changes = relationship(
-    UnappliedChange,
+    DependencyChange,
+    secondary=UnappliedChange.__table__,
     backref='package',
-    order_by=[UnappliedChange.distance, UnappliedChange.dep_name],
+    order_by=[UnappliedChange.distance, DependencyChange.dep_name],
+    passive_deletes=True,
 )
 Build.dependency_changes = relationship(
-    AppliedChange,
+    DependencyChange,
+    secondary=AppliedChange.__table__,
     backref='build',
     primaryjoin=(Build.id == AppliedChange.build_id),
     order_by=AppliedChange.distance.nullslast(),
