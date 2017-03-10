@@ -69,7 +69,7 @@ config = {
 
         # Number of package resolution changes (state, depchanges, problems) to
         # be persisted at the same time
-        "persist_chunk_size": 600,
+        "persist_chunk_size": 150,
 
         # Number of dependency entries to be kept in resolver memory
         "dependency_cache_capacity": 3000,
