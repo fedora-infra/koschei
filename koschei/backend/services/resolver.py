@@ -491,9 +491,6 @@ class Resolver(Service):
             .filter(Package.collection_id == collection.id)
             .filter(Package.last_complete_build_id != None)
             .filter(coalesce(Package.latest_repo_id, 0) < collection.latest_repo_id)
-            .options(joinedload(Package.last_build))
-            .options(joinedload(Package.last_complete_build))
-            .options(undefer('*'))
         )
 
     def resolve_packages(self, sack, collection):
@@ -502,12 +499,27 @@ class Resolver(Service):
         weren't resolved yet in given repo.
         Commits data in increments.
         """
-        packages = self.get_package_for_resolution_query(collection).all()
+        # get all eligible packages for resolution
+        packages = (
+            self.get_package_for_resolution_query(collection)
+            # needed for build dependencies
+            .options(joinedload(Package.last_build))
+            .options(undefer('last_build.dependency_keys'))
+            .all()
+        )
+
+        # get buildrequires
         brs = koji_util.get_rpm_requires_cached(
             self.session,
             self.session.secondary_koji_for(collection),
             [p.srpm_nvra for p in packages],
         )
+
+        # detach from ORM to prevent spurious queries
+        for package in packages:
+            if package.last_build:
+                self.db.expunge(package.last_build)
+            self.db.expunge(package)
 
         self.log.info(
             "Resolving dependencies (repo_id={}, collection={}) for {} packages"
