@@ -71,6 +71,9 @@ config = {
         # be persisted at the same time
         "persist_chunk_size": 150,
 
+        # How often to report progress of dependency processing (seconds)
+        "perf_report_interval": 60,
+
         # Number of dependency entries to be kept in resolver memory
         "dependency_cache_capacity": 3000,
 
