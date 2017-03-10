@@ -181,7 +181,7 @@ class FileCache(object):
                         ready_repos = (k for k, v in entries.items() if v == 'ready')
                         victims = sorted(
                             ready_repos,
-                            key=lambda r: -os.path.getmtime(self._p(r))
+                            key=lambda r: os.path.getmtime(self._p(r))
                         )[:len(entries) - self._capacity + 1]
                         for victim in victims:
                             del entries[victim]
