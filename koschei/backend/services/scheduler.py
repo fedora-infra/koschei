@@ -57,12 +57,7 @@ class Scheduler(Service):
                 self.log.info("Not scheduling: no package above threshold")
                 return
             package = self.db.query(Package).get(package_id)
-            if not package.collection.latest_repo_resolved:
-                self.log.info("Skipping {}: {} buildroot not resolved"
-                              .format(package, package.collection))
-                continue
 
-            # a package was chosen
             arches = self.db.query(KojiTask.arch)\
                 .filter_by(build_id=package.last_build_id)\
                 .all()

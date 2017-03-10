@@ -239,7 +239,11 @@ class Package(Base):
                     # OR has running build
                     (cls.last_complete_build_id != cls.last_build_id) |
                     # OR is unresolved
-                    (cls.resolved == False),
+                    (cls.resolved == False) |
+                    # OR the collection's buildroot is broken
+                    (collection.latest_repo_resolved == False) |
+                    # OR the collection's buildroot wasn't resolved yet
+                    (collection.latest_repo_resolved == None),
                     # THEN return NULL
                     None,
                 )
@@ -261,8 +265,14 @@ class Package(Base):
             reasons.append("Package has a running build")
         if self.resolved is False:
             reasons.append("Package's dependencies are not reasolvable")
-        if not self.last_build:
+        if not self.last_build_id:
             reasons.append("Package has no known build")
+        if self.collection.latest_repo_resolved is False:
+            reasons.append("Base buildroot for {} is not resolvable"
+                           .format(self.collection))
+        if self.collection.latest_repo_resolved is None:
+            reasons.append("Base buildroot for {} was not resolved yet"
+                           .format(self.collection))
         return reasons
 
     @property
