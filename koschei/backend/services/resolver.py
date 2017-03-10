@@ -17,11 +17,12 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-from __future__ import print_function, absolute_import
+from __future__ import print_function, absolute_import, division
 
 import contextlib
 
 import koji
+import time
 
 from collections import OrderedDict, namedtuple
 from itertools import groupby
@@ -398,6 +399,9 @@ class Resolver(Service):
                for package, br in izip(packages, brs))
         queue_size = get_config('dependency.resolver_queue_size')
         gen = util.parallel_generator(gen, queue_size=queue_size)
+        pkgs_done = 0
+        pkgs_reported = 0
+        progres_reported_at = time.time()
         for package, (resolved, curr_problems, curr_deps) in gen:
             generate_dependency_changes_time.start()
             changes = []
@@ -425,6 +429,22 @@ class Resolver(Service):
                 self.persist_resolution_output(collection.latest_repo_id, results)
                 results = []
             generate_dependency_changes_time.stop()
+            pkgs_done += 1
+            current_time = time.time()
+            time_diff = current_time - progres_reported_at
+            if time_diff > get_config('dependency.perf_report_interval'):
+                self.log.info(
+                    "Resolution progress: resolved {} packages ({}%) ({} pkgs/min)"
+                    .format(
+                        pkgs_done,
+                        int(pkgs_done / len(packages) * 100.0),
+                        int((pkgs_done - pkgs_reported) / (time_diff) * 60.0)
+
+                    )
+                )
+                pkgs_reported = pkgs_done
+                progres_reported_at = current_time
+
         self.persist_resolution_output(collection.latest_repo_id, results)
 
     def resolve_repo(self, sack, collection, repo_id):
