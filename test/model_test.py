@@ -118,7 +118,7 @@ class PackagePriorityTest(DBTest):
             .join(Package.last_build)\
             .filter(Package.id == pkg.id).scalar()
 
-    def assert_priority(self, expected, pkg=None):
+    def verify_priority(self, expected, pkg=None):
         pkg = pkg or self.pkg
         self.db.commit()
         self.assertAlmostEqual(expected, self.get_priority(pkg))
@@ -126,7 +126,7 @@ class PackagePriorityTest(DBTest):
 
     def test_basic(self, _):
         # time priority for just completed build, no other values
-        self.assert_priority(-30)
+        self.verify_priority(-30)
 
     def test_coefficient(self, _):
         self.pkg.manual_priority = 10
@@ -134,39 +134,39 @@ class PackagePriorityTest(DBTest):
         self.pkg.dependency_priority = 40
         self.pkg.build_priority = 50
         self.pkg.collection.priority_coefficient = 0.5
-        self.assert_priority(10 + 20 + 0.5 * (-30 + 40 + 50))
+        self.verify_priority(10 + 20 + 0.5 * (-30 + 40 + 50))
 
     def test_time(self, _):
         # 2 h difference
         self.build.started = '2017-10-10 08:00:00'
-        self.assert_priority(-30)
+        self.verify_priority(-30)
         # 10 h difference
         self.build.started = '2017-10-10 00:00:00'
-        self.assert_priority(39.2446980024098)
+        self.verify_priority(39.2446980024098)
         # 1 day difference
         self.build.started = '2017-10-9 00:00:00'
-        self.assert_priority(133.26248998925)
+        self.verify_priority(133.26248998925)
         # 1 month difference
         self.build.started = '2017-9-10 00:00:00'
-        self.assert_priority(368.863607520133)
+        self.verify_priority(368.863607520133)
 
     def test_untracked(self, _):
         self.pkg.tracked = False
-        self.assert_priority(None)
+        self.verify_priority(None)
 
     def test_blocked(self, _):
         self.pkg.blocked = True
-        self.assert_priority(None)
+        self.verify_priority(None)
 
     def test_unresolved(self, _):
         self.pkg.resolved = False
-        self.assert_priority(None)
+        self.verify_priority(None)
 
     def test_running_build(self, _):
         self.prepare_build('rnv')
-        self.assert_priority(None)
+        self.verify_priority(None)
 
     def test_no_build(self, _):
         pkg = self.prepare_packages('foo')[0]
         pkg.resolved = True
-        self.assert_priority(None, pkg)
+        self.verify_priority(None, pkg)
