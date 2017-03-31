@@ -112,7 +112,9 @@ def submit_build(session, package):
     )
     if srpm_res:
         srpm, srpm_url = srpm_res
-        package.manual_priority = 0
+        # priorities are reset after the build is done
+        # - the reason for that is that the build might be canceled and we want
+        # the priorities to be retained in that case
         build.task_id = koji_util.koji_scratch_build(
             session.koji('primary'),
             package.collection.target,
@@ -126,14 +128,7 @@ def submit_build(session, package):
         build.release = srpm['release']
         session.db.add(build)
         session.db.flush()
-        flush_depchanges(session, build)
         return build
-
-
-def flush_depchanges(session, build):
-    session.db.query(UnappliedChange)\
-        .filter_by(package_id=build.package_id)\
-        .delete(synchronize_session=False)
 
 
 def get_newer_build_if_exists(session, package):
@@ -219,7 +214,34 @@ def register_real_builds(session, collection, package_build_infos):
                 task.build_id = build.id
         # insert tasks
         insert_koji_tasks(session, build_tasks)
+        # reset priorities
+        clear_priority_data(session, packages.values())
+
         session.db.commit()
+
+
+def set_failed_build_priority(session, package, last_build):
+    """
+    Sets packages failed build priority based on the newly registered build.
+    """
+    failed_priority_value = get_config('priorities.failed_build_priority')
+    if last_build.state == Build.FAILED:
+        prev_build = session.db.query(Build)\
+            .filter(Build.id < last_build.id)\
+            .order_by(Build.id.desc())\
+            .first()
+        if not prev_build or prev_build.state != Build.FAILED:
+            package.build_priority = failed_priority_value
+
+
+def clear_priority_data(session, packages):
+    for package in packages:
+        package.manual_priority = 0
+        package.dependency_priority = 0
+        package.build_priority = 0
+    session.db.query(UnappliedChange)\
+        .filter(UnappliedChange.package_id.in_(p.id for p in packages))\
+        .delete()
 
 
 def update_build_state(session, build, state):
@@ -282,10 +304,17 @@ def update_build_state(session, build, state):
             insert_koji_tasks(session, tasks)
             session.db.expire(build.package)
             # lock package so there are no concurrent state changes
+            # (locking order needs to be build -> package)
             package = session.db.query(Package).filter_by(id=package_id)\
                 .with_lockmode('update').one()
+            # reset priorities
+            clear_priority_data(session, [package])
+            # acquire previous state
+            # ! this needs to be done *before* updating the build state
             prev_state = package.msg_state_string
             build.state = state
+            set_failed_build_priority(session, package, build)
+            # refresh package so it haves trigger updated fields
             session.db.flush()
             session.db.expire(package)
             new_state = package.msg_state_string

@@ -38,7 +38,6 @@ class BackendTest(DBTest):
         self.db.commit()
         plugin.load_plugins('backend', ['fedmsg'])
 
-
     def test_update_state(self):
         self.session.koji_mock.getTaskInfo = Mock(return_value=rnv_task)
         self.session.koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
@@ -56,12 +55,51 @@ class BackendTest(DBTest):
                 request=True,
             )
             self.assertEqual('ok', package.state_string)
+            self.assertEqual(0, package.build_priority)
             event.assert_called_once_with('package_state_change',
                                           session=self.session,
                                           package=package,
                                           prev_state='failing', new_state='ok')
             six.assertCountEqual(self, [(x['id'],) for x in rnv_subtasks],
                                  self.db.query(KojiTask.task_id))
+
+    def test_update_state_failed(self):
+        self.session.koji_mock.getTaskInfo = Mock(return_value=rnv_task)
+        self.session.koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
+        package = self.prepare_packages('rnv')[0]
+        self.prepare_build('rnv', True)
+        running_build = self.prepare_build('rnv')
+        running_build.task_id = rnv_task['id']
+        self.db.commit()
+        with patch('koschei.backend.dispatch_event'):
+            backend.update_build_state(self.session, running_build, 'FAILED')
+            self.assertEqual('failing', package.state_string)
+            self.assertEqual(200, package.build_priority)
+
+    def test_update_state_already_failing(self):
+        self.session.koji_mock.getTaskInfo = Mock(return_value=rnv_task)
+        self.session.koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
+        package = self.prepare_packages('rnv')[0]
+        self.prepare_build('rnv', False)
+        running_build = self.prepare_build('rnv')
+        running_build.task_id = rnv_task['id']
+        self.db.commit()
+        with patch('koschei.backend.dispatch_event'):
+            backend.update_build_state(self.session, running_build, 'FAILED')
+            self.assertEqual('failing', package.state_string)
+            self.assertEqual(0, package.build_priority)
+
+    def test_update_state_failed_no_prev(self):
+        self.session.koji_mock.getTaskInfo = Mock(return_value=rnv_task)
+        self.session.koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
+        package = self.prepare_packages('rnv')[0]
+        running_build = self.prepare_build('rnv')
+        running_build.task_id = rnv_task['id']
+        self.db.commit()
+        with patch('koschei.backend.dispatch_event'):
+            backend.update_build_state(self.session, running_build, 'FAILED')
+            self.assertEqual('failing', package.state_string)
+            self.assertEqual(200, package.build_priority)
 
     def test_update_state_existing_task(self):
         self.session.koji_mock.getTaskInfo = Mock(return_value=rnv_task)

@@ -67,21 +67,20 @@
         <td colspan="4">
             {{ package.state_icon }}
             {{ package.state_string }}
-            {% if package.scheduler_skip_reason %}
-            <br>
-            Package is not being scheduled
-            {% if package.scheduler_skip_reason == Package.SKIPPED_NO_SRPM %}
-            because no suitable SRPM was found
-            {% endif %}
-            {% endif %}
         </td>
     </tr>
     <tr>
         <th>Current priority</th>
         <td colspan="4">
-            {{ package.current_priority }}
+            {{ package.current_priority | int }}
         </td>
     </tr>
+    {% if package.current_priority is none %}
+    <tr>
+        <th>Currently not scheduling because:</th>
+        <td>{{ package.skip_reasons |join(',') }}</td>
+    </tr>
+    {% endif %}
     <tr>
         <th>Manual priority</th>
         <td colspan="4">

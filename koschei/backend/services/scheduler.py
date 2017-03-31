@@ -18,12 +18,6 @@
 
 from __future__ import print_function, absolute_import, division
 
-import math
-import time
-
-from sqlalchemy import (func, union_all, extract, cast, Integer,
-                        literal_column, text, Column)
-
 from koschei import backend
 from koschei.config import get_config
 from koschei.backend import koji_util
@@ -31,139 +25,39 @@ from koschei.backend.service import Service
 from koschei.models import Package, Build, Collection, KojiTask
 
 
-def hours_since(what):
-    return extract('EPOCH', literal_column('clock_timestamp()') - what) / 3600
-
-
 class Scheduler(Service):
     koji_anonymous = False
 
     def __init__(self, session):
         super(Scheduler, self).__init__(session)
-        self.calculation_timestamp = 0
-
-    def get_dependency_priority_query(self):
-        update_weight = get_config('priorities.package_update')
-        cols = Column('pkg_id'), Column('priority')
-        query = text("""
-                SELECT package_id AS pkg_id, {w}/COALESCE(distance, 8) AS priority
-                FROM unapplied_change
-                WHERE prev_build_id IN (
-                    SELECT DISTINCT ON(package.id) build.id AS build_id
-                    FROM package JOIN build ON package.id = build.package_id
-                    WHERE deps_resolved
-                    ORDER BY package.id, build.id DESC
-                )
-                """.format(w=update_weight)).columns(*cols)
-        return self.db.query(*cols).from_statement(query)
-
-    def get_time_priority_query(self):
-        t0 = get_config('priorities.t0')
-        t1 = get_config('priorities.t1')
-        a = get_config('priorities.build_threshold') / (math.log10(t1) - math.log10(t0))
-        b = -a * math.log10(t0)
-        log_arg = func.greatest(0.000001, hours_since(func.max(Build.started)))
-        time_expr = func.greatest(a * func.log(log_arg) + b, -30)
-        return self.db.query(Build.package_id.label('pkg_id'),
-                             time_expr.label('priority'))\
-                      .group_by(Build.package_id)
-
-    def get_failed_build_priority_query(self):
-        rank = func.rank().over(partition_by=Package.id,
-                                order_by=Build.id.desc()).label('rank')
-        sub = self.db.query(Package.id.label('pkg_id'), Build.state,
-                            Build.deps_resolved, rank)\
-                     .outerjoin(Build,
-                                Package.id == Build.package_id)\
-                     .subquery()
-        failed_prio = get_config('priorities.failed_build_priority')
-        return self.db.query(
-            sub.c.pkg_id,
-            literal_column(str(failed_prio)).label('priority')
-        ).filter(
-            ((sub.c.rank == 1) & ((sub.c.state == 5) | (sub.c.deps_resolved == False))) |
-            ((sub.c.rank == 2) & (sub.c.state != 5))
-        ).group_by(sub.c.pkg_id).having(func.count(sub.c.pkg_id) == 2)
-
-    def get_priority_queries(self):
-        return [
-            self.get_dependency_priority_query(),
-            self.get_time_priority_query(),
-            self.get_failed_build_priority_query(),
-        ]
-
-    def get_incomplete_builds_query(self):
-        return self.db.query(Build.package_id).filter(Build.state == Build.RUNNING)
 
     def get_priorities(self):
-        incomplete_builds = self.get_incomplete_builds_query()
-        union_query = union_all(*self.get_priority_queries()).alias('un')
-        pkg_id = union_query.c.pkg_id
-        current_priority = cast(func.sum(union_query.c.priority),
-                                Integer).label('curr_priority')
-        priorities = self.db.query(pkg_id, current_priority)\
-                            .group_by(pkg_id).subquery()
-        computed_priority = func.coalesce(priorities.c.curr_priority *
-                                          Collection.priority_coefficient, 0)
-        priority_expr = (computed_priority + Package.manual_priority +
-                         Package.static_priority)
-        return self.db.query(Package.id, priority_expr, Package.current_priority)\
-                      .join(Package.collection)\
-                      .outerjoin(priorities, Package.id == priorities.c.pkg_id)\
-                      .filter((Package.resolved == True) |
-                              (Package.resolved == None))\
-                      .filter(Package.id.notin_(incomplete_builds.subquery()))\
-                      .filter(Package.blocked == False)\
-                      .filter(Package.tracked == True)\
-                      .order_by(priority_expr.desc())\
-                      .all()
-
-    def persist_priorities(self, prioritized):
-        if not prioritized:
-            return
-        threshold = get_config('priorities.priority_update_threshold', 100)
-        to_update = [{'package_id': package_id, 'priority': priority}
-                     for (package_id, priority, prev_prio) in prioritized
-                     if abs((priority or 0) - (prev_prio or 0)) > threshold]
-        if to_update:
-            self.lock_package_table()
-            self.db.execute(
-                text("""
-                    UPDATE package
-                    SET current_priority = :priority
-                    WHERE id = :package_id
-                """),
-                to_update,
-            )
-        self.db.commit()
-        self.calculation_timestamp = time.time()
-
-    def lock_package_table(self):
-        self.db.execute("LOCK TABLE package IN EXCLUSIVE MODE;")
+        priority_expr = Package.current_priority_expression(
+            collection=Collection,
+            last_build=Build,
+        )
+        return self.db.query(Package.id, priority_expr)\
+            .join(Package.collection)\
+            .join(Package.last_build)\
+            .filter(priority_expr != None)\
+            .order_by(priority_expr.desc())\
+            .all()
 
     def main(self):
-        prioritized = self.get_priorities()
-        self.db.rollback()  # no-op, ends the transaction
-        if (time.time() - self.calculation_timestamp >
-                get_config('priorities.calculation_interval')):
-            self.persist_priorities(prioritized)
-        incomplete_builds = self.get_incomplete_builds_query().count()
-        if incomplete_builds >= get_config('koji_config.max_builds'):
+        incomplete_builds_count = self.db.query(Build)\
+            .filter(Build.state == Build.RUNNING)\
+            .count()
+        if incomplete_builds_count >= get_config('koji_config.max_builds'):
             self.log.debug("Not scheduling: {} incomplete builds"
-                           .format(incomplete_builds))
+                           .format(incomplete_builds_count))
             return
 
-        for package_id, priority, _ in prioritized:
+        for package_id, priority in self.get_priorities():
             if priority < get_config('priorities.build_threshold'):
                 self.log.info("Not scheduling: no package above threshold")
                 return
             package = self.db.query(Package).get(package_id)
-            if not package.collection.latest_repo_resolved:
-                self.log.info("Skipping {}: {} buildroot not resolved"
-                              .format(package, package.collection))
-                continue
 
-            # a package was chosen
             arches = self.db.query(KojiTask.arch)\
                 .filter_by(build_id=package.last_build_id)\
                 .all()

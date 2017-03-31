@@ -18,12 +18,17 @@
 
 from __future__ import print_function, absolute_import
 
-from sqlalchemy import (Column, Integer, String, Boolean, ForeignKey, DateTime,
-                        Index, Float, CheckConstraint, UniqueConstraint, Enum)
-from sqlalchemy.sql.expression import func, select, join, false, true
+import math
+
+from sqlalchemy import (
+    Column, Integer, String, Boolean, ForeignKey, DateTime, Index, Float,
+    CheckConstraint, UniqueConstraint, Enum,
+)
+from sqlalchemy.sql.expression import (
+    func, select, join, false, true, extract, case, null,
+)
 from sqlalchemy.orm import (relationship, column_property,
                             configure_mappers, deferred, composite)
-from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.dialects.postgresql import ARRAY
 
 from .config import get_config
@@ -126,6 +131,23 @@ def get_package_state(tracked, blocked, resolved, last_complete_build_state):
     return 'unknown'
 
 
+class TimePriority(object):
+    """
+    Container for lazy computation of static time priority inputs
+    """
+    def __getattr__(self, name):
+        assert name == 'inputs'
+        t0 = get_config('priorities.t0')
+        t1 = get_config('priorities.t1')
+        a = get_config('priorities.build_threshold') / (math.log10(t1) - math.log10(t0))
+        b = -a * math.log10(t0)
+        setattr(self, 'inputs', (a, b))
+        return self.inputs
+
+
+TIME_PRIORITY = TimePriority()
+
+
 class Package(Base):
     __table_args__ = (
         UniqueConstraint('base_id', 'collection_id',
@@ -139,8 +161,6 @@ class Package(Base):
                      nullable=False)
 
     name = Column(String, nullable=False, index=True)  # denormalized from base_package
-    static_priority = Column(Integer, nullable=False, server_default="0")
-    manual_priority = Column(Integer, nullable=False, server_default="0")
     collection_id = Column(Integer, ForeignKey(Collection.id, ondelete='CASCADE'),
                            nullable=False)
     collection = None  # backref, shut up pylint
@@ -149,9 +169,6 @@ class Package(Base):
     # causes resolution to be skipped, package can be built even if it would be
     # unresolved otherwise
     skip_resolution = Column(Boolean, nullable=False, server_default=false())
-
-    # cached value, populated by scheduler
-    current_priority = Column(Integer)
 
     # denormalized fields, updated by trigger on inser/update (no delete)
     last_complete_build_id = \
@@ -169,11 +186,94 @@ class Package(Base):
                nullable=True)
     resolved = Column(Boolean)
 
+    # priority calculation input values
+    # priority set by (super)user, never reset by koschei
+    static_priority = Column(Integer, nullable=False, server_default='0')
+    # priority set by user, reset after a build is registered
+    manual_priority = Column(Integer, nullable=False, server_default='0')
+    # priority based on build - build started to fail, build failed to resolve,
+    # last build wasn't resolved and thus new build is necessary
+    build_priority = Column(Integer, nullable=False, server_default='0')
+    # priority based on dependency changes since last build
+    dependency_priority = Column(Integer, nullable=False, server_default='0')
+
     tracked = Column(Boolean, nullable=False, server_default=true())
     blocked = Column(Boolean, nullable=False, server_default=false())
 
     SKIPPED_NO_SRPM = 1
     scheduler_skip_reason = Column(Integer)
+
+    @classmethod
+    def current_priority_expression(cls, collection, last_build):
+        """
+        Return computed value for packages priority or None if package is not
+        schedulable.
+        """
+        # if last_build is concrete object, it may be None
+        # packages with no last build should have no priority
+        # (they cannot be scheduled)
+        if not last_build:
+            return null()
+
+        dynamic_priority = cls.dependency_priority + cls.build_priority
+
+        # compute time priority
+        seconds = extract('EPOCH', func.clock_timestamp() - last_build.started)
+        a, b = TIME_PRIORITY.inputs
+        # avoid zero/negative values, when time difference too small
+        log_arg = func.greatest(0.000001, seconds / 3600)
+        dynamic_priority += func.greatest(a * func.log(log_arg) + b, -30)
+
+        # dynamic priority is affected by coefficient
+        dynamic_priority *= collection.priority_coefficient
+
+        # manual and static priority are not affected by coefficient
+        current_priority = cls.manual_priority + cls.static_priority + dynamic_priority
+
+        return case(
+            [
+                # handle unschedulable packages
+                (
+                    # WHEN blocked OR untracked
+                    cls.blocked | ~cls.tracked |
+                    # OR has running build
+                    (cls.last_complete_build_id != cls.last_build_id) |
+                    # OR is unresolved
+                    (cls.resolved == False) |
+                    # OR the collection's buildroot is broken
+                    (collection.latest_repo_resolved == False) |
+                    # OR the collection's buildroot wasn't resolved yet
+                    (collection.latest_repo_resolved == None),
+                    # THEN return NULL
+                    None,
+                )
+            ],
+            # ELSE return the computed priority
+            else_=current_priority
+        )
+
+    @property
+    def skip_reasons(self):
+        reasons = []
+        if self.scheduler_skip_reason == Package.SKIPPED_NO_SRPM:
+            reasons.append("No suitable SRPM was found")
+        if not self.tracked:
+            reasons.append("Package is not tracked")
+        if self.blocked:
+            reasons.append("Package is blocked in koji")
+        if self.last_complete_build_id != self.last_build_id:
+            reasons.append("Package has a running build")
+        if self.resolved is False:
+            reasons.append("Package's dependencies are not reasolvable")
+        if not self.last_build_id:
+            reasons.append("Package has no known build")
+        if self.collection.latest_repo_resolved is False:
+            reasons.append("Base buildroot for {} is not resolvable"
+                           .format(self.collection))
+        if self.collection.latest_repo_resolved is None:
+            reasons.append("Base buildroot for {} was not resolved yet"
+                           .format(self.collection))
+        return reasons
 
     @property
     def state_string(self):
