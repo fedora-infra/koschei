@@ -217,9 +217,9 @@ class DBTest(AbstractTest):
         }
         if isinstance(state, bool):
             state = states[state]
-        self.prepare_packages(pkg_name)
-        package_id = self.db.query(Package.id).filter_by(name=pkg_name).scalar()
-        build = Build(package_id=package_id, state=state,
+        [package] = self.prepare_packages(pkg_name)
+        package.resolved = resolved
+        build = Build(package=package, state=state,
                       repo_id=repo_id or (1 if state != Build.RUNNING else None),
                       version='1', release='1.fc25',
                       task_id=self.task_id_counter,

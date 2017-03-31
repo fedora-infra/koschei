@@ -105,7 +105,7 @@ class SchedulerTest(DBTest):
 
     def test_submit_no_resolution(self):
         self.prepare_priorities(rnv=256, rnv_state=None)
-        self.assert_scheduled('rnv')
+        self.assert_scheduled(None)
 
     def test_load(self):
         self.prepare_priorities(rnv=30000)
