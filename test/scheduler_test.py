@@ -161,6 +161,12 @@ class SchedulerTest(DBTest):
             self.get_scheduler().main()
             load_mock.assert_not_called()
 
+    def test_skipped_resolution(self):
+        self.prepare_priorities(rnv=256, rnv_state=None)
+        self.db.query(Package).filter_by(name='rnv').first().skip_resolution = True
+        self.db.commit()
+        self.assert_scheduled('rnv')
+
     def test_load_arches(self):
         arches = ['x86_64', 'ppc64le', 'alpha']
         package = self.prepare_build('rnv', True, arches=arches).package
