@@ -124,6 +124,8 @@ class PackagePriorityTest(DBTest):
         priority = self.get_priority(pkg)
         priority_join = self.get_priority_join(pkg)
         if expected:
+            self.assertIsNotNone(priority)
+            self.assertIsNotNone(priority_join)
             self.assertAlmostEqual(expected, priority)
             self.assertAlmostEqual(expected, priority_join)
         else:
@@ -180,3 +182,8 @@ class PackagePriorityTest(DBTest):
     def test_resolution_not_attempted(self, _):
         self.pkg.resolved = None
         self.verify_priority(None)
+
+    def test_resolution_skipped(self, _):
+        self.pkg.resolved = None
+        self.pkg.skip_resolution = True
+        self.verify_priority(-30)
