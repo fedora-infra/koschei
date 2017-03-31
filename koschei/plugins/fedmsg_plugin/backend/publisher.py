@@ -31,16 +31,19 @@ def emit_package_state_update(session, package, prev_state, new_state):
     if prev_state == new_state:
         return
     group_names = [group.full_name for group in package.groups]
-    message = dict(topic='package.state.change',
-                   modname=get_config('fedmsg-publisher.modname'),
-                   msg={'name': package.name,
-                        'old': prev_state,
-                        'new': new_state,
-                        'koji_instance': get_config('fedmsg.instance'),
-                        # compat
-                        'repo': package.collection.dest_tag,
-                        'collection': package.collection.name,
-                        'collection_name': package.collection.display_name,
-                        'groups': group_names})
+    message = dict(
+        topic='package.state.change',
+        modname=get_config('fedmsg-publisher.modname'),
+        msg=dict(
+            name=package.name,
+            old=prev_state,
+            new=new_state,
+            koji_instance=get_config('fedmsg.instance'),
+            repo=package.collection.name,  # compat only, same as collection
+            collection=package.collection.name,
+            collection_name=package.collection.display_name,
+            groups=group_names,
+        ),
+    )
     session.log.info('Publishing fedmsg:\n' + str(message))
     fedmsg.publish(**message)
