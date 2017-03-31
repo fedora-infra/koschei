@@ -121,8 +121,14 @@ class PackagePriorityTest(DBTest):
     def verify_priority(self, expected, pkg=None):
         pkg = pkg or self.pkg
         self.db.commit()
-        self.assertAlmostEqual(expected, self.get_priority(pkg))
-        self.assertAlmostEqual(expected, self.get_priority_join(pkg))
+        priority = self.get_priority(pkg)
+        priority_join = self.get_priority_join(pkg)
+        if expected:
+            self.assertAlmostEqual(expected, priority)
+            self.assertAlmostEqual(expected, priority_join)
+        else:
+            self.assertIsNone(priority)
+            self.assertIsNone(priority_join)
 
     def test_basic(self, _):
         # time priority for just completed build, no other values
