@@ -176,3 +176,7 @@ class PackagePriorityTest(DBTest):
         pkg = self.prepare_packages('foo')[0]
         pkg.resolved = True
         self.verify_priority(None, pkg)
+
+    def test_resolution_not_attempted(self, _):
+        self.pkg.resolved = None
+        self.verify_priority(None)
