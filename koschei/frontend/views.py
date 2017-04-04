@@ -927,10 +927,11 @@ def affected_by(dep_name):
 @app.route('/stats')
 @stats_tab.master
 def statistics():
+    now = db.query(func.now().label('now')).one().now
     scalar_stats = db.query(ScalarStats).one()
     resource_query = db.query(ResourceConsumptionStats)\
         .order_by(ResourceConsumptionStats.time.desc())\
         .limit(1000).paginate(20)
-    return render_template("stats.html", stats=scalar_stats,
+    return render_template("stats.html", now=now, stats=scalar_stats,
                            packages=resource_query.items,
                            page=resource_query)
