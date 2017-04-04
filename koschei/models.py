@@ -696,6 +696,7 @@ def count_query(type):
 # TODO migrations
 class ScalarStats(MaterializedView):
     view = select((
+        func.now().label('refresh_time'),
         count_query(Package).label('packages'),
         count_query(Package).where(Package.tracked).label('tracked_packages'),
         count_query(Package).where(Package.blocked).label('blocked_packages'),
