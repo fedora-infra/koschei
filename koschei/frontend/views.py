@@ -40,6 +40,7 @@ from koschei.models import (
     Package, Build, PackageGroup, PackageGroupRelation, AdminNotice,
     BuildrootProblem, BasePackage, GroupACL, Collection, CollectionGroup,
     AppliedChange, UnappliedChange, ResolutionChange, ResourceConsumptionStats,
+    ScalarStats,
     get_package_state,
 )
 
@@ -926,7 +927,10 @@ def affected_by(dep_name):
 @app.route('/stats')
 @stats_tab.master
 def statistics():
+    scalar_stats = db.query(ScalarStats).one()
     resource_query = db.query(ResourceConsumptionStats)\
         .order_by(ResourceConsumptionStats.time.desc())\
         .limit(1000).paginate(20)
-    return render_template("stats.html", packages=resource_query.items, page=resource_query)
+    return render_template("stats.html", stats=scalar_stats,
+                           packages=resource_query.items,
+                           page=resource_query)
