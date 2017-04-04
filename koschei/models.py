@@ -32,7 +32,7 @@ from sqlalchemy.orm import (relationship, column_property,
 from sqlalchemy.dialects.postgresql import ARRAY
 
 from .config import get_config
-from koschei.db import Base, CompressedKeyArray, RpmEVR, RpmEVRComparator
+from koschei.db import Base, MaterializedView, CompressedKeyArray, RpmEVR, RpmEVRComparator
 
 
 class User(Base):
@@ -690,6 +690,19 @@ class CoprRebuild(Base):
         )
 
 
+# TODO migrations
+class ResourceConsumptionStats(MaterializedView):
+    view = select((Package.name,
+                   KojiTask.arch,
+                   func.sum(KojiTask.finished - KojiTask.started).label('time'),
+                   (extract('EPOCH', func.sum(KojiTask.finished - KojiTask.started)) /
+                    select((extract('EPOCH', func.sum(KojiTask.finished - KojiTask.started)),))
+                    .select_from(KojiTask)).label('time_percentage'),
+                   ))\
+        .select_from(join(join(Package, Build, Package.id == Build.package_id), KojiTask))\
+        .group_by(Package.name, KojiTask.arch)
+
+
 # Indices
 Index('ix_build_composite', Build.package_id, Build.id.desc())
 Index('ix_package_group_name', PackageGroup.namespace, PackageGroup.name,
@@ -702,6 +715,7 @@ Index('ix_builds_unprocessed', Build.task_id,
       postgresql_where=(Build.deps_resolved.is_(None) & Build.repo_id.isnot(None)))
 Index('ix_builds_last_complete', Build.package_id, Build.task_id,
       postgresql_where=(Build.last_complete))
+Index('ix_resource_consumption_stats_total_time', ResourceConsumptionStats.time)
 
 
 # Auxiliary expressions

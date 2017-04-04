@@ -18,8 +18,9 @@
 
 from mock import patch
 from sqlalchemy import literal_column
+from datetime import datetime, timedelta
 
-from koschei.models import Package, Collection, Build
+from koschei.models import Package, Collection, Build, ResourceConsumptionStats, KojiTask
 from test.common import DBTest
 
 
@@ -187,3 +188,49 @@ class PackagePriorityTest(DBTest):
         self.pkg.resolved = None
         self.pkg.skip_resolution = True
         self.verify_priority(-30)
+
+
+class ResourceConsumptionStatsTest(DBTest):
+    def add_task(self, build, arch, started, finished):
+        koji_task = KojiTask(task_id=7541,
+                             arch=arch,
+                             state=1,
+                             started=datetime.fromtimestamp(started),
+                             finished=(datetime.fromtimestamp(finished) if finished else None),
+                             build_id=build.id)
+        self.db.add(koji_task)
+        self.db.commit()
+
+    def test_time_consumption_per_package(self):
+        rnv = self.prepare_build('rnv')
+        self.add_task(rnv, 'x86_64', 123, 456)
+        self.add_task(rnv, 'aarch64', 125, 666)
+        # Before refresh MV should be empty
+        self.assertEqual(0, self.db.query(ResourceConsumptionStats).count())
+        # After refresh it should contain some entries
+        self.db.refresh_mv(ResourceConsumptionStats)
+        self.assertEqual(2, self.db.query(ResourceConsumptionStats).count())
+        # Now add more data
+        self.add_task(rnv, 'x86_64', 1000, 1100)
+        self.add_task(rnv, 'x86_64', 2000, 2500)
+        self.add_task(rnv, 'x86_64', 5000, None)
+        self.add_task(self.prepare_build('xpp3'), 'x86_64', 111, 444)
+        self.add_task(self.prepare_build('junit'), 'noarch', 24, 42)
+        # Until it's refreshed again, MV should still contain only 2 rows
+        self.assertEqual(2, self.db.query(ResourceConsumptionStats).count())
+        self.db.refresh_mv(ResourceConsumptionStats)
+        self.assertEqual(4, self.db.query(ResourceConsumptionStats).count())
+        stats = self.db.query(ResourceConsumptionStats).order_by(ResourceConsumptionStats.time).all()
+        self.assertEqual('junit', stats[0].name)
+        self.assertEqual('noarch', stats[0].arch)
+        self.assertEqual(timedelta(0, 42 - 24), stats[0].time)
+        self.assertEqual('xpp3', stats[1].name)
+        self.assertEqual('x86_64', stats[1].arch)
+        self.assertEqual(timedelta(0, 333), stats[1].time)
+        self.assertEqual('rnv', stats[2].name)
+        self.assertEqual('aarch64', stats[2].arch)
+        self.assertEqual(timedelta(0, 666 - 125), stats[2].time)
+        self.assertEqual('rnv', stats[3].name)
+        self.assertEqual('x86_64', stats[3].arch)
+        self.assertEqual(timedelta(0, 333 + 100 + 500), stats[3].time)
+
