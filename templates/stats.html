@@ -2,8 +2,20 @@
 {% import "macros.html" as macros %}
 {% block title %}Koschei - statistics{% endblock %}
 {% block content %}
-{{ macros.pagination_row(page, 'Packages') }}
+<div class="pageHeader">Koschei in numbers</div>
+<table class="details">
+    <tr><th>All packages</th><td>{{ stats.packages }}</td></tr>
+    <tr><th>Tracked packages</th><td>{{ stats.tracked_packages }}</td></tr>
+    <tr><th>Untracked packages</th><td>{{ stats.packages - stats.tracked_packages }}</td></tr>
+    <tr><th>Blocked packages</th><td>{{ stats.blocked_packages }}</td></tr>
+    <tr><th>Active packages</th><td>{{ stats.packages - stats.blocked_packages }}</td></tr>
+    <tr><th>All builds (real and scratch)</th><td>{{ stats.builds }}</td></tr>
+    <tr><th>Real builds</th><td>{{ stats.real_builds }}</td></tr>
+    <tr><th>Scratch builds</th><td>{{ stats.scratch_builds }}</td></tr>
+</table>
+
 <div class="pageHeader">Packages that consume most resources</div>
+{{ macros.pagination_row(page, 'Packages') }}
 <table class="data-list">
     <tr class="list-header">
         <th>Package</th>
