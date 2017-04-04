@@ -26,13 +26,14 @@ import six
 
 import sqlalchemy
 
-from sqlalchemy import create_engine, Table, DDL
+from sqlalchemy import create_engine, Table, Column, DDL
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.orm import sessionmaker, CompositeProperty
 from sqlalchemy.engine.url import URL
 from sqlalchemy.event import listen
 from sqlalchemy.types import TypeDecorator
 from sqlalchemy.sql import func, column
+from sqlalchemy.schema import PrimaryKeyConstraint
 from sqlalchemy.dialects.postgresql import BYTEA
 
 from . import util
@@ -127,6 +128,11 @@ class KoscheiDbSession(sqlalchemy.orm.session.Session):
             self.commit()
         finally:
             self.expire_on_commit = expire_on_commit
+
+    def refresh_mv(self, *args):
+        self.flush()
+        for mv in args:
+            mv.refresh(self)
 
 
 __engine = None
@@ -303,3 +309,29 @@ class RpmEVRComparator(CmpMixin, CompositeProperty.Comparator):
             evr[0], evr[1], evr[2],
             other.epoch, other.version, other.release,
         )
+
+
+class MaterializedView(Base):
+    __abstract__ = True
+    _table = None
+
+    @declared_attr
+    def __table__(cls):
+        cls._table = Table(cls.__tablename__, sqlalchemy.MetaData())
+        for column in cls.view.c:
+            cls._table.append_column(Column(column.name, column.type))
+        cls._table.append_constraint(PrimaryKeyConstraint(*[column.name for column in cls.view.c]))
+        listen(Base.metadata, 'after_create', lambda _, conn, **kwargs: cls.create(conn))
+        return cls._table
+
+    @classmethod
+    def create(cls, db):
+        view_sql = cls.view.compile()
+        ddl_sql = 'CREATE MATERIALIZED VIEW "{0}" AS {1}'.format(cls.__tablename__, view_sql)
+        db.execute(ddl_sql)
+        for index in cls._table.indexes:
+            index.create(db)
+
+    @classmethod
+    def refresh(cls, db):
+        db.execute('REFRESH MATERIALIZED VIEW "{0}"'.format(cls.__tablename__))
