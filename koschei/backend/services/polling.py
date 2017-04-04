@@ -23,7 +23,7 @@ import koji
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
 from koschei import plugin, backend
-from koschei.models import Build, ResourceConsumptionStats
+from koschei.models import Build, ResourceConsumptionStats, ScalarStats
 from koschei.backend.service import Service
 from koschei.backend.koji_util import itercall
 
@@ -66,6 +66,6 @@ class Polling(Service):
         backend.refresh_latest_builds(self.session)
         self.db.commit()
         self.log.info('Refreshing statistics...')
-        self.db.refresh_mv(ResourceConsumptionStats)
+        self.db.refresh_mv(ResourceConsumptionStats, ScalarStats)
         self.db.commit()
         self.log.info('Polling finished')
