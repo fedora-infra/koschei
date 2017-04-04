@@ -19,6 +19,7 @@
 from functools import wraps
 
 # pylint:disable = unused-import
+import koschei.frontend.api
 import koschei.frontend.views
 import koschei.frontend.auth
 
