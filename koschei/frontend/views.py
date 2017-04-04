@@ -39,7 +39,7 @@ from koschei.frontend import app, db, frontend_config, auth, session, forms, Tab
 from koschei.models import (
     Package, Build, PackageGroup, PackageGroupRelation, AdminNotice,
     BuildrootProblem, BasePackage, GroupACL, Collection, CollectionGroup,
-    AppliedChange, UnappliedChange, ResolutionChange,
+    AppliedChange, UnappliedChange, ResolutionChange, ResourceConsumptionStats,
     get_package_state,
 )
 
@@ -425,6 +425,7 @@ package_tab = Tab('Packages', 10)
 group_tab = Tab('Groups', 20)
 add_packages_tab = Tab('Add packages', 30)
 my_packages_tab = Tab('My packages', 50, requires_user=True)
+stats_tab = Tab('Statistics', 100)
 documentation_tab = Tab('Documentation', 1000)
 
 
@@ -920,3 +921,12 @@ def affected_by(dep_name):
     return render_template("affected-by.html", package_state=package_state,
                            dep_name=dep_name, evr1=evr1, evr2=evr2,
                            collection=collection, failed=failed)
+
+
+@app.route('/stats')
+@stats_tab.master
+def statistics():
+    resource_query = db.query(ResourceConsumptionStats)\
+        .order_by(ResourceConsumptionStats.time.desc())\
+        .limit(1000).paginate(20)
+    return render_template("stats.html", packages=resource_query.items, page=resource_query)

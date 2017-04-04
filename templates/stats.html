@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% import "macros.html" as macros %}
+{% block title %}Koschei - statistics{% endblock %}
+{% block content %}
+{{ macros.pagination_row(page, 'Packages') }}
+<div class="pageHeader">Packages that consume most resources</div>
+<table class="data-list">
+    <tr class="list-header">
+        <th>Package</th>
+        <th>Arch</th>
+        <th>Time usage</th>
+        <th>Time percentage</th>
+    </tr>
+    {% for package in packages %}
+    <tr>
+        <td>
+            <a href="{{ url_for('package_detail', name=package.name)}}">
+                {{ package.name }}
+            </a>
+        </td>
+        <td>{{ package.arch }}</td>
+        <td>{{ package.time }}</td>
+        <td>{{ package.time_percentage }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{{ macros.pagination_row(page, 'Packages') }}
+{% endblock %}
