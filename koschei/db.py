@@ -326,7 +326,7 @@ class MaterializedView(Base):
 
     @classmethod
     def create(cls, db):
-        view_sql = cls.view.compile()
+        view_sql = cls.view.compile(dialect=sqlalchemy.dialects.postgresql.dialect())
         ddl_sql = 'CREATE MATERIALIZED VIEW "{0}" AS {1}'.format(cls.__tablename__, view_sql)
         db.execute(ddl_sql)
         for index in cls._table.indexes:
