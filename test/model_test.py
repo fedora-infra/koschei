@@ -20,7 +20,7 @@ from mock import patch
 from sqlalchemy import literal_column
 from datetime import datetime, timedelta
 
-from koschei.models import Package, Collection, Build, ResourceConsumptionStats, KojiTask
+from koschei.models import Package, Collection, Build, ResourceConsumptionStats, ScalarStats, KojiTask
 from test.common import DBTest
 
 
@@ -190,7 +190,7 @@ class PackagePriorityTest(DBTest):
         self.verify_priority(-30)
 
 
-class ResourceConsumptionStatsTest(DBTest):
+class StatsTest(DBTest):
     def add_task(self, build, arch, started, finished):
         koji_task = KojiTask(task_id=7541,
                              arch=arch,
@@ -234,3 +234,28 @@ class ResourceConsumptionStatsTest(DBTest):
         self.assertEqual('x86_64', stats[3].arch)
         self.assertEqual(timedelta(0, 333 + 100 + 500), stats[3].time)
 
+    def test_package_counts(self):
+        self.db.refresh_mv(ScalarStats)
+        stats = self.db.query(ScalarStats).one()
+        self.assertEqual(0, stats.packages)
+        self.prepare_packages('rnv')[0].tracked = False
+        self.prepare_packages('junit')[0].blocked = True
+        self.prepare_packages('xpp3')
+        self.db.refresh_mv(ScalarStats)
+        stats = self.db.query(ScalarStats).one()
+        self.assertEqual(3, stats.packages)
+        self.assertEqual(2, stats.tracked_packages)
+        self.assertEqual(1, stats.blocked_packages)
+
+    def test_build_counts(self):
+        for i in range(0, 7):
+            self.prepare_build('rnv', True).real = True
+        for i in range(0, 5):
+            self.prepare_build('rnv', False)
+        for i in range(0, 4):
+            self.prepare_build('rnv', None)
+        self.db.refresh_mv(ScalarStats)
+        stats = self.db.query(ScalarStats).one()
+        self.assertEqual(16, stats.builds)
+        self.assertEqual(7, stats.real_builds)
+        self.assertEqual(9, stats.scratch_builds)

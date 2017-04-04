@@ -690,6 +690,21 @@ class CoprRebuild(Base):
         )
 
 
+def count_query(type):
+    return select((func.count(type.id),)).select_from(type)
+
+# TODO migrations
+class ScalarStats(MaterializedView):
+    view = select((
+        count_query(Package).label('packages'),
+        count_query(Package).where(Package.tracked).label('tracked_packages'),
+        count_query(Package).where(Package.blocked).label('blocked_packages'),
+        count_query(Build).label('builds'),
+        count_query(Build).where(Build.real).label('real_builds'),
+        count_query(Build).where(~Build.real).label('scratch_builds'),
+    ))
+
+
 # TODO migrations
 class ResourceConsumptionStats(MaterializedView):
     view = select((Package.name,
