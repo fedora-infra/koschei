@@ -65,6 +65,7 @@ def emit_collection_state_update(session, collection, prev_state, new_state):
             koji_instance=get_config('fedmsg.instance'),
             collection=collection.name,
             collection_name=collection.display_name,
+            repo_id=collection.latest_repo_id,
         ),
     )
     publish_fedmsg(session, message)

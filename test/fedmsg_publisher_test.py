@@ -62,6 +62,7 @@ class FedmsgSenderTest(DBTest):
                                                  'new': 'ok',
                                                  'collection': 'f25',
                                                  'collection_name': 'Fedora Rawhide',
+                                                 'repo_id': 123,
                                                  'koji_instance': 'primary'})
 
 
