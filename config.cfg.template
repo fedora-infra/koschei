@@ -49,8 +49,9 @@ config = {
         # maximum number of items in single koji multicall. Too low values may
         # cause poor performance, too high values may cause timeouts.
         "multicall_chunk_size": 100,
-        # run scratch-builds from latest known repo_id to reduce hazard.
-        # Requires extra Koji privileges.
+        # run scratch-builds from latest known repo_id to avoid race
+        # condition between dependency resolution by Koschei and new
+        # repo generation by Koji.  Requires extra Koji privileges.
         "build_from_repo_id": False,
     },
     # secondary koji instance configuration, leave empty if you want default
