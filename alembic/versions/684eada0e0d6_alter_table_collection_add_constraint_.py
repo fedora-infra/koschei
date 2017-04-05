@@ -15,7 +15,8 @@ from alembic import op
 def upgrade():
     op.execute("""
         ALTER TABLE collection
-        ADD CONSTRAINT collection_latest_repo_id_check CHECK (((latest_repo_resolved IS NULL) = (latest_repo_id IS NULL)))
+        ADD CONSTRAINT collection_latest_repo_id_check
+        CHECK (((latest_repo_resolved IS NULL) = (latest_repo_id IS NULL)))
     """)
 
 

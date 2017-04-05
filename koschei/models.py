@@ -43,7 +43,6 @@ class User(Base):
 
 class Collection(Base):
     __table_args__ = (
-        # TODO migrations
         CheckConstraint('(latest_repo_resolved IS NULL) = (latest_repo_id IS NULL)',
                         name='collection_latest_repo_id_check'),
     )
