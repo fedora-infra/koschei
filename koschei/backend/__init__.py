@@ -118,7 +118,8 @@ def submit_build(session, package):
         srpm, srpm_url = srpm_res
         if session.build_from_repo_id:
             target = None
-            build_opts.update({'repo_id': package.collection.latest_repo_id})
+            build.repo_id = package.collection.latest_repo_id
+            build_opts.update({'repo_id': build.repo_id})
         else:
             target = package.collection.target
         # priorities are reset after the build is done

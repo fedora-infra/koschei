@@ -287,6 +287,7 @@ class BackendTest(DBTest):
                 koji_scratch_build.assert_called_once_with(self.session.koji_mock, 'f25', 'rnv', 'the_url', {})
         self.db.commit()
         self.assertEqual(7541, package.last_build.task_id)
+        self.assertIsNone(package.last_build.repo_id)
 
     def test_submit_build_arch_override(self):
         package = self.prepare_packages('rnv')[0]
@@ -342,4 +343,5 @@ class BackendTest(DBTest):
                 koji_scratch_build.assert_called_once_with(self.session.koji_mock, None, 'rnv', 'the_url', {'repo_id': 123})
         self.db.commit()
         self.assertEqual(7541, package.last_build.task_id)
+        self.assertEqual(123, package.last_build.repo_id)
 
