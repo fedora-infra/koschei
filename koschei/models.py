@@ -686,6 +686,8 @@ Index('ix_dependency_composite', *Dependency.nevra, unique=True)
 Index('ix_package_collection_id', Package.collection_id, Package.tracked,
       postgresql_where=(~Package.blocked))
 Index('ix_applied_change_dep_name', AppliedChange.dep_name)
+Index('ix_builds_unprocessed', Build.task_id,
+      postgresql_where=(Build.deps_resolved.is_(None) & Build.repo_id.isnot(None)))
 
 
 # Relationships
