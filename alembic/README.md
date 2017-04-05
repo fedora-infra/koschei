@@ -52,7 +52,7 @@ Cheat-sheet
 To set environment variables and aliases:
 
     . aux/set-env.sh
-    alias koschei_alembic="KOSCHEI_CONFIG=$PWD/config.cfg.template:<(echo 'config={\"database_config\":{\"database\":\"koschei_testdb\"}}') alembic -c $PWD/alembic.ini"
+    alias koschei_alembic="KOSCHEI_CONFIG=$PWD/config.cfg.template:<(echo 'config={\"database_config\":{\"database\":\"koschei\"}}') alembic -c $PWD/alembic.ini"
 
 To create clean DB for tests:
 
