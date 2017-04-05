@@ -53,10 +53,25 @@ class FedmsgSenderTest(DBTest):
                                                  'collection_name': 'Fedora Rawhide',
                                                  'koji_instance': 'primary',
                                                  'groups': ['c', 'foo/xml']})
+            publish.reset_mock()
+            plugin.dispatch_event('collection_state_change', self.session, collection=package.collection,
+                                  prev_state='unresolved', new_state='ok')
+            publish.assert_called_once_with(topic='collection.state.change',
+                                            modname='koschei',
+                                            msg={'old': 'unresolved',
+                                                 'new': 'ok',
+                                                 'collection': 'f25',
+                                                 'collection_name': 'Fedora Rawhide',
+                                                 'koji_instance': 'primary'})
+
 
     def test_same_state(self):
         package = self.prepare_package()
         with patch('fedmsg.publish') as publish:
             plugin.dispatch_event('package_state_change', self.session, package=package,
+                                  prev_state='ok', new_state='ok')
+            self.assertFalse(publish.called)
+            publish.reset_mock()
+            plugin.dispatch_event('collection_state_change', self.session, collection=package.collection,
                                   prev_state='ok', new_state='ok')
             self.assertFalse(publish.called)

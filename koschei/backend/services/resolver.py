@@ -463,7 +463,9 @@ class Resolver(Service):
         self.db.query(BuildrootProblem)\
             .filter_by(collection_id=collection.id)\
             .delete()
+        prev_state = collection.state_string
         collection.latest_repo_resolved = resolved
+        new_state = collection.state_string
         if not resolved:
             self.log.info("Build group not resolvable for {}"
                           .format(collection.name))
@@ -471,21 +473,22 @@ class Resolver(Service):
             self.db.execute(BuildrootProblem.__table__.insert(),
                             [{'collection_id': collection.id, 'problem': problem}
                              for problem in base_problems])
+        self.db.commit()
+        dispatch_event('collection_state_change', self.session,
+                       collection=collection, prev_state=prev_state, new_state=new_state)
+        if resolved:
+            packages = self.get_packages(collection)
+            brs = koji_util.get_rpm_requires_cached(
+                self.session,
+                self.session.secondary_koji_for(collection),
+                [p.srpm_nvra for p in packages],
+            )
+            self.log.info("Resolving dependencies...")
+            resolution_time.start()
+            self.generate_dependency_changes(sack, collection, packages, brs, repo_id)
+            resolution_time.stop()
+            collection.latest_repo_id = repo_id
             self.db.commit()
-            return
-        self.db.commit()
-        packages = self.get_packages(collection)
-        brs = koji_util.get_rpm_requires_cached(
-            self.session,
-            self.session.secondary_koji_for(collection),
-            [p.srpm_nvra for p in packages],
-        )
-        self.log.info("Resolving dependencies...")
-        resolution_time.start()
-        self.generate_dependency_changes(sack, collection, packages, brs, repo_id)
-        resolution_time.stop()
-        collection.latest_repo_id = repo_id
-        self.db.commit()
         total_time.stop()
         total_time.display()
         generate_dependency_changes_time.display()

@@ -78,6 +78,10 @@ class Collection(Base):
 
     packages = relationship('Package', backref='collection', passive_deletes=True)
 
+    @property
+    def state_string(self):
+        return {True: 'ok', False: 'unresolved', None: 'unknown'}[self.latest_repo_resolved]
+
     def __str__(self):
         return self.display_name
 
