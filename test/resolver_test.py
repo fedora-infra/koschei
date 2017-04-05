@@ -352,6 +352,7 @@ class ResolverTest(DBTest):
     def test_result_history(self):
         self.prepare_old_build()
         self.collection.latest_repo_id = None
+        self.collection.latest_repo_resolved = None
         self.prepare_group('bar', ['foo'])
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']), \
                 patch('fedmsg.publish') as fedmsg_mock:
@@ -367,7 +368,7 @@ class ResolverTest(DBTest):
             self.assertTrue(foo.resolved)
             self.assertTrue(result.resolved)
             self.assertEqual([], result.problems)
-            self.assertFalse(fedmsg_mock.called)
+            self.assert_collection_fedmsg_emitted(fedmsg_mock, 'unknown', 'ok')
             fedmsg_mock.reset_mock()
 
             # second run, fail

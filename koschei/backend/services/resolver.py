@@ -464,12 +464,12 @@ class Resolver(Service):
             .filter_by(collection_id=collection.id)\
             .delete()
         prev_state = collection.state_string
+        collection.latest_repo_id = repo_id
         collection.latest_repo_resolved = resolved
         new_state = collection.state_string
         if not resolved:
             self.log.info("Build group not resolvable for {}"
                           .format(collection.name))
-            collection.latest_repo_id = repo_id
             self.db.execute(BuildrootProblem.__table__.insert(),
                             [{'collection_id': collection.id, 'problem': problem}
                              for problem in base_problems])

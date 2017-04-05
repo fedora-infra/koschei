@@ -91,6 +91,7 @@ class KoscheiBackendSession(KoscheiSession):
 
 
 def submit_build(session, package):
+    assert package.collection.latest_repo_id
     build = Build(package_id=package.id, state=Build.RUNNING)
     name = package.name
     build_opts = {}
