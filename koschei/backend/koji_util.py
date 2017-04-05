@@ -96,6 +96,7 @@ def get_last_srpm(koji_session, tag, name):
 
 
 def koji_scratch_build(session, target, name, source, build_opts):
+    assert target or build_opts['repo_id']
     build_opts = prepare_build_opts(build_opts)
     log = logging.getLogger('koschei.backend.koji_util')
     log.info('Intiating koji build for %(name)s:\n\tsource=%(source)s'

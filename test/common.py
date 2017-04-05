@@ -95,6 +95,7 @@ class KoscheiSessionMock(KoscheiBackendSession):
         self.sec_koji_mock = KojiMock()
         self.repo_cache_mock = RepoCacheMock()
         self.log = Mock()
+        self.build_from_repo_id_override = False
 
     def koji(self, koji_id, anonymous=True):
         if koji_id == 'primary':
@@ -106,6 +107,10 @@ class KoscheiSessionMock(KoscheiBackendSession):
     @property
     def repo_cache(self):
         return self.repo_cache_mock
+
+    @property
+    def build_from_repo_id(self):
+        return self.build_from_repo_id_override
 
 
 class DBTest(AbstractTest):

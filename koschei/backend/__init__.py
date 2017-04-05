@@ -52,6 +52,10 @@ class KoscheiBackendSession(KoscheiSession):
             self._db = Session()
         return self._db
 
+    @property
+    def build_from_repo_id(self):
+        return get_config('koji_config').get('build_from_repo_id')
+
     def koji(self, koji_id):
         """
         Returns (and creates if necessary) current koji session for given
@@ -112,12 +116,17 @@ def submit_build(session, package):
     )
     if srpm_res:
         srpm, srpm_url = srpm_res
+        if session.build_from_repo_id:
+            target = None
+            build_opts.update({'repo_id': package.collection.latest_repo_id})
+        else:
+            target = package.collection.target
         # priorities are reset after the build is done
         # - the reason for that is that the build might be canceled and we want
         # the priorities to be retained in that case
         build.task_id = koji_util.koji_scratch_build(
             session.koji('primary'),
-            package.collection.target,
+            target,
             name,
             srpm_url,
             build_opts
