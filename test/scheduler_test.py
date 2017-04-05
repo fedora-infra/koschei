@@ -153,6 +153,7 @@ class SchedulerTest(DBTest):
 
     def test_buildroot_not_yet_resolved(self):
         self.collection.latest_repo_resolved = None
+        self.collection.latest_repo_id = None
         self.prepare_priorities(rnv=256, rnv_state=None)
         self.assert_scheduled(None)
 

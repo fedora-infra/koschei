@@ -42,6 +42,12 @@ class User(Base):
 
 
 class Collection(Base):
+    __table_args__ = (
+        # TODO migrations
+        CheckConstraint('(latest_repo_resolved IS NULL) = (latest_repo_id IS NULL)',
+                        name='collection_latest_repo_id_check'),
+    )
+
     id = Column(Integer, primary_key=True)
     order = Column(Integer, nullable=False, server_default="100")
     # name used in machine context (urls, fedmsg), e.g. "f24"
@@ -77,6 +83,10 @@ class Collection(Base):
     poll_untracked = Column(Boolean, nullable=False, server_default=true())
 
     packages = relationship('Package', backref='collection', passive_deletes=True)
+
+    @property
+    def state_string(self):
+        return {True: 'ok', False: 'unresolved', None: 'unknown'}[self.latest_repo_resolved]
 
     def __str__(self):
         return self.display_name

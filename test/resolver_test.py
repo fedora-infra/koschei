@@ -198,8 +198,6 @@ class ResolverTest(DBTest):
             'state': koji.REPO_STATES['READY'],
         }
         self.resolver = Resolver(self.session)
-        self.collection.latest_repo_resolved = None
-        self.collection.latest_repo_id = None
         self.db.commit()
 
     def prepare_foo_build(self, repo_id=123, version='4'):
@@ -209,6 +207,17 @@ class ResolverTest(DBTest):
         foo_build.release = '1.fc22'
         self.db.commit()
         return foo_build
+
+    def assert_collection_fedmsg_emitted(self, fedmsg_mock, prev_state, new_state):
+        fedmsg_mock.assert_called_once_with(
+            modname='koschei',
+            msg={'old': prev_state,
+                 'new': new_state,
+                 'koji_instance': 'primary',
+                 'collection': 'f25',
+                 'collection_name': 'Fedora Rawhide'},
+            topic='collection.state.change'
+        )
 
     def test_dont_resolve_against_old_build_when_new_is_running(self):
         foo = self.prepare_packages('foo')[0]
@@ -308,11 +317,17 @@ class ResolverTest(DBTest):
 
     def test_repo_generation(self):
         self.prepare_old_build()
+        self.collection.latest_repo_resolved = None
+        self.collection.latest_repo_id = None
+        self.db.commit()
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']), \
                 patch('koschei.backend.koji_util.get_rpm_requires',
                       return_value=[['F', 'A'], ['nonexistent']]), \
-                patch('koschei.backend.koji_util.get_latest_repo', return_value=REPO):
+                patch('koschei.backend.koji_util.get_latest_repo', return_value=REPO), \
+                patch('fedmsg.publish') as fedmsg_mock:
             self.resolver.main()
+            self.assertTrue(self.collection.latest_repo_resolved)
+            self.assert_collection_fedmsg_emitted(fedmsg_mock, 'unknown', 'ok')
         self.db.expire_all()
         foo = self.db.query(Package).filter_by(name='foo').first()
         self.assertTrue(foo.resolved)
@@ -336,6 +351,8 @@ class ResolverTest(DBTest):
     # pylint: disable=too-many-statements
     def test_result_history(self):
         self.prepare_old_build()
+        self.collection.latest_repo_id = None
+        self.collection.latest_repo_resolved = None
         self.prepare_group('bar', ['foo'])
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']), \
                 patch('fedmsg.publish') as fedmsg_mock:
@@ -351,6 +368,8 @@ class ResolverTest(DBTest):
             self.assertTrue(foo.resolved)
             self.assertTrue(result.resolved)
             self.assertEqual([], result.problems)
+            self.assert_collection_fedmsg_emitted(fedmsg_mock, 'unknown', 'ok')
+            fedmsg_mock.reset_mock()
 
             # second run, fail
             with patch('koschei.backend.koji_util.get_rpm_requires',
@@ -450,6 +469,8 @@ class ResolverTest(DBTest):
 
     def test_broken_buildroot(self):
         self.prepare_old_build()
+        self.collection.latest_repo_resolved = None
+        self.collection.latest_repo_id = None
         self.prepare_packages('bar')
         with patch('koschei.backend.koji_util.get_build_group', return_value=['bar']), \
                 patch('koschei.backend.koji_util.get_rpm_requires',
@@ -458,7 +479,7 @@ class ResolverTest(DBTest):
                       return_value={'id': 123}), \
                 patch('fedmsg.publish') as fedmsg_mock:
             self.resolver.main()
-            self.assertFalse(fedmsg_mock.called)
+            self.assert_collection_fedmsg_emitted(fedmsg_mock, 'unknown', 'unresolved')
         self.assertFalse(self.collection.latest_repo_resolved)
         self.assertEqual(123, self.collection.latest_repo_id)
         self.assertIn('nonexistent',
@@ -469,8 +490,9 @@ class ResolverTest(DBTest):
                       return_value=[['F', 'A']]), \
                 patch('koschei.backend.koji_util.get_latest_repo',
                       return_value={'id': 124}), \
-                patch('fedmsg.publish'):
+                patch('fedmsg.publish') as fedmsg_mock:
             self.resolver.main()
+            self.assert_collection_fedmsg_emitted(fedmsg_mock, 'unresolved', 'ok')
         self.assertTrue(self.collection.latest_repo_resolved)
         self.assertEqual(0, self.db.query(BuildrootProblem).count())
 

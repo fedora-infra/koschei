@@ -520,8 +520,9 @@ class SubmitBuild(Command):
         parser.add_argument('names', nargs='+')
 
     def execute(self, session, names):
-        pkgs = session.db.query(Package)\
-            .filter(Package.name.in_(names)).all()
+        pkgs = session.db.query(Package).join(Collection)\
+            .filter(Package.name.in_(names))\
+            .filter(Collection.latest_repo_resolved).all()
         for pkg in pkgs:
             backend.submit_build(session, pkg)
 

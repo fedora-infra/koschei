@@ -24,10 +24,14 @@ from koschei.config import get_config
 from koschei.plugin import listen_event
 
 
-@listen_event('package_state_change')
-def emit_package_state_update(session, package, prev_state, new_state):
+def publish_fedmsg(session, message):
     if not get_config('fedmsg-publisher.enabled', False):
         return
+    session.log.info('Publishing fedmsg:\n' + str(message))
+    fedmsg.publish(**message)
+
+@listen_event('package_state_change')
+def emit_package_state_update(session, package, prev_state, new_state):
     if prev_state == new_state:
         return
     group_names = [group.full_name for group in package.groups]
@@ -45,5 +49,22 @@ def emit_package_state_update(session, package, prev_state, new_state):
             groups=group_names,
         ),
     )
-    session.log.info('Publishing fedmsg:\n' + str(message))
-    fedmsg.publish(**message)
+    publish_fedmsg(session, message)
+
+
+@listen_event('collection_state_change')
+def emit_collection_state_update(session, collection, prev_state, new_state):
+    if prev_state == new_state:
+        return
+    message = dict(
+        topic='collection.state.change',
+        modname=get_config('fedmsg-publisher.modname'),
+        msg=dict(
+            old=prev_state,
+            new=new_state,
+            koji_instance=get_config('fedmsg.instance'),
+            collection=collection.name,
+            collection_name=collection.display_name,
+        ),
+    )
+    publish_fedmsg(session, message)
