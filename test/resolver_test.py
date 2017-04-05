@@ -215,7 +215,8 @@ class ResolverTest(DBTest):
                  'new': new_state,
                  'koji_instance': 'primary',
                  'collection': 'f25',
-                 'collection_name': 'Fedora Rawhide'},
+                 'collection_name': 'Fedora Rawhide',
+                 'repo_id': self.collection.latest_repo_id},
             topic='collection.state.change'
         )
 
