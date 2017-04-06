@@ -1,0 +1,143 @@
+- name: provision koschei vagrant instance
+  hosts: all
+  become: True
+  gather_facts: False
+
+  tasks:
+    - name: install packages required for ansible to work
+      raw: dnf install -y python2 python2-dnf libselinux-python
+      register: dnf_result
+      changed_when: "'Nothing to do' not in dnf_result.stdout"
+
+    - name: gather facts
+      setup:
+
+    # default sudoers file allows vagrant to login as root, but not as
+    # postgres user...
+    - name: adjust vagrant sudoers
+      copy:
+        content: "vagrant ALL=(ALL) NOPASSWD: ALL"
+        dest: /etc/sudoers.d/vagrant-nopasswd
+
+    - name: install required packages (please be patient)
+      package: name="{{ item }}" state=present
+      with_items:
+        - fedmsg
+        - httpd
+        - ipython
+        - js-jquery
+        - koji
+        - mod_wsgi
+        - policycoreutils-python
+        - postgresql
+        - postgresql-server
+        - python2-devel
+        - python-alembic
+        - python-copr
+        - python-dogpile-cache
+        - python-fedmsg-meta-fedora-infrastructure
+        - python-flask
+        - python-flask-sqlalchemy
+        - python-flask-wtf
+        - python-hawkey
+        - python-jinja2
+        - python-librepo
+        - python-mock
+        - python-nose
+        - python-psycopg2
+        - python-setuptools
+        - python-six
+        - python-sqlalchemy
+        - python-vcrpy
+        - rpm-python
+        - systemd
+
+    - name: create koschei postgres user
+      user: name=koschei
+
+    - name: create directories
+      file: path="{{ item }}" state=directory
+      with_items:
+        - /home/vagrant/cache
+        - /usr/share/koschei
+        - /etc/koschei
+
+    - name: create symlinks
+      file: src="{{ item.src}}" dest="{{ item.dest }}" state=link
+      with_items:
+        - { src: /vagrant/config.cfg.template, dest: /usr/share/koschei/config.cfg }
+        - { src: /vagrant/aux/vagrant-config.cfg, dest: /etc/koschei/config-backend.cfg }
+        - { src: /vagrant/aux/vagrant-config.cfg, dest: /etc/koschei/config-admin.cfg }
+        - { src: /vagrant/aux/vagrant-config.cfg, dest: /etc/koschei/config-frontend.cfg }
+        - { src: /vagrant/koschei, dest: /usr/lib/python2.7/site-packages/koschei }
+        - { src: /vagrant/static, dest: /usr/share/koschei/static }
+        - { src: /vagrant/admin.py, dest: /usr/bin/koschei-admin }
+        - { src: /vagrant/httpd.conf, dest: /etc/httpd/conf.d/koschei.conf }
+        - { src: /vagrant/koschei.wsgi, dest: /usr/share/koschei/koschei.wsgi }
+
+    - name: initialize database
+      command: postgresql-setup initdb
+      environment:
+        PGSETUP_INITDB_OPTIONS: --locale C
+      args:
+        creates: /var/lib/pgsql/data/pg_hba.conf
+
+    - name: install postgres pg_hba.conf
+      copy:
+        content: |
+            local all all              trust
+            host  all all 127.0.0.1/32 trust
+            host  all all ::1/128      trust
+        dest: /var/lib/pgsql/data/pg_hba.conf
+
+    - name: start and enable postgresql
+      service: name=postgresql state=running enabled=true
+
+    - name: check whether koschei database is present
+      shell: "psql koschei -c ''"
+      become_user: postgres
+      changed_when: False
+      failed_when: "res.rc != 0 and 'database \"koschei\" does not exist' not in res.stderr"
+      register: res
+
+    - name: fetch database dump from batcave (over 100 MB, so it may take a while)
+      get_url:
+        url: https://infrastructure.fedoraproject.org/infra/db-dumps/koschei.dump.xz
+        dest: /tmp/koschei.dump.xz
+      when: "res.rc != 0"
+
+    # sometimes download may fail and leave truncated file, better be safe
+    - name: verify integrity of koschei.dump.xz
+      shell: "xzgrep -q 'PostgreSQL database dump complete' /tmp/koschei.dump.xz"
+      changed_when: False
+      when: "res.rc != 0"
+
+    - name: import production database dump (this can take a few minutes)
+      become_user: postgres
+      shell: "xzcat /tmp/koschei.dump.xz | psql"
+      when: "res.rc != 0"
+
+    - name: check whether koschei db schema is up-to-date
+      shell: "alembic -c /vagrant/alembic.ini current"
+      changed_when: False
+      register: res
+
+    - name: stop httpd
+      service: name=httpd state=stopped
+      when: "'(head)' not in res.stdout"
+
+    - name: run alembic database migration
+      shell: "alembic -c /vagrant/alembic.ini upgrade head"
+      when: "'(head)' not in res.stdout"
+
+    - name: enable permissive selinux mode for httpd
+      selinux_permissive: name=httpd_t permissive=True
+
+    - name: start and enable httpd
+      service: name=httpd state=running enabled=true
+
+    - name: install koschei-ipython script
+      copy:
+        content: "KOSCHEI_CONFIG=/usr/share/koschei/config.cfg:/etc/koschei/config-backend.cfg exec ipython -i /vagrant/aux/test.ipy \"$@\""
+        dest: /usr/local/bin/koschei-ipython
+        mode: 0755
