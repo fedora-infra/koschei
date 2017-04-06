@@ -31,6 +31,7 @@ import errno
 
 from six.moves.queue import Queue
 from threading import Thread
+from functools import wraps
 
 
 def chunks(seq, chunk_size=100):
@@ -266,3 +267,20 @@ class Stopwatch(object):
 
         for child in self._children:
             child.display()
+
+
+def stopwatch(parent, note=None):
+    def decorator(fn):
+        name = fn.__name__
+        if note:
+            name = '{} ({})'.format(name, note)
+        watch = Stopwatch(name, parent)
+
+        @wraps(fn)
+        def decorated(*args, **kwargs):
+            watch.start()
+            res = fn(*args, **kwargs)
+            watch.stop()
+            return res
+        return decorated
+    return decorator

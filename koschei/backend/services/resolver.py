@@ -43,14 +43,9 @@ from koschei.models import (Package, Dependency, UnappliedChange,
                             Build, BuildrootProblem, RepoMapping,
                             ResolutionChange)
 from koschei.plugin import dispatch_event
-from koschei.util import Stopwatch
+from koschei.util import Stopwatch, stopwatch
 
 total_time = Stopwatch("Total repo generation")
-resolution_time = Stopwatch("Dependency resolution", total_time)
-resolve_dependencies_time = Stopwatch("resolve_dependencies", resolution_time)
-create_dependency_changes_time = Stopwatch("create_dependency_changes", resolution_time)
-generate_dependency_changes_time = Stopwatch("generate_dependency_changes")
-
 
 DepTuple = namedtuple('DepTuple', ['id', 'name', 'epoch', 'version', 'release',
                                    'arch'])
@@ -59,6 +54,7 @@ ResolutionOutput = namedtuple('ResolutionOutput',
                                'problems', 'changes', 'last_build_id'])
 
 
+@stopwatch(total_time)
 def create_dependency_changes(deps1, deps2, **rest):
     if not deps1 or not deps2:
         # TODO packages with no deps
@@ -143,6 +139,7 @@ class DependencyCache(object):
             res.append(self._get_or_create(db, nevra))
         return res
 
+    @stopwatch(total_time, note='dependency cache')
     def get_by_ids(self, db, ids):
         res = []
         missing = []
@@ -191,8 +188,8 @@ class Resolver(Service):
                 new_deps.append(dep)
         return self.dependency_cache.get_or_create_nevras(self.db, new_deps)
 
+    @stopwatch(total_time, note='separate thread')
     def resolve_dependencies(self, sack, br, build_group):
-        resolve_dependencies_time.start()
         deps = None
         resolved, problems, installs = depsolve.run_goal(sack, br, build_group)
         if resolved:
@@ -204,7 +201,6 @@ class Resolver(Service):
                 ) for pkg in installs if pkg.arch != 'src'
             ]
             depsolve.compute_dependency_distances(sack, br, deps)
-        resolve_dependencies_time.stop()
         return (resolved, problems, deps)
 
     def get_prev_build_for_comparison(self, build):
@@ -228,6 +224,7 @@ class Resolver(Service):
             else:
                 self.log.info('Repo {} is dead, skipping'.format(desc.repo_id))
 
+    @stopwatch(total_time)
     def get_build_for_comparison(self, package):
         """
         Returns newest build which should be used for dependency
@@ -244,6 +241,7 @@ class Resolver(Service):
             return None
 
     # pylint: disable=too-many-locals
+    @stopwatch(total_time)
     def persist_resolution_output(self, chunk):
         """
         Stores resolution output into the database and sends fedmsg if needed.
@@ -401,7 +399,6 @@ class Resolver(Service):
         pkgs_reported = 0
         progres_reported_at = time.time()
         for package, (resolved, curr_problems, curr_deps) in gen:
-            generate_dependency_changes_time.start()
             changes = []
             if curr_deps is not None:
                 prev_build = self.get_build_for_comparison(package)
@@ -409,11 +406,9 @@ class Resolver(Service):
                     prev_deps = self.dependency_cache.get_by_ids(
                         self.db, prev_build.dependency_keys
                     )
-                    create_dependency_changes_time.start()
                     changes = create_dependency_changes(
                         prev_deps, curr_deps, package_id=package.id,
                         prev_build_id=prev_build.id)
-                    create_dependency_changes_time.stop()
             results.append(ResolutionOutput(
                 package_id=package.id,
                 prev_resolved=package.resolved,
@@ -426,7 +421,6 @@ class Resolver(Service):
             if len(results) > get_config('dependency.persist_chunk_size'):
                 self.persist_resolution_output(results)
                 results = []
-            generate_dependency_changes_time.stop()
             pkgs_done += 1
             current_time = time.time()
             time_diff = current_time - progres_reported_at
@@ -685,16 +679,13 @@ class Resolver(Service):
         if repo_id:
             # we have repo to resolve, so just try to resolve everything
             total_time.reset()
-            generate_dependency_changes_time.reset()
             total_time.start()
             with self.prepared_repo(collection, repo_id) as sack:
-                resolution_time.start()
                 self.resolve_repo(sack, collection, repo_id)
                 if collection.latest_repo_resolved:
                     packages = self.get_packages(collection)
                     self.resolve_packages(sack, collection, packages)
             total_time.stop()
-            generate_dependency_changes_time.display()
             total_time.display()
         elif collection.latest_repo_resolved:
             # we don't have a new repo, but we can at least resolve new packages
