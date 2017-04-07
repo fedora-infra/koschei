@@ -56,7 +56,7 @@
       user: name=koschei
 
     - name: create directories
-      file: path="{{ item }}" state=directory
+      file: path="{{ item }}" state=directory owner=vagrant
       with_items:
         - /home/vagrant/cache
         - /usr/share/koschei
