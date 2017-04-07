@@ -931,7 +931,7 @@ def statistics():
     scalar_stats = db.query(ScalarStats).one()
     resource_query = db.query(ResourceConsumptionStats)\
         .order_by(ResourceConsumptionStats.time.desc())\
-        .limit(1000).paginate(20)
+        .paginate(20)
     return render_template("stats.html", now=now, stats=scalar_stats,
                            packages=resource_query.items,
                            page=resource_query)
