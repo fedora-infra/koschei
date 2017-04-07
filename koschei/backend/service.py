@@ -74,6 +74,7 @@ class Service(object):
                                       .format(mem=current_memory))
                         sys.exit(3)
             finally:
+                self.db.rollback()
                 self.db.close()
             self.notify_watchdog()
             time.sleep(interval)
