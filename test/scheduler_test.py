@@ -171,6 +171,8 @@ class SchedulerTest(DBTest):
     def test_load_arches(self):
         arches = ['x86_64', 'ppc64le', 'alpha']
         package = self.prepare_build('rnv', True, arches=arches).package
+        package.static_priority = 666
+        self.db.commit()
         with patch('koschei.backend.koji_util.get_koji_load',
                    return_value=0) as load_mock:
             with patch('koschei.backend.submit_build') as submit_mock:
