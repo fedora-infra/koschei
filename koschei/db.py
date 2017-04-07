@@ -110,6 +110,17 @@ class KoscheiDbSession(sqlalchemy.orm.session.Session):
                 obj.id = obj_id
             self.expire_all()
 
+    def commit_no_expire(self):
+        """
+        The same as commit, but avoids marking ORM objects as expired.
+        """
+        expire_on_commit = self.expire_on_commit
+        self.expire_on_commit = False
+        try:
+            self.commit()
+        finally:
+            self.expire_on_commit = expire_on_commit
+
 
 __engine = None
 __sessionmaker = None
