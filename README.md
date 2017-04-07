@@ -46,7 +46,8 @@ a VM with the following:
 - httpd running with the frontend on port 5000 on your machine
 
 How to use it:
-- Install vagrant and run `vagrant up`
+- Install vagrant: `dnf install vagrant-libvirt vagrant-sshfs ansible-playbook`
+- Run `vagrant up`
 - Frontend is already running on port 80, mapped to port 5000 on your local
   machine
 - The admin script can be run as `koschei-admin` (it's symlink to the actual
