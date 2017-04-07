@@ -700,19 +700,18 @@ def edit_group(name, namespace=None):
     return process_group_form(group=group)
 
 
-@app.route('/groups/<name>/delete', methods=['GET', 'POST'])
-@app.route('/groups/<namespace>/<name>/delete', methods=['GET', 'POST'])
+@app.route('/groups/<name>/delete', methods=['POST'])
+@app.route('/groups/<namespace>/<name>/delete', methods=['POST'])
 @auth.login_required()
 def delete_group(name, namespace=None):
     group = db.query(PackageGroup)\
               .options(joinedload(PackageGroup.packages))\
               .filter_by(name=name, namespace=namespace).first_or_404()
-    if request.method == 'POST':
-        if forms.EmptyForm().validate_or_flash() and group.editable:
-            db.delete(group)
-            db.commit()
-            return redirect(url_for('groups_overview'))
-        return render_template('edit-group.html', group=group)
+    if not forms.EmptyForm().validate_or_flash() or not group.editable:
+        abort(401)
+    db.delete(group)
+    db.commit()
+    flash("Group was deleted")
     return redirect(url_for('groups_overview'))
 
 
