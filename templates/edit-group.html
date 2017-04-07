@@ -24,7 +24,8 @@
     <div><button type="submit">{% if group %}Update{% else %}Create{% endif %}</button></div>
 </form>
 {% if group %}
-<form action="{{ url_for('delete_group', name=group.name, namespace=group.namespace) }}">
+<form method="POST" action="{{ url_for('delete_group', name=group.name, namespace=group.namespace) }}">
+    {{ form.csrf_token }}
     <div><button type="submit">Delete group</button></div>
 </form>
 {% endif %}
