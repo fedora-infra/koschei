@@ -46,7 +46,7 @@ a VM with the following:
 - httpd running with the frontend on port 5000 on your machine
 
 How to use it:
-- Install vagrant: `dnf install vagrant-libvirt vagrant-sshfs ansible-playbook`
+- Install vagrant: `dnf install vagrant-libvirt vagrant-sshfs ansible`
 - Run `vagrant up`
 - Frontend is already running on port 80, mapped to port 5000 on your local
   machine
