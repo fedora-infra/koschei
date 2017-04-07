@@ -28,12 +28,21 @@ from koschei.models import User, PackageGroup
 from test.common import DBTest
 
 
+def login(client, user):
+    client.get(
+        'login',
+        environ_base={
+            'REMOTE_USER': user.name,
+        },
+    )
+
+
 def authenticate(fn):
     @wraps(fn)
     def decorated(*args, **kwargs):
         self = args[0]
-        self.prepare_user(name='jdoe', admin=False)
-        self.client.get('login')
+        user = self.prepare_user(name='jdoe', admin=False)
+        login(self.client, user)
         return fn(*args, **kwargs)
     return decorated
 
@@ -42,8 +51,8 @@ def authenticate_admin(fn):
     @wraps(fn)
     def decorated(*args, **kwargs):
         self = args[0]
-        self.prepare_user(name='admin', admin=True)
-        self.client.get('login')
+        user = self.prepare_user(name='admin', admin=True)
+        login(self.client, user)
         return fn(*args, **kwargs)
     return decorated
 
@@ -78,11 +87,6 @@ class FrontendTest(DBTest):
         reply = self.client.get('documentation')
         self.assertEqual(200, reply.status_code)
         self.assertIn('How it works?', reply.data.decode('utf-8'))
-
-    def test_login(self):
-        reply = self.client.get('login')
-        self.assertEqual(302, reply.status_code)
-        self.assertEqual('http://localhost/', reply.location)
 
     @authenticate_admin
     def test_cancel_build(self):
