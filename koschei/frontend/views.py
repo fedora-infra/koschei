@@ -656,8 +656,10 @@ def process_group_form(group=None):
     if not form.validate_or_flash():
         return render_template('edit-group.html', group=group, form=form)
 
-    created = not group
-    if created:
+    # existing group being edited or None - to be sent into template
+    existing_group = group
+
+    if not group:
         group = PackageGroup(namespace=g.user.name)
         db.add(group)
     group.name = form.name.data
@@ -666,16 +668,16 @@ def process_group_form(group=None):
     except IntegrityError:
         db.rollback()
         flash("Group already exists")
-        return render_template('edit-group.html', group=group, form=form)
+        return render_template('edit-group.html', group=existing_group, form=form)
     try:
         data.set_group_content(session, group, form.packages.data)
         data.set_group_maintainers(session, group, form.owners.data)
     except data.PackagesDontExist as e:
         db.rollback()
         flash(str(e))
-        return render_template('edit-group.html', group=group, form=form)
+        return render_template('edit-group.html', group=existing_group, form=form)
     db.commit()
-    flash("Group created" if created else "Group modified")
+    flash("Group created" if not existing_group else "Group modified")
     return redirect(url_for('group_detail', name=group.name,
                             namespace=group.namespace))
 
