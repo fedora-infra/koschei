@@ -58,7 +58,7 @@
     - name: create directories
       file: path="{{ item }}" state=directory owner=vagrant
       with_items:
-        - /home/vagrant/cache
+        - /home/vagrant/cache/repodata
         - /usr/share/koschei
         - /etc/koschei
 
