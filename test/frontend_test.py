@@ -23,20 +23,29 @@ import koschei.frontend.views
 import koschei.frontend.auth
 
 from koschei.frontend import app
+from koschei.models import User, PackageGroup
 
 from test.common import DBTest
 
 
-def authenticate(admin=False):
-    def decorator(fn):
-        @wraps(fn)
-        def decorated(*args, **kwargs):
-            self = args[0]
-            self.prepare_user(name='jdoe', admin=admin)
-            self.client.get('login')
-            return fn(*args, **kwargs)
-        return decorated
-    return decorator
+def authenticate(fn):
+    @wraps(fn)
+    def decorated(*args, **kwargs):
+        self = args[0]
+        self.prepare_user(name='jdoe', admin=False)
+        self.client.get('login')
+        return fn(*args, **kwargs)
+    return decorated
+
+
+def authenticate_admin(fn):
+    @wraps(fn)
+    def decorated(*args, **kwargs):
+        self = args[0]
+        self.prepare_user(name='admin', admin=True)
+        self.client.get('login')
+        return fn(*args, **kwargs)
+    return decorated
 
 
 class FrontendTest(DBTest):
@@ -75,7 +84,7 @@ class FrontendTest(DBTest):
         self.assertEqual(302, reply.status_code)
         self.assertEqual('http://localhost/', reply.location)
 
-    @authenticate(admin=True)
+    @authenticate_admin
     def test_cancel_build(self):
         self.prepare_packages('groovy')
         build = self.prepare_build('groovy')
@@ -86,7 +95,7 @@ class FrontendTest(DBTest):
         self.db.expire(build)
         self.assertTrue(build.cancel_requested)
 
-    @authenticate(admin=False)
+    @authenticate
     def test_cancel_build_unauthorized(self):
         self.prepare_packages('groovy')
         build = self.prepare_build('groovy')
@@ -96,7 +105,7 @@ class FrontendTest(DBTest):
         self.db.expire(build)
         self.assertFalse(build.cancel_requested)
 
-    @authenticate(admin=True)
+    @authenticate_admin
     def test_cancel_build_not_running(self):
         self.prepare_packages('groovy')
         build = self.prepare_build('groovy', True)
@@ -107,7 +116,7 @@ class FrontendTest(DBTest):
         self.db.expire(build)
         self.assertFalse(build.cancel_requested)
 
-    @authenticate(admin=True)
+    @authenticate_admin
     def test_cancel_build_pending(self):
         self.prepare_packages('groovy')
         build = self.prepare_build('groovy')
@@ -116,15 +125,18 @@ class FrontendTest(DBTest):
         url = 'build/{0}/cancel'.format(build.id)
         reply = self.client.post(url, follow_redirects=True)
         self.assertEqual(200, reply.status_code)
-        self.assertIn('Build already has pending cancelation request.', reply.data.decode('utf-8'))
+        self.assertIn('Build already has pending cancelation request.',
+                      reply.data.decode('utf-8'))
         self.db.expire(build)
         self.assertTrue(build.cancel_requested)
 
     @authenticate
     def test_add_package_nonexistent(self):
-        reply = self.client.post('add_packages',
-                                 data=dict(packages='SimplyHTML'),
-                                 follow_redirects=True)
+        reply = self.client.post(
+            'add-packages',
+            data=dict(packages='SimplyHTML', collection=self.collection.name),
+            follow_redirects=True,
+        )
         self.assertEqual(200, reply.status_code)
         self.assertIn('Packages don&#39;t exist: SimplyHTML', reply.data.decode('utf-8'))
 
@@ -133,9 +145,11 @@ class FrontendTest(DBTest):
         pkg = self.prepare_packages('xpp3')[0]
         pkg.tracked = False
         self.db.commit()
-        reply = self.client.post('add_packages',
-                                 data=dict(packages='xpp3'),
-                                 follow_redirects=True)
+        reply = self.client.post(
+            'add-packages',
+            data=dict(packages='xpp3', collection=self.collection.name),
+            follow_redirects=True,
+        )
         self.assertEqual(200, reply.status_code)
         self.assertIn('Packages added: xpp3', reply.data.decode('utf-8'))
         self.assertTrue(pkg.tracked)
