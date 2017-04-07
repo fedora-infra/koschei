@@ -366,7 +366,7 @@ class Resolver(Service):
         if dependency_changes:
             self.db.execute(insert(UnappliedChange, dependency_changes))
 
-        self.db.commit()
+        self.db.commit_no_expire()
 
         # emit fedmsg (if enabled)
         if state_changes:
