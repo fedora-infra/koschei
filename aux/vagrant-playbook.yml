@@ -52,7 +52,7 @@
         - rpm-python
         - systemd
 
-    - name: create koschei postgres user
+    - name: create koschei user
       user: name=koschei
 
     - name: create directories
@@ -63,7 +63,7 @@
         - /etc/koschei
 
     - name: create symlinks
-      file: src="{{ item.src}}" dest="{{ item.dest }}" state=link
+      file: src="{{ item.src }}" dest="{{ item.dest }}" state=link
       with_items:
         - { src: /vagrant/config.cfg.template, dest: /usr/share/koschei/config.cfg }
         - { src: /vagrant/aux/vagrant-config.cfg, dest: /etc/koschei/config-backend.cfg }
