@@ -21,7 +21,7 @@ from sqlalchemy.orm import joinedload
 from koschei.frontend import app, db, frontend_config, auth, session, forms, Tab
 from koschei.models import BasePackage, Package, Collection, Build, KojiTask
 
-@app.route('/api/packages')
+@app.route('/api/v1/packages')
 def list_packages():
     packages = db.query(Package)\
         .join(Collection)\

@@ -26,7 +26,7 @@ class ApiTest(FrontendTest):
         self.task_id_counter = 1337
 
     def api_call(self, route):
-        reply = self.client.get('/api/' + route)
+        reply = self.client.get('/api/v1/' + route)
         self.assertEqual(200, reply.status_code)
         self.assertEqual('application/json', reply.content_type)
         return json.loads(reply.data)
