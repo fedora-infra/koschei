@@ -24,7 +24,7 @@ from koschei.models import BasePackage, Package, Collection, Build, KojiTask
 @app.route('/api/v1/packages')
 def list_packages():
     packages = db.query(Package)\
-        .join(Collection)\
+        .options(joinedload(Package.collection))\
         .options(joinedload(Package.last_complete_build))\
         .order_by(Package.name).all()
     reply = [{'name': p.name,
