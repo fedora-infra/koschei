@@ -32,6 +32,11 @@ class ApiTest(FrontendTest):
         return json.loads(reply.data)
 
     def assert_package(self, package, **kwargs):
+        if kwargs['last_task_id']:
+            kwargs['last_complete_build'] = {'task_id': kwargs['last_task_id']}
+        else:
+            kwargs['last_complete_build'] = None
+        del kwargs['last_task_id']
         self.assertDictEqual(package, kwargs)
 
     def test_packages_empty(self):
