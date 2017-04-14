@@ -1,14 +1,18 @@
 {% extends "base.html" %}
+
+{% block subheader %}
+<h2>Documentation</h2>
+{% endblock %}
+
 {% block content %}
-<h1>Documentation</h1>
-<h2>What is Koschei?</h2>
+<h3>What is Koschei?</h3>
 <p>
 Koschei is a continuous integration system for RPM packages. It tracks
 dependency changes done in Koji repositories and rebuilds packages whose
 dependencies change.
 </p>
 
-<h2>What are it's benefits?</h2>
+<h3>What are it's benefits?</h3>
 <p>
 Currently, with each release of Fedora there are lot of packages that fail to
 build from source because their dependencies were updated to an incompatible
@@ -19,7 +23,7 @@ the cause to just one or two which could reduce the time spent on fixing such
 bugs.
 </p>
 
-<h2>How it works?</h2>
+<h3>How it works?</h3>
 <p>
 Dependency resolution is done via hawkey library, which is also used by dnf
 which will be the standard package manager in the next Fedora release.
@@ -32,7 +36,7 @@ are prioritized according to the number of dependencies that have changed,
 their distance in the dependency graph and the time since the last rebuild.
 </p>
 
-<h2>Doesn't it overload Koji?</h2>
+<h3>Doesn't it overload Koji?</h3>
 <p>
 No, there are multiple mechanisms to ensure that performance of Koji is not
 affected too much.  It stops submitting builds when Koji load is higher than
@@ -40,7 +44,7 @@ predefined threshold, which is set to a reasonably low value. It also limits the
 number of simultaneously running builds.
 </p>
 
-<h2>How can I add my packages?</h2>
+<h3>How can I add my packages?</h3>
 <p>
 Login with your FAS account and select Add packages tab. There you can
 enter/paste a list of package names that will be then be watched by Koschei. You
@@ -48,11 +52,10 @@ can add any packages you want, not just the ones you maintain. It will check
 package existence in Koji.
 </p>
 
-<h2>What repos does it use?</h2>
+<h3>What repos does it use?</h3>
 It uses Fedora Rawhide repos directly from Koji.
 
-<h2>Can it watch more Koji instances?</h2>
+<h3>Can it watch more Koji instances?</h3>
 Not at the same time, you would need a separate instance of Koschei.
-
 
 {% endblock %}

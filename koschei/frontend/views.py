@@ -24,7 +24,7 @@ import six.moves.urllib as urllib
 from datetime import datetime
 from textwrap import dedent
 
-from flask import abort, render_template, request, url_for, redirect, g, flash
+from flask import abort, render_template, request, url_for, redirect, g
 from jinja2 import Markup, escape
 from sqlalchemy import Integer
 from sqlalchemy.exc import IntegrityError
@@ -35,7 +35,8 @@ from sqlalchemy.sql import exists, func, false, true, cast
 from koschei import plugin, data
 from koschei.db import RpmEVR
 from koschei.config import get_config
-from koschei.frontend import app, db, frontend_config, auth, session, forms, Tab
+from koschei.frontend import (app, db, frontend_config, auth, session,
+                              forms, Tab, flash_ack, flash_nak)
 from koschei.models import (
     Package, Build, PackageGroup, PackageGroupRelation, AdminNotice,
     BuildrootProblem, BasePackage, GroupACL, Collection, CollectionGroup,
@@ -62,26 +63,11 @@ def page_args(clear=False, **kwargs):
     # the supposedly unnecessary call to items() is needed
     unfiltered = kwargs if clear else dict(request.args.items(), **kwargs)
     args = {k: v for k, v in unfiltered.items() if v is not None}
-    encoded = urllib.parse.urlencode(args).replace('...', "' + this.value + '")
-    if encoded:
-        return '?' + encoded
-    return ''
-
-
-def format_depchange(change):
-    if change:
-        return (
-            change.dep_name,
-            str(change.prev_evr),
-            '<>'[change.prev_evr < change.curr_evr],
-            str(change.curr_evr),
-        )
-
-    return [''] * 4
+    encoded = urllib.parse.urlencode(args)
+    return '?' + encoded
 
 
 def generate_links(package):
-    output = []
     for link_dict in get_config('links'):
         name = link_dict['name']
         url = link_dict['url']
@@ -97,22 +83,13 @@ def generate_links(package):
                     raise AttributeError()  # continue the outer loop
                 url = url.replace('{' + interp + '}',
                                   escape(urllib.parse.quote_plus(str(value))))
-            output.append('<a href="{url}">{name}</a>'.format(
-                name=escape(name),
-                url=escape(url),
-            ))
+            yield name, url
         except AttributeError:
             continue
-    return Markup('\n'.join(output))
 
 
-def columnize(what, css_class=None):
-    attrs = ' class="{}"'.format(css_class) if css_class else ''
-    return Markup('\n'.join('<td{}>{}</td>'.format(attrs, escape(item))
-                            for item in what))
-
-
-def epoch_filter(dt):
+@app.template_filter()
+def epoch(dt):
     return int((dt - datetime.fromtimestamp(0)).total_seconds())
 
 
@@ -281,6 +258,22 @@ def build_state_icon(build_or_state):
 Build.state_icon = property(build_state_icon)
 
 
+def build_css_class(build):
+    if build.real:
+        return "table-info"
+    if build.state == Build.FAILED:
+        return "table-warning"
+    return ""
+Build.css_class = property(build_css_class)
+
+
+def resolution_change_css_class(resolution_change):
+    if resolution_change.resolved:
+        return "table-success"
+    return "table-danger"
+ResolutionChange.css_class = property(resolution_change_css_class)
+
+
 app.jinja_env.globals.update(
     primary_koji_url=get_config('koji_config.weburl'),
     secondary_koji_url=secondary_koji_url,
@@ -291,13 +284,12 @@ app.jinja_env.globals.update(
     get_global_notices=get_global_notices,
     require_login=require_login,
     Package=Package, Build=Build,
+    ResolutionChange=ResolutionChange,
     package_state_icon=package_state_icon,
     build_state_icon=build_state_icon,
-    auto_tracking=frontend_config['auto_tracking'])
-
-app.jinja_env.filters.update(columnize=columnize,
-                             format_depchange=format_depchange,
-                             epoch=epoch_filter)
+    resolution_state_icon=resolution_state_icon,
+    auto_tracking=frontend_config['auto_tracking'],
+    fedora_assets_url=frontend_config['fedora_assets_url'])
 
 
 @app.teardown_appcontext
@@ -369,6 +361,12 @@ class UnifiedPackage(object):
             )
             self.packages.append(package)
 
+    @property
+    def running_icon(self):
+        if self.has_running_build:
+            return icon('running')
+        return ''
+
 
 def unified_package_view(template, query_fn=None, **template_args):
     untracked = request.args.get('untracked') == '1'
@@ -424,10 +422,9 @@ def unified_package_view(template, query_fn=None, **template_args):
 collection_tab = Tab('Collections', 0)
 package_tab = Tab('Packages', 10)
 group_tab = Tab('Groups', 20)
-add_packages_tab = Tab('Add packages', 30)
-my_packages_tab = Tab('My packages', 50, requires_user=True)
-stats_tab = Tab('Statistics', 100)
-documentation_tab = Tab('Documentation', 1000)
+stats_tab = Tab('Stats', 100)
+my_packages_tab = Tab('My packages', 30, requires_user=True)
+add_packages_tab = Tab('Add packages', 50, requires_user=True)
 
 
 @app.route('/collections')
@@ -589,11 +586,11 @@ def cancel_build(build_id):
     build = db.query(Build).filter_by(id=build_id).first_or_404()
     if forms.EmptyForm().validate_or_flash():
         if build.state != Build.RUNNING:
-            flash("Only running builds can be canceled.")
+            flash_nak("Only running builds can be canceled.")
         elif build.cancel_requested:
-            flash("Build already has pending cancelation request.")
+            flash_nak("Build already has pending cancelation request.")
         else:
-            flash("Cancelation request sent.")
+            flash_ack("Cancelation request sent.")
             build.cancel_requested = True
             db.commit()
     return redirect(url_for('package_detail', name=build.package.name))
@@ -615,13 +612,15 @@ def groups_overview():
 def group_detail(name=None, namespace=None):
     group = db.query(PackageGroup)\
               .filter_by(name=name, namespace=namespace).first_or_404()
+    owners = ", ".join(owner.name for owner in group.owners)
 
     def query_fn(query):
         return query.outerjoin(PackageGroupRelation,
                                PackageGroupRelation.base_id == BasePackage.id)\
             .filter(PackageGroupRelation.group_id == group.id)
 
-    return package_view("group-detail.html", query_fn=query_fn, group=group)
+    return package_view("group-detail.html", query_fn=query_fn,
+                        group=group, owners=owners)
 
 
 @app.route('/user/<username>')
@@ -637,7 +636,7 @@ def user_packages(username):
             if result:
                 names += result
     except Exception:
-        flash("Error retrieving user's packages")
+        flash_nak("Error retrieving user's packages")
         session.log.exception("Error retrieving user's packages")
 
     def query_fn(query):
@@ -667,7 +666,7 @@ def process_group_form(group=None):
     form = forms.GroupForm()
     # check permissions
     if group and not group.editable:
-        flash("You don't have permission to edit this group")
+        flash_nak("You don't have permission to edit this group")
         return redirect(url_for('group_detail', name=group.name,
                                 namespace=group.namespace))
     # check form validity
@@ -685,17 +684,17 @@ def process_group_form(group=None):
         db.flush()
     except IntegrityError:
         db.rollback()
-        flash("Group already exists")
+        flash_nak("Group already exists")
         return render_template('edit-group.html', group=existing_group, form=form)
     try:
         data.set_group_content(session, group, form.packages.data)
         data.set_group_maintainers(session, group, form.owners.data)
     except data.PackagesDontExist as e:
         db.rollback()
-        flash(str(e))
+        flash_nak(str(e))
         return render_template('edit-group.html', group=existing_group, form=form)
     db.commit()
-    flash("Group created" if not existing_group else "Group modified")
+    flash_ack("Group created" if not existing_group else "Group modified")
     return redirect(url_for('group_detail', name=group.name,
                             namespace=group.namespace))
 
@@ -729,8 +728,21 @@ def delete_group(name, namespace=None):
         abort(401)
     db.delete(group)
     db.commit()
-    flash("Group was deleted")
+    flash_ack("Group was deleted")
     return redirect(url_for('groups_overview'))
+
+
+@app.route('/groups/<name>/delete', methods=['GET'])
+@app.route('/groups/<namespace>/<name>/delete', methods=['GET'])
+@auth.login_required()
+def confirm_delete_group(name, namespace=None):
+    group = db.query(PackageGroup)\
+              .options(joinedload(PackageGroup.packages))\
+              .filter_by(name=name, namespace=namespace).first_or_404()
+    if not group.editable:
+        abort(401)
+    return render_template('delete-group.html', group=group,
+                           form=forms.EmptyForm())
 
 
 if not frontend_config['auto_tracking']:
@@ -762,17 +774,16 @@ if not frontend_config['auto_tracking']:
                 added = data.track_packages(session, collection, names)
             except data.PackagesDontExist as e:
                 db.rollback()
-                flash(str(e))
+                flash_nak(str(e))
                 return render_template("add-packages.html", form=form)
 
-            flash("Packages added: {}".format(','.join(p.name for p in added)))
+            flash_ack("Packages added: {}".format(','.join(p.name for p in added)))
             db.commit()
             return redirect(request.form.get('next') or url_for('frontpage'))
         return render_template("add-packages.html", form=form)
 
 
 @app.route('/documentation')
-@documentation_tab.master
 def documentation():
     return render_template("documentation.html")
 
@@ -824,7 +835,7 @@ def edit_package(name):
         if package.skip_resolution:
             package.resolved = None
             db.query(UnappliedChange).filter_by(package_id=package.id).delete()
-    flash("Package modified")
+    flash_ack("Package modified")
 
     db.commit()
     return redirect(url_for('package_detail', name=package.name) +
@@ -910,6 +921,7 @@ def affected_by(dep_name):
         AppliedChange.distance,
         Build.id.label('build_id'),
         Build.state.label('build_state'),
+        Build.started.label('build_started'),
         Package.name.label('package_name'),
         Package.resolved.label('package_resolved'),
         Package.last_complete_build_state.label('package_lb_state'),
@@ -919,9 +931,9 @@ def affected_by(dep_name):
         .filter(evr_cmp_expr)\
         .join(AppliedChange.build).join(Build.package)\
         .filter_by(blocked=False, tracked=True, collection_id=collection.id)\
-        .filter(Build.state == 5)\
-        .filter(subq != 5)\
-        .order_by(AppliedChange.distance, Package.name)\
+        .filter(Build.state == Build.FAILED)\
+        .filter(subq != Build.FAILED)\
+        .order_by(AppliedChange.distance, Build.started.desc())\
         .all()
 
     def package_state(row):

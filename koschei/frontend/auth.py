@@ -21,10 +21,10 @@ from __future__ import print_function, absolute_import
 
 import re
 import functools
-from flask import abort, flash, request, session, redirect, url_for, g
+from flask import abort, request, session, redirect, url_for, g
 
 from koschei.config import get_config
-from koschei.frontend import app, db
+from koschei.frontend import app, db, flash_ack, flash_info
 import koschei.models as m
 
 bypass_login = get_config('bypass_login', None)
@@ -45,12 +45,12 @@ def login():
         user = m.User(name=user_name, admin=bool(bypass_login))
         db.add(user)
         db.commit()
-        flash('New user "{}" was registered.'.format(user_name))
+        flash_info('New user "{}" was registered.'.format(user_name))
     session['user'] = user_name
-    flash('Logged in as user "{}" with identity "{}".'
-          .format(user_name, identity))
+    flash_ack('Logged in as user "{}" with identity "{}".'
+              .format(user_name, identity))
     if user.admin:
-        flash('You have admin privileges.')
+        flash_info('You have admin privileges.')
     next_url = request.values.get("next", url_for('frontpage'))
     return redirect(next_url)
 
@@ -68,9 +68,9 @@ def lookup_current_user():
 @app.route('/logout')
 def logout():
     if session.pop('user', None):
-        flash('Successfully logged out.')
+        flash_ack('Successfully logged out.')
     else:
-        flash('You were not logged in.')
+        flash_info('You were not logged in.')
     return redirect(url_for('frontpage'))
 
 

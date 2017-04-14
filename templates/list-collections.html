@@ -1,49 +1,52 @@
 {% extends "base.html" %}
+
 {% macro collection_row(collection) %}
-<tr>
-    <td>
-        {{ collection }}
-    </td>
-    <td>
-        <a href="{{ url_for('package_list') }}?collection={{ collection.name }}">
-            Packages
-        </a>
-    </td>
-    <td>
-        <a href="{{ url_for('collection_detail', name=collection.name) }}">
-            Collection configuration
-        </a>
-    </td>
-</tr>
+<div class="list-group-item">
+  <div class="d-flex w-100 justify-content-start">
+    <a href="{{ url_for('package_list') }}?collection={{ collection.name }}">{{ collection }}</a>
+    <div class="ml-auto">
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('collection_detail', name=collection.name) }}">
+        <i class="fa fa-cog"></i>
+      </a>
+    </div>
+  </div>
+</div>
 {% endmacro %}
+
+{% block subheader %}
+<h2>Collections</h2>
+{% endblock %}
+
 {% block content %}
-<div>
-    <div class="pageHeader">All collections</div>
-    <table class="data-list">
-        {% for group in groups %}
-            <tr class="list-header">
-                <th>
-                    {{ group }}
-                </th>
-                <th colspan="2">
-                    <a href="{{ url_for('package_list') }}?collection={{
-                        group.collections | map(attribute='name') | join(',') }}">
-                        Packages
-                    </a>
-                </th>
-            </tr>
-            {% for collection in group.collections %}
-            {{ collection_row(collection) }}
-            {% endfor %}
-        {% endfor %}
-        {% if uncategorized %}
-            <tr class="list-header">
-                <th colspan="3">Uncategorized</th>
-            </tr>
-            {% for collection in uncategorized %}
-            {{ collection_row(collection) }}
-            {% endfor %}
-        {% endif %}
-    </table>
+<div class="row">
+{% for group in groups %}
+<div class="col-sm-3">
+<div class="card">
+  <div class="card-header">
+    <a href="{{ url_for('package_list') }}?collection={{ group.collections | map(attribute='name') | join(',') }}">{{ group }}</a>
+    <span class="badge badge-pill badge-default">{{ group.collections|length }}</span>
+  </div>
+  <div class="list-group list-group-flush">
+    {% for collection in group.collections %}
+    {{ collection_row(collection) }}
+    {% endfor %}
+  </div>
+</div>
+</div>
+{% endfor %}
+{% if uncategorized %}
+<div class="col-sm-3">
+<div class="card">
+  <div class="card-header">
+    Uncategorized <span class="badge badge-pill badge-default">{{ uncategorized|length }}</span>
+  </div>
+  <div class="list-group list-group-flush">
+    {% for collection in uncategorized %}
+    {{ collection_row(collection) }}
+    {% endfor %}
+  </div>
+</div>
+</div>
+{% endif %}
 </div>
 {% endblock %}

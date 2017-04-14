@@ -19,15 +19,17 @@
 from __future__ import print_function, absolute_import
 
 import logging
+import humanize
 
 from functools import wraps
 
-from flask import Flask, abort, request, g, url_for
+from flask import Flask, abort, request, g, url_for, flash
 from flask_sqlalchemy import BaseQuery, Pagination
+from jinja2 import Markup
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 from koschei.session import KoscheiSession
-from koschei.config import get_config, load_config
+from koschei.config import get_config
 from koschei.db import Query, get_engine
 
 dirs = get_config('directories')
@@ -37,6 +39,23 @@ app = Flask('koschei', template_folder=dirs['templates'],
 app.config.update(get_config('flask'))
 
 frontend_config = get_config('frontend')
+
+
+def flash_ack(message):
+    """Send flask flash with message about operation that was successfully
+       completed."""
+    flash(message, 'success')
+
+
+def flash_nak(message):
+    """Send flask flash with with message about operation that was not
+       completed due to an error."""
+    flash(message, 'danger')
+
+
+def flash_info(message):
+    """Send flask flash with informational message."""
+    flash(message, 'info')
 
 
 class FrontendQuery(Query, BaseQuery):
@@ -106,7 +125,21 @@ class Tab(object):
 
     @staticmethod
     def get_tabs():
-        return [t for t in tabs if t.master_endpoint]
+        return [t for t in tabs if t.master_endpoint and not t.requires_user]
+
+    @staticmethod
+    def get_user_tabs():
+        return [t for t in tabs if t.master_endpoint and t.requires_user]
 
 
 app.jinja_env.globals['get_tabs'] = Tab.get_tabs
+app.jinja_env.globals['get_user_tabs'] = Tab.get_user_tabs
+
+app.add_template_filter(humanize.intcomma, 'intcomma')
+app.add_template_filter(humanize.naturaltime, 'naturaltime')
+app.add_template_filter(humanize.naturaldelta, 'naturaldelta')
+
+
+@app.template_filter()
+def percentage(val):
+    return format(val * 10000, '.4f') + Markup('&nbsp;&#8241;')

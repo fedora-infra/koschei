@@ -1,108 +1,91 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
-{% block title %}Koschei - {{ build.package.name }} - build {{ build.task_id }}{% endblock %}
-{% block content %}
-{% set editable = "" if g.user else 'disabled="true"' %}
-<div class="pageHeader">{{ build.package.name }} - {{ build.task_id }}</div>
 
-<table class="details">
-    <tr>
-        <th>Status</th>
-        <td>
-            <img src="{{ url_for('static', filename='images/' ~ build.state_string ~ '.png') }}"
-            title="{{ build.state_string }}" alt="{{ build.state_string }}"/>
-            {{ build.state_string }}
-        </td>
-        {% if build.state == build.RUNNING and g.user.admin %}
-        <td>
-            <form action="{{ url_for('cancel_build', build_id=build.id) }}" method="post">
-                {{ cancel_form.csrf_token }}
-                <button {{ editable }} type="submit">Cancel build</button>
-            </form>
-        </td>
-        {% endif %}
-    </tr>
-    <tr>
-        <th>Epoch</th>
-        <td>
-            {{ build.epoch }}
-        </td>
-    </tr>
-    <tr>
-        <th>Version</th>
-        <td>
-            {{ build.version }}
-        </td>
-    </tr>
-    <tr>
-        <th>Release</th>
-        <td>
-            {{ build.release }}
-        </td>
-    </tr>
-    <tr>
-        <th>Started</th>
-        <td>
-            {{ build.started | date}}
-        </td>
-    </tr>
-    <tr>
-        <th>Finished</th>
-        <td>
-            {{ build.finished | date }}
-        </td>
-    </tr>
-    <tr>
-        <th>Repo ID</th>
-        <td>
-            {{ build.repo_id }}
-        </td>
-    </tr>
-    <tr>
-        <th>Koji tasks</th>
-        <td>
-            <a href="{{ build.taskinfo_url }}">
-                {{ build.task_id }}
-            </a>
-        </td>
-    </tr>
-    <tr>
-        <td></td>
-        <td>
-            <table>
-                {% for subtask in build.build_arch_tasks %}
-                <tr>
-                    <td class="task{{ subtask.state_string }}">
-                        {{ "├└"[loop.last] }}
-                        <a href="{{ subtask.taskinfo_url }}">
-                            {{ subtask.task_id }}
-                        </a>
-                        {{ subtask.arch }}: {{ subtask.state_string }}
-                    </td>
-                    <td>(
-                        <a href="{{ subtask.results_url }}/build.log">
-                            build.log
-                        </a>
-                        <a href="{{ subtask.results_url }}/root.log">
-                            root.log
-                        </a>
-                        )</td>
-                </tr>
-                {% endfor %}
-            </table>
-        </td>
-    </tr>
-    <tr>
-        {% if build.deps_resolved %}
-        {{ macros.depchange_table(build.dependency_changes) }}
-        {% else %}
-        <th></th>
-        {% if build.deps_resolved is sameas False %}
-        <td colspan="4">Dependencies for this build couldn't be processed</td>
-        {% else %}
-        <td>Dependencies for this build weren't processed yet</td>
-        {% endif %}
-        {% endif %}
-    </tr>
-</table>
+{% block title %}Koschei - {{ build.package.name }} - build {{ build.task_id }}{% endblock %}
+
+{% block subheader %}
+<h2>Build details</h2>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-sm-4">
+    <div class="card mb-3">
+      <div class="card-block">
+        <h3 class="card-title">Build information</h3>
+        <div class="row">
+          <div class="col-sm-4">State</div>
+          <div class="col-sm-8">{{ build.state_icon }} {{ build.state_string }}</div>
+        </div>
+        <div class="row">
+          <div class="col-sm-4">Epoch</div>
+          <div class="col-sm-8">{{ build.epoch }}</div>
+        </div>
+        <div class="row">
+          <div class="col-sm-4">Version</div>
+          <div class="col-sm-8">{{ build.version }}</div>
+        </div>
+        <div class="row">
+          <div class="col-sm-4">Release</div>
+          <div class="col-sm-8">{{ build.release }}</div>
+        </div>
+        <div class="row">
+          <div class="col-sm-4">Started</div>
+          <div class="col-sm-8">{{ build.started|date }}</div>
+        </div>
+        <div class="row">
+          <div class="col-sm-4">Finished</div>
+          <div class="col-sm-8">{{ build.finished|date }}</div>
+        </div>
+        <div class="row">
+          <div class="col-sm-4">Koji repo</div>
+          <div class="col-sm-8">{{ build.repo_id }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="card mb-3">
+      <div class="card-block">
+	<h3 class="card-title">Koji tasks</h3>
+	<form action="{{ url_for('cancel_build', build_id=build.id) }}" method="post">
+          {{ cancel_form.csrf_token }}
+	  {{ macros.task_tree(build, show_cancel_btn=(build.state == build.RUNNING and g.user.admin)) }}
+	</form>
+      </div>
+    </div>
+    {% if build.build_arch_tasks|length > 0 %}
+    <div class="card mb-3">
+      <div class="card-block">
+	<h3 class="card-title">Build logs</h3>
+	{% for subtask in build.build_arch_tasks %}
+	<div class="row">
+	  <div class="col-sm-3">
+	    {{ subtask.arch }}
+	  </div>
+	  <div class="col-sm-9">
+	    <a href="{{ subtask.results_url }}/build.log">build.log</a> |
+	    <a href="{{ subtask.results_url }}/root.log">root.log</a>
+	  </div>
+	</div>
+	{% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  <div class="col-sm-8">
+    <div class="card mb-3">
+      <div class="card-block">
+	<h3 class="card-title">Dependency changes from previous build</h3>
+	{% if build.deps_resolved %}
+	{{ macros.depchange_table(build.dependency_changes) }}
+	{% else %}
+	{% if build.deps_resolved is sameas False %}
+	<div>Dependencies for this build could not be processed.</div>
+	{% else %}
+	<div>Dependencies for this build were not processed yet.</div>
+	{% endif %}
+	{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

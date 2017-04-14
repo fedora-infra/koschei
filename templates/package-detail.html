@@ -1,55 +1,35 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
-{% block title %}Koschei - {{ base.name }}{% endblock %}
-{% macro change_link(change) %}
-{% if change %}
-<td>
-    <a href="{{ url_for(
-        'affected_by',
-        dep_name=change.dep_name,
-        epoch1=change.prev_epoch or '0',
-        version1=change.prev_version,
-        release1=change.prev_release,
-        epoch2=change.curr_epoch or '0',
-        version2=change.curr_version,
-        release2=change.curr_release,
-        collection=collection.name,
-        ) }}">
-        other affected
+
+{% macro collapse_btn(items, max, type, id) %}
+{% if items|length > max %}
+<div class="row">
+  <div class="col-sm-2 offset-5 mt-2">
+    <a class="btn btn-secondary btn-sm kk-toggle-button"
+       data-toggle="collapse" href="#kkid-{{ type }}-{{ id }}" aria-expanded="false">
+      <span class="kk-collapsed">
+        <i class="fa fa-angle-double-down"></i>
+        show {{ items|length - max }} more
+        <i class="fa fa-angle-double-down"></i>
+      </span>
+      <span class="kk-expanded">
+        <i class="fa fa-angle-double-up"></i>
+        collapse
+        <i class="fa fa-angle-double-up"></i>
+      </span>
     </a>
-</td>
-{% else %}
-<td></td>
+  </div>
+</div>
 {% endif %}
 {% endmacro %}
-{% macro next_change(changes) %}
-{% set change = inext(changes, None) %}
-{{ change | format_depchange | columnize(css_class="mono") }}
-{{ change_link(change) }}
-{% endmacro %}
-{% block content %}
-<div class="pageHeader">{{ base.name }}</div>
 
+{% block title %}Koschei - {{ base.name }}{% endblock %}
+{% block subheader %}
+<h2>{{ base.name }}</h2>
 {{ macros.collection_chooser(allow_all=False) }}
+{% endblock %}
 
-<div class="package-collection-chooser {% if collection %}float-right{% endif %}">
-    {% if collection %}
-    <h4>State in all collections</h4>
-    {% else %}
-    <h4>Choose a collection</h4>
-    {% endif %}
-    <ul>
-        {% for (collection, package) in all_packages  %}
-        <li>
-            <a href="{{ url_for('package_detail', name=package.name) }}{{
-                page_args(clear=True, collection=collection.name) }}">
-                {{ package.state_icon }} {{ collection }}
-            </a>
-        </li>
-        {% endfor %}
-    </ul>
-</div>
-
+{% block content %}
 {% if not package and collection %}
 {# collection selected, but package is not in it #}
 <div class="error">
@@ -58,225 +38,277 @@
 </div>
 
 {% elif package and collection %}
-{% set editable = "" if g.user else 'disabled="true"' %}
-{% set disabled = not g.user %}
-<form method="POST" action="{{ url_for('edit_package', name=package.name) }}">
-{{ form.csrf_token }}
-{{ form.collection_id() }}
-<table class="details">
-    <tr>
-        <th>Package state</th>
-        <td colspan="4">
-            {{ package.state_icon }}
-            {{ package.state_string }}
-        </td>
-    </tr>
-    <tr>
-        <th>Current priority</th>
-        <td colspan="4">
-            {{ package.current_priority | int }}
-        </td>
-    </tr>
-    {% if package.current_priority is none %}
-    <tr>
-        <th>Currently not scheduling because:</th>
-        <td>{{ package.skip_reasons |join(',') }}</td>
-    </tr>
-    {% endif %}
-    <tr>
-        <th>Manual priority</th>
-        <td colspan="4">
-            {{ form.manual_priority(class="change_input", disabled=disabled) }}
-        </td>
-    </tr>
-    <tr>
-        <th>Static priority</th>
-        <td colspan="4">
-            {{ package.static_priority }}
-        </td>
-    </tr>
-    <tr>
-        <th>Arch override</th>
-        <td colspan="4">
-            {{ form.arch_override(class="change_input", disabled=disabled) }}
-        </td>
-    </tr>
-    <tr>
-        <th>Skip resolution</th>
-        <td colspan="4">
-            {{ form.skip_resolution(disabled=disabled) }}
-        </td>
-    </tr>
-    <tr>
-        <th>Global package groups</th>
-        <td colspan="4">
-            {% for group in base.global_groups %}
-            <a href="{{ url_for('group_detail', name=group.name) }}">{{ group.name }}</a>
-            {% if group.editable %}
-            <input type="checkbox" name="group-{{ group.id }}" checked="true"/>
-            <input type="hidden" name="group-prev-{{ group.id }}" value="true"/>
+<div class="row">
+  <div class="col-sm-8">
+    <div class="row">
+      <div class="col-sm-6">
+        <div class="card mb-3">
+          <div class="card-block">
+            <h3 class="card-title">Package information</h3>
+            <div class="row mb-2">
+              <div class="col-sm-6">State</div>
+              <div class="col-sm-6">{{ package.state_icon }} {{ package.state_string }}</div>
+            </div>
+
+	    <div class="row">
+              {% for (name, url) in generate_links(package)  %}
+	      <div class="col-sm-6">
+		<a class="card-link" href="{{ url }}">{{ name }}</a>
+	      </div>
+              {% endfor %}
+              {% if collection.bugzilla_product and collection.bugzilla_version %}
+	      <div class="col-sm-6">
+		<a class="card-link" href="{{ url_for('bugreport', name=package.name, collection=package.collection.name) }}">File new FTBFS bug</a>
+	      </div>
+              {% endif %}
+	    </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-sm-6">
+        <div class="card mb-3">
+          <div class="card-block">
+            {% if g.user %}
+            <a class="btn btn-secondary btn-sm float-right" href="#kk-scheduling-form"
+               data-target="#kk-scheduling-form" data-toggle="collapse">
+              <i class="fa fa-cog"></i>
+            </a>
             {% endif %}
-            {% endfor %}
-        </td>
-    </tr>
-    {% if g.user %}
-    <tr>
-        <th>Your package groups</th>
-        <td colspan="4">
-            {% for group in base.user_groups %}
-            <a href="{{ url_for('group_detail', name=group.name, namespace=group.namespace) }}">{{ group.full_name }}</a>
-            <input type="checkbox" name="group-{{ group.id }}" checked="true"/>
-            <input type="hidden" name="group-prev-{{ group.id }}" value="true"/>
-            {% endfor %}
-        </td>
-    </tr>
-    <tr>
-        <th>Available package groups</th>
-        <td colspan="4">
-            {% for group in base.available_groups %}
-            <a href="{{ url_for('group_detail', name=group.name, namespace=group.namespace) }}">{{ group.full_name }}</a>
-            <input type="checkbox" name="group-{{ group.id }}"/>
-            <input type="hidden" name="group-prev-{{ group.id }}" value="false"/>
-            {% endfor %}
-        </td>
-    </tr>
-    {% endif %}
-    <tr>
-        <th>Links</th>
-        <td colspan="4">
-            {{ generate_links(package) }}
-        </td>
-    </tr>
-    {% if collection.bugzilla_product and collection.bugzilla_version %}
-    <tr>
-        <th>Bug reports</th>
-        <td colspan="4">
-            <a href="{{ url_for('bugreport', name=package.name, collection=package.collection.name) }}">File new FTBFS bug</a>
-        </td>
-    </tr>
-    {% endif %}
-    {% if g.user %}
-    <tr>
-        <td colspan="4">
-            <button type="submit">Submit modifications</button>
-        </td>
-    </tr>
-    {% endif %}
+            <h3 class="card-title">Scheduler parameters</h3>
+            {% if package.current_priority is none %}
+            Package is currently ineligible for scheduling due to following reasons:
+            <ul>
+              {% for reason in package.skip_reasons %}
+              <li>{{ reason }}</li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+            <div class="row">
+              <div class="col-sm-6">Current priority</div>
+              <div class="col-sm-6">{{ package.current_priority|int }}</div>
 
-    {{ macros.depchange_table(package.unapplied_changes) }}
-</table>
+              <div class="col-sm-6">Manual priority</div>
+              <div class="col-sm-6">{{ package.manual_priority }}</div>
 
-<table class="data-list package-history">
-    <thead>
-        <tr class="list-header">
-            <th>State</th>
-            <th>Koji task</th>
-            <th>Started</th>
-            <th colspan="5">Dependency changes</th>
-            <th>Build details</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% if is_continuation %}
-        <tr><td colspan="9">...</td></tr>
+              <div class="col-sm-6">Static priority</div>
+              <div class="col-sm-6">{{ package.static_priority }}</div>
+
+              <div class="col-sm-6">Arch override</div>
+              <div class="col-sm-6">{{ package.arch_override }}</div>
+
+              <div class="col-sm-6">Skip resolution</div>
+              <div class="col-sm-6">{{ package.skip_resolution }}</div>
+            </div>
+
+            <div class="collapse mt-5" id="kk-scheduling-form">
+              <h4 class="card-title">Configure scheduling</h4>
+              <form method="post" action="{{ url_for('edit_package', name=package.name) }}">
+                {{ form.csrf_token }}
+                {{ form.collection_id() }}
+                <div class="form-group row">
+                  <div class="col-sm-6">Manual priority</div>
+                  <div class="col-sm-6">
+                    {{ form.manual_priority(class="w-100 form-control") }}
+                  </div>
+                </div>
+                <div class="form-group row">
+                  <div class="col-sm-6">Skip resolution</div>
+                  <div class="col-sm-1">
+                    {{ form.skip_resolution(class="form-check") }}
+                  </div>
+                </div>
+                <div class="form-group row">
+                  <div class="col-sm-5">Arch override</div>
+                  <div class="col-sm-7">
+                    {{ form.arch_override(class="form-control") }}
+                  </div>
+                </div>
+                <div class="d-flex flex-row-reverse">
+                    <div class="btn-group">
+                      <a class="btn btn-secondary" href="#kk-scheduling-form"
+                         data-target="#kk-scheduling-form" data-toggle="collapse">Cancel</a>
+                      <button class="btn btn-primary" type="submit">Save</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-block">
+        <h3 class="card-title">Dependency changes since last build</h3>
+        {{ macros.depchange_table(package.unapplied_changes) }}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-sm-4">
+    <div class="card mb-3">
+      <div class="card-block">
+        <h3 class="card-title">State overview</h3>
+        <ul class="list-unstyled">
+          {% for (collection, package) in all_packages  %}
+          <li>
+            <a href="{{ url_for('package_detail', name=package.name) }}{{
+               page_args(clear=True, collection=collection.name) }}">
+              {{ package.state_icon }} {{ collection }}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-block">
+        {% if g.user %}
+        <a class="btn btn-secondary btn-sm float-right" href="#kk-group-form"
+           data-target="#kk-group-form" data-toggle="collapse">
+          <i class="fa fa-cog"></i>
+        </a>
         {% endif %}
+        <h3 class="card-title">Groups</h3>
+        <div class="form-group row">
+          {% for group in base.global_groups + base.user_groups %}
+          <div class="col-sm-12">
+            <a href="{{ url_for('group_detail', name=group.name, namespace=group.namespace) }}">{{ group.full_name }}</a>
+          </div>
+          {% else %}
+          <div class="col-sm-12">
+            <small>This package is not part of any global group.</small>
+          </div>
+          {% endfor %}
+        </div>
+
+        {% if g.user %}
+        <div class="collapse mt-5" id="kk-group-form">
+          <h4 class="card-title">Edit group membership</h4>
+          <form method="post" action="{{ url_for('edit_package', name=package.name) }}">
+            {{ form.csrf_token }}
+            {{ form.collection_id() }}
+            <div class="form-group row">
+              {% for group in base.global_groups + base.user_groups %}
+              {% if group.editable %}
+              <div class="col-sm-10">
+                <a href="{{ url_for('group_detail', name=group.name, namespace=group.namespace) }}">{{ group.full_name }}</a>
+              </div>
+              <div class="col-sm-2">
+                <input type="checkbox" name="group-{{ group.id }}" checked="true"/>
+                <input type="hidden" name="group-prev-{{ group.id }}" value="true"/>
+              </div>
+              {% endif %}
+              {% endfor %}
+              {% for group in base.available_groups %}
+              <div class="col-sm-10">
+                <a href="{{ url_for('group_detail', name=group.name, namespace=group.namespace) }}">{{ group.full_name }}</a>
+              </div>
+              <div class="col-sm-2">
+                <input type="checkbox" name="group-{{ group.id }}"/>
+                <input type="hidden" name="group-prev-{{ group.id }}" value="false"/>
+              </div>
+              {% endfor %}
+            </div>
+            <div class="d-flex flex-row-reverse">
+              <div class="btn-group">
+                <a class="btn btn-secondary" href="#kk-group-form"
+                   data-target="#kk-group-form" data-toggle="collapse">Cancel</a>
+                <button class="btn btn-primary" type="submit">Save</button>
+              </div>
+            </div>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if is_continuation %}
+<h3>Historical builds</h3>
+{% else %}
+<h3>Most recent builds</h3>
+{% endif %}
+
+<div class="row">
+  <div class="col-sm-12">
+    <div class="card mb-3">
+      <table class="card-block table table-hover">
         {% for entry in entries %}
-        {% if not entry.version %}
-        {# is an resolution entry #}
-        {% set problems = iter(entry.problems) %}
-        {% if entry.resolved %}
-        <tr class="resolution-success">
-            <td colspan="9">
-                Package dependencies resolved successfuly
-            </td>
-        </tr>
-        {% else %}
-        <tr class="resolution-failure">
-            <td colspan="3">
-                Package resolution failed
-            </td>
-            <td colspan="6">
-                {{ inext(problems, '') }}
-            </td>
-        </tr>
-        {% endif %}
-        {% for problem in problems %}
-        <tr class="resolution-failure"><td/><td colspan="8">{{ problem }}</td></tr>
-        {% endfor %}
-        {% else %}
-        {# is a build entry #}
-        {% set build = entry %}
-        {% set row_class = ["odd", "even"][loop.index % 2] + ["", " real"][build.real] %}
-        {% set changes = iter(build.dependency_changes) if build.deps_resolved else iter([]) %}
-        {% if build.real %}
-        <tr class="{{ row_class }}">
-            <td></td>
-            <td colspan="8" class="real_build_description">
-                Real build: <a class="mono" href="{{ secondary_koji_url(package.collection) }}/search?match=&type=build&terms={{ package.name }}-{{ build.version }}-{{ build.release }}">{{ package.name }}-{{ build.version }}-{{ build.release }}</a>
-            </td>
-        </tr>
-        {% endif %}
-        <tr class="{{ row_class }}">
-            <td><div class="hidden">{{ build.state_string }}</div>
-                <img src="{{ url_for('static', filename='images/' ~ build.state_string ~ '.png') }}"
-                title="{{ build.state_string }}" alt="{{ build.state_string }}"/></td>
-            <td>
-                <a href="{{ build.taskinfo_url }}">
-                    {{ build.task_id }}
-                </a>
-            </td>
-            <td>
-                {{ build.started | date }}
-            </td>
-            {% if build.deps_resolved %}
-            {{ next_change(changes) }}
-            {% elif build.deps_resolved is sameas False %}
-            <td colspan="5">Dependencies for this build couldn't be processed</td>
+        <tr class="{{ entry.css_class }}">
+          <td>
+            {% if not entry.version %}
+            {# is an resolution entry #}
+            <div class="row">
+              <div class="col-sm-2">{{ entry.timestamp|date }}</div>
+              {% if entry.resolved %}
+              <div class="col-sm-10">Package dependencies resolved successfuly</div>
+              {% else %}
+              <div class="col-sm-10">
+                <div class="row">
+                  <div class="col-sm-3">Package resolution failed</div>
+                  <ul class="col-sm-9 list-unstyled">
+                    {% for problem in entry.problems[:5] %}
+                    <li>{{ problem }}</li>
+                    {% endfor %}
+                    {% if entry.problems|length > 5 %}
+                    <div class="collapse" id="kkid-problems-{{ entry.id }}">
+                      {% for problem in entry.problems[5:] %}
+                      <li>{{ problem }}</li>
+                      {% endfor %}
+                    </div>
+                    {% endif %}
+                  </ul>
+                </div>
+              </div>
+              {% endif %}
+            </div>
+            {{ collapse_btn(entry.problems, 5, 'problems', entry.id) }}
             {% else %}
-            <td colspan="5">Dependencies for this build weren't processed yet</td>
+            {# is a build entry #}
+            {% set build = entry %}
+            {% if build.real %}
+            <div class="row">
+              <div class="col-sm-12">
+                Real build:
+                <a href="{{ secondary_koji_url(package.collection) }}/search?match=&type=build&terms={{ package.name }}-{{ build.version }}-{{ build.release }}">{{ package.name }}-{{ build.version }}-{{ build.release }}</a>
+              </div>
+            </div>
             {% endif %}
-            <td>
-                <a href="{{ url_for('build_detail', build_id=build.id) }}">details</a>
-            </td>
-        </tr>
-        {% for subtask in build.build_arch_tasks %}
-        <tr class="{{ row_class }}">
-            <td>
-                <div class="task{{ subtask.state_string }}">{{ subtask.arch }}</div>
-            </td>
-            <td>
-                <a href="{{ subtask.taskinfo_url }}">
-                    {{ "├└"[loop.last] }}{{ subtask.task_id }}
-                </a>
-            </td>
-            <td>(
-                <a href="{{ subtask.results_url }}/build.log">
-                    build.log
-                </a>|
-                <a href="{{ subtask.results_url }}/root.log">
-                    root.log
-                </a>
-                )</td>
-            {{ next_change(changes) }}
-            <td>
-            </td>
+            <div class="row">
+              <div class="col-sm-4">
+                {{ macros.task_tree(build, show_time=True, show_details_btn=True, show_logs=True) }}
+              </div>
+              <div class="col-sm-8">
+                {% if build.deps_resolved %}
+                {{ macros.depchange_table(build.dependency_changes[:10]) }}
+                {% if build.dependency_changes|length > 10 %}
+                <div class="collapse" id="kkid-dep-changes-{{ build.id }}">
+                  {{ macros.depchange_table(build.dependency_changes[10:]) }}
+                </div>
+                {% endif %}
+                {% elif build.deps_resolved is sameas False %}
+                Dependencies for this build couldn't be processed
+                {% else %}
+                Dependencies for this build weren't processed yet
+                {% endif %}
+              </div>
+            </div>
+            {{ collapse_btn(build.dependency_changes, 10, 'dep-changes', build.id) }}
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
-        {% for change in changes %}
-        <tr class="{{ row_class }}">
-            <td colspan="3"></td>
-            {{ change | format_depchange | columnize(css_class="mono") }}
-            {{ change_link(change) }}
-            <td></td>
-        </tr>
-        {% endfor %}
-        {% endif %}
-        {% endfor %}
-    </tbody>
-</table>
-{% if not is_last %}
-<a href="?last_seen_ts={{ (entries[-1].timestamp or entries[-1].started) | epoch }}&collection={{ collection.name }}">Previous history</a>
-{% endif %}
-{% endif %}
+      </table>
+      {% endif %}
+    </div>
+    {% if not is_last %}
+    <a class="btn btn-primary float-right" href="?last_seen_ts={{ (entries[-1].timestamp or entries[-1].started) | epoch }}&collection={{ collection.name }}">Previous history</a>
+    {% endif %}
+  </div>
+</div>
 
 {% endblock %}

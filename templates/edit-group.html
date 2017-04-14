@@ -1,33 +1,36 @@
 {% extends "base.html" %}
-{% block content %}
-{% if group %}
-<div class="pageHeader">Editing group: {{ group.name }}</div>
-{% else %}
-<div class="pageHeader">Create new group</div>
-{% endif %}
-<form method="post" name="edit_group">
-    {{ form.csrf_token }}
-    <table>
-        <tr>
-            <td><label for="name">Name: </label></td>
-            <td>{{ form.name }}</td>
-        </tr>
-        <tr>
-            <td><label for="name">Group maintainers: </label></td>
-            <td>{{ form.owners }}</td>
-        </tr>
-    </table>
-    <div>Packages in group:</div>
-    <div>
-        {{ form.packages(rows=20, cols=80) }}
-    </div>
-    <div><button type="submit">{% if group %}Update{% else %}Create{% endif %}</button></div>
-</form>
-{% if group %}
-<form method="POST" action="{{ url_for('delete_group', name=group.name, namespace=group.namespace) }}">
-    {{ form.csrf_token }}
-    <div><button type="submit">Delete group</button></div>
-</form>
-{% endif %}
 
+{% block subheader %}
+{% if group %}
+<h2>Editing group: {{ group.name }}</h2>
+{% else %}
+<h2>Create new group</h2>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<form method="post" name="edit_group">
+  {{ form.csrf_token }}
+  <div class="form-group row">
+    <label for="name" class="col-sm-2">Name:</label>
+    {{ form.name(class='form-control col-sm-4') }}
+  </div>
+  <div class="form-group row">
+    <label for="owners" class="col-sm-2">Group maintainers:</label>
+    {{ form.owners(class='form-control col-sm-4') }}
+  </div>
+  <div class="form-group row">
+    <label for="packages" class="col-sm-2">Packages in group:</label>
+    {{ form.packages(rows=20, cols=80, class='form-control col-sm-4') }}
+  </div>
+  <div class="row">
+    <div class="col-sm-4 offset-2">
+      <button type="submit" class="btn btn-primary">{% if group %}Update{% else %}Create{% endif %}</button>
+      {% if group %}
+      <a class="btn btn-danger" href="{{ url_for('delete_group', name=group.name, namespace=group.namespace) }}">
+	<i class="fa fa-trash-o"></i> Delete group</a>
+      {% endif %}
+    </div>
+  </div>
+</form>
 {% endblock %}

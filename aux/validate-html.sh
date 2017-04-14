@@ -24,7 +24,7 @@
 #    vagrant up
 #  2. install HTML validators:
 #    dnf copr enable mizdebsk/html-validator
-#    dnf install vnu
+#    dnf install vnu bootlint
 #  3. run the script
 #    ./aux/validate-html.sh
 
@@ -55,7 +55,6 @@ get list-collections.html 'collections'
 get list-groups.html 'groups'
 get list-packages.html 'packages?collection=epel7'
 get list-rebuild-requests.html 'rebuild-request/user/vagrant'
-get new-rebuild-request.html 'rebuild-request/new'
 get package-detail.html 'package/nekohtml?collection=f27'
 get rebuild-request-detail.html 'rebuild-request/1'
 get search-results.html 'search?q=maven'
@@ -70,9 +69,7 @@ vnu "${work_dir}"/*
 
 # bootlint - linter for Bootstrap
 # https://github.com/twbs/bootlint
-# Install with: npm install bootlint
-# FIXME enable when we switch to using Bootstrap
-#bootlint -d W001,W002,W003,W009,W012 "${work_dir}"/*
+bootlint -d W001,W002,W003,W009,W012 "${work_dir}"/*
 # disabled warnings - https://github.com/twbs/bootlint/wiki
 #  W001 - UTF-8 charset - not needed, server sends proper Content-Type
 #  W002 - compatibility with legacy versions of M$ IE - couldn't care less

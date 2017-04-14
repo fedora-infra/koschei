@@ -1,39 +1,63 @@
 {% extends "base.html" %}
-{% macro render_groups(groups) %}
-<table class="data-list">
-    <thead>
-    <tr class="list-header">
-        <th>Group</th>
-        <th>Number of packages</th>
-    </tr>
-    </thead>
-    <tbody>
+
+{% macro render_groups(title, icon, groups, user) %}
+<div class="card">
+  <div class="card-header">
+    <i class="fa fa-{{ icon }}"></i>
+    {{ title }} <span class="badge badge-pill badge-default">{{ groups|length }}</span>
+    {% if user %}
+    <div class="float-right">
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('add_group') }}">
+        <i class="fa fa-plus"></i>
+      </a>
+    </div>
+    {% endif %}
+  </div>
+  <div class="list-group list-group-flush">
+    {% if not groups and user %}
+    <div class="list-group-item">You don't have any groups yet. New groups can be added by clicking plus button above.</div>
+    {% endif %}
     {% for group in groups %}
-    <tr class="row-odd">
-        <td>
-            <a href="{{ url_for('group_detail', name=group.name, namespace=group.namespace) }}">{{ group.name }}</a>
-        </td>
-        <td>
+    <div class="list-group-item">
+      <div class="d-flex w-100 justify-content-start">
+        <a href="{{ url_for('group_detail', name=group.name, namespace=group.namespace) }}">
+          <strong>{{ group.name }}</strong>
+        </a>
+        <div class="ml-auto">
+          <span class="badge badge-pill badge-default" data-toggle="tooltip" title="{{ group.package_count }} packages in group {{ group.name }}">
             {{ group.package_count }}
-        </td>
-    </tr>
+          </span>
+        </div>
+        {% if group.editable %}
+        <a class="btn btn-secondary btn-sm" href="{{ url_for('edit_group', name=group.name, namespace=group.namespace) }}">
+          <i class="fa fa-pencil"></i>
+        </a>
+        {% endif %}
+        {% if group.namespace %}
+        <a class="btn btn-secondary btn-sm" href="{{ url_for('delete_group', name=group.name, namespace=group.namespace) }}">
+          <i class="fa fa-trash-o"></i>
+        </a>
+        {% endif %}
+      </div>
+    </div>
     {% endfor %}
-    </tbody>
-</table>
+  </div>
+</div>
 {% endmacro %}
-{% block content %}
-{% if g.user %}
-<div>
-    <div class="pageHeader">Your groups</div>
-    {{ render_groups(g.user.groups) }}
-</div>
-{% endif %}
-<form method="get" action="{{ url_for('add_group') }}">
-    <button type="submit" {{ require_login() }}>Create new group</button>
-</form>
-<div>
-    <div class="pageHeader">Global groups</div>
-    {{ render_groups(groups) }}
-</div>
+
+{% block subheader %}
+<h2>Groups</h2>
 {% endblock %}
 
+{% block content %}
+<div class="row">
+  <div class="col-sm-6">
+    {{ render_groups('Global Groups', 'globe', groups, False) }}
+  </div>
+  {% if g.user %}
+  <div class="col-sm-6">
+    {{ render_groups('My Groups', 'star-o', g.user.groups, True) }}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

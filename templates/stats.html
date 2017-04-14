@@ -1,41 +1,62 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
-{% block title %}Koschei - statistics{% endblock %}
-{% block content %}
-<div class="pageHeader">Koschei in numbers</div>
-<table class="details">
-    <tr><th>Stats update time</th><td>{{ stats.refresh_time }}</td></tr>
-    <tr><th>All packages</th><td>{{ stats.packages }}</td></tr>
-    <tr><th>Tracked packages</th><td>{{ stats.tracked_packages }}</td></tr>
-    <tr><th>Untracked packages</th><td>{{ stats.packages - stats.tracked_packages }}</td></tr>
-    <tr><th>Blocked packages</th><td>{{ stats.blocked_packages }}</td></tr>
-    <tr><th>Active packages</th><td>{{ stats.packages - stats.blocked_packages }}</td></tr>
-    <tr><th>All builds (real and scratch)</th><td>{{ stats.builds }}</td></tr>
-    <tr><th>Real builds</th><td>{{ stats.real_builds }}</td></tr>
-    <tr><th>Scratch builds</th><td>{{ stats.scratch_builds }}</td></tr>
-</table>
 
-<div class="pageHeader">Packages that consume most resources</div>
-{{ macros.pagination_row(page, 'Packages') }}
-<table class="data-list">
-    <tr class="list-header">
-        <th>Package</th>
-        <th>Arch</th>
-        <th>Time usage</th>
-        <th>Time percentage</th>
-    </tr>
-    {% for package in packages %}
-    <tr>
-        <td>
-            <a href="{{ url_for('package_detail', name=package.name)}}">
+{% block title %}Koschei - statistics{% endblock %}
+{% block subheader %}
+<h2>Statistics</h2>
+<small>Last update: {{ stats.refresh_time|date }} ({{ stats.refresh_time|naturaltime }})</small>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-sm-3">
+    <div class="card">
+      <div class="card-block">
+	<h3 class="card-title">Numbers</h3>
+	<h5 class="card-subtitle">Packages:</h5>
+	<ul class="">
+	  <li>total: <span class="float-right">{{ stats.packages|intcomma }}</span></li>
+	  <li>tracked: <span class="float-right">{{ stats.tracked_packages|intcomma }}</span></li>
+	  <li>untracked: <span class="float-right">{{ (stats.packages - stats.tracked_packages)|intcomma }}</span></li>
+	  <li>active: <span class="float-right">{{ (stats.packages - stats.blocked_packages)|intcomma }}</span></li>
+	  <li>blocked: <span class="float-right">{{ stats.blocked_packages|intcomma }}</span></li>
+	</ul>
+	<h5 class="card-subtitle">Builds:</h5>
+	<ul class="">
+	  <li>total: <span class="float-right">{{ stats.builds|intcomma }}</span></li>
+	  <li>real: <span class="float-right">{{ stats.real_builds|intcomma }}</span></li>
+	  <li>scratch: <span class="float-right">{{ stats.scratch_builds|intcomma }}</span></li>
+	</ul>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-9">
+    <div class="card">
+      <div class="card-block">
+	<h3 class="card-title">Packages using most resources</h3>
+	{{ macros.pagination_row(page, 'Packages') }}
+	<table class="table table-sm table-hover">
+	  <tr class="table-active">
+            <th>Package</th>
+            <th>Arch</th>
+            <th colspan="2">Time usage</th>
+	  </tr>
+	  {% for package in packages %}
+	  <tr>
+            <td>
+              <a href="{{ url_for('package_detail', name=package.name)}}">
                 {{ package.name }}
-            </a>
-        </td>
-        <td>{{ package.arch }}</td>
-        <td>{{ package.time }}</td>
-        <td>{{ package.time_percentage }}</td>
-    </tr>
-    {% endfor %}
-</table>
-{{ macros.pagination_row(page, 'Packages') }}
+              </a>
+            </td>
+            <td>{{ package.arch }}</td>
+            <td data-toggle="tooltip" title="{{ package.time }}">{{ package.time|naturaldelta }}</td>
+            <td data-toggle="tooltip" title="{{ package.time_percentage }}">{{ package.time_percentage|percentage }}</td>
+	  </tr>
+	  {% endfor %}
+	</table>
+	{{ macros.pagination_row(page, 'Packages') }}
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

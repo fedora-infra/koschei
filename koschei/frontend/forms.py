@@ -21,7 +21,6 @@ from __future__ import print_function, absolute_import
 
 import re
 
-from flask import flash
 from flask_wtf import Form
 
 from wtforms import (
@@ -31,6 +30,8 @@ from wtforms.validators import Regexp, ValidationError
 from wtforms.widgets import HiddenInput
 
 from koschei.config import get_koji_config
+
+from koschei.frontend import flash_nak
 
 
 class StrippedStringField(StringField):
@@ -96,8 +97,8 @@ class EmptyForm(Form):
     def validate_or_flash(self):
         if self.validate_on_submit():
             return True
-        flash("Validation errors: " +
-              ', '.join(x for i in self.errors.values() for x in i))
+        flash_nak("Validation errors: " +
+                  ', '.join(x for i in self.errors.values() for x in i))
         return False
 
 

@@ -18,13 +18,13 @@
 
 from __future__ import print_function, absolute_import
 
-from flask import abort, render_template, request, url_for, redirect, g
+from flask import abort, render_template, url_for, redirect, g
 from wtforms import validators, widgets, IntegerField, StringField
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload, subqueryload
 
 from koschei.config import get_config
-from koschei.frontend import app, auth, db, Tab
+from koschei.frontend import app, auth, db, Tab, flash_ack
 from koschei.frontend.forms import StrippedStringField, EmptyForm
 from koschei.models import User, CoprRebuildRequest, CoprRebuild
 
@@ -35,6 +35,10 @@ app.jinja_env.globals.update(
     copr_chroot_name=get_config('copr.chroot_name'),
     build_log_url=get_config('copr.build_log_url'),
 )
+
+
+def can_create_request():
+    return g.user and (not get_config('copr.require_admin') or g.user.admin)
 
 
 def can_edit_request(copr_request):
@@ -67,41 +71,41 @@ def list_rebuild_requests(username):
     user = db.query(User).filter_by(name=username).first_or_404()
     requests = db.query(CoprRebuildRequest)\
         .filter(CoprRebuildRequest.user_id == user.id)\
+        .order_by(CoprRebuildRequest.id.desc())\
         .all()
+    form = RebuildRequestForm() if can_create_request() and user == g.user else None
     return render_template('list-rebuild-requests.html',
-                           user=user, requests=requests)
+                           user=user, requests=requests, form=form)
 
 
-@app.route('/rebuild-request/new', methods=['GET', 'POST'])
+@app.route('/rebuild-request/new', methods=['POST'])
 @auth.login_required()
 @user_rebuilds_tab
 def new_rebuild_request():
     if get_config('copr.require_admin') and not g.user.admin:
         abort(403)
     form = RebuildRequestForm()
-    if request.method == 'GET':
-        return render_template('new-rebuild-request.html', form=form)
-    else:
-        if form.validate_or_flash():
-            collection = g.collections_by_name.get(form.collection.data)
-            if not collection:
-                abort(404, "Collection not found")
-            repo_source = form.copr_name.data
-            if '/' not in repo_source:
-                repo_source = g.user.name + '/' + repo_source
-            repo_source = 'copr:' + repo_source
-            rebuild_request = CoprRebuildRequest(
-                collection_id=collection.id,
-                user_id=g.user.id,
-                repo_source=repo_source,
-                description=form.description.data or None,
-                schedule_count=form.schedule_count.data,
-            )
-            db.add(rebuild_request)
-            db.commit()
-            return redirect(url_for('rebuild_request_detail',
-                                    request_id=rebuild_request.id))
-        return render_template('new-rebuild-request.html', form=form)
+    if form.validate_or_flash():
+        collection = g.collections_by_name.get(form.collection.data)
+        if not collection:
+            abort(404, "Collection not found")
+        repo_source = form.copr_name.data
+        if '/' not in repo_source:
+            repo_source = g.user.name + '/' + repo_source
+        repo_source = 'copr:' + repo_source
+        rebuild_request = CoprRebuildRequest(
+            collection_id=collection.id,
+            user_id=g.user.id,
+            repo_source=repo_source,
+            description=form.description.data or None,
+            schedule_count=form.schedule_count.data,
+        )
+        db.add(rebuild_request)
+        db.commit()
+        flash_ack('Rebuild request created')
+        return redirect(url_for('rebuild_request_detail',
+                                request_id=rebuild_request.id))
+    return redirect(url_for('list_rebuild_requests', username=g.user.name))
 
 
 @app.route('/rebuild-request/<int:request_id>')

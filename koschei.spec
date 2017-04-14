@@ -47,6 +47,7 @@ BuildRequires:  python3-flask
 BuildRequires:  python3-flask-sqlalchemy
 BuildRequires:  python3-flask-wtf
 BuildRequires:  python3-wtforms
+BuildRequires:  python3-humanize >= 0.5.1
 BuildRequires:  python3-jinja2
 BuildRequires:  python3-dogpile-cache
 BuildRequires:  python3-six
@@ -64,6 +65,7 @@ BuildRequires:  python-psycopg2
 BuildRequires:  python-flask
 BuildRequires:  python-flask-sqlalchemy
 BuildRequires:  python-flask-wtf
+BuildRequires:  python-humanize >= 0.5.1
 BuildRequires:  python-jinja2
 BuildRequires:  python-dogpile-cache
 BuildRequires:  python-six
@@ -119,11 +121,13 @@ Requires:       python3-flask
 Requires:       python3-flask-sqlalchemy
 Requires:       python3-flask-wtf
 Requires:       python3-wtforms
+Requires:       python3-humanize >= 0.5.1
 Requires:       python3-jinja2
 %else
 Requires:       python-flask
 Requires:       python-flask-sqlalchemy
 Requires:       python-flask-wtf
+Requires:       python-humanize >= 0.5.1
 Requires:       python-jinja2
 %endif
 Requires:       mod_wsgi

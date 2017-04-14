@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
+
+{% block subheader %}
+<h2>Search results</h2>
+{{ macros.collection_chooser() }}
+{% endblock %}
+
 {% block content %}
-<div class="pageHeader">Search results</div>
 {{ macros.package_table(packages, page, order, collection=collection) }}
 {% endblock %}

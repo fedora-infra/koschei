@@ -385,10 +385,6 @@ class PackageGroup(Base):
             return self.namespace + '/' + self.name
         return self.name
 
-    @property
-    def owners_list(self):
-        return ', '.join(u.name for u in self.owners)
-
     @staticmethod
     def parse_name(name):
         if '/' not in name:
@@ -546,6 +542,10 @@ class AppliedChange(Base):
         curr_epoch, curr_version, curr_release,
         comparator_factory=RpmEVRComparator,
     )
+
+    @property
+    def package(self):
+        return self.build.package
 
 
 class UnappliedChange(Base):

@@ -27,6 +27,7 @@
         - ipython
         - js-jquery
         - koji
+        - mod_ssl
         - mod_wsgi
         - policycoreutils-python
         - postgresql
@@ -40,6 +41,7 @@
         - python-flask-sqlalchemy
         - python-flask-wtf
         - python-hawkey
+        - python-humanize
         - python-jinja2
         - python-librepo
         - python-mock
@@ -134,6 +136,13 @@
 
     - name: enable permissive selinux mode for httpd
       selinux_permissive: name=httpd_t permissive=True
+
+    - name: install httpd proxy config file
+      copy:
+        content: |
+          SSLProxyEngine on
+          ProxyPass /apps_fp_o_proxy https://apps.fedoraproject.org/
+        dest: /etc/httpd/conf.d/koschei-vagrant.conf
 
     - name: start and enable httpd
       service: name=httpd state=started enabled=true

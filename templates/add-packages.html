@@ -1,25 +1,35 @@
 {% extends "base.html" %}
+{% block subheader %}
+<h2>Add packages</h2>
+{% endblock %}
+
 {% block content %}
 <form name="packages" method="post">
-    {{ form.csrf_token }}
-    <div>Names of packages to be added to Koschei:</div>
-    <div><textarea name="packages" rows="20" cols="80"></textarea></div>
-    <div>
-        <label for="collection">Package collection:</label>
-        <select name="collection">
-            {% for collection in g.collections %}
-            <option value="{{ collection.name }}">{{ collection }}</option>
-            {% endfor %}
-        </select>
-        <label for="group">Package group (optional):</label>
-        <select name="group">
-            <option></option>
-            {% for group in g.user.groups %}
-            <option>{{ group.full_name }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <input type="hidden" name="next" value="{{ next }}"/>
-    <div><button type="submit">Add packages</button></div>
+  {{ form.csrf_token }}
+  <div class="form-group row">
+    <label for="packages" class="col-sm-2">Names of packages to be added to Koschei:</label>
+    <textarea class="form-control col-sm-4" id="packages" name="packages" rows="20" cols="80"></textarea>
+  </div>
+  <div class="form-group row">
+    <label for="collection" class="col-sm-2">Package collection:</label>
+    <select class="form-control col-sm-3" id="collection" name="collection">
+      {% for collection in g.collections %}
+      <option value="{{ collection.name }}">{{ collection }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="form-group row">
+    <label for="group" class="col-sm-2">Package group (optional):</label>
+    <select class="form-control col-sm-3" id="group" name="group">
+      <option value="">(none)</option>
+      {% for group in g.user.groups %}
+      <option>{{ group.full_name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <input type="hidden" name="next" value="{{ next }}"/>
+  <div class="offset-2">
+    <button type="submit" class="btn btn-primary">Add packages</button>
+  </div>
 </form>
 {% endblock content %}

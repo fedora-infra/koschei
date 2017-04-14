@@ -1,34 +1,58 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
+{% set change_type = 'upgrade' if evr1 <= evr2 else 'downgrade' %}
+
 {% block title %}Koschei - {{ dep_name }} change report{% endblock %}
+
+{% block subheader %}
+<h2>Affected packages</h2>
+<div class="mb-2">
+  Packages affected by
+  <strong>{{ dep_name }}</strong> {{ change_type }}
+  from {{ evr1 }} to {{ evr2 }} (in {{ collection }})
+</div>
+{% endblock %}
+
 {% block content %}
-<div class="pageHeader">
-    Packages which started to fail after
-    {{ dep_name }} {{ 'upgrade' if evr1 <= evr2 else 'downgrade' }}
-    from {{ evr1 }} to {{ evr2 }} (in {{ collection }})
+<div class="row">
+  <div class="col-sm-8">
+    {% if failed %}
+    <table class="table table-sm table-hover">
+      <tr class="table-active">
+	<th>Package</th>
+	<th>Current state</th>
+	<th>Build</th>
+	<th>Distance</th>
+	<th>Build time</th>
+      </tr>
+      {% for row in failed %}
+      <tr>
+	<td><a href="{{ url_for('package_detail', name=row.package_name) }}?collection={{ collection.name }}">{{ row.package_name }}</a></td>
+	<td>{{ package_state_icon(package_state(row)) }}</td>
+	<td><a href="{{ url_for('build_detail', build_id=row.build_id) }}">build</a></td>
+	<td>{{ row.distance }}</td>
+	<td>{{ row.build_started|naturaltime }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    No packages are known to be affected by this {{ change_type }}.
+    {% endif %}
+  </div>
+  <div class="col-sm-4">
+    <div class="card mb-3">
+      <div class="card-block">
+        <h3 class="card-title">Disclaimer</h3>
+	<div>This page shows packages in {{ collection }} which
+	  buildability was possibly affected by {{ dep_name }} {{
+	  change_type }} from {{ evr1 }} to {{ evr2 }}.</div>
+        <div>
+	  Please keep in mind that there were many other dependency
+	  changes happening in parallel that could have caused any
+	  particular failure.
+	</div>
+      </div>
+    </div>
+  </div>
 </div>
-<div class="disclaimer">
-    <strong>Disclaimer:</strong> This view simply lists packages which used to
-    build fine, but failed to build after this change occured. Please keep in
-    mind that there were many other dependency changes happening in parallel
-    that could have caused any particular failure.
-</div>
-<table class="data-list">
-    <tr class="list-header">
-        <th>Package</th>
-        <th>Package current state</th>
-        <th>Build link</th>
-        <th colspan="4">Dependency change</th>
-        <th>Dependency graph distance</th>
-    </tr>
-    {% for row in failed %}
-    <tr class="row-odd">
-        <td><a href="{{ url_for('package_detail', name=row.package_name) }}?collection={{ collection.name }}">{{ row.package_name }}</a></td>
-        <td>{{ package_state_icon(package_state(row)) }}</td>
-        <td><a href="{{ url_for('build_detail', build_id=row.build_id) }}">build</a></td>
-        {{ row | format_depchange | columnize() }}
-        <td>{{ row.distance }}</td>
-    </tr>
-    {% endfor %}
-</table>
 {% endblock %}

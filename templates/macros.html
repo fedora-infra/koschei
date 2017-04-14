@@ -1,200 +1,304 @@
-{% macro pagination_row(page, what) %}
-<div>
-    <span class="paginate">{{ what }} from {{ (page.page - 1) * page.per_page + 1}} to
-                           {{ min(page.page * page.per_page, page.total) }} from total
-                           {{ page.total }}</span>
-    <form class="pageJump">
-        Page:
-        <select onchange="javascript: window.location = '{{ page_args(page='...') }}';">
-            {% for i in range(1, page.page) %}
-            <option value="{{ i }}">{{ i }}</option>
-            {% endfor %}
-            <option value="{{ page.page }}" selected="selected">{{ page.page }}</option>
-            {% for i in range(page.page + 1, page.pages + 1) %}
-            <option value="{{ i }}">{{ i }}</option>
-            {% endfor %}
-        </select>
-    </form>
+{% macro pagination_row(page, what, btn_text=None, btn_href=None) %}
+<div class="d-flex w-100 justify-content-start">
+  <small class="paginate">{{ what }} from {{ (page.page - 1) * page.per_page + 1}} to
+    {{ min(page.page * page.per_page, page.total) }} from total
+    {{ page.total }}
+  </small>
+  <div class="ml-auto">
+    {% if btn_text %}
+    <a class="btn btn-secondary btn-sm" href="{{ btn_href }}">{{ btn_text }}</a>
+    {% endif %}
+  </div>
+  <ul class="pagination pagination-sm ml-1">
+    <li class="page-item{% if not page.has_prev %} disabled{% endif %}">
+      <a class="page-link" href="{{ page_args(page=page.prev_num) }}">&laquo;</a>
+    </li>
+    {% for p in page.iter_pages() %}
+    {% if p %}
+    <li class="page-item{% if p == page.page %} active{% endif %}">
+      <a class="page-link" href="{{ page_args(page=p) }}">{{ p }}</a>
+    </li>
+    {% else %}
+    <li class="page-item disabled">
+      <a class="page-link">&hellip;</a>
+    </li>
+    {% endif %}
+    {% endfor %}
+    <li class="page-item{% if not page.has_next %} disabled{% endif %}">
+      <a class="page-link" href="{{ page_args(page=page.next_num) }}">&raquo;</a>
+    </li>
+  </ul>
 </div>
 {% endmacro %}
 
 {% macro package_table(packages, page, order, collection=None, untracked_toggle=True) %}
-{% if untracked_toggle %}
-{% set untracked = request.args.get('untracked') == '1' %}
-<form name="show-untracked" method="get">
-    <input type="hidden" name="untracked" value="{{ "10"[untracked] }}"/>
-    {% for k, v in request.args.items() if k != 'untracked' %}
-    <input type="hidden" name="{{ k }}" value="{{ v }}"/>
-    {% endfor %}
-    <button type="submit">{% if untracked %}Hide untracked{% else %}Show untracked{% endif %} packages</button>
-</form>
-{% endif %}
 
-{{ collection_chooser() }}
-
-{% if page %}
-{{ pagination_row(page, 'Packages') }}
-{% endif %}
-<input type="hidden" name="next" value="{{ request.url }}"/>
-<table class="data-list package-table">
-    <thead>
-        <tr class="list-header">
-            {{ ordered_column('name', 'Name', order) }}
-            {% if not collection %}
-            {% for coll in g.current_collections %}
-            {{ ordered_column('state-' + coll.name, coll.display_name, order, css_class="collection-column") }}
-            {% endfor %}
-            {% else %}
-            {{ ordered_column('state', 'State', order) }}
-            {% endif %}
-            {{ ordered_column('running', 'Running', order) }}
-            {% if collection %}
-            {{ ordered_column('task_id', 'Task ID', order) }}
-            {{ ordered_column('started', 'Last build started', order) }}
-            {{ ordered_column('current_priority', 'Current priority', order) }}
-            {% endif %}
-            <th>Package groups</th>
-        </tr>
-    </thead>
-    <tbody>
-
-        {% for package in packages %}
-        {% set last_build = package.last_build %}
-        {% set args = page_args(clear=True, collection=collection.name if collection else None) %}
-
-        <tr class="row-odd">
-            <td>
-                <a href="{{ url_for('package_detail', name=package.name) }}{{ args }}">{{ package.name }}</a>
-            </td>
-            {% if collection %}
-            <td>
-                <div class="hidden">{{ package.state_string }}</div>
-                {% if package.state_string %}
-                {{ package.state_icon }}
-                {% endif %}
-            </td>
-            {% else %} {# unified view #}
-            {% for pkg in package.packages %}
-            <td>
-                {% if pkg.tracked %}
-                    <a href="{{ url_for('package_detail', name=package.name) }}{{
-                        page_args(clear=True, collection=pkg.collection.name) }}">
-                        {{ pkg.state_icon }}
-                    </a>
-                {% endif %}
-            </td>
-            {% endfor %}
-            {% endif %}
-            <td>
-                {% if package.has_running_build %}
-                <img src="{{ url_for('static', filename='images/running.png') }}"
-                title="running" alt="running"/>
-                {% endif %}
-            </td>
-            {% if collection %}
-            {% if last_build %}
-            <td>
-                <a href="{{ last_build.taskinfo_url }}">
-                    {{ last_build.task_id }}
-                </a>
-            </td>
-            <td>
-                {{ last_build.started | date }}
-            </td>
-            {% else %}
-            <td colspan="2"></td>
-            {% endif %}
-            <td>
-                {% if package.current_priority is not none %}
-                {{ package.current_priority | int }}
-                {% endif %}
-            </td>
-            {% endif %}
-            <td>
-                {% for group in package.visible_groups %}
-                <a href="{{ url_for('group_detail', name=group.name, namespace=group.namespace )}}{{ args }}">
-                    {{ group }}
-                </a>
-                {% endfor %}
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-{% if page %}
+{% macro _pagination() %}
+{% if page and untracked_toggle and request.args.get('untracked') == '1' %}
+{{ pagination_row(page, 'Tracked and untracked packages',
+                  btn_text='Hide untracked', btn_href=page_args(untracked=None)) }}
+{% elif page and untracked_toggle %}
+{{ pagination_row(page, 'Tracked packages',
+                  btn_text='Show untracked', btn_href=page_args(untracked=1)) }}
+{% elif page %}
 {{ pagination_row(page, 'Packages') }}
 {% endif %}
 {% endmacro %}
 
-{% macro depchange_table(dependency_changes) %}
-{% if dependency_changes %}
-<tr>
-    <th>Dependency changes since last build</th>
-    {{ dependency_changes[0] | format_depchange | columnize(css_class="mono") }}
-</tr>
-{% for change in dependency_changes[1:] %}
-<tr>
-    <th></th>
-    {{ change | format_depchange | columnize(css_class="mono") }}
-</tr>
-{% endfor %}
-{% endif %}
-{% endmacro %}
-
-{% macro ordered_column(name, title, current_order, css_class=None) %}
+{% macro _ordered_column(name, title, description, css_class=None) %}
 <th {% if css_class %}class="{{ css_class }}"{% endif %}>
-    {% if name in current_order[:1] %}
-    <a href="{{ page_args(order_by=['-' + name.lower()] + current_order) }}">{{ title }}</a>
-    <img src="{{ url_for('static', filename='images/gray-triangle-down.gif') }}"
-         class="sort" alt="Descending sort"/>
-    {% else %}
-        <a href="{{ page_args(order_by=[name.lower()] + current_order) }}">{{ title }}</a>
-        {% if '-' + name in current_order[:1] %}
-        <img src="{{ url_for('static', filename='images/gray-triangle-up.gif') }}"
-             class="sort" alt="Ascending sort"/>
-        {% endif %}
-    {% endif %}
+  {% if name in order[:1] %}
+  <a data-toggle="tooltip"
+     title="{{ 'This column shows ' + description + '\n(currently sorted in ascending order - click to reverse the order)' }}"
+     href="{{ page_args(order_by=['-' + name.lower()] + order) }}">
+    {{ title }}
+    <i class="fa fa-sort-desc"></i>
+  </a>
+  {% elif '-' + name in order[:1] %}
+  <a data-toggle="tooltip"
+     title="{{ 'This column shows ' + description + '\n(currently sorted in descending order - click to reverse the order)' }}"
+     href="{{ page_args(order_by=[name.lower()] + order) }}">
+    {{ title }}
+    <i class="fa fa-sort-asc"></i>
+  </a>
+  {% else %}
+  <a data-toggle="tooltip"
+     title="{{ 'This column shows ' + description + '\n(not a primary sorting order - click to sort in ascending order)' }}"
+     href="{{ page_args(order_by=[name.lower()] + order) }}">
+    {{ title }}
+  </a>
+  {% endif %}
 </th>
 {% endmacro %}
 
+{{ _pagination() }}
+<input type="hidden" name="next" value="{{ request.url }}"/>
+<table class="table table-sm table-hover w-100 kk-package-table">
+  <thead>
+    <tr class="table-active">
+      {{ _ordered_column('name', 'Name', 'name of the package') }}
+      {% if not collection %}
+      {% for coll in g.current_collections %}
+      {{ _ordered_column('state-' + coll.name, coll.display_name, 'package state in ' + coll.display_name, css_class="collection-column") }}
+      {% endfor %}
+      {% else %}
+      {{ _ordered_column('state', 'State', 'package state in ' + collection.display_name) }}
+      {% endif %}
+      {{ _ordered_column('running', 'Running', 'whether the package has a runnig build') }}
+      {% if collection %}
+      {{ _ordered_column('task_id', 'Task ID', 'ID of Koji task of last package build') }}
+      {{ _ordered_column('started', 'Last build started', 'time of start of last package build') }}
+      {{ _ordered_column('current_priority', 'Priority', 'value of package current priority') }}
+      {% endif %}
+      <th>Package groups</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for package in packages %}
+    {% set last_build = package.last_build %}
+    {% set args = page_args(clear=True, collection=collection.name if collection else None) %}
+    <tr>
+      <td>
+        <a href="{{ url_for('package_detail', name=package.name) }}{{ args }}">{{ package.name }}</a>
+      </td>
+      {% if collection %}
+      <td>
+        <div class="d-none">{{ package.state_string }}</div>
+        {% if package.state_string %}
+        {{ package.state_icon }}
+        {% endif %}
+      </td>
+      {% else %} {# unified view #}
+      {% for pkg in package.packages %}
+      <td>
+        {% if pkg.tracked %}
+        <a href="{{ url_for('package_detail', name=package.name) }}{{
+                 page_args(clear=True, collection=pkg.collection.name) }}">
+          {{ pkg.state_icon }}
+        </a>
+        {% endif %}
+      </td>
+      {% endfor %}
+      {% endif %}
+      <td>
+        {{ package.running_icon }}
+      </td>
+      {% if collection %}
+      {% if last_build %}
+      <td>
+        <a href="{{ last_build.taskinfo_url }}">
+          {{ last_build.task_id }}
+        </a>
+      </td>
+      <td data-toggle="tooltip" title="{{ last_build.started|naturaltime }}">
+        {{ last_build.started | date }}
+      </td>
+      {% else %}
+      <td colspan="2"></td>
+      {% endif %}
+      <td>
+        {% if package.current_priority is not none %}
+        {{ package.current_priority | int }}
+        {% endif %}
+      </td>
+      {% endif %}
+      <td>
+        {% for group in package.visible_groups %}
+        <a href="{{ url_for('group_detail', name=group.name, namespace=group.namespace )}}{{ args }}">
+          {{ group }}
+        </a>
+        {% endfor %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{{ _pagination() }}
+{% endmacro %}
+
+{% macro task_tree(build, show_time=False, show_details_btn=False, show_cancel_btn=False, show_logs=False) %}
+<div class="row kk-task-tree">
+  <div class="col-sm-2">
+    <div class="d-none">{{ build.state_string }}</div>
+    <div class="float-right">{{ build.state_icon }}</div>
+  </div>
+  <div class="col-sm-3">
+    <a class="align-bottom" href="{{ build.taskinfo_url }}">{{ build.task_id }}</a>
+  </div>
+  <div class="col-sm-7">
+    {% if show_time %}
+    {{ build.started|date }}
+    {% endif %}
+    {% if show_details_btn %}
+    <div class="float-right">
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('build_detail', build_id=build.id) }}"
+         data-toggle="tooltip" data-placement="right"
+         title="Show details of this build"><i class="fa fa-info"></i></a>
+    </div>
+    {% endif %}
+    {% if show_cancel_btn %}
+    <div class="float-right">
+      <button type="submit" class="btn btn-sm btn-danger"><i class="fa fa-times-circle"></i> Cancel</button>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% for subtask in build.build_arch_tasks %}
+<div class="row kk-task-tree">
+  <div class="col-sm-3">
+    <div class="kk-koji-task-{{ subtask.state_string }}">{{ subtask.arch }}</div>
+  </div>
+  <div class="col-sm-9">
+    <a href="{{ subtask.taskinfo_url }}">{{ "├└"[loop.last] }}{{ subtask.task_id }}</a>
+    {% if show_logs %}
+    (
+    <a href="{{ subtask.results_url }}/build.log">
+      build.log
+    </a>|
+    <a href="{{ subtask.results_url }}/root.log">
+      root.log
+    </a>
+    )
+    {% else %}
+    <span class="kk-koji-task-{{ subtask.state_string }}">{{ subtask.state_string }}</span>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+{% endmacro %}
+
+{% macro depchange_table(dependency_changes) %}
+{% for change in dependency_changes %}
+<div class="row">
+  <div class="col-sm-4">
+    <a href="{{ url_for(
+             'affected_by',
+             dep_name=change.dep_name,
+             epoch1=change.prev_epoch or '0',
+             version1=change.prev_version,
+             release1=change.prev_release,
+             epoch2=change.curr_epoch or '0',
+             version2=change.curr_version,
+             release2=change.curr_release,
+             collection=change.package.collection.name,
+             ) }}">
+      <i class="fa fa-question-circle-o" data-toggle="tooltip" data-placement="right"
+         title="Find other packages that are possibly
+affected by this dependency change"></i>
+    </a>
+    {{ change.dep_name }}
+  </div>
+  <div class="col-sm-4">
+    {{ change.prev_evr }}
+    <div class="float-right">
+      {% if not change.prev_evr %}
+      <i class="fa fa-plus" data-toggle="tooltip" data-placement="right"
+         title="{{ change.dep_name }} was added to dependency set"></i>
+      {% elif not change.curr_evr %}
+      <i class="fa fa-minus" data-toggle="tooltip" data-placement="right"
+         title="{{ change.dep_name }} was removed from dependency set"></i>
+      {% elif change.prev_evr < change.curr_evr %}
+      <i class="fa fa-level-up" data-toggle="tooltip" data-placement="right"
+         title="{{ change.dep_name }} was upgraded to higher version"></i>
+      {% else %}
+      <i class="fa fa-level-down" data-toggle="tooltip" data-placement="right"
+         title="{{ change.dep_name }} was downgraded to lower version"></i>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-sm-3">{{ change.curr_evr }}</div>
+  <div class="col-sm-1">
+    {% if change.distance == 1 %}
+    <span class="badge badge-pill badge-primary" data-toggle="tooltip" data-placement="right"
+          title="{{ change.dep_name }} is direct build-dependency of {{ change.package.name }}">1</span>
+    {% elif change.distance %}
+    <span class="badge badge-pill badge-info" data-toggle="tooltip" data-placement="right"
+          title="{{ change.dep_name }} is indirect build-dependency of {{ change.package.name }}
+(shortest distance in dependency graph is equal to {{ change.distance }})">
+      {{ change.distance }}</span>
+    {% elif change.curr_evr %}
+    <span class="badge badge-pill badge-default" data-toggle="tooltip" data-placement="right"
+          title="{{ change.dep_name }} is not a build-dependency of {{ change.package.name }},
+but is part of minimal buildroot (buildsys-build group)">B</span>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+<small>No dependency changes</small>
+{% endfor %}
+{% endmacro %}
+
 {% macro collection_chooser(allow_all=True) %}
-<div class="collections">
-    <form>
-        <label for="collection">Package collection:</label>
-        <select name="collection"
-            onchange="javascript:
-                if (this.value === '_all')
-                    window.location = window.location.pathname + '{{ page_args(page=None, collection=None) }}';
-                else
-                    window.location = '{{ page_args(page=None, collection='...') }}';">
-            {% if g.current_collections | length > 1 and g.current_collections != g.collections %}
-            <option selected="selected">{{ g.current_collections | join(' + ') }}</option>
-            {% endif %}
-            {% if allow_all %}
-            <option value="_all">All collections</option>
-            {% endif %}
-            {% for collection in g.collections %}
-            <option value="{{ collection.name }}"
-                {% if g.current_collections | length == 1 and collection.id == g.current_collections[0].id %}
-                selected="selected"
-                {% endif %}>
-            {{ collection }}
-            </option>
-            {% endfor %}
-        </select>
-    </form>
+<div>
+  <ul class="nav nav-tabs">
+    {% if g.current_collections | length > 1 and g.current_collections != g.collections %}
+    <li class="nav-item">
+      <a class="nav-link active">{{ g.current_collections | join(' + ') }}</a>
+    </li>
+    {% endif %}
+    {% if allow_all %}
+    <li class="nav-item">
+      <a class="nav-link{% if g.current_collections == g.collections %} active{% endif %}" href="{{ page_args(page=None, collection=None) }}">All collections</a>
+    </li>
+    {% endif %}
+    {% for collection in g.collections %}
+    <li class="nav-item">
+      <a class="nav-link{% if g.current_collections | length == 1 and collection.id == g.current_collections[0].id %} active{% endif %}" href="{{ page_args(page=None, collection=collection.name) }}">{{ collection }}</a>
+    </li>
+    {% endfor %}
+  </ul>
 </div>
 {% endmacro %}
 
 {% macro user_rebuilds_description() %}
-<div class="description">
-    User rebuilds make it possible to test package updates before they land in
-    the distribution. The input is a copr project that contains packages which
-    the distribution should be tested against. Koschei examines repo from given
-    copr, resolves dependencies of the whole distribution with the repo added
-    and selects few packages which are most likely to be affected to be
-    rebuilt. After the resolution is done, you can make changes to the rebuild
-    queue (add/remove packages). The rebuilds start automatically and are done
-    in koschei managed coprs (i.e. not the one you supplied).
+<div class="kk-copr-description">
+  User rebuilds make it possible to test package updates before they land in
+  the distribution. The input is a copr project that contains packages which
+  the distribution should be tested against. Koschei examines repo from given
+  copr, resolves dependencies of the whole distribution with the repo added
+  and selects few packages which are most likely to be affected to be
+  rebuilt. After the resolution is done, you can make changes to the rebuild
+  queue (add/remove packages). The rebuilds start automatically and are done
+  in koschei managed coprs (i.e. not the one you supplied).
 </div>
 {% endmacro %}

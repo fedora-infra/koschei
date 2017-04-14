@@ -1,10 +1,11 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
-{% block statusline %}
-Package rebuilds {% if since.year > 2000 %}since {{ since|date }}{% endif %} until {{ until|date }}
+
+{% block subheader %}
+<h2>Package summary</h2>
+{{ macros.collection_chooser() }}
 {% endblock %}
+
 {% block content %}
-  <div class="pageHeader">Package summary</div>
-  <div class="dataHeader noPaginate">All packages</div>
-  {{ macros.package_table(packages, page, order, collection=collection, untracked_toggle=False) }}
+{{ macros.package_table(packages, page, order, collection=collection, untracked_toggle=False) }}
 {% endblock %}

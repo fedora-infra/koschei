@@ -15,6 +15,7 @@ Python code dependencies:
 - flask
 - flask-sqlalchemy
 - hawkey
+- humanize
 - jinja2
 - koji
 - librepo
