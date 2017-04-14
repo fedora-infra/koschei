@@ -16,10 +16,10 @@
 #
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-from flask import jsonify, request, make_response
+from flask import jsonify, request
 from sqlalchemy.orm import joinedload
-from koschei.frontend import app, db, frontend_config, auth, session, forms, Tab
-from koschei.models import BasePackage, Package, Collection, Build, KojiTask
+from koschei.frontend import app, db
+from koschei.models import Package, Collection
 
 
 def build_to_json(build):
