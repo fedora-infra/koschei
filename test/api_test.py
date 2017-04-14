@@ -18,12 +18,27 @@
 
 from flask import json
 from frontend_test import FrontendTest
+from koschei.models import Collection
 
 
 class ApiTest(FrontendTest):
     def setUp(self):
         super(ApiTest, self).setUp()
         self.task_id_counter = 1337
+
+    def prepare_multiple(self):
+        self.prepare_build('xpp3', True)
+        self.prepare_build('xpp', None)
+        self.prepare_build('xpp2', False)
+        self.collection = Collection(
+            name="epel7", display_name="EPEL 7", target="epel7",
+            dest_tag='epel7', build_tag="epel7-build", priority_coefficient=0.2,
+            latest_repo_resolved=False, latest_repo_id=456,
+        )
+        self.db.add(self.collection)
+        self.db.commit()
+        self.prepare_build('rnv', True)
+        self.prepare_build('fop', False)
 
     def api_call(self, route):
         reply = self.client.get('/api/v1/' + route)
@@ -59,10 +74,49 @@ class ApiTest(FrontendTest):
         self.assert_package(rnv, name='rnv', collection='f25', state='failing', last_task_id=1337)
 
     def test_multiple(self):
-        self.prepare_build('xpp3', True)
-        self.prepare_build('xpp', None)
-        self.prepare_build('xpp2', False)
-        [xpp, xpp2, xpp3] = self.api_call('packages')
+        self.prepare_multiple()
+        [fop, rnv, xpp, xpp2, xpp3] = self.api_call('packages')
+        self.assert_package(fop, name='fop', collection='epel7', state='failing', last_task_id=1341)
+        self.assert_package(rnv, name='rnv', collection='epel7', state='ok', last_task_id=1340)
         self.assert_package(xpp, name='xpp', collection='f25', state='unknown', last_task_id=None)
         self.assert_package(xpp2, name='xpp2', collection='f25', state='failing', last_task_id=1339)
         self.assert_package(xpp3, name='xpp3', collection='f25', state='ok', last_task_id=1337)
+
+    def test_collection_filtering(self):
+        self.prepare_multiple()
+        [fop, rnv] = self.api_call('packages?collection=epel7')
+        self.assert_package(fop, name='fop', collection='epel7', state='failing', last_task_id=1341)
+        self.assert_package(rnv, name='rnv', collection='epel7', state='ok', last_task_id=1340)
+
+    def test_collection_filtering_non_existent(self):
+        self.prepare_multiple()
+        # FIXME this should return 200 and empty list instead of 404
+        reply = self.client.get('/api/v1/packages?collection=xyzzy')
+        self.assertEqual(404, reply.status_code)
+        #result = self.api_call('packages?collection=xyzzy')
+        #self.assertListEqual([], result)
+
+    def test_collection_filtering_multiple(self):
+        self.prepare_multiple()
+        [fop, rnv, xpp, xpp2, xpp3] = self.api_call('packages?collection=epel7&collection=xyzzy&collection=f25')
+        self.assert_package(fop, name='fop', collection='epel7', state='failing', last_task_id=1341)
+        self.assert_package(rnv, name='rnv', collection='epel7', state='ok', last_task_id=1340)
+        self.assert_package(xpp, name='xpp', collection='f25', state='unknown', last_task_id=None)
+        self.assert_package(xpp2, name='xpp2', collection='f25', state='failing', last_task_id=1339)
+        self.assert_package(xpp3, name='xpp3', collection='f25', state='ok', last_task_id=1337)
+
+    def test_package_filtering(self):
+        self.prepare_multiple()
+        [xpp] = self.api_call('packages?name=xpp')
+        self.assert_package(xpp, name='xpp', collection='f25', state='unknown', last_task_id=None)
+
+    def test_package_filtering_non_existent(self):
+        self.prepare_multiple()
+        result = self.api_call('packages?name=maven-project-info-reports-plugin')
+        self.assertListEqual([], result)
+
+    def test_package_filtering_multiple(self):
+        self.prepare_multiple()
+        [rnv, xpp] = self.api_call('packages?name=rnv&name=xpp&name=maven')
+        self.assert_package(rnv, name='rnv', collection='epel7', state='ok', last_task_id=1340)
+        self.assert_package(xpp, name='xpp', collection='f25', state='unknown', last_task_id=None)
