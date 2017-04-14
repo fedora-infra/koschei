@@ -41,8 +41,12 @@ def packages_to_json(packages):
 
 @app.route('/api/v1/packages')
 def list_packages():
-    packages = db.query(Package)\
+    query = db.query(Package).join(Collection)\
         .options(joinedload(Package.collection))\
-        .options(joinedload(Package.last_complete_build))\
-        .order_by(Package.name).all()
+        .options(joinedload(Package.last_complete_build))
+    if 'name' in request.args:
+        query = query.filter(Package.name.in_(request.args.getlist('name')))
+    if 'collection' in request.args:
+        query = query.filter(Collection.name.in_(request.args.getlist('collection')))
+    packages = query.order_by(Package.name).all()
     return jsonify(packages_to_json(packages))
