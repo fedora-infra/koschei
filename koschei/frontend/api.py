@@ -21,15 +21,28 @@ from sqlalchemy.orm import joinedload
 from koschei.frontend import app, db, frontend_config, auth, session, forms, Tab
 from koschei.models import BasePackage, Package, Collection, Build, KojiTask
 
+
+def build_to_json(build):
+    if build:
+        return {'task_id': build.task_id}
+
+
+def package_to_json(package):
+    if package:
+        return {'name': package.name,
+                  'collection': package.collection.name,
+                  'state': package.state_string,
+                  'last_complete_build': build_to_json(package.last_complete_build)}
+
+
+def packages_to_json(packages):
+    return [package_to_json(p) for p in packages]
+
+
 @app.route('/api/v1/packages')
 def list_packages():
     packages = db.query(Package)\
         .options(joinedload(Package.collection))\
         .options(joinedload(Package.last_complete_build))\
         .order_by(Package.name).all()
-    reply = [{'name': p.name,
-              'collection': p.collection.name,
-              'state': p.state_string,
-              'last_task_id': p.last_complete_build.task_id if p.last_complete_build else None}
-             for p in packages]
-    return jsonify(reply)
+    return jsonify(packages_to_json(packages))
