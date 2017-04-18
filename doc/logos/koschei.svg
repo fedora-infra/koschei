@@ -1,0 +1,36 @@
+<svg>
+  <path d="
+M  0 -18
+L  0 -39
+L 25 -45
+L 41 -33
+L 66 -39
+L 82 -27
+L 82  -6
+L 57   0
+L 41 -12
+L 16  -6
+Z
+"
+	stroke="#888"
+	stroke-width="2"
+	fill="#bbb"
+	/>
+
+  <path d="
+M  0 -18
+L 25 -24
+L 25 -45
+M 25 -24
+L 41 -12
+L 41 -33
+L 57 -21
+L 82 -27
+M 57 -21
+L 57   0
+"
+	stroke="#888"
+	stroke-width="2"
+	fill="none"
+	/>
+</svg>
