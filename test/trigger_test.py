@@ -31,22 +31,26 @@ class TriggerTest(DBTest):
         self.assertIsNone(e.last_complete_build_id)
         self.assertIsNone(e.last_complete_build_state)
         self.assertEqual(b.id, p.last_build_id)
+        self.assertFalse(b.last_complete)
         self.assertIsNone(e.last_build_id)
 
     def test_update(self):
         [p, _] = self.prepare_packages('rnv', 'eclipse')
         b = self.prepare_build('rnv')
+        self.assertFalse(b.last_complete)
         self.assertEqual(b.id, p.last_build_id)
         b.state = Build.FAILED
         self.db.commit()
         self.assertEqual(b.id, p.last_build_id)
         self.assertEqual(b.id, p.last_complete_build_id)
+        self.assertTrue(b.last_complete)
         self.assertEqual(b.state, p.last_complete_build_state)
 
     def test_complete(self):
         [p, e] = self.prepare_packages('rnv', 'eclipse')
         b = self.prepare_build('rnv', True)
         self.assertEqual(b.id, p.last_complete_build_id)
+        self.assertTrue(b.last_complete)
         self.assertEqual(b.state, p.last_complete_build_state)
         self.assertEqual(b.id, p.last_build_id)
         self.assertIsNone(e.last_complete_build_id)
@@ -57,6 +61,7 @@ class TriggerTest(DBTest):
         [p, e] = self.prepare_packages('rnv', 'eclipse')
         b = self.prepare_build('eclipse', False)
         self.assertEqual(b.id, e.last_complete_build_id)
+        self.assertTrue(b.last_complete)
         self.assertEqual(b.state, e.last_complete_build_state)
         self.assertIsNone(p.last_complete_build_id)
         self.assertIsNone(p.last_complete_build_state)
@@ -68,11 +73,14 @@ class TriggerTest(DBTest):
         b3 = self.prepare_build('eclipse')
 
         self.assertEqual(br.id, p.last_complete_build_id)
+        self.assertTrue(br.last_complete)
         self.assertEqual(br.state, p.last_complete_build_state)
         self.assertEqual(br.id, p.last_build_id)
         self.assertEqual(be.id, e.last_complete_build_id)
+        self.assertTrue(be.last_complete)
         self.assertEqual(be.state, e.last_complete_build_state)
         self.assertEqual(b3.id, e.last_build_id)
+        self.assertFalse(b3.last_complete)
 
     def test_delete_new(self):
         [e] = self.prepare_packages('eclipse')

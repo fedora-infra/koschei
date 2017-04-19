@@ -442,6 +442,11 @@ class Build(Base):
     version = Column(String)
     release = Column(String)
     repo_id = Column(Integer)
+    # whether this build is the last complete build for corresponding package
+    # TODO migrations
+    # ALTER TABLE build ADD COLUMN last_complete BOOLEAN NOT NULL DEFAULT FALSE;
+    # UPDATE build SET last_complete = TRUE WHERE id IN (SELECT MAX(id) FROM build WHERE state = 3 OR state = 5 GROUP BY package_id);
+    last_complete = Column(Boolean, nullable=False, default=False)
 
     cancel_requested = Column(Boolean, nullable=False, server_default=false())
 
@@ -697,6 +702,10 @@ Index('ix_package_collection_id', Package.collection_id, Package.tracked,
 Index('ix_applied_change_dep_name', AppliedChange.dep_name)
 Index('ix_builds_unprocessed', Build.task_id,
       postgresql_where=(Build.deps_resolved.is_(None) & Build.repo_id.isnot(None)))
+# TODO migrations
+# CREATE INDEX ix_builds_last_complete ON build USING btree (package_id, task_id) WHERE last_complete;
+Index('ix_builds_last_complete', Build.package_id, Build.task_id,
+      postgresql_where=(Build.last_complete))
 
 
 # Relationships
