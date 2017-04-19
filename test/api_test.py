@@ -120,3 +120,9 @@ class ApiTest(FrontendTest):
         [rnv, xpp] = self.api_call('packages?name=rnv&name=xpp&name=maven')
         self.assert_package(rnv, name='rnv', collection='epel7', state='ok', last_task_id=1340)
         self.assert_package(xpp, name='xpp', collection='f25', state='unknown', last_task_id=None)
+
+    def test_compound_filtering(self):
+        self.prepare_multiple()
+        [fop, rnv] = self.api_call('packages?name=rnv&name=fop&collection=epel7')
+        self.assert_package(fop, name='fop', collection='epel7', state='failing', last_task_id=1341)
+        self.assert_package(rnv, name='rnv', collection='epel7', state='ok', last_task_id=1340)
