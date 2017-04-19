@@ -117,6 +117,16 @@ def sd_notify(msg):
         sock.close()
 
 
+def merge_sorted(iterable1, iterable2, key):
+    """Merge two sorted iterables."""
+    iters = [iter(g) for g in iterable1, iterable2]
+    heads = [next(iterator, None) for iterator in iters]
+    while heads[0] or heads[1]:
+        index = 0 if heads[0] and (not heads[1] or key(heads[0]) < key(heads[1])) else 1
+        yield heads[index]
+        heads[index] = next(iters[index], None)
+
+
 class FileLock(object):
     """
     File lock object using fcntl locking.
