@@ -17,9 +17,10 @@
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 from flask import jsonify, request
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import contains_eager
+from koschei.util import merge_sorted
 from koschei.frontend import app, db
-from koschei.models import Package, Collection
+from koschei.models import Package, Collection, Build
 
 
 def build_to_json(build):
@@ -41,12 +42,22 @@ def packages_to_json(packages):
 
 @app.route('/api/v1/packages')
 def list_packages():
-    query = db.query(Package).join(Collection)\
-        .options(joinedload(Package.collection))\
-        .options(joinedload(Package.last_complete_build))
-    if 'name' in request.args:
-        query = query.filter(Package.name.in_(request.args.getlist('name')))
-    if 'collection' in request.args:
-        query = query.filter(Collection.name.in_(request.args.getlist('collection')))
-    packages = query.order_by(Package.name).all()
+    def run_query(query):
+        query = query.join(Collection, Collection.id == Package.collection_id)\
+            .options(contains_eager(Package.collection))
+        if 'name' in request.args:
+            query = query.filter(Package.name.in_(request.args.getlist('name')))
+        if 'collection' in request.args:
+            query = query.filter(Collection.name.in_(request.args.getlist('collection')))
+        return query.order_by(Package.name).all()
+
+    pkgs_with_complete_build = db.query(Package)\
+        .join(Build, Build.package_id == Package.id)\
+        .filter(Build.last_complete)\
+        .options(contains_eager(Package.last_complete_build))
+    pkgs_without_complete_build = db.query(Package)\
+        .filter(Package.last_complete_build_id == None)
+    packages = merge_sorted(*[run_query(query) for query in pkgs_with_complete_build,
+                                                            pkgs_without_complete_build],
+                     key=lambda p: p.name)
     return jsonify(packages_to_json(packages))
