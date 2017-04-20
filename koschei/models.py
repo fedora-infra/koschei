@@ -85,7 +85,8 @@ class Collection(Base):
 
     @property
     def state_string(self):
-        return {True: 'ok', False: 'unresolved', None: 'unknown'}[self.latest_repo_resolved]
+        return {True: 'ok', False: 'unresolved', None: 'unknown'}[
+            self.latest_repo_resolved]
 
     def __str__(self):
         return self.display_name
@@ -446,7 +447,8 @@ class Build(Base):
     # TODO migrations
     # ALTER TABLE build ADD COLUMN last_complete BOOLEAN;
     # ALTER TABLE build ALTER COLUMN last_complete SET DEFAULT FALSE;
-    # UPDATE build SET last_complete = TRUE WHERE id IN (SELECT MAX(id) FROM build WHERE state = 3 OR state = 5 GROUP BY package_id);
+    # UPDATE build SET last_complete = TRUE WHERE id IN (SELECT MAX(id) FROM build
+    #     WHERE state = 3 OR state = 5 GROUP BY package_id);
     # UPDATE build SET last_complete = DEFAULT WHERE last_complete IS NULL;
     # ALTER TABLE build ALTER COLUMN last_complete SET NOT NULL;
     # Drop:
@@ -708,7 +710,7 @@ Index('ix_applied_change_dep_name', AppliedChange.dep_name)
 Index('ix_builds_unprocessed', Build.task_id,
       postgresql_where=(Build.deps_resolved.is_(None) & Build.repo_id.isnot(None)))
 # TODO migrations
-# CREATE INDEX ix_builds_last_complete ON build USING btree (package_id, task_id) WHERE last_complete;
+# CREATE INDEX ix_builds_last_complete ON build (package_id, task_id) WHERE last_complete;
 Index('ix_builds_last_complete', Build.package_id, Build.task_id,
       postgresql_where=(Build.last_complete))
 

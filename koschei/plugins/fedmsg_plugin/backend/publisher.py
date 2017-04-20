@@ -30,6 +30,7 @@ def publish_fedmsg(session, message):
     session.log.info('Publishing fedmsg:\n' + str(message))
     fedmsg.publish(**message)
 
+
 @listen_event('package_state_change')
 def emit_package_state_update(session, package, prev_state, new_state):
     if prev_state == new_state:

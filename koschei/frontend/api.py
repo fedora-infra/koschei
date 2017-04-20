@@ -31,9 +31,9 @@ def build_to_json(build):
 def package_to_json(package):
     if package:
         return {'name': package.name,
-                  'collection': package.collection.name,
-                  'state': package.state_string,
-                  'last_complete_build': build_to_json(package.last_complete_build)}
+                'collection': package.collection.name,
+                'state': package.state_string,
+                'last_complete_build': build_to_json(package.last_complete_build)}
 
 
 def packages_to_json(packages):
@@ -58,6 +58,6 @@ def list_packages():
     pkgs_without_complete_build = db.query(Package)\
         .filter(Package.last_complete_build_id == None)
     packages = merge_sorted(*[run_query(query) for query in pkgs_with_complete_build,
-                                                            pkgs_without_complete_build],
-                     key=lambda p: p.name)
+                            pkgs_without_complete_build],
+                            key=lambda p: p.name)
     return jsonify(packages_to_json(packages))
