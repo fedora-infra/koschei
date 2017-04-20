@@ -6,21 +6,18 @@ BEGIN
     UPDATE build
     SET last_complete = FALSE
     WHERE last_complete AND package_id = NEW.package_id;
-    UPDATE build
-    SET last_complete = TRUE
-    WHERE id = (SELECT MAX(id)
-                FROM build
-		WHERE package_id = NEW.package_id
-		      AND (state = 3 OR state = 5));
+    WITH lcb AS (
+        UPDATE build
+        SET last_complete = TRUE
+        WHERE id = (SELECT MAX(id)
+                    FROM build
+                    WHERE package_id = NEW.package_id
+                          AND (state = 3 OR state = 5))
+        RETURNING id, state)
     UPDATE package
     SET last_complete_build_id = lcb.id,
         last_complete_build_state = lcb.state
-    FROM (SELECT id, state
-          FROM build
-          WHERE package_id = NEW.package_id
-                AND (state = 3 OR state = 5)
-          ORDER BY id DESC
-          LIMIT 1) AS lcb
+    FROM lcb
     WHERE package.id = NEW.package_id
         AND last_complete_build_id IS DISTINCT FROM lcb.id;
     RETURN NEW;
