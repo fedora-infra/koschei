@@ -700,8 +700,6 @@ Index('ix_package_collection_id', Package.collection_id, Package.tracked,
 Index('ix_applied_change_dep_name', AppliedChange.dep_name)
 Index('ix_builds_unprocessed', Build.task_id,
       postgresql_where=(Build.deps_resolved.is_(None) & Build.repo_id.isnot(None)))
-# TODO migrations
-# CREATE INDEX ix_builds_last_complete ON build (package_id, task_id) WHERE last_complete;
 Index('ix_builds_last_complete', Build.package_id, Build.task_id,
       postgresql_where=(Build.last_complete))
 
