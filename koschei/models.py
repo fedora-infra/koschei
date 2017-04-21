@@ -444,15 +444,6 @@ class Build(Base):
     release = Column(String)
     repo_id = Column(Integer)
     # whether this build is the last complete build for corresponding package
-    # TODO migrations
-    # ALTER TABLE build ADD COLUMN last_complete BOOLEAN;
-    # ALTER TABLE build ALTER COLUMN last_complete SET DEFAULT FALSE;
-    # UPDATE build SET last_complete = TRUE WHERE id IN (SELECT MAX(id) FROM build
-    #     WHERE state = 3 OR state = 5 GROUP BY package_id);
-    # UPDATE build SET last_complete = DEFAULT WHERE last_complete IS NULL;
-    # ALTER TABLE build ALTER COLUMN last_complete SET NOT NULL;
-    # Drop:
-    # ALTER TABLE build DROP COLUMN last_complete;
     last_complete = Column(Boolean, nullable=False, default=False)
 
     cancel_requested = Column(Boolean, nullable=False, server_default=false())
