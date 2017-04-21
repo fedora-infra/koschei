@@ -2,7 +2,6 @@
 CREATE OR REPLACE FUNCTION update_last_complete_build()
     RETURNS TRIGGER AS $$
 BEGIN
-    -- TODO migrations
     UPDATE build
     SET last_complete = FALSE
     WHERE last_complete AND package_id = NEW.package_id;
