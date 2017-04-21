@@ -16,42 +16,35 @@
 #
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-import json
-
 from flask import request, Response
+from sqlalchemy.sql import literal_column, case
 from koschei.frontend import app, db
-from koschei.models import Package, Collection, Build, get_package_state
+from koschei.models import Package, Collection, Build
+
+
+def sql_if(cond, then, else_=None):
+    return case([(cond, then)], else_=else_)
 
 
 @app.route('/api/v1/packages')
 def list_packages():
-    def prepare_package_entry(entry):
-        return {
-            'name': entry.name,
-            'collection': entry.collection_name,
-            'state': get_package_state(
-                tracked=entry.tracked,
-                blocked=entry.blocked,
-                resolved=entry.resolved,
-                last_complete_build_state=entry.last_complete_build_state,
-            ),
-            'last_complete_build': {
-                'task_id': entry.build_task_id,
-            } if entry.build_task_id is not None else None,
-        }
-
     query = (
         db.query(
-            Package.name, Package.collection_id, Package.resolved,
-            Package.tracked, Package.blocked, Package.last_complete_build_state,
-            Build.task_id.label('build_task_id'),
-            Collection.name.label('collection_name'),
+            Package.name.label('name'),
+            Collection.name.label('collection'),
+            Package.state_string_expression.label('state'),
+            sql_if(
+                Build.id != None,
+                db.query(Build.task_id.label('task_id'))
+                .correlate(Build)
+                .as_record()
+            ).label('last_complete_build')
         )
+        .join(Collection)
         .outerjoin(
             Build,
             (Package.last_complete_build_id == Build.id) & Build.last_complete
         )
-        .join(Collection)
         .order_by(Package.name)
     )
     if 'name' in request.args:
@@ -59,7 +52,12 @@ def list_packages():
     if 'collection' in request.args:
         query = query.filter(Collection.name.in_(request.args.getlist('collection')))
 
-    return Response(
-        json.dumps([prepare_package_entry(p) for p in query]),
-        mimetype='application/json',
+    result = (
+        db.query(literal_column(
+            "coalesce(array_to_json(array_agg(row_to_json(pkg_query)))::text, '[]')"
+        ))
+        .select_from(query.subquery('pkg_query'))
+        .scalar()
     )
+
+    return Response(result, mimetype='application/json')

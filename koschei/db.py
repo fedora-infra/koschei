@@ -32,7 +32,7 @@ from sqlalchemy.orm import sessionmaker, CompositeProperty
 from sqlalchemy.engine.url import URL
 from sqlalchemy.event import listen
 from sqlalchemy.types import TypeDecorator
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, column
 from sqlalchemy.dialects.postgresql import BYTEA
 
 from . import util
@@ -81,6 +81,13 @@ class Query(sqlalchemy.orm.Query):
 
     def all_flat(self, ctor=list):
         return ctor(x for [x] in self)
+
+    def as_record(self):
+        """
+        Casts a select query to postgres record type
+        """
+        subq = self.subquery()
+        return self.session.query(column(subq.name)).select_from(subq).as_scalar()
 
 
 class KoscheiDbSession(sqlalchemy.orm.session.Session):

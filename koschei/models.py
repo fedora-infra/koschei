@@ -704,6 +704,19 @@ Index('ix_builds_last_complete', Build.package_id, Build.task_id,
       postgresql_where=(Build.last_complete))
 
 
+# Auxiliary expressions
+Package.state_string_expression = case(
+    [
+        (Package.blocked, 'blocked'),
+        (~Package.tracked, 'untracked'),
+        (Package.resolved == False, 'unresolved'),
+        (Package.last_complete_build_state == Build.COMPLETE, 'ok'),
+        (Package.last_complete_build_state == Build.FAILED, 'failing'),
+    ],
+    else_='unknown',
+)
+
+
 # Relationships
 Package.last_complete_build = relationship(
     Build,
