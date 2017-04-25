@@ -55,7 +55,7 @@ def list_packages():
     result = (
         db.query(literal_column(
             "coalesce(array_to_json(array_agg(row_to_json(pkg_query)))::text, '[]')"
-        ))
+        ).label('q'))
         .select_from(query.subquery('pkg_query'))
         .scalar()
     )
