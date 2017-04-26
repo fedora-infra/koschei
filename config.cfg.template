@@ -176,6 +176,8 @@ config = {
         "default_schedule_count": 8,
         # prefix of created projects
         "name_prefix": "k",
+        # require admin permission to request new Copr rebuilds
+        "require_admin": False,
     },
     # koschei uses dogpile.cache to cache external query results
     # it's possible to use various backends, such as memcached. The

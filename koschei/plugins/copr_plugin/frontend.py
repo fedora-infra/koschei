@@ -69,6 +69,8 @@ def list_rebuild_requests(username):
 @auth.login_required()
 @user_rebuilds_tab
 def new_rebuild_request():
+    if get_config('copr.require_admin') and not g.user.admin:
+        abort(403)
     form = RebuildRequestForm()
     if request.method == 'GET':
         return render_template('new-rebuild-request.html', form=form)
