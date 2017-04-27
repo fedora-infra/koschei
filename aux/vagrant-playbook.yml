@@ -91,7 +91,7 @@
         dest: /var/lib/pgsql/data/pg_hba.conf
 
     - name: start and enable postgresql
-      service: name=postgresql state=running enabled=true
+      service: name=postgresql state=started enabled=true
 
     - name: check whether koschei database is present
       shell: "psql koschei -c ''"
@@ -134,7 +134,7 @@
       selinux_permissive: name=httpd_t permissive=True
 
     - name: start and enable httpd
-      service: name=httpd state=running enabled=true
+      service: name=httpd state=started enabled=true
 
     - name: install koschei-ipython script
       copy:
