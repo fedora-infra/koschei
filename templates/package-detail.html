@@ -111,7 +111,7 @@
     <tr>
         <th>Global package groups</th>
         <td colspan="4">
-            {% for group in package.global_groups %}
+            {% for group in base.global_groups %}
             <a href="{{ url_for('group_detail', name=group.name) }}">{{ group.name }}</a>
             {% if group.editable %}
             <input type="checkbox" name="group-{{ group.id }}" checked="true"/>
@@ -124,7 +124,7 @@
     <tr>
         <th>Your package groups</th>
         <td colspan="4">
-            {% for group in package.user_groups %}
+            {% for group in base.user_groups %}
             <a href="{{ url_for('group_detail', name=group.name, namespace=group.namespace) }}">{{ group.full_name }}</a>
             <input type="checkbox" name="group-{{ group.id }}" checked="true"/>
             <input type="hidden" name="group-prev-{{ group.id }}" value="true"/>
@@ -134,7 +134,7 @@
     <tr>
         <th>Available package groups</th>
         <td colspan="4">
-            {% for group in package.available_groups %}
+            {% for group in base.available_groups %}
             <a href="{{ url_for('group_detail', name=group.name, namespace=group.namespace) }}">{{ group.full_name }}</a>
             <input type="checkbox" name="group-{{ group.id }}"/>
             <input type="hidden" name="group-prev-{{ group.id }}" value="false"/>
