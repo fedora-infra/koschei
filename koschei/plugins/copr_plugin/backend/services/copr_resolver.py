@@ -109,6 +109,7 @@ class CoprResolver(Service):
         # packages with no build have no srpm to fetch buildrequires, so filter them
         packages = self.db.query(Package)\
             .filter_by(tracked=True, blocked=False)\
+            .filter(Package.collection_id == request.collection_id)\
             .filter(Package.last_complete_build_state != None)\
             .order_by(Package.id)\
             .all()
