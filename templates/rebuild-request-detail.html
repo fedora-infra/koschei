@@ -126,6 +126,7 @@
         </td>
         <td>{{ build_state_icon(build.prev_state) }}</td>
         <td class="action-column">
+            {% if request.editable %}
             <form action="{{ url_for('edit_rebuild') }}" method="POST">
                 {{ form.csrf_token }}
                 <input type="hidden" name="request_id" value="{{ build.request_id }}"/>
@@ -133,6 +134,7 @@
                 <button name="action" value="move-top" type="submit">Move to top</button>
                 <button name="action" value="remove" type="submit">Remove</button>
             </form>
+            {% endif %}
         </td>
     </tr>
     {% endfor %}

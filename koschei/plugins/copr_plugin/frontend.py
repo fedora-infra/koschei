@@ -37,6 +37,13 @@ app.jinja_env.globals.update(
 )
 
 
+def can_edit_request(request):
+    return g.user and (request.user_id == g.user.id or g.user.admin)
+
+
+CoprRebuildRequest.editable = property(can_edit_request)
+
+
 class RebuildRequestForm(EmptyForm):
     collection = StrippedStringField('collection')
     copr_name = StrippedStringField('copr_name', [validators.Length(min=1)])
@@ -121,7 +128,7 @@ def edit_rebuild():
         .filter_by(request_id=form.request_id.data,
                    package_id=form.package_id.data)\
         .first_or_404()
-    if rebuild.request.user_id != g.user.id and not g.user.admin:
+    if not rebuild.request.editable:
         abort(403)
     if form.action.data == 'move-top':
         db.query(CoprRebuild)\
