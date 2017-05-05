@@ -339,6 +339,7 @@ class MaterializedView(Base):
                 index.create(db)
         else:
             cls._table.create(db)
+            cls.refresh(db)
 
     @classmethod
     def refresh(cls, db):
