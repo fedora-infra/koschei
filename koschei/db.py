@@ -318,11 +318,12 @@ class MaterializedView(Base):
 
     @declared_attr
     def __table__(cls):
-        cls._table = Table(cls.__tablename__, sqlalchemy.MetaData())
-        for column in cls.view.c:
-            cls._table.append_column(Column(column.name, column.type))
-        cls._table.append_constraint(PrimaryKeyConstraint(*[column.name for column in cls.view.c]))
-        listen(Base.metadata, 'after_create', lambda _, conn, **kwargs: cls.create(conn))
+        if cls._table is None:
+            cls._table = Table(cls.__tablename__, sqlalchemy.MetaData())
+            for column in cls.view.c:
+                cls._table.append_column(Column(column.name, column.type))
+            cls._table.append_constraint(PrimaryKeyConstraint(*[column.name for column in cls.view.c]))
+            listen(Base.metadata, 'after_create', lambda _, conn, **kwargs: cls.create(conn))
         return cls._table
 
     @declared_attr
