@@ -4,7 +4,7 @@
 {% block content %}
 <div class="pageHeader">Koschei in numbers</div>
 <table class="details">
-    <tr><th>Stats update time</th><td>{{ stats.refresh_time }} ({{ now - stats.refresh_time }} ago)</td></tr>
+    <tr><th>Stats update time</th><td>{{ stats.refresh_time }}</td></tr>
     <tr><th>All packages</th><td>{{ stats.packages }}</td></tr>
     <tr><th>Tracked packages</th><td>{{ stats.tracked_packages }}</td></tr>
     <tr><th>Untracked packages</th><td>{{ stats.packages - stats.tracked_packages }}</td></tr>
