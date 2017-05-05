@@ -314,6 +314,7 @@ class RpmEVRComparator(CmpMixin, CompositeProperty.Comparator):
 class MaterializedView(Base):
     __abstract__ = True
     _table = None
+    _native = False
 
     @declared_attr
     def __table__(cls):
@@ -324,14 +325,24 @@ class MaterializedView(Base):
         listen(Base.metadata, 'after_create', lambda _, conn, **kwargs: cls.create(conn))
         return cls._table
 
+    @declared_attr
+    def _view_sql(cls):
+        return cls.view.compile(dialect=sqlalchemy.dialects.postgresql.dialect())
+
     @classmethod
     def create(cls, db):
-        view_sql = cls.view.compile(dialect=sqlalchemy.dialects.postgresql.dialect())
-        ddl_sql = 'CREATE MATERIALIZED VIEW "{0}" AS {1}'.format(cls.__tablename__, view_sql)
-        db.execute(ddl_sql)
-        for index in cls._table.indexes:
-            index.create(db)
+        if cls._native:
+            ddl_sql = 'CREATE MATERIALIZED VIEW "{0}" AS {1}'.format(cls.__tablename__, cls._view_sql)
+            db.execute(ddl_sql)
+            for index in cls._table.indexes:
+                index.create(db)
+        else:
+            cls._table.create(db)
 
     @classmethod
     def refresh(cls, db):
-        db.execute('REFRESH MATERIALIZED VIEW "{0}"'.format(cls.__tablename__))
+        if cls._native:
+            db.execute('REFRESH MATERIALIZED VIEW "{0}"'.format(cls.__tablename__))
+        else:
+            db.execute('DELETE FROM "{0}"'.format(cls.__tablename__))
+            db.execute('INSERT INTO "{0}" ({1})'.format(cls.__tablename__, cls._view_sql))
