@@ -359,8 +359,21 @@ class ResolverTest(DBTest):
         with patch('koschei.backend.koji_util.get_build_group', return_value=['R']), \
                 patch('koschei.backend.koji_util.get_rpm_requires',
                       return_value=[['F', 'A'], ['nonexistent']]), \
-                patch('koschei.backend.koji_util.get_latest_repo', return_value=REPO):
+                patch('koschei.backend.koji_util.get_latest_repo', return_value=REPO), \
+                patch('fedmsg.publish') as fedmsg_mock:
             self.resolver.main()
+            fedmsg_mock.assert_called_once_with(
+                modname='koschei',
+                msg={'koji_instance': 'primary',
+                     'name': 'foo',
+                     'repo': 'f25',
+                     'collection': 'f25',
+                     'collection_name': 'Fedora Rawhide',
+                     'groups': [],
+                     'old': 'ignored',
+                     'new': 'ok'},
+                topic='package.state.change'
+            )
         self.assertTrue(foo.resolved)
         self.assertEqual(20, foo.dependency_priority)
 

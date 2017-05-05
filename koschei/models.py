@@ -126,6 +126,24 @@ class BasePackage(Base):
     all_blocked = Column(Boolean, nullable=False, server_default=true())
 
 
+def get_package_state(tracked, blocked, resolved, skip_resolution, last_complete_build_state):
+    """
+    Returns package state string for given package properties
+    """
+    if blocked:
+        return 'blocked'
+    if not tracked:
+        return 'untracked'
+    if not resolved and not skip_resolution:
+        return 'unresolved' if resolved is False else 'unknown'
+    if last_complete_build_state is not None:
+        return {
+            Build.COMPLETE: 'ok',
+            Build.FAILED: 'failing',
+        }.get(last_complete_build_state, 'unknown')
+    return 'unknown'
+
+
 class TimePriority(object):
     """
     Container for lazy computation of static time priority inputs
@@ -282,7 +300,8 @@ class Package(Base):
             [
                 (cls.blocked, 'blocked'),
                 (~cls.tracked, 'untracked'),
-                (cls.resolved == False, 'unresolved'),
+                ((cls.resolved == False) & (~cls.skip_resolution), 'unresolved'),
+                ((cls.resolved == None) & (~cls.skip_resolution), 'unknown'),
                 (cls.last_complete_build_state == Build.COMPLETE, 'ok'),
                 (cls.last_complete_build_state == Build.FAILED, 'failing'),
             ],
