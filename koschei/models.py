@@ -693,7 +693,6 @@ class CoprRebuild(Base):
 def count_query(type):
     return select((func.count(type.id),)).select_from(type)
 
-# TODO migrations
 class ScalarStats(MaterializedView):
     view = select((
         func.now().label('refresh_time'),
@@ -706,7 +705,6 @@ class ScalarStats(MaterializedView):
     ))
 
 
-# TODO migrations
 class ResourceConsumptionStats(MaterializedView):
     view = select((Package.name,
                    KojiTask.arch,
