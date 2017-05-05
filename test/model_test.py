@@ -208,7 +208,7 @@ class StatsTest(DBTest):
         # Before refresh MV should be empty
         self.assertEqual(0, self.db.query(ResourceConsumptionStats).count())
         # After refresh it should contain some entries
-        self.db.refresh_mv(ResourceConsumptionStats)
+        self.db.refresh_materialized_view(ResourceConsumptionStats)
         self.assertEqual(2, self.db.query(ResourceConsumptionStats).count())
         # Now add more data
         self.add_task(rnv, 'x86_64', 1000, 1100)
@@ -218,7 +218,7 @@ class StatsTest(DBTest):
         self.add_task(self.prepare_build('junit'), 'noarch', 24, 42)
         # Until it's refreshed again, MV should still contain only 2 rows
         self.assertEqual(2, self.db.query(ResourceConsumptionStats).count())
-        self.db.refresh_mv(ResourceConsumptionStats)
+        self.db.refresh_materialized_view(ResourceConsumptionStats)
         self.assertEqual(4, self.db.query(ResourceConsumptionStats).count())
         stats = self.db.query(ResourceConsumptionStats).order_by(ResourceConsumptionStats.time).all()
         self.assertEqual('junit', stats[0].name)
@@ -235,13 +235,13 @@ class StatsTest(DBTest):
         self.assertEqual(timedelta(0, 333 + 100 + 500), stats[3].time)
 
     def test_package_counts(self):
-        self.db.refresh_mv(ScalarStats)
+        self.db.refresh_materialized_view(ScalarStats)
         stats = self.db.query(ScalarStats).one()
         self.assertEqual(0, stats.packages)
         self.prepare_packages('rnv')[0].tracked = False
         self.prepare_packages('junit')[0].blocked = True
         self.prepare_packages('xpp3')
-        self.db.refresh_mv(ScalarStats)
+        self.db.refresh_materialized_view(ScalarStats)
         stats = self.db.query(ScalarStats).one()
         self.assertEqual(3, stats.packages)
         self.assertEqual(2, stats.tracked_packages)
@@ -254,7 +254,7 @@ class StatsTest(DBTest):
             self.prepare_build('rnv', False)
         for i in range(0, 4):
             self.prepare_build('rnv', None)
-        self.db.refresh_mv(ScalarStats)
+        self.db.refresh_materialized_view(ScalarStats)
         stats = self.db.query(ScalarStats).one()
         self.assertEqual(16, stats.builds)
         self.assertEqual(7, stats.real_builds)

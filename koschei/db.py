@@ -129,7 +129,10 @@ class KoscheiDbSession(sqlalchemy.orm.session.Session):
         finally:
             self.expire_on_commit = expire_on_commit
 
-    def refresh_mv(self, *args):
+    def refresh_materialized_view(self, *args):
+        """
+        Refresh materialized view(s) passed as args.
+        """
         self.flush()
         for mv in args:
             mv.refresh(self)
