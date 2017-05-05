@@ -66,6 +66,6 @@ class Polling(Service):
         backend.refresh_latest_builds(self.session)
         self.db.commit()
         self.log.info('Refreshing statistics...')
-        self.db.refresh_mv(ResourceConsumptionStats, ScalarStats)
+        self.db.refresh_materialized_view(ResourceConsumptionStats, ScalarStats)
         self.db.commit()
         self.log.info('Polling finished')
