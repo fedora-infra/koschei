@@ -927,7 +927,7 @@ def affected_by(dep_name):
 @app.route('/stats')
 @stats_tab.master
 def statistics():
-    now = db.query(func.now().label('now')).one().now
+    now = db.query(func.now()).scalar()
     scalar_stats = db.query(ScalarStats).one()
     resource_query = db.query(ResourceConsumptionStats)\
         .order_by(ResourceConsumptionStats.time.desc())\
