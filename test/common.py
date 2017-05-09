@@ -147,6 +147,7 @@ class DBTest(AbstractTest):
         super(DBTest, self).__init__(*args, **kwargs)
         self.db = None
         self.task_id_counter = 1
+        self.pkg_name_counter = 1
         self.collection = Collection(
             name="f25", display_name="Fedora Rawhide", target="f25",
             dest_tag='f25', build_tag="f25-build", priority_coefficient=1.0,
@@ -201,6 +202,18 @@ class DBTest(AbstractTest):
         self.db.add(build)
         self.db.commit()
         return pkg, build
+
+    def prepare_package(self, name=None, **kwargs):
+        if 'collection_id' not in kwargs:
+            kwargs['collection_id'] = self.collection.id
+        if not name:
+            name = 'p{}'.format(self.pkg_name_counter)
+            self.pkg_name_counter += 1
+        pkg = Package(name=name, **kwargs)
+        self.ensure_base_package(pkg)
+        self.db.add(pkg)
+        self.db.commit()
+        return pkg
 
     def prepare_packages(self, *pkg_names):
         pkgs = []

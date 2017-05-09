@@ -91,6 +91,31 @@ class GroupTest(DBTest):
         self.assertEqual(0, group.package_count)
 
 
+class PackageStateStringTest(DBTest):
+    def verify_state_string(self, state_string, **pkg_kwargs):
+        pkg = self.prepare_package(**pkg_kwargs)
+        self.assertEqual(state_string, pkg.state_string)
+        self.assertEqual(
+            state_string,
+            self.db.query(Package.state_string)
+            .filter(Package.id == pkg.id)
+            .scalar()
+        )
+
+    def test_state_string(self):
+        self.verify_state_string('blocked', blocked=True)
+        self.verify_state_string('untracked', tracked=False)
+        self.verify_state_string('unresolved', resolved=False)
+        self.verify_state_string('ok', resolved=True,
+                                 last_complete_build_state=Build.COMPLETE)
+        self.verify_state_string('failing', resolved=True,
+                                 last_complete_build_state=Build.FAILED)
+        self.verify_state_string('unknown', resolved=None,
+                                 last_complete_build_state=None)
+        self.verify_state_string('unknown', resolved=True,
+                                 last_complete_build_state=None)
+
+
 @patch('sqlalchemy.sql.expression.func.clock_timestamp',
        return_value=literal_column("'2017-10-10 10:00:00'"))
 class PackagePriorityTest(DBTest):

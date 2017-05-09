@@ -32,7 +32,8 @@ def list_packages():
         db.query(
             Package.name.label('name'),
             Collection.name.label('collection'),
-            Package.state_string_expression.label('state'),
+            # pylint:disable=no-member
+            Package.state_string.label('state'),
             sql_if(
                 Build.id != None,
                 db.query(Build.task_id.label('task_id'))
