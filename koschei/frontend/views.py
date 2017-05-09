@@ -41,7 +41,6 @@ from koschei.models import (
     BuildrootProblem, BasePackage, GroupACL, Collection, CollectionGroup,
     AppliedChange, UnappliedChange, ResolutionChange, ResourceConsumptionStats,
     ScalarStats,
-    get_package_state,
 )
 
 packages_per_page = frontend_config['packages_per_page']
@@ -912,12 +911,12 @@ def affected_by(dep_name):
         .all()
 
     def package_state(row):
-        return get_package_state(
+        return Package(
             tracked=True,
             blocked=False,
             resolved=row.package_resolved,
             last_complete_build_state=row.package_lb_state,
-        )
+        ).state_string
 
     return render_template("affected-by.html", package_state=package_state,
                            dep_name=dep_name, evr1=evr1, evr2=evr2,

@@ -28,11 +28,12 @@ import sqlalchemy
 
 from sqlalchemy import create_engine, Table, Column, DDL
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
-from sqlalchemy.orm import sessionmaker, CompositeProperty
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import sessionmaker, evaluator, CompositeProperty
 from sqlalchemy.engine.url import URL
 from sqlalchemy.event import listen
 from sqlalchemy.types import TypeDecorator
-from sqlalchemy.sql import func, column
+from sqlalchemy.sql import func, column, operators
 from sqlalchemy.schema import PrimaryKeyConstraint
 from sqlalchemy.dialects.postgresql import BYTEA
 
@@ -351,3 +352,50 @@ class MaterializedView(Base):
         else:
             db.execute('DELETE FROM "{0}"'.format(cls.__tablename__))
             db.execute('INSERT INTO "{0}" ({1})'.format(cls.__tablename__, cls._view_sql))
+
+
+class Evaluator(evaluator.EvaluatorCompiler):
+    """
+    Extension of sqlalchemy's EvaluatorCompiler that can evaluate some
+    expressions that EvaluatorCompiler cannot (currently "case" and comparison
+    with True/False)
+    """
+
+    def visit_unary(self, clause):
+
+        def evaluate(obj):
+            if clause.operator is operators.isfalse:
+                return self.process(clause.element)(obj) is False
+            if clause.operator is operators.istrue:
+                return self.process(clause.element)(obj) is True
+            return super(Evaluator, self).visit_unary(clause)(obj)
+
+        return evaluate
+
+    def visit_case(self, clause):
+
+        def evaluate(obj):
+            for when in clause.whens:
+                if self.process(when[0])(obj):
+                    return self.process(when[1])(obj)
+            return self.process(clause.else_)(obj)
+
+        return evaluate
+
+
+class sql_property(hybrid_property):
+    """
+    A decorator that can create a property that can reuse the same expression
+    for both sql query construction and in-python evaluation.
+    It decorates a classmethod that should return a sqlalchemy core query
+    expression.
+    When the property is accessed on the class, it returns the query
+    expression. When the property is accessed on an instance, it evaluates the
+    expression in python without making a database query, using the instance as
+    the bind parameter.
+    """
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self.fget(owner)
+        return Evaluator(owner).process(self.fget(owner))(instance)

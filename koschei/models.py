@@ -32,7 +32,10 @@ from sqlalchemy.orm import (relationship, column_property,
 from sqlalchemy.dialects.postgresql import ARRAY
 
 from .config import get_config
-from koschei.db import Base, MaterializedView, CompressedKeyArray, RpmEVR, RpmEVRComparator
+from koschei.db import (
+    Base, MaterializedView, CompressedKeyArray, RpmEVR, RpmEVRComparator,
+    sql_property,
+)
 
 
 class User(Base):
@@ -121,24 +124,6 @@ class BasePackage(Base):
 
     # updated by trigger
     all_blocked = Column(Boolean, nullable=False, server_default=true())
-
-
-def get_package_state(tracked, blocked, resolved, last_complete_build_state):
-    """
-    Returns package state string for given package properties
-    """
-    if blocked:
-        return 'blocked'
-    if not tracked:
-        return 'untracked'
-    if resolved is False:
-        return 'unresolved'
-    if last_complete_build_state is not None:
-        return {
-            Build.COMPLETE: 'ok',
-            Build.FAILED: 'failing',
-        }.get(last_complete_build_state, 'unknown')
-    return 'unknown'
 
 
 class TimePriority(object):
@@ -289,14 +274,19 @@ class Package(Base):
                            .format(self.collection))
         return reasons
 
-    @property
-    def state_string(self):
+    @sql_property
+    # pylint:disable=no-self-argument
+    def state_string(cls):
         """String representation of state used when disaplying to user"""
-        return get_package_state(
-            tracked=self.tracked,
-            blocked=self.blocked,
-            resolved=self.resolved,
-            last_complete_build_state=self.last_complete_build_state,
+        return case(
+            [
+                (cls.blocked, 'blocked'),
+                (~cls.tracked, 'untracked'),
+                (cls.resolved == False, 'unresolved'),
+                (cls.last_complete_build_state == Build.COMPLETE, 'ok'),
+                (cls.last_complete_build_state == Build.FAILED, 'failing'),
+            ],
+            else_='unknown',
         )
 
     @property
@@ -730,19 +720,6 @@ Index('ix_builds_unprocessed', Build.task_id,
 Index('ix_builds_last_complete', Build.package_id, Build.task_id,
       postgresql_where=(Build.last_complete))
 Index('ix_resource_consumption_stats_total_time', ResourceConsumptionStats.time)
-
-
-# Auxiliary expressions
-Package.state_string_expression = case(
-    [
-        (Package.blocked, 'blocked'),
-        (~Package.tracked, 'untracked'),
-        (Package.resolved == False, 'unresolved'),
-        (Package.last_complete_build_state == Build.COMPLETE, 'ok'),
-        (Package.last_complete_build_state == Build.FAILED, 'failing'),
-    ],
-    else_='unknown',
-)
 
 
 # Relationships
