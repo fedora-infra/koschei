@@ -164,6 +164,9 @@ class DBTest(AbstractTest):
                 DBTest.init_postgres()
                 DBTest.postgres_initialized = True
 
+    def get_session(self):
+        return Session()
+
     def setUp(self):
         if not DBTest.postgres_initialized:
             self.skipTest("requires PostgreSQL")
@@ -175,7 +178,7 @@ class DBTest(AbstractTest):
             if hasattr(table.c, 'id'):
                 conn.execute("ALTER SEQUENCE {}_id_seq RESTART".format(table.name))
         conn.close()
-        self.db = self.session._db = Session()
+        self.db = self.session._db = self.get_session()
         self.db.add(self.collection)
         self.db.commit()
 
