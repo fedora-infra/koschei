@@ -59,8 +59,10 @@
 
 {% elif package and collection %}
 {% set editable = "" if g.user else 'disabled="true"' %}
+{% set disabled = not g.user %}
 <form method="POST" action="{{ url_for('edit_package', name=package.name) }}">
-<input type="hidden" name="collection" value="{{ collection.name }}"/>
+{{ form.csrf_token }}
+{{ form.collection_id() }}
 <table class="details">
     <tr>
         <th>Package state</th>
@@ -84,8 +86,7 @@
     <tr>
         <th>Manual priority</th>
         <td colspan="4">
-            <input type="text" name="manual_priority" class="change_input"
-            value="{{ package.manual_priority }}" {{ editable | safe }}/>
+            {{ form.manual_priority(class="change_input", disabled=disabled) }}
         </td>
     </tr>
     <tr>
@@ -97,15 +98,13 @@
     <tr>
         <th>Arch override</th>
         <td colspan="4">
-            <input type="text" name="arch_override" class="change_input"
-            value="{{ package.arch_override or "" }}" {{ editable | safe }}/>
+            {{ form.arch_override(class="change_input", disabled=disabled) }}
         </td>
     </tr>
     <tr>
         <th>Skip resolution</th>
         <td colspan="4">
-            <input type="checkbox" name="skip_resolution" {{ editable | safe }}
-            {% if package.skip_resolution %}checked="true"{% endif %}/>
+            {{ form.skip_resolution(disabled=disabled) }}
         </td>
     </tr>
     <tr>
