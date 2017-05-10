@@ -339,6 +339,7 @@ def get_collections():
     if not g.collections:
         abort(500, "No collections setup")
     g.collections_by_name = {c.name: c for c in g.collections}
+    g.collections_by_id = {c.id: c for c in g.collections}
     g.current_collections = []
     if collection_name:
         try:
@@ -457,9 +458,10 @@ def frontpage():
 
 @app.route('/package/<name>')
 @package_tab
-def package_detail(name):
+def package_detail(name, form=None, collection=None):
     # if there are more collections, keep collection = None, which will display selector
-    collection = g.current_collections[0] if len(g.current_collections) == 1 else None
+    if not collection and len(g.current_collections):
+        collection = g.current_collections[0]
 
     base = db.query(BasePackage).filter_by(name=name).first_or_404()
     packages = {p.collection_id: p for p in db.query(Package).filter_by(base_id=base.id)}
@@ -543,11 +545,26 @@ def package_detail(name):
             reverse=True,
         )[:builds_per_page]
 
+        if not form:
+            form = forms.EditPackageForm(
+                collection_id=package.collection_id,
+                manual_priority=package.manual_priority,
+                arch_override=(package.arch_override or '').split(' '),
+                skip_resolution=package.skip_resolution,
+            )
+
     # Note: package might be None
-    return render_template("package-detail.html", base=base, package=package,
-                           collection=collection, entries=entries,
-                           all_packages=all_packages, is_continuation=bool(last_seen_ts),
-                           is_last=len(entries) < builds_per_page if package else True)
+    return render_template(
+        "package-detail.html",
+        base=base,
+        package=package,
+        collection=collection,
+        form=form,
+        entries=entries,
+        all_packages=all_packages,
+        is_continuation=bool(last_seen_ts),
+        is_last=len(entries) < builds_per_page if package else True,
+    )
 
 
 @app.route('/build/<int:build_id>')
@@ -776,41 +793,38 @@ def search():
 @app.route('/package/<name>/edit', methods=['POST'])
 @auth.login_required()
 def edit_package(name):
-    form = request.form
-    try:
-        collection = g.collections_by_name[form['collection']]
-        package = db.query(Package)\
-            .filter_by(name=name, collection_id=collection.id)\
-            .first_or_404()
-        for key, prev_val in form.items():
-            if key.startswith('group-prev-'):
-                group = db.query(PackageGroup).get_or_404(int(key[len('group-prev-'):]))
-                new_val = form.get('group-{}'.format(group.id))
-                if bool(new_val) != (prev_val == 'true'):
-                    if not group.editable:
-                        abort(403)
-                    if new_val:
-                        rel = PackageGroupRelation(base_id=package.base_id,
-                                                   group_id=group.id)
-                        db.add(rel)
-                    else:
-                        db.query(PackageGroupRelation)\
-                            .filter_by(group_id=group.id, base_id=package.base_id)\
-                            .delete(synchronize_session=False)
-        if 'manual_priority' in form:
-            new_priority = int(form['manual_priority'])
-            package.manual_priority = new_priority
-        if 'arch_override' in form:
-            package.arch_override = form['arch_override'].strip() or None
-        if form.get('skip_resolution') == 'on':
-            package.skip_resolution = True
+    form = forms.EditPackageForm()
+    collection = g.collections_by_id.get(form.collection_id.data) or abort(400)
+    if not form.validate_or_flash():
+        return package_detail(name=name, form=form, collection=collection)
+    package = db.query(Package)\
+        .filter_by(name=name, collection_id=collection.id)\
+        .first_or_404()
+    for key, prev_val in request.form.items():
+        if key.startswith('group-prev-'):
+            group = db.query(PackageGroup).get_or_404(int(key[len('group-prev-'):]))
+            new_val = request.form.get('group-{}'.format(group.id))
+            if bool(new_val) != (prev_val == 'true'):
+                if not group.editable:
+                    abort(403)
+                if new_val:
+                    rel = PackageGroupRelation(base_id=package.base_id,
+                                               group_id=group.id)
+                    db.add(rel)
+                else:
+                    db.query(PackageGroupRelation)\
+                        .filter_by(group_id=group.id, base_id=package.base_id)\
+                        .delete(synchronize_session=False)
+    if form.manual_priority.data is not None:
+        package.manual_priority = form.manual_priority.data
+    if form.arch_override.data is not None:
+        package.arch_override = ' '.join(form.arch_override.data)
+    if form.skip_resolution.data is not None:
+        package.skip_resolution = form.skip_resolution.data
+        if package.skip_resolution:
             package.resolved = None
             db.query(UnappliedChange).filter_by(package_id=package.id).delete()
-        else:
-            package.skip_resolution = False
-        flash("Package modified")
-    except (KeyError, ValueError):
-        abort(400)
+    flash("Package modified")
 
     db.commit()
     return redirect(url_for('package_detail', name=package.name) +

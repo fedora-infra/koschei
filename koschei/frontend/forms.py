@@ -24,8 +24,13 @@ import re
 from flask import flash
 from flask_wtf import Form
 
-from wtforms import StringField, TextAreaField
+from wtforms import (
+    StringField, TextAreaField, IntegerField, BooleanField,
+)
 from wtforms.validators import Regexp, ValidationError
+from wtforms.widgets import HiddenInput
+
+from koschei.config import get_koji_config
 
 
 class StrippedStringField(StringField):
@@ -66,6 +71,18 @@ class NameListValidator(object):
             raise ValidationError(self.message)
 
 
+arch_override_re = re.compile(r'\^?(.*)')
+
+
+class ArchOverrideValidator(object):
+    def __call__(self, _, field):
+        allowed = get_koji_config('primary', 'build_arches')
+        for arch in field.data:
+            match = arch_override_re.match(arch)
+            if not match or match.group(1) not in allowed:
+                raise ValidationError("Unrecognized arch in arch_override")
+
+
 class NonEmptyList(object):
     def __init__(self, message):
         self.message = message
@@ -79,7 +96,8 @@ class EmptyForm(Form):
     def validate_or_flash(self):
         if self.validate_on_submit():
             return True
-        flash(', '.join(x for i in self.errors.values() for x in i))
+        flash("Validation errors: " +
+              ', '.join(x for i in self.errors.values() for x in i))
         return False
 
 
@@ -96,3 +114,14 @@ class AddPackagesForm(EmptyForm):
                                           NameListValidator("Invalid package list")])
     collection = StrippedStringField('collection')
     group = StrippedStringField('group', [Regexp(group_re, message="Invalid group")])
+
+
+class EditPackageForm(EmptyForm):
+    collection_id = IntegerField(
+        'collection_id',
+        widget=HiddenInput(),
+    )
+    manual_priority = IntegerField('manual_priority')
+    arch_override = ListField('arch_override', [ArchOverrideValidator()])
+    skip_resolution = BooleanField('skip_resolution')
+    # groups checkboxes are processed manually
