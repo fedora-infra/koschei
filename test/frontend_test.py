@@ -16,6 +16,7 @@
 #
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
+import re
 from functools import wraps
 
 # pylint:disable = unused-import
@@ -23,7 +24,7 @@ import koschei.frontend.api
 import koschei.frontend.views
 import koschei.frontend.auth
 
-from koschei.frontend import app
+from koschei.frontend import app, db
 from koschei.models import User, PackageGroup
 
 from test.common import DBTest
@@ -59,12 +60,36 @@ def authenticate_admin(fn):
 
 
 class FrontendTest(DBTest):
+    def get_session(self):
+        return db
+
     def setUp(self):
         super(FrontendTest, self).setUp()
+        self.assertIs(self.db, db)
         app.config['TESTING'] = True
         app.config['CSRF_ENABLED'] = False  # older versions of flask-wtf (EPEL 7)
         app.config['WTF_CSRF_ENABLED'] = False  # newer versions of flask-wtf (Fedora)
         self.client = app.test_client()
+        self.teardown_appcontext_funcs = app.teardown_appcontext_funcs
+        app.teardown_appcontext_funcs = []
+
+    def tearDown(self):
+        app.teardown_appcontext_funcs = self.teardown_appcontext_funcs
+        app.do_teardown_appcontext()
+        super(FrontendTest, self).tearDown()
+
+    def assert_validated(self, reply):
+        data = reply.data.decode('utf-8')
+        match = re.search(r'Validation errors: [^<]*', data)
+        if match:
+            self.fail(match.group(0))
+
+    def assert_validation_failed(self, reply, msg=None):
+        data = reply.data.decode('utf-8')
+        match = re.search(r'Validation errors: [^<]*', data)
+        self.assertTrue(match, "Validation didn't fail")
+        if msg:
+            self.assertIn(msg, match.group(0))
 
     def test_main_page(self):
         reply = self.client.get('/')
@@ -246,6 +271,73 @@ class FrontendTest(DBTest):
             {self.prepare_user(name='jdoe'), self.prepare_user(name='user2')},
             set(group.owners),
         )
+
+    @authenticate
+    def test_edit_package(self):
+        package = self.prepare_package('rnv')
+        reply = self.client.post(
+            'package/rnv/edit',
+            data=dict(
+                collection_id=package.collection_id,
+                manual_priority=123,
+                arch_override='x86_64, i386',
+            ),
+            follow_redirects=True,
+        )
+        self.assertEqual(200, reply.status_code)
+        self.assert_validated(reply)
+        self.assertEqual(123, package.manual_priority)
+        self.assertEqual('x86_64 i386', package.arch_override)
+        self.assertEqual(False, package.skip_resolution)
+
+    @authenticate
+    def test_edit_package_neg_arch_override(self):
+        package = self.prepare_package('rnv')
+        reply = self.client.post(
+            'package/rnv/edit',
+            data=dict(
+                collection_id=package.collection_id,
+                manual_priority=0,
+                arch_override='^x86_64',
+            ),
+            follow_redirects=True,
+        )
+        self.assertEqual(200, reply.status_code)
+        self.assert_validated(reply)
+        self.assertEqual('^x86_64', package.arch_override)
+
+    @authenticate
+    def test_edit_package_unknown_arch_override(self):
+        package = self.prepare_package('rnv')
+        reply = self.client.post(
+            'package/rnv/edit',
+            data=dict(
+                collection_id=package.collection_id,
+                manual_priority=0,
+                arch_override='asdf',
+            ),
+            follow_redirects=True,
+        )
+        self.assertEqual(200, reply.status_code)
+        self.assert_validation_failed(reply, 'arch_override')
+        self.assertEqual(None, package.arch_override)
+
+    @authenticate
+    def test_edit_package_skip_resolution(self):
+        package = self.prepare_package('rnv')
+        reply = self.client.post(
+            'package/rnv/edit',
+            data=dict(
+                collection_id=package.collection_id,
+                manual_priority=0,
+                arch_override='',
+                skip_resolution='on',
+            ),
+            follow_redirects=True,
+        )
+        self.assertEqual(200, reply.status_code)
+        self.assert_validated(reply)
+        self.assertEqual(True, package.skip_resolution)
 
     @authenticate
     def test_edit_group_unpermitted(self):
