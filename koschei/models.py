@@ -16,6 +16,8 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+# pylint:disable=no-self-argument
+
 from __future__ import print_function, absolute_import
 
 import math
@@ -275,7 +277,6 @@ class Package(Base):
         return reasons
 
     @sql_property
-    # pylint:disable=no-self-argument
     def state_string(cls):
         """String representation of state used when disaplying to user"""
         return case(
@@ -680,8 +681,9 @@ class CoprRebuild(Base):
         )
 
 
-def count_query(type):
-    return select((func.count(type.id),)).select_from(type)
+def count_query(entity):
+    return select([func.count(entity.id)]).select_from(entity)
+
 
 class ScalarStats(MaterializedView):
     view = select((
@@ -696,15 +698,23 @@ class ScalarStats(MaterializedView):
 
 
 class ResourceConsumptionStats(MaterializedView):
-    view = select((Package.name,
-                   KojiTask.arch,
-                   func.sum(KojiTask.finished - KojiTask.started).label('time'),
-                   (extract('EPOCH', func.sum(KojiTask.finished - KojiTask.started)) /
-                    select((extract('EPOCH', func.sum(KojiTask.finished - KojiTask.started)),))
-                    .select_from(KojiTask)).label('time_percentage'),
-                   ))\
-        .select_from(join(join(Package, Build, Package.id == Build.package_id), KojiTask))\
+    view = (
+        select([
+            Package.name,
+            KojiTask.arch,
+            func.sum(KojiTask.finished - KojiTask.started).label('time'),
+            (
+                extract('EPOCH', func.sum(KojiTask.finished - KojiTask.started)) /
+                select([extract('EPOCH', func.sum(KojiTask.finished - KojiTask.started))])
+                .select_from(KojiTask)
+            ).label('time_percentage'),
+        ])
+        .select_from(join(join(Package, Build, Package.id == Build.package_id), KojiTask))
         .group_by(Package.name, KojiTask.arch)
+    )
+
+    # generated member, shut up pylint
+    time = None
 
 
 # Indices

@@ -16,6 +16,8 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+# pylint:disable=no-self-argument
+
 from __future__ import print_function, absolute_import
 
 import re
@@ -324,10 +326,16 @@ class MaterializedView(Base):
     def __table__(cls):
         if cls._table is None:
             cls._table = Table(cls.__tablename__, sqlalchemy.MetaData())
-            for column in cls.view.c:
-                cls._table.append_column(Column(column.name, column.type))
-            cls._table.append_constraint(PrimaryKeyConstraint(*[column.name for column in cls.view.c]))
-            listen(Base.metadata, 'after_create', lambda _, conn, **kwargs: cls.create(conn))
+            for col in cls.view.c:
+                cls._table.append_column(Column(col.name, col.type))
+            cls._table.append_constraint(
+                PrimaryKeyConstraint(*[col.name for col in cls.view.c])
+            )
+            listen(
+                Base.metadata,
+                'after_create',
+                lambda _, conn, **kwargs: cls.create(conn)
+            )
         return cls._table
 
     @declared_attr
@@ -337,7 +345,8 @@ class MaterializedView(Base):
     @classmethod
     def create(cls, db):
         if cls._native:
-            ddl_sql = 'CREATE MATERIALIZED VIEW "{0}" AS {1}'.format(cls.__tablename__, cls._view_sql)
+            ddl_sql = 'CREATE MATERIALIZED VIEW "{0}" AS {1}'\
+                .format(cls.__tablename__, cls._view_sql)
             db.execute(ddl_sql)
             for index in cls._table.indexes:
                 index.create(db)

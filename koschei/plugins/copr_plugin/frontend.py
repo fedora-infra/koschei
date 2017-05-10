@@ -37,8 +37,8 @@ app.jinja_env.globals.update(
 )
 
 
-def can_edit_request(request):
-    return g.user and (request.user_id == g.user.id or g.user.admin)
+def can_edit_request(copr_request):
+    return g.user and (copr_request.user_id == g.user.id or g.user.admin)
 
 
 CoprRebuildRequest.editable = property(can_edit_request)
