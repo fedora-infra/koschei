@@ -3,6 +3,7 @@
 *.pyo
 /build/
 /dist/
+/lint/
 /koschei.egg-info/
 /koschei-*.tar.gz
 
