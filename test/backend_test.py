@@ -283,7 +283,7 @@ class BackendTest(DBTest):
                                                                              'release': '333'}, 'the_url')) as get_last_srpm:
             with patch('koschei.backend.koji_util.koji_scratch_build', return_value=7541) as koji_scratch_build:
                 backend.submit_build(self.session, package)
-                get_last_srpm.assert_called_once_with(self.session.sec_koji_mock, 'f25', 'rnv')
+                get_last_srpm.assert_called_once_with(self.session.sec_koji_mock, 'f25', 'rnv', relative=True)
                 koji_scratch_build.assert_called_once_with(self.session.koji_mock, 'f25', 'rnv', 'the_url', {})
         self.db.commit()
         self.assertEqual(7541, package.last_build.task_id)
@@ -298,7 +298,7 @@ class BackendTest(DBTest):
                                                                              'release': '333'}, 'the_url')) as get_last_srpm:
             with patch('koschei.backend.koji_util.koji_scratch_build', return_value=7541) as koji_scratch_build:
                 backend.submit_build(self.session, package)
-                get_last_srpm.assert_called_once_with(self.session.sec_koji_mock, 'f25', 'rnv')
+                get_last_srpm.assert_called_once_with(self.session.sec_koji_mock, 'f25', 'rnv', relative=True)
                 koji_scratch_build.assert_called_once_with(self.session.koji_mock, 'f25', 'rnv', 'the_url', {'arch_override': 'x86_64 alpha'})
         self.db.commit()
         self.assertEqual(7541, package.last_build.task_id)
@@ -312,7 +312,7 @@ class BackendTest(DBTest):
                                                                              'release': '333'}, 'the_url')) as get_last_srpm:
             with patch('koschei.backend.koji_util.koji_scratch_build', return_value=7541) as koji_scratch_build:
                 backend.submit_build(self.session, package)
-                get_last_srpm.assert_called_once_with(self.session.sec_koji_mock, 'f25', 'rnv')
+                get_last_srpm.assert_called_once_with(self.session.sec_koji_mock, 'f25', 'rnv', relative=True)
                 koji_scratch_build.assert_called_once_with(self.session.koji_mock, 'f25', 'rnv', 'the_url', {'arch_override': 'armhfp i386'})
         self.db.commit()
         self.assertEqual(7541, package.last_build.task_id)
@@ -326,7 +326,7 @@ class BackendTest(DBTest):
                                                                              'release': '333'}, 'the_url')) as get_last_srpm:
             with patch('koschei.backend.koji_util.koji_scratch_build', return_value=7541) as koji_scratch_build:
                 backend.submit_build(self.session, package)
-                get_last_srpm.assert_called_once_with(self.session.sec_koji_mock, 'f25', 'rnv')
+                get_last_srpm.assert_called_once_with(self.session.sec_koji_mock, 'f25', 'rnv', relative=True)
                 koji_scratch_build.assert_called_once_with(self.session.koji_mock, 'f25', 'rnv', 'the_url', {'arch_override': 'armhfp i386 x86_64'})
         self.db.commit()
         self.assertEqual(7541, package.last_build.task_id)
@@ -339,7 +339,7 @@ class BackendTest(DBTest):
                                                                              'release': '333'}, 'the_url')) as get_last_srpm:
             with patch('koschei.backend.koji_util.koji_scratch_build', return_value=7541) as koji_scratch_build:
                 backend.submit_build(self.session, package)
-                get_last_srpm.assert_called_once_with(self.session.sec_koji_mock, 'f25', 'rnv')
+                get_last_srpm.assert_called_once_with(self.session.sec_koji_mock, 'f25', 'rnv', relative=True)
                 koji_scratch_build.assert_called_once_with(self.session.koji_mock, None, 'rnv', 'the_url', {'repo_id': 123})
         self.db.commit()
         self.assertEqual(7541, package.last_build.task_id)
