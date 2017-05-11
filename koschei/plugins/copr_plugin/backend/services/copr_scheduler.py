@@ -26,6 +26,7 @@ from copr.exceptions import CoprRequestException
 
 from koschei.models import Build, CoprRebuildRequest, CoprRebuild
 from koschei.config import get_config, get_koji_config
+from koschei.backend import koji_util
 from koschei.backend.service import Service
 from koschei.backend.repo_util import KojiRepoDescriptor
 
@@ -42,23 +43,6 @@ class CoprScheduler(Service):
 
     def get_koji_id(self, collection):
         return 'secondary' if collection.secondary_mode else 'primary'
-
-    def get_topurl(self, collection):
-        return get_koji_config(self.get_koji_id(collection), 'topurl')
-
-    def get_rpm_path(self, nvra):
-        path = '{name}/{version}/{release}/{arch}/{name}-{version}-{release}.{arch}.rpm'
-        return path.format(**nvra)
-
-    def get_srpm_url(self, package):
-        """
-        Returns last SRPM on Koji for given package,
-        or None if last complete build is unknown.
-        """
-        srpm_nvra = package.srpm_nvra
-        srpm_url = '{topurl}/packages/{path}'
-        return srpm_url.format(topurl=self.get_topurl(package.collection),
-                               path=self.get_rpm_path(srpm_nvra))
 
     def create_copr_project(self, request, copr_name):
         koji_repo = KojiRepoDescriptor(self.get_koji_id(request.collection),
@@ -102,8 +86,12 @@ class CoprScheduler(Service):
         )
         self.log.debug("Created copr project " + copr_name)
 
+
     def schedule_rebuild(self, rebuild):
-        srpm_url = self.get_srpm_url(rebuild.package)
+        koji_session = self.session.koji(self.get_koji_id(rebuild.package.collection))
+        srpm_url = koji_util.get_last_srpm(koji_session,
+                                           rebuild.package.collection.dest_tag,
+                                           rebuild.package.name)[1]
         self.create_copr_project(rebuild.request, rebuild.copr_name)
         copr_build = copr_client.create_new_build(
             projectname=rebuild.copr_name,

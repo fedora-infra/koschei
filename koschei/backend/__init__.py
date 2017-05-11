@@ -113,7 +113,8 @@ def submit_build(session, package):
     srpm_res = koji_util.get_last_srpm(
         session.secondary_koji_for(package.collection),
         package.collection.dest_tag,
-        name
+        name,
+        relative=True
     )
     if srpm_res:
         srpm, srpm_url = srpm_res
