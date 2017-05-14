@@ -171,9 +171,8 @@ class DBTest(AbstractTest):
         if not DBTest.postgres_initialized:
             self.skipTest("requires PostgreSQL")
         super(DBTest, self).setUp()
-        tables = Base.metadata.tables
         conn = get_engine().connect()
-        for table in list(tables.values()):
+        for table in Base.metadata.non_materialized_view_tables:
             conn.execute(table.delete())
             if hasattr(table.c, 'id'):
                 conn.execute("ALTER SEQUENCE {}_id_seq RESTART".format(table.name))

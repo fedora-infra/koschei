@@ -24,7 +24,7 @@ import math
 
 from sqlalchemy import (
     Column, Integer, String, Boolean, ForeignKey, DateTime, Index, Float,
-    CheckConstraint, UniqueConstraint, Enum,
+    CheckConstraint, UniqueConstraint, Enum, Interval,
 )
 from sqlalchemy.sql.expression import (
     func, select, join, false, true, extract, case, null, cast,
@@ -695,6 +695,13 @@ class ScalarStats(MaterializedView):
         count_query(Build).where(Build.real).label('real_builds'),
         count_query(Build).where(~Build.real).label('scratch_builds'),
     ))
+    refresh_time = Column(DateTime, primary_key=True)
+    packages = Column(Integer, nullable=False)
+    tracked_packages = Column(Integer, nullable=False)
+    blocked_packages = Column(Integer, nullable=False)
+    builds = Column(Integer, nullable=False)
+    real_builds = Column(Integer, nullable=False)
+    scratch_builds = Column(Integer, nullable=False)
 
 
 class ResourceConsumptionStats(MaterializedView):
@@ -712,9 +719,10 @@ class ResourceConsumptionStats(MaterializedView):
         .select_from(join(join(Package, Build, Package.id == Build.package_id), KojiTask))
         .group_by(Package.name, KojiTask.arch)
     )
-
-    # generated member, shut up pylint
-    time = None
+    name = Column(String, primary_key=True)
+    arch = Column(String, primary_key=True)
+    time = Column(Interval, nullable=False)
+    time_percentage = Column(Float, nullable=False)
 
 
 # Indices

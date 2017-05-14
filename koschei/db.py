@@ -28,7 +28,7 @@ import six
 
 import sqlalchemy
 
-from sqlalchemy import create_engine, Table, Column, DDL
+from sqlalchemy import create_engine, Table, DDL
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import sessionmaker, evaluator, CompositeProperty
@@ -36,7 +36,7 @@ from sqlalchemy.engine.url import URL
 from sqlalchemy.event import listen
 from sqlalchemy.types import TypeDecorator
 from sqlalchemy.sql import func, column, operators
-from sqlalchemy.schema import PrimaryKeyConstraint
+from sqlalchemy.sql.schema import MetaData
 from sqlalchemy.dialects.postgresql import BYTEA
 
 from . import util
@@ -254,7 +254,9 @@ def create_all():
         if bdr:
             conn.execute("SET LOCAL bdr.permit_ddl_locking = true")
         load_ddl()
-        Base.metadata.create_all(conn)
+        Base.metadata.create_all(conn, tables=Base.metadata.non_materialized_view_tables)
+        for mv in Base.metadata.materialized_views:
+            mv.create(conn)
         tx.commit()
     finally:
         tx.rollback()
@@ -317,26 +319,24 @@ class RpmEVRComparator(CmpMixin, CompositeProperty.Comparator):
         )
 
 
+Table.materialized_view = None
+MetaData.materialized_views = property(
+    lambda self: [table.materialized_view for table in self.tables.values()
+                  if table.materialized_view]
+)
+MetaData.non_materialized_view_tables = property(
+    lambda self: [table for table in self.tables.values()
+                  if not table.materialized_view]
+)
+
+
 class MaterializedView(Base):
     __abstract__ = True
-    _table = None
     _native = False
 
     @declared_attr
-    def __table__(cls):
-        if cls._table is None:
-            cls._table = Table(cls.__tablename__, sqlalchemy.MetaData())
-            for col in cls.view.c:
-                cls._table.append_column(Column(col.name, col.type))
-            cls._table.append_constraint(
-                PrimaryKeyConstraint(*[col.name for col in cls.view.c])
-            )
-            listen(
-                Base.metadata,
-                'after_create',
-                lambda _, conn, **kwargs: cls.create(conn)
-            )
-        return cls._table
+    def __table_cls__(cls):
+        return type(cls.__name__ + 'Table', (Table,), {'materialized_view': cls})
 
     @declared_attr
     def _view_sql(cls):
@@ -348,10 +348,10 @@ class MaterializedView(Base):
             ddl_sql = 'CREATE MATERIALIZED VIEW "{0}" AS {1}'\
                 .format(cls.__tablename__, cls._view_sql)
             db.execute(ddl_sql)
-            for index in cls._table.indexes:
+            for index in cls.__table__.indexes:
                 index.create(db)
         else:
-            cls._table.create(db)
+            cls.__table__.create(db)
             cls.refresh(db)
 
     @classmethod
