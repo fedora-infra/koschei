@@ -263,6 +263,17 @@ class StatsTest(DBTest):
         self.assertEqual(timedelta(0, 333 + 100 + 500), stats[3].time)
         self.assertAlmostEqual(0.5112, stats[3].time_percentage, 4)
 
+    def test_time_consumption_only_running(self):
+        rnv = self.prepare_build('rnv')
+        self.add_task(rnv, 'x86_64', 123, None)
+        self.db.refresh_materialized_view(ResourceConsumptionStats)
+        self.assertEqual(1, self.db.query(ResourceConsumptionStats).count())
+        stats = self.db.query(ResourceConsumptionStats).one()
+        self.assertEqual('rnv', stats.name)
+        self.assertEqual('x86_64', stats.arch)
+        self.assertIsNone(stats.time)
+        self.assertIsNone(stats.time_percentage)
+
     def test_package_counts(self):
         self.db.refresh_materialized_view(ScalarStats)
         stats = self.db.query(ScalarStats).one()

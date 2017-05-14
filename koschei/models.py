@@ -721,8 +721,8 @@ class ResourceConsumptionStats(MaterializedView):
     )
     name = Column(String, primary_key=True)
     arch = Column(String, primary_key=True)
-    time = Column(Interval, nullable=False)
-    time_percentage = Column(Float, nullable=False)
+    time = Column(Interval)
+    time_percentage = Column(Float)
 
 
 # Indices
