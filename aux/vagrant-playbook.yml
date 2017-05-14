@@ -136,6 +136,19 @@
     - name: start and enable httpd
       service: name=httpd state=started enabled=true
 
+    - name: create /home/vagrant/.config directory
+      file: path=/home/vagrant/.config state=directory
+
+    - name: install dummy copr credentials file
+      copy:
+        content: |
+          [copr-cli]
+          login = dummy
+          username = dummy
+          token = dummy
+          copr_url = https://copr.fedorainfracloud.org
+        dest: /home/vagrant/.config/copr
+
     - name: install koschei-ipython script
       copy:
         content: "KOSCHEI_CONFIG=/usr/share/koschei/config.cfg:/etc/koschei/config-backend.cfg exec ipython -i /vagrant/aux/test.ipy \"$@\""
