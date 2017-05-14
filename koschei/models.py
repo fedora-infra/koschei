@@ -27,7 +27,7 @@ from sqlalchemy import (
     CheckConstraint, UniqueConstraint, Enum,
 )
 from sqlalchemy.sql.expression import (
-    func, select, join, false, true, extract, case, null,
+    func, select, join, false, true, extract, case, null, cast,
 )
 from sqlalchemy.orm import (relationship, column_property,
                             configure_mappers, deferred, composite)
@@ -699,16 +699,16 @@ class ScalarStats(MaterializedView):
 
 class ResourceConsumptionStats(MaterializedView):
     view = (
-        select([
+        select((
             Package.name,
             KojiTask.arch,
             func.sum(KojiTask.finished - KojiTask.started).label('time'),
-            (
+            cast((
                 extract('EPOCH', func.sum(KojiTask.finished - KojiTask.started)) /
                 select([extract('EPOCH', func.sum(KojiTask.finished - KojiTask.started))])
                 .select_from(KojiTask)
-            ).label('time_percentage'),
-        ])
+            ), Float).label('time_percentage'),
+        ))
         .select_from(join(join(Package, Build, Package.id == Build.package_id), KojiTask))
         .group_by(Package.name, KojiTask.arch)
     )
