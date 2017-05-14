@@ -25,7 +25,7 @@ from sqlalchemy.sql.expression import func
 from copr.exceptions import CoprRequestException
 
 from koschei.models import Build, CoprRebuildRequest, CoprRebuild
-from koschei.config import get_config, get_koji_config
+from koschei.config import get_config
 from koschei.backend import koji_util
 from koschei.backend.service import Service
 from koschei.backend.repo_util import KojiRepoDescriptor
@@ -85,7 +85,6 @@ class CoprScheduler(Service):
             packages='@' + request.collection.build_group,
         )
         self.log.debug("Created copr project " + copr_name)
-
 
     def schedule_rebuild(self, rebuild):
         koji_session = self.session.koji(self.get_koji_id(rebuild.package.collection))
