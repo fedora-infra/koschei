@@ -176,6 +176,8 @@ class DBTest(AbstractTest):
             conn.execute(table.delete())
             if hasattr(table.c, 'id'):
                 conn.execute("ALTER SEQUENCE {}_id_seq RESTART".format(table.name))
+        for materialized_view in Base.metadata.materialized_views:
+            materialized_view.refresh(conn)
         conn.close()
         self.db = self.session._db = self.get_session()
         self.db.add(self.collection)
