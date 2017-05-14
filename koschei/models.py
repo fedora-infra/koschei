@@ -721,7 +721,7 @@ class ResourceConsumptionStats(MaterializedView):
     )
     name = Column(String, primary_key=True)
     arch = Column(String, primary_key=True)
-    time = Column(Interval)
+    time = Column(Interval, index=True)
     time_percentage = Column(Float)
 
 
@@ -737,7 +737,6 @@ Index('ix_builds_unprocessed', Build.task_id,
       postgresql_where=(Build.deps_resolved.is_(None) & Build.repo_id.isnot(None)))
 Index('ix_builds_last_complete', Build.package_id, Build.task_id,
       postgresql_where=(Build.last_complete))
-Index('ix_resource_consumption_stats_total_time', ResourceConsumptionStats.time)
 
 
 # Relationships
