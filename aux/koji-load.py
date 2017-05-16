@@ -25,7 +25,7 @@ import koji
 import sys
 from concurrent.futures import ThreadPoolExecutor
 
-arches = ['x86_64', 'armhfp', 'aarch64', 'ppc64', 'ppc64le']
+arches = ['x86_64', 'armhfp', 'aarch64', 'ppc64', 'ppc64le', 's390x']
 koji_urls = {'Production': 'https://koji.fedoraproject.org/kojihub',
              'Staging': 'https://koji.stg.fedoraproject.org/kojihub'}
 
