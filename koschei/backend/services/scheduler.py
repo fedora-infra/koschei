@@ -81,6 +81,14 @@ class Scheduler(Service):
                 self.log.info("No SRPM found for {} in {}"
                               .format(package.name, package.collection.name))
                 package.scheduler_skip_reason = Package.SKIPPED_NO_SRPM
+                package.resolved = None
+                package.last_build_id = None
+                package.last_complete_build_id = None
+                package.last_complete_build_state = None
+                self.db.query(Build)\
+                    .filter_by(package_id=package_id)\
+                    .filter_by(last_complete=True)\
+                    .update({'last_complete': False})
                 self.db.commit()
                 continue
 
