@@ -70,15 +70,16 @@ class Scheduler(Service):
                                    .format(package, koji_load))
                     return
 
-            self.log.info('Scheduling build for {}, priority {}'
-                          .format(package.name, priority))
+            self.log.info('Scheduling build for {} in {}, priority {}'
+                          .format(package.name, package.collection.name, priority))
             build = backend.submit_build(self.session, package)
             package.current_priority = None
             package.scheduler_skip_reason = None
             package.manual_priority = 0
 
             if not build:
-                self.log.debug("No SRPM found for {}".format(package.name))
+                self.log.info("No SRPM found for {} in {}"
+                              .format(package.name, package.collection.name))
                 package.scheduler_skip_reason = Package.SKIPPED_NO_SRPM
                 self.db.commit()
                 continue
