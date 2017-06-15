@@ -170,19 +170,17 @@ def get_rpm_requires_cached(session, koji_session, nvras):
     return get_rpm_requires_inner(*nvras)
 
 
-def get_koji_load(koji_session, arches):
+def get_koji_load(koji_session, all_arches, arches):
+    assert arches
+    noarch = 'noarch' in arches
+    if noarch:
+        arches = all_arches
     channel = koji_session.getChannel('default')
-    build_arches = get_config('koji_config').get('build_arches')
-    noarch = len(arches) == 1 and arches[0] == 'noarch'
-    if noarch or not arches:
-        arches = build_arches
-    arches = [arch for arch in set(arches) & set(build_arches)]
     hosts = koji_session.listHosts(arches, channel['id'], enabled=True)
     min_load = 1
     max_load = 0
-    assert arches
-    for arch in arches:
-        arch_hosts = [host for host in hosts if arch in host['arches']]
+    for arch in set(map(koji.canonArch, arches)):
+        arch_hosts = [host for host in hosts if arch in host['arches'].split()]
         capacity = sum(host['capacity'] for host in arch_hosts)
         load = sum(min(host['task_load'], host['capacity']) if host['ready']
                    else host['capacity'] for host in arch_hosts)
@@ -190,6 +188,50 @@ def get_koji_load(koji_session, arches):
         min_load = min(min_load, arch_load)
         max_load = max(max_load, arch_load)
     return min_load if noarch else max_load
+
+
+def get_srpm_arches(koji_session, all_arches, nvra, arch_override=None):
+    # compute arches the same way as koji
+    # see kojid/getArchList
+    archlist = all_arches
+    tag_archlist = [koji.canonArch(a) for a in archlist]
+    headers = koji_session.getRPMHeaders(
+        rpmID=nvra,
+        headers=['BUILDARCHS', 'EXCLUDEARCH', 'EXCLUSIVEARCH'],
+    )
+    if not headers:
+        return None
+    buildarchs = headers.get('BUILDARCHS', [])
+    exclusivearch = headers.get('EXCLUSIVEARCH', [])
+    excludearch = headers.get('EXCLUDEARCH', [])
+    if buildarchs:
+        archlist = buildarchs
+    if exclusivearch:
+        archlist = [arch for arch in archlist if arch in exclusivearch]
+    if excludearch:
+        archlist = [arch for arch in archlist if arch not in excludearch]
+
+    if ('noarch' not in excludearch and
+            ('noarch' in buildarchs or 'noarch' in exclusivearch)):
+        archlist.append('noarch')
+
+    if arch_override:
+        # we also allow inverse overrides
+        if arch_override.startswith('^'):
+            archlist = [arch for arch in archlist
+                        if koji.canonArch(arch) not in arch_override[1:].split()]
+        else:
+            archlist = arch_override.split()
+
+    koschei_arches = get_config('koji_config').get('build_arches')
+    allowed_arches = set(tag_archlist) & set(koschei_arches)
+
+    arches = set()
+    for arch in archlist:
+        if arch == 'noarch' or koji.canonArch(arch) in allowed_arches:
+            arches.add(arch)
+
+    return arches
 
 
 def get_latest_repo(koji_session, build_tag):

@@ -198,6 +198,7 @@ class Package(Base):
     blocked = Column(Boolean, nullable=False, server_default=false())
 
     SKIPPED_NO_SRPM = 1
+    SKIPPED_NO_ARCH = 2
     scheduler_skip_reason = Column(Integer)
 
     @classmethod
@@ -256,6 +257,8 @@ class Package(Base):
         reasons = []
         if self.scheduler_skip_reason == Package.SKIPPED_NO_SRPM:
             reasons.append("No suitable SRPM was found")
+        if self.scheduler_skip_reason == Package.SKIPPED_NO_ARCH:
+            reasons.append("No build architecture allowed for SRPM")
         if not self.tracked:
             reasons.append("Package is not tracked")
         if self.blocked:

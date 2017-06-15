@@ -1,0 +1,70 @@
+{
+    "version": 1,
+    "interactions": [
+        {
+            "request": {
+                "body": "<?xml version='1.0'?>\n<methodCall>\n<methodName>getRPMHeaders</methodName>\n<params>\n<param>\n<value><struct>\n<member>\n<name>__starstar</name>\n<value><boolean>1</boolean></value>\n</member>\n<member>\n<name>headers</name>\n<value><array><data>\n<value><string>BUILDARCHS</string></value>\n<value><string>EXCLUDEARCH</string></value>\n<value><string>EXCLUSIVEARCH</string></value>\n</data></array></value>\n</member>\n<member>\n<name>rpmID</name>\n<value><struct>\n<member>\n<name>release</name>\n<value><string>11.fc26</string></value>\n</member>\n<member>\n<name>version</name>\n<value><string>1.7.11</string></value>\n</member>\n<member>\n<name>arch</name>\n<value><string>src</string></value>\n</member>\n<member>\n<name>name</name>\n<value><string>rnv</string></value>\n</member>\n</struct></value>\n</member>\n</struct></value>\n</param>\n</params>\n</methodCall>\n",
+                "headers": {
+                    "Content-Length": [
+                        "832"
+                    ],
+                    "Accept-Encoding": [
+                        "gzip, deflate"
+                    ],
+                    "Accept": [
+                        "*/*"
+                    ],
+                    "User-Agent": [
+                        "koji/1.7"
+                    ],
+                    "Connection": [
+                        "keep-alive"
+                    ],
+                    "Content-Type": [
+                        "text/xml"
+                    ]
+                },
+                "method": "POST",
+                "uri": "https://koji.fedoraproject.org/kojihub"
+            },
+            "response": {
+                "status": {
+                    "message": "OK",
+                    "code": 200
+                },
+                "headers": {
+                    "apptime": [
+                        "D=1483668"
+                    ],
+                    "content-length": [
+                        "395"
+                    ],
+                    "strict-transport-security": [
+                        "max-age=15768000; includeSubDomains; preload"
+                    ],
+                    "keep-alive": [
+                        "timeout=15, max=500"
+                    ],
+                    "server": [
+                        "Apache/2.4.6 (Red Hat Enterprise Linux) OpenSSL/1.0.1e-fips mod_auth_gssapi/1.4.0 mod_auth_kerb/5.4 mod_wsgi/3.4 Python/2.7.5"
+                    ],
+                    "appserver": [
+                        "proxy01.phx2.fedoraproject.org"
+                    ],
+                    "connection": [
+                        "Keep-Alive"
+                    ],
+                    "date": [
+                        "Mon, 03 Jul 2017 15:57:28 GMT"
+                    ],
+                    "content-type": [
+                        "text/xml"
+                    ]
+                },
+                "body": {
+                    "string": "<?xml version='1.0'?>\n<methodResponse>\n<params>\n<param>\n<value><struct>\n<member>\n<name>BUILDARCHS</name>\n<value><array><data>\n</data></array></value>\n</member>\n<member>\n<name>EXCLUDEARCH</name>\n<value><array><data>\n</data></array></value>\n</member>\n<member>\n<name>EXCLUSIVEARCH</name>\n<value><array><data>\n</data></array></value>\n</member>\n</struct></value>\n</param>\n</params>\n</methodResponse>\n"
+                }
+            }
+        }
+    ]
+}

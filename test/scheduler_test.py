@@ -26,6 +26,10 @@ from koschei.backend.services.scheduler import Scheduler
 
 # pylint:disable = too-many-public-methods, unbalanced-tuple-unpacking
 class SchedulerTest(DBTest):
+    def setUp(self):
+        super(SchedulerTest, self).setUp()
+        self.session.koji_mock.getBuildConfig.return_value = {'arches': 'x86_64'}
+
     def get_scheduler(self):
         sched = Scheduler(self.session)
         return sched
@@ -83,7 +87,9 @@ class SchedulerTest(DBTest):
 
     def assert_scheduled(self, scheduled, koji_load=0.3):
         with patch('koschei.backend.koji_util.get_koji_load',
-                   Mock(return_value=koji_load)):
+                   Mock(return_value=koji_load)), \
+                patch('koschei.backend.koji_util.get_srpm_arches',
+                      Mock(return_value=['x86_64'])):
             sched = self.get_scheduler()
             with patch('sqlalchemy.sql.expression.func.clock_timestamp',
                        return_value=literal_column("'2017-10-10 10:00:00'")):
@@ -91,7 +97,8 @@ class SchedulerTest(DBTest):
                     sched.main()
                     if scheduled:
                         pkg = self.db.query(Package).filter_by(name=scheduled).one()
-                        submit_mock.assert_called_once_with(self.session, pkg)
+                        submit_mock.assert_called_once_with(self.session, pkg,
+                                                            arch_override=['x86_64'])
                     else:
                         self.assertFalse(submit_mock.called)
 
@@ -158,7 +165,9 @@ class SchedulerTest(DBTest):
         self.assert_scheduled(None)
 
     def test_load_not_determined_when_no_schedulable_packages(self):
-        with patch('koschei.backend.koji_util.get_koji_load') as load_mock:
+        with patch('koschei.backend.koji_util.get_koji_load') as load_mock, \
+                patch('koschei.backend.koji_util.get_srpm_arches',
+                      Mock(return_value=['x86_64'])):
             self.get_scheduler().main()
             load_mock.assert_not_called()
 
@@ -167,14 +176,3 @@ class SchedulerTest(DBTest):
         self.db.query(Package).filter_by(name='rnv').first().skip_resolution = True
         self.db.commit()
         self.assert_scheduled('rnv')
-
-    def test_load_arches(self):
-        arches = ['x86_64', 'ppc64le', 'alpha']
-        package = self.prepare_build('rnv', True, arches=arches).package
-        with patch('koschei.backend.koji_util.get_koji_load',
-                   return_value=0) as load_mock:
-            with patch('koschei.backend.submit_build') as submit_mock:
-                self.get_scheduler().main()
-                load_mock.assert_called_with(self.session.koji('primary'),
-                                             arches)
-                submit_mock.assert_called_once_with(self.session, package)

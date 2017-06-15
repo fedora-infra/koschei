@@ -1,0 +1,70 @@
+{
+    "version": 1,
+    "interactions": [
+        {
+            "request": {
+                "body": "<?xml version='1.0'?>\n<methodCall>\n<methodName>getRPMHeaders</methodName>\n<params>\n<param>\n<value><struct>\n<member>\n<name>__starstar</name>\n<value><boolean>1</boolean></value>\n</member>\n<member>\n<name>headers</name>\n<value><array><data>\n<value><string>BUILDARCHS</string></value>\n<value><string>EXCLUDEARCH</string></value>\n<value><string>EXCLUSIVEARCH</string></value>\n</data></array></value>\n</member>\n<member>\n<name>rpmID</name>\n<value><struct>\n<member>\n<name>release</name>\n<value><string>0.20170221git663ebfd.0.fc25</string></value>\n</member>\n<member>\n<name>version</name>\n<value><string>0.34dev</string></value>\n</member>\n<member>\n<name>arch</name>\n<value><string>src</string></value>\n</member>\n<member>\n<name>name</name>\n<value><string>ghdl</string></value>\n</member>\n</struct></value>\n</member>\n</struct></value>\n</param>\n</params>\n</methodCall>\n",
+                "headers": {
+                    "Content-Length": [
+                        "854"
+                    ],
+                    "Accept-Encoding": [
+                        "gzip, deflate"
+                    ],
+                    "Accept": [
+                        "*/*"
+                    ],
+                    "User-Agent": [
+                        "koji/1.7"
+                    ],
+                    "Connection": [
+                        "keep-alive"
+                    ],
+                    "Content-Type": [
+                        "text/xml"
+                    ]
+                },
+                "method": "POST",
+                "uri": "https://koji.fedoraproject.org/kojihub"
+            },
+            "response": {
+                "status": {
+                    "message": "OK",
+                    "code": 200
+                },
+                "headers": {
+                    "apptime": [
+                        "D=163717"
+                    ],
+                    "content-length": [
+                        "1527"
+                    ],
+                    "strict-transport-security": [
+                        "max-age=15768000; includeSubDomains; preload"
+                    ],
+                    "keep-alive": [
+                        "timeout=15, max=500"
+                    ],
+                    "server": [
+                        "Apache/2.4.6 (Red Hat Enterprise Linux) OpenSSL/1.0.1e-fips mod_auth_gssapi/1.4.0 mod_auth_kerb/5.4 mod_wsgi/3.4 Python/2.7.5"
+                    ],
+                    "appserver": [
+                        "proxy01.phx2.fedoraproject.org"
+                    ],
+                    "connection": [
+                        "Keep-Alive"
+                    ],
+                    "date": [
+                        "Mon, 03 Jul 2017 15:57:30 GMT"
+                    ],
+                    "content-type": [
+                        "text/xml"
+                    ]
+                },
+                "body": {
+                    "string": "<?xml version='1.0'?>\n<methodResponse>\n<params>\n<param>\n<value><struct>\n<member>\n<name>BUILDARCHS</name>\n<value><array><data>\n</data></array></value>\n</member>\n<member>\n<name>EXCLUDEARCH</name>\n<value><array><data>\n<value><string>armv7hl</string></value>\n</data></array></value>\n</member>\n<member>\n<name>EXCLUSIVEARCH</name>\n<value><array><data>\n<value><string>i386</string></value>\n<value><string>i486</string></value>\n<value><string>i586</string></value>\n<value><string>i686</string></value>\n<value><string>pentium3</string></value>\n<value><string>pentium4</string></value>\n<value><string>athlon</string></value>\n<value><string>geode</string></value>\n<value><string>x86_64</string></value>\n<value><string>ppc64</string></value>\n<value><string>ppc64p7</string></value>\n<value><string>ppc64le</string></value>\n<value><string>s390x</string></value>\n<value><string>armv3l</string></value>\n<value><string>armv4b</string></value>\n<value><string>armv4l</string></value>\n<value><string>armv4tl</string></value>\n<value><string>armv5tel</string></value>\n<value><string>armv5tejl</string></value>\n<value><string>armv6l</string></value>\n<value><string>armv6hl</string></value>\n<value><string>armv7l</string></value>\n<value><string>armv7hl</string></value>\n<value><string>armv7hnl</string></value>\n<value><string>aarch64</string></value>\n<value><string>ia64</string></value>\n<value><string>ppc</string></value>\n<value><string>alpha</string></value>\n</data></array></value>\n</member>\n</struct></value>\n</param>\n</params>\n</methodResponse>\n"
+                }
+            }
+        }
+    ]
+}
