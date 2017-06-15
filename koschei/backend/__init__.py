@@ -94,19 +94,13 @@ class KoscheiBackendSession(KoscheiSession):
         return self._repo_cache
 
 
-def submit_build(session, package):
+def submit_build(session, package, arch_override=None):
     assert package.collection.latest_repo_id
     build = Build(package_id=package.id, state=Build.RUNNING)
     name = package.name
     build_opts = {}
-    if package.arch_override:
-        override = package.arch_override
-        if override.startswith('^'):
-            excludes = override[1:].split()
-            build_arches = get_config('koji_config').get('build_arches')
-            includes = set(build_arches) - set(excludes)
-            override = ' '.join(sorted(includes))
-        build_opts = {'arch_override': override}
+    if arch_override:
+        build_opts['arch_override'] = ' '.join(arch_override)
     # on secondary collections SRPMs are taken from secondary, primary
     # needs to be able to build from relative URL constructed against
     # secondary (internal redirect)
