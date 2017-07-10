@@ -73,8 +73,11 @@ class Scheduler(Service):
             package = self.db.query(Package).get(package_id)
 
             koji_session = self.session.koji('primary')
-            build_config = koji_session.getBuildConfig(package.collection.build_tag)
-            all_arches = build_config['arches'].split()
+            all_arches = koji_util.get_koji_arches_cached(
+                self.session,
+                koji_session,
+                package.collection.build_tag,
+            )
             arches = koji_util.get_srpm_arches(
                 koji_session=koji_session,
                 all_arches=all_arches,

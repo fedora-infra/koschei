@@ -19,6 +19,7 @@
 
 from __future__ import print_function, absolute_import, division
 
+import re
 import koji
 import logging
 
@@ -123,21 +124,36 @@ def is_koji_fault(session, task_id):
         return True
 
 
+def cached_koji_call(fn):
+    cache_name = re.sub(r'^get_', '', fn.__name__)
+
+    def decorated(session, koji_session, *args, **kwargs):
+        cache = session.cache(cache_name)
+        namespace = '{}-{}'.format(cache_name, koji_session.koji_id)
+
+        @cache.cache_on_arguments(namespace=namespace)
+        def raw_call(args, kwargs):
+            return fn(koji_session, *args, **kwargs)
+
+        return raw_call(args, kwargs)
+
+    return decorated
+
+
 def get_build_group(koji_session, tag_name, group_name):
     groups = koji_session.getTagGroups(tag_name)
     [packages] = [group['packagelist'] for group in groups if group['name'] == group_name]
     return [package['package'] for package in packages
             if not package['blocked'] and package['type'] in ('default', 'mandatory')]
 
+get_build_group_cached = cached_koji_call(get_build_group)
 
-def get_build_group_cached(session, koji_session, tag_name, group_name):
-    cache = session.cache('build_group')
 
-    @cache.cache_on_arguments(namespace='build_group-' + koji_session.koji_id)
-    def get_build_group_inner(key):
-        return get_build_group(koji_session, key[0], key[1])
+def get_koji_arches(koji_session, build_tag):
+    build_config = koji_session.getBuildConfig(build_tag)
+    return build_config['arches'].split()
 
-    return get_build_group_inner((tag_name, group_name))
+get_koji_arches_cached = cached_koji_call(get_koji_arches)
 
 
 def get_rpm_requires(koji_session, nvras):

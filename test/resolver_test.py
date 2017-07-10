@@ -225,7 +225,7 @@ class ResolverTest(DBTest):
         build = self.prepare_build('foo', False, repo_id=2)
         build.deps_resolved = True
         self.prepare_build('foo', None, repo_id=None)
-        with patch('koschei.backend.koji_util.get_build_group',
+        with patch('koschei.backend.koji_util.get_build_group_cached',
                    return_value=['gcc', 'bash']):
             self.assertIsNone(self.resolver.get_build_for_comparison(foo))
 
@@ -234,13 +234,13 @@ class ResolverTest(DBTest):
         b1 = self.prepare_build('foo', False, repo_id=2, resolved=True)
         self.prepare_build('foo', False, repo_id=3, resolved=False)
         self.db.commit()
-        with patch('koschei.backend.koji_util.get_build_group',
+        with patch('koschei.backend.koji_util.get_build_group_cached',
                    return_value=['gcc', 'bash']):
             self.assertEqual(b1, self.resolver.get_build_for_comparison(foo))
 
     def test_resolve_build(self):
         foo_build = self.prepare_foo_build()
-        with patch('koschei.backend.koji_util.get_build_group',
+        with patch('koschei.backend.koji_util.get_build_group_cached',
                    return_value=['R']):
             with patch('koschei.backend.koji_util.get_rpm_requires',
                        return_value=[['F', 'A']]):
@@ -254,7 +254,7 @@ class ResolverTest(DBTest):
     def test_unresolved_build_should_bump_priority(self):
         foo_build = self.prepare_foo_build()
         self.assertEqual(0, foo_build.package.build_priority)
-        with patch('koschei.backend.koji_util.get_build_group',
+        with patch('koschei.backend.koji_util.get_build_group_cached',
                    return_value=['R']):
             with patch('koschei.backend.koji_util.get_rpm_requires',
                        return_value=[['nonexistent', 'A']]):
@@ -263,7 +263,7 @@ class ResolverTest(DBTest):
 
     def test_virtual_in_group(self):
         foo_build = self.prepare_foo_build()
-        with patch('koschei.backend.koji_util.get_build_group',
+        with patch('koschei.backend.koji_util.get_build_group_cached',
                    return_value=['virtual']):
             with patch('koschei.backend.koji_util.get_rpm_requires',
                        return_value=[['F', 'A']]):
@@ -277,7 +277,7 @@ class ResolverTest(DBTest):
         b.version = '2'
         b.release = '2'
         self.db.commit()
-        with patch('koschei.backend.koji_util.get_build_group',
+        with patch('koschei.backend.koji_util.get_build_group_cached',
                    return_value=['R']):
             with patch('koschei.backend.koji_util.get_rpm_requires',
                        return_value=[['nonexistent']]):
@@ -303,7 +303,7 @@ class ResolverTest(DBTest):
     def test_differences(self):
         self.prepare_old_build()
         build = self.prepare_foo_build(repo_id=123, version='4')
-        with patch('koschei.backend.koji_util.get_build_group',
+        with patch('koschei.backend.koji_util.get_build_group_cached',
                    return_value=['R']):
             with patch('koschei.backend.koji_util.get_rpm_requires',
                        return_value=[['F', 'A']]):
@@ -321,7 +321,7 @@ class ResolverTest(DBTest):
         self.collection.latest_repo_resolved = None
         self.collection.latest_repo_id = None
         self.db.commit()
-        with patch('koschei.backend.koji_util.get_build_group', return_value=['R']), \
+        with patch('koschei.backend.koji_util.get_build_group_cached', return_value=['R']), \
                 patch('koschei.backend.koji_util.get_rpm_requires',
                       return_value=[['F', 'A'], ['nonexistent']]), \
                 patch('koschei.backend.koji_util.get_latest_repo', return_value=REPO), \
@@ -356,7 +356,7 @@ class ResolverTest(DBTest):
         self.collection.latest_repo_resolved = True
         foo = self.db.query(Package).filter_by(name='foo').first()
         foo.resolved = None
-        with patch('koschei.backend.koji_util.get_build_group', return_value=['R']), \
+        with patch('koschei.backend.koji_util.get_build_group_cached', return_value=['R']), \
                 patch('koschei.backend.koji_util.get_rpm_requires',
                       return_value=[['F', 'A'], ['nonexistent']]), \
                 patch('koschei.backend.koji_util.get_latest_repo', return_value=REPO):
@@ -370,7 +370,7 @@ class ResolverTest(DBTest):
         self.collection.latest_repo_resolved = False
         foo = self.db.query(Package).filter_by(name='foo').first()
         foo.resolved = None
-        with patch('koschei.backend.koji_util.get_build_group', return_value=['R']), \
+        with patch('koschei.backend.koji_util.get_build_group_cached', return_value=['R']), \
                 patch('koschei.backend.koji_util.get_rpm_requires',
                       return_value=[['F', 'A'], ['nonexistent']]), \
                 patch('koschei.backend.koji_util.get_latest_repo', return_value=REPO):
@@ -383,7 +383,7 @@ class ResolverTest(DBTest):
         self.collection.latest_repo_id = None
         self.collection.latest_repo_resolved = None
         self.prepare_group('bar', ['foo'])
-        with patch('koschei.backend.koji_util.get_build_group', return_value=['R']), \
+        with patch('koschei.backend.koji_util.get_build_group_cached', return_value=['R']), \
                 patch('fedmsg.publish') as fedmsg_mock:
             # first run, success
             with patch('koschei.backend.koji_util.get_rpm_requires',
@@ -501,7 +501,7 @@ class ResolverTest(DBTest):
         self.collection.latest_repo_resolved = None
         self.collection.latest_repo_id = None
         self.prepare_packages('bar')
-        with patch('koschei.backend.koji_util.get_build_group', return_value=['bar']), \
+        with patch('koschei.backend.koji_util.get_build_group_cached', return_value=['bar']), \
                 patch('koschei.backend.koji_util.get_rpm_requires',
                       return_value=[['nonexistent']]), \
                 patch('koschei.backend.koji_util.get_latest_repo',
@@ -514,7 +514,7 @@ class ResolverTest(DBTest):
         self.assertIn('nonexistent',
                       ''.join(p.problem for p in self.db.query(BuildrootProblem)))
 
-        with patch('koschei.backend.koji_util.get_build_group', return_value=['R']), \
+        with patch('koschei.backend.koji_util.get_build_group_cached', return_value=['R']), \
                 patch('koschei.backend.koji_util.get_rpm_requires',
                       return_value=[['F', 'A']]), \
                 patch('koschei.backend.koji_util.get_latest_repo',
@@ -544,7 +544,7 @@ class ResolverTest(DBTest):
         self.assertEqual(res, [['maven-local', 'jetty-toolchain']])
 
     def test_virtual_file_provides(self):
-        with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
+        with patch('koschei.backend.koji_util.get_build_group_cached', return_value=['R']):
             sack = get_sack()
             (resolved, problems, deps) = \
                 self.resolver.resolve_dependencies(sack, ['/bin/csh'], ['R'])
@@ -558,7 +558,7 @@ class ResolverTest(DBTest):
     @skipIf(hawkey.VERSION < MINIMAL_HAWKEY_VERSION,
             'Rich deps are not supported by this hawkey version')
     def test_rich_deps(self):
-        with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
+        with patch('koschei.backend.koji_util.get_build_group_cached', return_value=['R']):
             sack = get_sack()
             (resolved, problems, deps) = \
                 self.resolver.resolve_dependencies(sack, ['qt-x11'], ['R'])
@@ -572,7 +572,7 @@ class ResolverTest(DBTest):
     @skipIf(hawkey.VERSION < MINIMAL_HAWKEY_VERSION,
             'Rich deps are not supported by this hawkey version')
     def test_rich_deps2(self):
-        with patch('koschei.backend.koji_util.get_build_group', return_value=['R']):
+        with patch('koschei.backend.koji_util.get_build_group_cached', return_value=['R']):
             sack = get_sack()
             (resolved, problems, deps) = \
                 self.resolver.resolve_dependencies(sack,
