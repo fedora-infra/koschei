@@ -187,6 +187,10 @@ config = {
         "build_group": {
             "backend": "dogpile.cache.memory",
         },
+        "koji_arches": {
+            "backend": "dogpile.cache.memory",
+            "expiration_time": 3600,
+        },
         "rpm_requires": {
             "backend": "dogpile.cache.dbm",
             "expiration_time": None,
