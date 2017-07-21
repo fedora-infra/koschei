@@ -234,8 +234,8 @@ def get_srpm_arches(koji_session, all_arches, nvra, arch_override=None):
     if arch_override:
         # we also allow inverse overrides
         if arch_override.startswith('^'):
-            archlist = [arch for arch in archlist
-                        if koji.canonArch(arch) not in arch_override[1:].split()]
+            excluded = {koji.canonArch(arch) for arch in arch_override[1:].split()}
+            archlist = [arch for arch in archlist if koji.canonArch(arch) not in excluded]
         else:
             archlist = arch_override.split()
 
