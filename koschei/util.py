@@ -119,7 +119,7 @@ def sd_notify(msg):
 
 def merge_sorted(iterable1, iterable2, key):
     """Merge two sorted iterables."""
-    iters = [iter(g) for g in iterable1, iterable2]
+    iters = [iter(g) for g in (iterable1, iterable2)]
     heads = [next(iterator, None) for iterator in iters]
     while heads[0] or heads[1]:
         index = 0 if heads[0] and (not heads[1] or key(heads[0]) < key(heads[1])) else 1

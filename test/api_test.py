@@ -16,8 +16,10 @@
 #
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
+from __future__ import absolute_import
+
 from flask import json
-from frontend_test import FrontendTest
+from test.frontend_test import FrontendTest
 from koschei.models import Collection
 
 

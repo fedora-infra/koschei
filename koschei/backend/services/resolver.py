@@ -648,7 +648,8 @@ class Resolver(Service):
             collection.build_tag,
         )
 
-        if latest_repo and latest_repo.get('id', 0) > collection.latest_repo_id:
+        if latest_repo and (not collection.latest_repo_id or
+                            latest_repo.get('id', 0) > collection.latest_repo_id):
             if not collection.secondary_mode:
                 return latest_repo['id']
             else:

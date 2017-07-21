@@ -213,7 +213,7 @@ def register_real_builds(session, collection, package_build_infos):
                 )
             )
         # insert valid builds
-        session.db.bulk_insert(build_tasks.keys())
+        session.db.bulk_insert(list(build_tasks.keys()))
         # set build_ids of new koji tasks
         for build, tasks in build_tasks.items():
             for task in tasks:

@@ -16,7 +16,6 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-import koji
 import six
 
 from copy import deepcopy

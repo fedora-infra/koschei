@@ -37,7 +37,9 @@ class KoscheiSession(object):
             with _cache_creation_lock:
                 if cache_id not in self._caches:
                     cache = dogpile.cache.make_region(
-                        key_mangler=dogpile.cache.util.sha1_mangle_key,
+                        key_mangler=(
+                            lambda key: dogpile.cache.util.sha1_mangle_key(key.encode())
+                        ),
                     )
                     cache.configure(**get_config('caching.' + cache_id))
                     self._caches[cache_id] = cache
