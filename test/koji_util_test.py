@@ -103,6 +103,16 @@ class KojiArchesTest(AbstractTest):
         )
 
     @my_vcr.use_cassette('get_srpm_arches')
+    def test_get_srpm_arches_override_non_canon(self):
+        nvra = {'arch': 'src', 'name': 'rnv', 'release': '11.fc26',
+                'version': '1.7.11'}
+        self.assertEqual(
+            {'i686'},
+            koji_util.get_srpm_arches(self.session, self.all_arches, nvra,
+                                      arch_override="i686"),
+        )
+
+    @my_vcr.use_cassette('get_srpm_arches')
     def test_get_srpm_arches_override_inv(self):
         nvra = {'arch': 'src', 'name': 'rnv', 'release': '11.fc26',
                 'version': '1.7.11'}
@@ -110,4 +120,14 @@ class KojiArchesTest(AbstractTest):
             {'i686', 'x86_64'},
             koji_util.get_srpm_arches(self.session, self.all_arches, nvra,
                                       arch_override="^armhfp"),
+        )
+
+    @my_vcr.use_cassette('get_srpm_arches')
+    def test_get_srpm_arches_override_inv_non_canon(self):
+        nvra = {'arch': 'src', 'name': 'rnv', 'release': '11.fc26',
+                'version': '1.7.11'}
+        self.assertEqual(
+            {'i686', 'x86_64'},
+            koji_util.get_srpm_arches(self.session, self.all_arches, nvra,
+                                      arch_override="^armv7hl"),
         )
