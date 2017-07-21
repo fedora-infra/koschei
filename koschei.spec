@@ -19,7 +19,7 @@ BuildRequires:       python-nose
 BuildRequires:       python-vcrpy
 BuildRequires:       python-mock
 BuildRequires:       python-sqlalchemy
-BuildRequires:       koji >= 1.11
+BuildRequires:       python2-koji
 BuildRequires:       python-hawkey
 BuildRequires:       python-librepo
 BuildRequires:       rpm-python
@@ -81,7 +81,7 @@ Requires:       js-jquery
 %package backend
 Summary:        Koschei backend services
 Requires:       %{name}-common = %{version}-%{release}
-Requires:       koji
+Requires:       python2-koji
 Requires:       python-hawkey
 Requires:       python-librepo
 Requires:       python-dogpile-cache
