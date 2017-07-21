@@ -192,7 +192,7 @@ def get_koji_load(koji_session, all_arches, arches):
     if noarch:
         arches = all_arches
     channel = koji_session.getChannel('default')
-    hosts = koji_session.listHosts(arches, channel['id'], enabled=True)
+    hosts = koji_session.listHosts(list(arches), channel['id'], enabled=True)
     min_load = 1
     max_load = 0
     for arch in set(map(koji.canonArch, arches)):
