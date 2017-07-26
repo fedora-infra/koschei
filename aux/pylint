@@ -1,3 +1,3 @@
 #!/bin/bash
 cd "$(git rev-parse --show-toplevel)"
-pylint --rcfile aux/pylintrc `find koschei/ admin.py -name '*.py'` "$@"
+pylint-3 --rcfile aux/pylintrc `find koschei/ admin.py -name '*.py'` "$@"

@@ -1,4 +1,4 @@
-#!/usr/bin/ipython -i
+#!/usr/bin/ipython3 -i
 
 import os
 import sys

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/libexec/koschei/koschei-admin
 # Copyright (C) 2014-2016 Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify

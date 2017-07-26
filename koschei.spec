@@ -1,6 +1,16 @@
 %bcond_without tests
 %global upstreamrel 1
 
+%if 0%{?fedora} >= 27
+%global python3 1
+%global python %{__python3}
+%global python_sitelib %{python3_sitelib}
+%else
+%global python3 0
+%global python %{__python2}
+%global python_sitelib %{python2_sitelib}
+%endif
+
 Name:           koschei
 Version:        1.11.0
 Release:        1%{?dist}
@@ -10,29 +20,56 @@ URL:            https://github.com/msimacek/%{name}
 Source0:        https://github.com/msimacek/%{name}/archive/%{name}-%{version}-%{upstreamrel}.tar.gz
 BuildArch:      noarch
 
+
+BuildRequires:  systemd
+%if %{python3}
+BuildRequires:  python3-devel
+BuildRequires:  python3-setuptools
+BuildRequires:  python3-mock
+%else
 BuildRequires:  python2-devel
 BuildRequires:  python-setuptools
-BuildRequires:  systemd
+BuildRequires:  python-mock
+%endif
 
 %if %{with tests}
-BuildRequires:       python-nose
-BuildRequires:       python-vcrpy
-BuildRequires:       python-mock
-BuildRequires:       python-sqlalchemy
-BuildRequires:       python2-koji
-BuildRequires:       python-hawkey
-BuildRequires:       python-librepo
-BuildRequires:       rpm-python
-BuildRequires:       fedmsg
-BuildRequires:       python-psycopg2
-BuildRequires:       postgresql-server
-BuildRequires:       python-flask
-BuildRequires:       python-flask-sqlalchemy
-BuildRequires:       python-flask-wtf
-BuildRequires:       python-jinja2
-BuildRequires:       python-dogpile-cache
-BuildRequires:       python-six
-BuildRequires:       python-copr >= 1.75
+BuildRequires:  postgresql-server
+%if %{python3}
+BuildRequires:  python3-nose
+BuildRequires:  python3-vcrpy
+BuildRequires:  python3-sqlalchemy
+BuildRequires:  python3-koji
+BuildRequires:  python3-hawkey
+BuildRequires:  python3-librepo
+BuildRequires:  python3-rpm
+BuildRequires:  python3-fedmsg-core
+BuildRequires:  python3-psycopg2
+BuildRequires:  python3-flask
+BuildRequires:  python3-flask-sqlalchemy
+BuildRequires:  python3-flask-wtf
+BuildRequires:  python3-wtforms
+BuildRequires:  python3-jinja2
+BuildRequires:  python3-dogpile-cache
+BuildRequires:  python3-six
+BuildRequires:  python3-copr
+%else
+BuildRequires:  python-nose
+BuildRequires:  python-vcrpy
+BuildRequires:  python-sqlalchemy
+BuildRequires:  python2-koji
+BuildRequires:  python-hawkey
+BuildRequires:  python-librepo
+BuildRequires:  rpm-python
+BuildRequires:  fedmsg
+BuildRequires:  python-psycopg2
+BuildRequires:  python-flask
+BuildRequires:  python-flask-sqlalchemy
+BuildRequires:  python-flask-wtf
+BuildRequires:  python-jinja2
+BuildRequires:  python-dogpile-cache
+BuildRequires:  python-six
+BuildRequires:  python-copr >= 1.75
+%endif
 %endif
 
 %description
@@ -43,10 +80,17 @@ provides a web interface to the results.
 
 %package common
 Summary:        Acutual python code for koschei backend and frontend
+%if %{python3}
+Requires:       python3-sqlalchemy
+Requires:       python3-psycopg2
+Requires:       python3-six
+Requires:       python3-rpm
+%else
 Requires:       python-sqlalchemy
 Requires:       python-psycopg2
 Requires:       python-six
 Requires:       rpm-python
+%endif
 Requires(pre):  shadow-utils
 Obsoletes:      %{name} < 1.5.1
 
@@ -57,7 +101,11 @@ Obsoletes:      %{name} < 1.5.1
 %package admin
 Summary:        Administration script and DB migrations for koschei
 Requires:       %{name}-common = %{version}-%{release}
+%if %{python3}
+Requires:       python3-alembic
+%else
 Requires:       python-alembic
+%endif
 Requires:       postgresql
 
 
@@ -67,10 +115,18 @@ Requires:       postgresql
 %package frontend
 Summary:        Web frontend for koschei using mod_wsgi
 Requires:       %{name}-common = %{version}-%{release}
+%if %{python3}
+Requires:       python3-flask
+Requires:       python3-flask-sqlalchemy
+Requires:       python3-flask-wtf
+Requires:       python3-wtforms
+Requires:       python3-jinja2
+%else
 Requires:       python-flask
 Requires:       python-flask-sqlalchemy
 Requires:       python-flask-wtf
 Requires:       python-jinja2
+%endif
 Requires:       mod_wsgi
 Requires:       httpd
 Requires:       js-jquery
@@ -81,10 +137,17 @@ Requires:       js-jquery
 %package backend
 Summary:        Koschei backend services
 Requires:       %{name}-common = %{version}-%{release}
+%if %{python3}
+Requires:       python3-koji
+Requires:       python3-hawkey
+Requires:       python3-librepo
+Requires:       python3-dogpile-cache
+%else
 Requires:       python2-koji
 Requires:       python-hawkey
 Requires:       python-librepo
 Requires:       python-dogpile-cache
+%endif
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
@@ -94,8 +157,12 @@ Requires(postun): systemd
 
 %package common-fedora
 Summary:        Fedora-specific Koschei plugins (common parts of backend and frontend)
-Requires:       %{name}-common = %{version}-%{release}
+%if %{python3}
+Requires:       python3-dogpile-cache
+%else
 Requires:       python-dogpile-cache
+%endif
+Requires:       %{name}-common = %{version}-%{release}
 
 %description common-fedora
 %{summary}.
@@ -112,8 +179,13 @@ Requires:       %{name}-common-fedora = %{version}-%{release}
 Summary:        Fedora-specific Koschei backend plugins
 Requires:       %{name}-backend = %{version}-%{release}
 Requires:       %{name}-common-fedora = %{version}-%{release}
+%if %{python3}
+Requires:       python3-fedmsg-core
+Requires:       python3-fedmsg-meta-fedora-infrastructure
+%else
 Requires:       fedmsg
 Requires:       python-fedmsg-meta-fedora-infrastructure
+%endif
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
@@ -132,7 +204,11 @@ Requires:       %{name}-common = %{version}-%{release}
 Summary:        Koschei plugin for user rebuilds in Copr (backend part)
 Requires:       %{name}-backend = %{version}-%{release}
 Requires:       %{name}-common-copr = %{version}-%{release}
+%if %{python3}
+Requires:       python3-copr
+%else
 Requires:       python-copr >= 1.75
+%endif
 
 %description backend-copr
 %{summary}.
@@ -156,12 +232,12 @@ sed 's|@CACHEDIR@|%{_localstatedir}/cache/%{name}|g
      s|@STATEDIR@|%{_sharedstatedir}/%{name}|g' config.cfg.template > config.cfg
 
 %build
-%{__python2} setup.py build
+%{python} setup.py build
 
-aux/gen-bash-completion.py >koschei-admin.bash
+%{python} aux/gen-bash-completion.py >koschei-admin.bash
 
 %install
-%{__python2} setup.py install --skip-build --root %{buildroot}
+%{python} setup.py install --skip-build --root %{buildroot}
 
 mkdir -p %{buildroot}%{_bindir}
 mkdir -p %{buildroot}%{_datadir}/%{name}
@@ -192,14 +268,15 @@ cp -p %{name}.wsgi %{buildroot}%{_datadir}/%{name}/
 cp -p httpd.conf %{buildroot}%{_sysconfdir}/httpd/conf.d/%{name}.conf
 
 install -dm 755 %{buildroot}%{_libexecdir}/%{name}
-ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-scheduler
-ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-watcher
-ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-polling
-ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-resolver
-ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-build-resolver
-ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-repo-resolver
-ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-copr-resolver
-ln -s %{_bindir}/python %{buildroot}%{_libexecdir}/%{name}/koschei-copr-scheduler
+ln -s %{python} %{buildroot}%{_libexecdir}/%{name}/koschei-admin
+ln -s %{python} %{buildroot}%{_libexecdir}/%{name}/koschei-scheduler
+ln -s %{python} %{buildroot}%{_libexecdir}/%{name}/koschei-watcher
+ln -s %{python} %{buildroot}%{_libexecdir}/%{name}/koschei-polling
+ln -s %{python} %{buildroot}%{_libexecdir}/%{name}/koschei-resolver
+ln -s %{python} %{buildroot}%{_libexecdir}/%{name}/koschei-build-resolver
+ln -s %{python} %{buildroot}%{_libexecdir}/%{name}/koschei-repo-resolver
+ln -s %{python} %{buildroot}%{_libexecdir}/%{name}/koschei-copr-resolver
+ln -s %{python} %{buildroot}%{_libexecdir}/%{name}/koschei-copr-scheduler
 
 install -dm 755 %{buildroot}%{_sysconfdir}/bash_completion.d/
 install -p -m 644 koschei-admin.bash %{buildroot}%{_sysconfdir}/bash_completion.d/
@@ -210,7 +287,7 @@ install -p -m 644 koschei-admin.bash %{buildroot}%{_sysconfdir}/bash_completion.
 pg_init
 pg_start
 trap pg_stop 0
-%{__python2} setup.py test
+%{python} setup.py test
 %endif
 
 %pre common
@@ -270,10 +347,10 @@ dummy = posix.readlink(dir) and os.remove(dir)
 
 %files common
 %license LICENSE.txt
-%{python2_sitelib}/*
-%exclude %{python2_sitelib}/*/frontend
-%exclude %{python2_sitelib}/*/backend
-%exclude %{python2_sitelib}/*/plugins
+%{python_sitelib}/*
+%exclude %{python_sitelib}/*/frontend
+%exclude %{python_sitelib}/*/backend
+%exclude %{python_sitelib}/*/plugins
 %dir %{_datadir}/%{name}
 %{_datadir}/%{name}/config.cfg
 %attr(755, %{name}, %{name}) %{_localstatedir}/cache/%{name}
@@ -282,6 +359,8 @@ dummy = posix.readlink(dir) and os.remove(dir)
 
 %files admin
 %{_bindir}/%{name}-admin
+%dir %{_libexecdir}/%{name}
+%{_libexecdir}/%{name}/koschei-admin
 %{_datadir}/%{name}/alembic/
 %{_datadir}/%{name}/*.sql
 %{_datadir}/%{name}/alembic.ini
@@ -294,7 +373,7 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %{_datadir}/%{name}/static
 %{_datadir}/%{name}/templates
 %{_datadir}/%{name}/%{name}.wsgi
-%{python2_sitelib}/*/frontend
+%{python_sitelib}/*/frontend
 
 %files backend
 %config(noreplace) %{_sysconfdir}/%{name}/config-backend.cfg
@@ -309,38 +388,38 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %{_unitdir}/koschei-resolver.service
 %{_unitdir}/koschei-build-resolver.service
 %{_unitdir}/koschei-repo-resolver.service
-%{python2_sitelib}/*/backend
-%{python2_sitelib}/*/plugins/repo_regen_plugin
+%{python_sitelib}/*/backend
+%{python_sitelib}/*/plugins/repo_regen_plugin
 
 %files common-fedora
-%{python2_sitelib}/*/plugins/fedmsg_plugin
-%{python2_sitelib}/*/plugins/pkgdb_plugin
-%exclude %{python2_sitelib}/*/plugins/*/backend*
-%exclude %{python2_sitelib}/*/plugins/*/frontend*
+%{python_sitelib}/*/plugins/fedmsg_plugin
+%{python_sitelib}/*/plugins/pkgdb_plugin
+%exclude %{python_sitelib}/*/plugins/*/backend*
+%exclude %{python_sitelib}/*/plugins/*/frontend*
 
 %files frontend-fedora
-%{python2_sitelib}/*/plugins/pkgdb_plugin/frontend*
+%{python_sitelib}/*/plugins/pkgdb_plugin/frontend*
 
 %files backend-fedora
 %{_libexecdir}/%{name}/koschei-watcher
 %{_unitdir}/koschei-watcher.service
-%{python2_sitelib}/*/plugins/fedmsg_plugin/backend*
-%{python2_sitelib}/*/plugins/pkgdb_plugin/backend*
+%{python_sitelib}/*/plugins/fedmsg_plugin/backend*
+%{python_sitelib}/*/plugins/pkgdb_plugin/backend*
 
 %files common-copr
-%{python2_sitelib}/*/plugins/copr_plugin
-%exclude %{python2_sitelib}/*/plugins/*/backend*
-%exclude %{python2_sitelib}/*/plugins/*/frontend*
+%{python_sitelib}/*/plugins/copr_plugin
+%exclude %{python_sitelib}/*/plugins/*/backend*
+%exclude %{python_sitelib}/*/plugins/*/frontend*
 
 %files frontend-copr
-%{python2_sitelib}/*/plugins/copr_plugin/frontend*
+%{python_sitelib}/*/plugins/copr_plugin/frontend*
 
 %files backend-copr
 %{_libexecdir}/%{name}/koschei-copr-resolver
 %{_libexecdir}/%{name}/koschei-copr-scheduler
 %{_unitdir}/koschei-copr-resolver.service
 %{_unitdir}/koschei-copr-scheduler.service
-%{python2_sitelib}/*/plugins/copr_plugin/backend*
+%{python_sitelib}/*/plugins/copr_plugin/backend*
 
 %changelog
 * Fri Jul 21 2017 Mikolaj Izdebski <mizdebsk@redhat.com> 1.11.0-1

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # Copyright (C) 2015-2016 Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
