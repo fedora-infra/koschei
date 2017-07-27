@@ -23,6 +23,7 @@ import os
 
 from sqlalchemy.sql.expression import func
 from copr.exceptions import CoprRequestException
+from textwrap import dedent
 
 from koschei.models import Build, CoprRebuildRequest, CoprRebuild
 from koschei.config import get_config
@@ -40,6 +41,8 @@ class CoprScheduler(Service):
         super(CoprScheduler, self).__init__(session)
         self.copr_owner = get_config('copr.copr_owner')
         self.chroot_name = get_config('copr.chroot_name')
+        self.description_template = dedent(get_config('copr.description')).strip()
+        self.instructions_template = dedent(get_config('copr.instructions')).strip()
 
     def get_koji_id(self, collection):
         return 'secondary' if collection.secondary_mode else 'primary'
@@ -48,6 +51,10 @@ class CoprScheduler(Service):
         koji_repo = KojiRepoDescriptor(self.get_koji_id(request.collection),
                                        request.collection.build_tag,
                                        request.repo_id)
+
+        params = {'request_id': request.id}
+        description = self.description_template.format(params)
+        instructions = self.instructions_template.format(params)
 
         try:
             # there may be leftover project from crashed process
@@ -66,6 +73,8 @@ class CoprScheduler(Service):
             enable_net=False,
             repos=[request.yum_repo, koji_repo.url],
             unlisted_on_hp=True,
+            description=description,
+            instructions=instructions,
         )
 
         comps = get_request_comps_path(request)

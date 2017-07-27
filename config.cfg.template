@@ -178,6 +178,17 @@ config = {
         "name_prefix": "k",
         # require admin permission to request new Copr rebuilds
         "require_admin": False,
+        # description of copr project
+        "description": """
+        This Copr project was created automatically by Koschei as part
+        of rebuild request {request_id}.  To find more information
+        about this project, see Koschei documentation.
+        """,
+        # installation instructions of copr project
+        "instructions": """
+        This Copr project is used internally by Koschei and its
+        contents are not meant to be installed by users.
+        """,
     },
     # koschei uses dogpile.cache to cache external query results
     # it's possible to use various backends, such as memcached. The
