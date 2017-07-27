@@ -948,3 +948,12 @@ def statistics():
     return render_template("stats.html", now=now, stats=scalar_stats,
                            packages=resource_query.items,
                            page=resource_query)
+
+
+@app.route('/badge/<collection>/<name>.svg')
+@app.route('/badge/<collection>/<name>.png')
+def badge(name, collection):
+    c = g.collections_by_name.get(collection) or abort(404, "Collection not found")
+    p = db.query(Package).filter_by(name=name, collection_id=c.id).first_or_404()
+    image = 'images/badges/{}.png'.format(p.state_string, request.path[-3:])
+    return redirect(url_for('static', filename=image))
