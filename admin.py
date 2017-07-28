@@ -28,6 +28,7 @@ import logging
 import argparse
 
 from koschei import data, backend, plugin
+from koschei.backend import koji_util
 from koschei.db import get_engine, create_all
 from koschei.models import (Package, PackageGroup, AdminNotice, Collection,
                             CollectionGroup)
@@ -526,7 +527,32 @@ class SubmitBuild(Command):
         if collection:
             pkgs = pkgs.filter(Collection.name == collection)
         for pkg in pkgs.all():
-            backend.submit_build(session, pkg)
+            # FIXME there is code duplication with backend/services/scheduler.py
+            koji_session = self.session.koji('primary')
+            all_arches = koji_util.get_koji_arches(
+                self.session,
+                koji_session,
+                pkg.collection.build_tag,
+            )
+            arches = koji_util.get_srpm_arches(
+                koji_session=koji_session,
+                all_arches=all_arches,
+                nvra=pkg.srpm_nvra,
+                arch_override=pkg.arch_override,
+            )
+            if arches is None:
+                print("No SRPM found for package {} in collection {}"
+                      .format(pkg.name, pkg.collection.name))
+                continue
+            if not arches:
+                print("No allowed arches found for package {} in collection {}"
+                      .format(pkg.name, pkg.collection.name))
+                continue
+            backend.submit_build(
+                session,
+                pkg,
+                arch_override=None if 'noarch' in arches else arches,
+            )
 
 
 if __name__ == '__main__':
