@@ -516,14 +516,16 @@ class SubmitBuild(Command):
     """ Forces scratch-build for given packages to be submitted to Koji. """
 
     def setup_parser(self, parser):
-        # TODO allow selecting particular collection
         parser.add_argument('names', nargs='+')
+        parser.add_argument('-c', '--collection')
 
-    def execute(self, session, names):
+    def execute(self, session, names, collection):
         pkgs = session.db.query(Package).join(Collection)\
             .filter(Package.name.in_(names))\
-            .filter(Collection.latest_repo_resolved).all()
-        for pkg in pkgs:
+            .filter(Collection.latest_repo_resolved)
+        if collection:
+            pkgs = pkgs.filter(Collection.name == collection)
+        for pkg in pkgs.all():
             backend.submit_build(session, pkg)
 
 
