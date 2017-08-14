@@ -154,6 +154,10 @@ config = {
         # whether to synchronize package tracked status from pkgdb
         "sync_tracked": False,
     },
+    # pagure plugin
+    "pagure": {
+        "api_url": "https://src.fedoraproject.org/api/0",
+    },
     # copr rebuild plugin
     "copr": {
         # URL to copr frontend (used to construct links in UI)
@@ -207,6 +211,15 @@ config = {
             "expiration_time": None,
             "arguments": {
                 "filename": "@CACHEDIR@/rpm-requires-cache.dbm"
+            },
+        },
+        "pagure": {
+            "users": {
+                "backend": "dogpile.cache.dbm",
+                "expiration_time": 600,
+                "arguments": {
+                    "filename": "@CACHEDIR@/pagure-user-cache.dbm"
+                },
             },
         },
         "plugin": {
