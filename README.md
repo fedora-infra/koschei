@@ -39,7 +39,7 @@ Development
 -----------
 Koschei git repository includes a Vagrantfile, which can be used to provision
 a VM with the following:
-- initialized empty database with rawhide collection
+- initialized database with the copy of contents from Fedora production server
 - the source attached at `/vagrant`
 - everything necessary symlinked to be able to run admin script, backend
   services and frontend out-of-the-box

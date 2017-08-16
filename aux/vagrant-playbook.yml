@@ -60,6 +60,7 @@
       with_items:
         - /home/vagrant/cache/repodata
         - /usr/share/koschei
+        - /usr/libexec/koschei
         - /etc/koschei
 
     - name: create symlinks
@@ -74,6 +75,7 @@
         - { src: /vagrant/admin.py, dest: /usr/bin/koschei-admin }
         - { src: /vagrant/httpd.conf, dest: /etc/httpd/conf.d/koschei.conf }
         - { src: /vagrant/koschei.wsgi, dest: /usr/share/koschei/koschei.wsgi }
+        - { src: /usr/bin/python, dest: /usr/libexec/koschei/koschei-admin }
 
     - name: initialize database
       command: postgresql-setup initdb
