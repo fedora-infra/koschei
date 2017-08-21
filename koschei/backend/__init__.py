@@ -250,7 +250,7 @@ def clear_priority_data(session, packages):
         .delete()
 
 
-def update_build_state(session, build, state):
+def update_build_state(session, build, task_state):
     """
     Updates state of the build in db to new state (Koji state name).
     Cancels builds running too long.
@@ -262,7 +262,8 @@ def update_build_state(session, build, state):
     try:
         task_timeout = timedelta(0, get_config('koji_config.task_timeout'))
         time_threshold = datetime.now() - task_timeout
-        if (state not in Build.KOJI_STATE_MAP and
+        canceled = task_state == 'CANCELED'
+        if (not canceled and task_state not in Build.KOJI_STATE_MAP and
                 (build.started and build.started < time_threshold or
                  build.cancel_requested)):
             session.log.info('Canceling build {0}'.format(build))
@@ -270,26 +271,26 @@ def update_build_state(session, build, state):
                 session.koji('primary').cancelTask(build.task_id)
             except koji.GenericError:
                 pass
-            state = 'CANCELED'
-        if state in Build.KOJI_STATE_MAP:
-            state = Build.KOJI_STATE_MAP[state]
+            canceled = True
+        if canceled or task_state in Build.KOJI_STATE_MAP:
+            build_state = Build.KOJI_STATE_MAP.get(task_state)
             build_id = build.id
             package_id = build.package_id
             session.db.expire_all()
             # lock build
             build = session.db.query(Build).filter_by(id=build_id)\
                 .with_lockmode('update').first()
-            if not build or build.state == state:
+            if not build or build.state == build_state:
                 # other process did the job already
                 session.db.rollback()
                 return
-            if state == Build.CANCELED:
+            if canceled:
                 session.log.info('Deleting build {0} because it was canceled'
                                  .format(build))
                 session.db.delete(build)
                 session.db.commit()
                 return
-            assert state in (Build.COMPLETE, Build.FAILED)
+            assert build_state in (Build.COMPLETE, Build.FAILED)
             if koji_util.is_koji_fault(session.koji('primary'), build.task_id):
                 session.log.info('Deleting build {0} because it ended with Koji fault'
                                  .format(build))
@@ -298,7 +299,7 @@ def update_build_state(session, build, state):
                 return
             session.log.info('Setting build {build} state to {state}'
                              .format(build=build,
-                                     state=Build.REV_STATE_MAP[state]))
+                                     state=Build.REV_STATE_MAP[build_state]))
             tasks = sync_tasks(session, build.package.collection, [build])
             if build.repo_id is None:
                 # Koji problem, no need to bother packagers with this
@@ -318,7 +319,7 @@ def update_build_state(session, build, state):
             # acquire previous state
             # ! this needs to be done *before* updating the build state
             prev_state = package.msg_state_string
-            build.state = state
+            build.state = build_state
             set_failed_build_priority(session, package, build)
             # refresh package so it haves trigger updated fields
             session.db.flush()
