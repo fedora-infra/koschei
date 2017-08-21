@@ -411,19 +411,16 @@ class Build(Base):
 
     STATE_MAP = {'running': 2,
                  'complete': 3,
-                 'canceled': 4,
                  'failed': 5}
     RUNNING = STATE_MAP['running']
     COMPLETE = STATE_MAP['complete']
-    CANCELED = STATE_MAP['canceled']
     FAILED = STATE_MAP['failed']
     REV_STATE_MAP = {v: k for k, v in STATE_MAP.items()}
 
-    FINISHED_STATES = [COMPLETE, FAILED, CANCELED]
+    FINISHED_STATES = [COMPLETE, FAILED]
     STATES = [RUNNING] + FINISHED_STATES
 
     KOJI_STATE_MAP = {'CLOSED': COMPLETE,
-                      'CANCELED': CANCELED,
                       'FAILED': FAILED}
 
     id = Column(Integer, primary_key=True)
