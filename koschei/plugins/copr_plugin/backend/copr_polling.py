@@ -28,11 +28,16 @@ from .common import copr_client
 def refresh_build_state(session, build):
     copr_build = copr_client.get_build_details(build.copr_build_id).data
     state = copr_build['chroots'][get_config('copr.chroot_name')]
+    # Map of "finished" states of Copr builds
+    # For reference, see function Build.finished()
+    # at frontend/coprs_frontend/coprs/models.py (in Copr sources)
     state_map = {
         'succeeded': Build.COMPLETE,
         'failed': Build.FAILED,
-        'canceled': Build.CANCELED,
-        'skipped': Build.CANCELED,
+        # Other states that should never be reachable:
+        #  forked - Koschei does not use fork feature of Copr
+        #  canceled - Koschei never cancels Copr builds
+        #  skipped - Koschei always builds in empty Coprs
     }
     if state in state_map:
         build.state = state_map[state]
