@@ -53,8 +53,8 @@ class CoprScheduler(Service):
                                        request.repo_id)
 
         params = {'request_id': request.id}
-        description = self.description_template.format(params)
-        instructions = self.instructions_template.format(params)
+        description = self.description_template.format(**params)
+        instructions = self.instructions_template.format(**params)
 
         try:
             # there may be leftover project from crashed process
