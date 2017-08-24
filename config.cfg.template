@@ -172,6 +172,9 @@ config = {
         "chroot_name": "custom-1-x86_64",
         # path to copr config with API token
         "config_path": "@CONFDIR@/copr-config",
+        # whether older versions of duplicate packages should be
+        # excluded when resolving dependencies.
+        "overriding_by_exclusions": True,
         # maximum number of copr builds running at the same time
         "max_builds": 15,
         # fedmsg topic to listen to if watcher is enabled, ignored otherwise

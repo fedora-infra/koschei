@@ -84,7 +84,7 @@ class CoprResolver(Service):
         if not repo:
             raise RequestProcessingError("Cannot download user repo")
         sack.load_yum_repo(repo, load_filelists=True)
-        if get_config('copr.overriding_by_exclusions', False):
+        if get_config('copr.overriding_by_exclusions', True):
             exclusions = []
             pkg_by_name = defaultdict(list)
             for pkg in hawkey.Query(sack):
