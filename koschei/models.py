@@ -31,6 +31,7 @@ from sqlalchemy.sql.expression import (
 )
 from sqlalchemy.orm import (relationship, column_property,
                             configure_mappers, deferred, composite)
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.dialects.postgresql import ARRAY
 
 from .config import get_config
@@ -532,16 +533,25 @@ class AppliedChange(Base):
     # needs to be nullable because we delete old builds
     prev_build_id = Column(ForeignKey('build.id', ondelete='SET NULL'),
                            index=True)
-    prev_evr = composite(
+    _prev_evr = composite(
         RpmEVR,
         prev_epoch, prev_version, prev_release,
         comparator_factory=RpmEVRComparator,
     )
-    curr_evr = composite(
+
+    @hybrid_property
+    def prev_evr(self):
+        return self._prev_evr if self.prev_version else None
+
+    _curr_evr = composite(
         RpmEVR,
         curr_epoch, curr_version, curr_release,
         comparator_factory=RpmEVRComparator,
     )
+
+    @hybrid_property
+    def curr_evr(self):
+        return self._curr_evr if self.curr_version else None
 
     @property
     def package(self):

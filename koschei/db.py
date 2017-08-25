@@ -294,12 +294,7 @@ class RpmEVR(CmpMixin):
     def __repr__(self):
         return 'EVR({}:{}-{})'.format(self.epoch or 0, self.version, self.release)
 
-    def __nonzero__(self):
-        return bool(self.version and self.release)
-
     def __str__(self):
-        if not self:
-            return ''
         epoch, version, release = self.__composite_values__()
         if len(release) > 16:
             release = release[:13] + '...'

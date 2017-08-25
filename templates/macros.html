@@ -229,7 +229,7 @@ affected by this dependency change"></i>
     {{ change.dep_name }}
   </div>
   <div class="col-sm-4">
-    {{ change.prev_evr }}
+    {{ change.prev_evr or '' }}
     <div class="float-right">
       {% if not change.prev_evr %}
       <i class="fa fa-plus" data-toggle="tooltip" data-placement="right"
@@ -246,7 +246,7 @@ affected by this dependency change"></i>
       {% endif %}
     </div>
   </div>
-  <div class="col-sm-3">{{ change.curr_evr }}</div>
+  <div class="col-sm-3">{{ change.curr_evr or '' }}</div>
   <div class="col-sm-1">
     {% if change.distance == 1 %}
     <span class="badge badge-pill badge-primary" data-toggle="tooltip" data-placement="right"
