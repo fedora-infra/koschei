@@ -18,6 +18,9 @@
  * Author: Mikolaj Izdebski <mizdebsk@redhat.com>
  */
 
+/* Makes the size consistent with other Fedora services that use the same theme */
+html { font-size: 14px; }
+
 /* All Koschei-specific CSS classes are prefixed with "kk-" to prevent
    name collisions with third-party CSS libraries. */
 
@@ -35,7 +38,7 @@
 
 /* XXX required for ASCII-art to look sane */
 /* TODO: eliminate usage of ASCII-art */
-.kk-task-tree { line-height: 19px; }
+.kk-task-tree { line-height: 17px; }
 
 /* Used by Copr plugin */
 .kk-copr-rebuild-unschedulable { background-color: #eee; }
