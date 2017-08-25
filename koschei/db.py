@@ -56,11 +56,10 @@ class Query(sqlalchemy.orm.Query):
     def delete(self, synchronize_session=False):
         return super(Query, self).delete(synchronize_session=synchronize_session)
 
-    def update(self, values, synchronize_session=False, update_args=None):
+    def update(self, values, synchronize_session=False):
         return super(Query, self).update(
             values,
             synchronize_session=synchronize_session,
-            update_args=update_args,
         )
 
     def lock_rows(self):
