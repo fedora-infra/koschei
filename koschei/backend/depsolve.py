@@ -27,6 +27,7 @@ from koschei.config import get_config
 
 def _get_best_selector(sack, dep):
     # Based on get_best_selector in dnf's subject.py
+    # pylint: disable=len-as-condition
 
     def is_glob_pattern(pattern):
         return set(pattern) & set("*[?")

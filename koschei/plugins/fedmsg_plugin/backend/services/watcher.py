@@ -28,9 +28,6 @@ from koschei.models import Build, Package
 
 
 class Watcher(Service):
-    def __init__(self, session):
-        super(Watcher, self).__init__(session)
-
     def get_topic(self, name):
         return '{}.{}'.format(get_config('fedmsg.topic'), name)
 

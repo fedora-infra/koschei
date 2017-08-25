@@ -53,24 +53,15 @@ Base = declarative_base(cls=Base)
 
 
 class Query(sqlalchemy.orm.Query):
-    # TODO move get_or_create here
-    # def get_or_create(self):
-    #     items = self.all()
-    #     if items:
-    #         if len(items) > 1:
-    #             raise ProgrammerError("get_or_create query returned more than one item")
-    #         return items[0]
-    #     entity = self._primary_entity.entities[0]
-    #     how to get args?
-    #     self.session.add(entity(**args))
+    def delete(self, synchronize_session=False):
+        return super(Query, self).delete(synchronize_session=synchronize_session)
 
-    def delete(self, *args, **kwargs):
-        kwargs['synchronize_session'] = False
-        return super(Query, self).delete(*args, **kwargs)
-
-    def update(self, *args, **kwargs):
-        kwargs['synchronize_session'] = False
-        return super(Query, self).update(*args, **kwargs)
+    def update(self, values, synchronize_session=False, update_args=None):
+        return super(Query, self).update(
+            values,
+            synchronize_session=synchronize_session,
+            update_args=update_args,
+        )
 
     def lock_rows(self):
         """

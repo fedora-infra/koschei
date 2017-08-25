@@ -314,8 +314,7 @@ def inject_fedmenu():
             'fedmenu_url': frontend_config['fedmenu_url'],
             'fedmenu_data_url': frontend_config['fedmenu_data_url'],
         }
-    else:
-        return {}
+    return {}
 
 
 @app.before_request
@@ -456,8 +455,7 @@ def frontpage():
 @app.route('/package/<name>')
 @package_tab
 def package_detail(name, form=None, collection=None):
-    # if there are more collections, keep collection = None, which will display selector
-    if not collection and len(g.current_collections):
+    if not collection:
         collection = g.current_collections[0]
 
     base = db.query(BasePackage).filter_by(name=name).first_or_404()

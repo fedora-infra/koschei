@@ -110,7 +110,7 @@ class FileCache(object):
                     raise
                 except Exception as e:
                     if not silent:
-                        self.log.warn(
+                        self.log.warning(
                             "Cannot parse cache index %s, discarding cache",
                             e,
                         )

@@ -51,9 +51,6 @@ class CoprRepoDescriptor(object):
 
 
 class CoprResolver(Service):
-    def __init__(self, session):
-        super(CoprResolver, self).__init__(session)
-
     def set_source_repo_url(self, request):
         owner, name = re.match(r'^copr:([^/]+)/([^/]+)$', request.repo_source).groups()
         try:

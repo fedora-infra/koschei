@@ -28,9 +28,6 @@ from koschei.models import Package, Build, Collection
 class Scheduler(Service):
     koji_anonymous = False
 
-    def __init__(self, session):
-        super(Scheduler, self).__init__(session)
-
     def get_priorities(self):
         priority_expr = Package.current_priority_expression(
             collection=Collection,

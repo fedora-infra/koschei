@@ -29,9 +29,6 @@ from koschei.backend.koji_util import itercall
 
 
 class Polling(Service):
-    def __init__(self, session):
-        super(Polling, self).__init__(session)
-
     def poll_builds(self):
         self.log.info('Polling running Koji tasks...')
         running_builds = self.db.query(Build)\
