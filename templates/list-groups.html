@@ -28,16 +28,18 @@
             {{ group.package_count }}
           </span>
         </div>
-        {% if group.editable %}
-        <a class="btn btn-secondary btn-sm" href="{{ url_for('edit_group', name=group.name, namespace=group.namespace) }}">
-          <i class="fa fa-pencil"></i>
-        </a>
-        {% endif %}
-        {% if group.namespace %}
-        <a class="btn btn-secondary btn-sm" href="{{ url_for('delete_group', name=group.name, namespace=group.namespace) }}">
-          <i class="fa fa-trash-o"></i>
-        </a>
-        {% endif %}
+	<div class="btn-group ml-2">
+          {% if group.editable %}
+          <a class="btn btn-secondary btn-sm" href="{{ url_for('edit_group', name=group.name, namespace=group.namespace) }}">
+            <i class="fa fa-pencil"></i>
+          </a>
+          {% endif %}
+          {% if group.namespace %}
+          <a class="btn btn-secondary btn-sm" href="{{ url_for('delete_group', name=group.name, namespace=group.namespace) }}">
+            <i class="fa fa-trash-o"></i>
+          </a>
+          {% endif %}
+	</div>
       </div>
     </div>
     {% endfor %}
