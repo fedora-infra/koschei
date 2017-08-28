@@ -24,6 +24,7 @@ html { font-size: 14px; }
 /* All Koschei-specific CSS classes are prefixed with "kk-" to prevent
    name collisions with third-party CSS libraries. */
 
+.kk-logo { color: #777; }
 
 .kk-toggle-button[aria-expanded=false] .kk-expanded { display: none; }
 .kk-toggle-button[aria-expanded=true] .kk-collapsed { display: none; }
