@@ -822,7 +822,7 @@ User.groups = relationship(
 CollectionGroup.collections = relationship(
     Collection,
     secondary=CollectionGroupRelation.__table__,
-    order_by=(Collection.order, Collection.name.desc()),
+    order_by=(Collection.order.desc(), Collection.name.desc()),
     passive_deletes=True,
 )
 CoprRebuildRequest.collection = relationship(Collection)
