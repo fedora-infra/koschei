@@ -412,7 +412,7 @@ class Resolver(Service):
                     )
                     changes = create_dependency_changes(
                         prev_deps, curr_deps, package_id=package.id,
-                        prev_build_id=prev_build.id)
+                    )
             results.append(ResolutionOutput(
                 package=package,
                 prev_resolved=package.resolved,
@@ -568,8 +568,7 @@ class Resolver(Service):
             prev_deps = self.dependency_cache.get_by_ids(self.db, prev.dependency_keys)
             if prev_deps and curr_deps:
                 changes = create_dependency_changes(prev_deps, curr_deps,
-                                                    build_id=entry.id,
-                                                    prev_build_id=prev.id)
+                                                    build_id=entry.id)
                 if changes:
                     self.db.execute(AppliedChange.__table__.insert(), changes)
         self.db.query(Build)\
