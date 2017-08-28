@@ -61,6 +61,7 @@ def main():
         parser = subparser.add_parser(cmd_name, help=cmd.__doc__)
         cmd.setup_parser(parser)
         parser.set_defaults(cmd=cmd)
+        parser.description = cmd.__doc__
     args = main_parser.parse_args()
     cmd = args.cmd
     kwargs = vars(args)
