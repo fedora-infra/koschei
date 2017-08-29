@@ -16,7 +16,7 @@ Release:        1%{?dist}
 Summary:        Continuous integration for Fedora packages
 License:        GPLv2+
 URL:            https://github.com/msimacek/%{name}
-Source0:        https://github.com/msimacek/%{name}/archive/%{name}-%{version}.tar.gz
+Source0:        https://github.com/msimacek/%{name}/archive/%{version}.tar.gz
 BuildArch:      noarch
 
 
@@ -428,8 +428,14 @@ dummy = posix.readlink(dir) and os.remove(dir)
 * Tue Aug 29 2017 Mikolaj Izdebski <mizdebsk@redhat.com> - 2.0.0-1
 - Update to upstream version 2.0.0
 
-* Fri Jul 21 2017 Mikolaj Izdebski <mizdebsk@redhat.com> 1.11.0-1
+* Wed Jul 26 2017 Fedora Release Engineering <releng@fedoraproject.org> - 1.11.0-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_27_Mass_Rebuild
+
+* Fri Jul 21 2017 Mikolaj Izdebski <mizdebsk@redhat.com> - 1.11.0-1
 - Update to upstream version 1.11.0
+
+* Fri Jul 21 2017 Mikolaj Izdebski <mizdebsk@redhat.com> - 1.10.0-2
+- Update requires for Koji 1.13
 
 * Thu Apr 06 2017 Michael Simacek <msimacek@redhat.com> 1.10.0-1
 - Update to upstream version 1.10.0
