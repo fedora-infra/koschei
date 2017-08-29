@@ -231,7 +231,8 @@ class DBTest(AbstractTest):
         self.db.commit()
         return pkgs
 
-    def prepare_build(self, pkg_name, state=None, repo_id=None, resolved=True, arches=()):
+    def prepare_build(self, pkg_name, state=None, repo_id=None, resolved=True,
+                      arches=(), started=None):
         states = {
             True: Build.COMPLETE,
             False: Build.FAILED,
@@ -245,7 +246,7 @@ class DBTest(AbstractTest):
                       repo_id=repo_id or (1 if state != Build.RUNNING else None),
                       version='1', release='1.fc25',
                       task_id=self.task_id_counter,
-                      started=datetime.fromtimestamp(self.task_id_counter),
+                      started=started or datetime.fromtimestamp(self.task_id_counter),
                       deps_resolved=resolved)
         self.task_id_counter += 1
         self.db.add(build)

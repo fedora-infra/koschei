@@ -121,7 +121,7 @@ class RpmVercmpTest(DBTest):
     def test_rpmevr_db_comparison(self):
         build = self.prepare_build('rnv')
         change = UnappliedChange(
-            package_id=build.package.id, dep_name='foo', prev_build_id=build.id,
+            package_id=build.package.id, dep_name='foo',
             prev_epoch=None, prev_version='1.1', prev_release='8.fc26',
             curr_epoch=None, curr_version='1.1', curr_release='8.fc26',
         )

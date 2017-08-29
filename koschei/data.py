@@ -21,9 +21,11 @@ from __future__ import print_function, absolute_import
 from sqlalchemy import insert
 
 from koschei.db import get_or_create
-from koschei.models import (Package, BasePackage, PackageGroup,
-                            PackageGroupRelation, GroupACL, User,
-                            Collection, CollectionGroupRelation)
+from koschei.models import (
+    Package, BasePackage, PackageGroup, PackageGroupRelation, GroupACL, User,
+    Collection, CollectionGroupRelation, Build, AppliedChange, KojiTask,
+    ResolutionChange, ResolutionProblem,
+)
 
 
 class PackagesDontExist(Exception):
@@ -129,3 +131,88 @@ def set_collection_group_content(session, group, collection_names):
         .delete()
     if rels:
         session.db.execute(insert(CollectionGroupRelation, rels))
+
+
+def copy_collection(session, source, copy):
+
+    def get_cols(entity, exclude=(), qualify=False):
+        return ', '.join(
+            (entity.__tablename__ + '.' + c.name if qualify else c.name)
+            for c in entity.__table__.columns
+            if c.name != 'id' and c.name not in exclude
+        )
+
+    def deepcopy_table(entity, whereclause=''):
+        foreign_keys = entity.__table__.foreign_keys
+        assert len(foreign_keys) == 1
+        foreign_key = next(iter(foreign_keys))
+        parent = foreign_key.column.table
+        fk_cols = [fk.parent.name for fk in foreign_keys if fk.column.table is parent]
+        assert len(fk_cols) == 1
+        fk_col = fk_cols[0]
+        session.log.info("Copying {} table".format(entity.__tablename__))
+        session.db.execute("""
+            CREATE TEMPORARY TABLE {table}_copy AS
+                SELECT {table}.id AS original_id,
+                        nextval('{table}_id_seq') AS id,
+                        {parent}.id AS {fk_col}
+                    FROM {table} JOIN {parent}_copy AS {parent}
+                            ON {fk_col} = {parent}.original_id
+                    {whereclause}
+                    ORDER BY {table}.id;
+            INSERT INTO {table}(id, {fk_col}, {cols})
+                SELECT {table}_copy.id AS id,
+                       {table}_copy.{fk_col} AS {fk_col},
+                       {cols_q}
+                    FROM {table} JOIN {table}_copy
+                        ON {table}.id = {table}_copy.original_id
+                    ORDER BY {table}_copy.original_id;
+        """.format(
+            table=entity.__tablename__,
+            parent=parent.name,
+            fk_col=fk_col,
+            cols=get_cols(entity, exclude=[fk_col]),
+            cols_q=get_cols(entity, exclude=[fk_col], qualify=True),
+            whereclause=whereclause,
+        ))
+
+    session.log.info("Copying package table")
+    session.db.execute("""
+        CREATE TEMPORARY TABLE package_copy AS
+            SELECT id AS original_id,
+                    nextval('package_id_seq') AS id
+                FROM package
+                WHERE collection_id = {source.id};
+        INSERT INTO package(id, collection_id, {package_cols})
+            SELECT package_copy.id AS id,
+                   {copy.id} AS collection_id,
+                   {package_cols_q}
+                FROM package JOIN package_copy
+                    ON package.id = package_copy.original_id;
+
+        -- NOTE: package.last_[complete_]build is updated by trigger
+    """.format(
+        copy=copy, source=source,
+        package_cols=get_cols(Package, exclude=['collection_id']),
+        build_cols=get_cols(Build, exclude=['package_id']),
+        applied_change_cols=get_cols(AppliedChange, exclude=['build_id']),
+        package_cols_q=get_cols(Package, exclude=['collection_id'], qualify=True),
+        build_cols_q=get_cols(Build, exclude=['package_id'], qualify=True),
+    ))
+
+    deepcopy_table(
+        Build,
+        whereclause="""
+            WHERE started > now() - '1 month'::interval
+                  OR build.id IN (
+                        SELECT last_complete_build_id
+                        FROM package
+                        WHERE collection_id = {copy.id}
+                  )
+        """.format(copy=copy),
+    )
+
+    deepcopy_table(KojiTask)
+    deepcopy_table(ResolutionChange)
+    deepcopy_table(ResolutionProblem)
+    deepcopy_table(AppliedChange)

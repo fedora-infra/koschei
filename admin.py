@@ -31,7 +31,7 @@ from koschei import data, backend, plugin
 from koschei.backend import koji_util
 from koschei.db import get_engine, create_all
 from koschei.models import (Package, PackageGroup, AdminNotice, Collection,
-                            CollectionGroup)
+                            CollectionGroup, CollectionGroupRelation)
 from koschei.config import load_config, get_config
 
 
@@ -61,6 +61,7 @@ def main():
         parser = subparser.add_parser(cmd_name, help=cmd.__doc__)
         cmd.setup_parser(parser)
         parser.set_defaults(cmd=cmd)
+        parser.description = cmd.__doc__
     args = main_parser.parse_args()
     cmd = args.cmd
     kwargs = vars(args)
@@ -448,6 +449,70 @@ class DeleteCollection(Command):
                      "it anyway. It means deleting all the packages build history. "
                      "It cannot be reverted and may take long time to execute")
         session.db.delete(collection)
+
+
+class BranchCollection(CreateOrEditCollectionCommand, Command):
+    """
+    Performs branching for given collection. It performs these steps:
+    1. creates a branched collection with the same attributes as the master one,
+       except for display name and bugzilla version passed as arguments
+    2. copies most recent (1 month) builds from master collection to the branched one
+    3. sets new name for the master collection and moves it to give new koji target
+    """
+
+    def setup_parser(self, parser):
+        parser.add_argument('master_collection',
+                            help="Master collection from which new collection should be branched")
+        parser.add_argument('new_name',
+                            help="New name for the master collection after the branched copy is created")
+        parser.add_argument('-d', '--display-name',
+                            required=True,
+                            help="Human readable name for branched collection")
+        parser.add_argument('-t', '--target',
+                            required=True,
+                            help="New Koji target for the master collection")
+        parser.add_argument('--bugzilla-version',
+                            help="Product version used in bugzilla template for"
+                                 "the branched collection")
+
+    def execute(self, session, master_collection, new_name, display_name,
+                target, bugzilla_version):
+        master = (
+            session.db.query(Collection)
+            .filter_by(name=master_collection)
+        ).first()
+        if not master:
+            sys.exit("Collection not found")
+        branched = (
+            session.db.query(Collection)
+            .filter_by(name=new_name)
+        ).first()
+        if branched:
+            sys.exit("Branched collection exists already")
+        branched = Collection(
+            display_name=display_name,
+            bugzilla_version=bugzilla_version,
+        )
+        for key in ('secondary_mode', 'priority_coefficient', 'bugzilla_product',
+                    'poll_untracked', 'build_group', 'target', 'name', 'order'):
+            setattr(branched, key, getattr(master, key))
+        master.name = new_name
+        master.target = target
+        master.order += 1
+        self.set_koji_tags(session, branched)
+        self.set_koji_tags(session, master)
+        session.db.add(branched)
+        session.db.flush()
+        for group_rel in (
+                session.db.query(CollectionGroupRelation)
+                .filter_by(collection_id=master.id)
+        ):
+            session.db.add(CollectionGroupRelation(
+                collection_id=branched.id,
+                group_id=group_rel.group_id,
+            ))
+
+        data.copy_collection(session, master, branched)
 
 
 class CreateOrEditCollectionGroupCommand(object):

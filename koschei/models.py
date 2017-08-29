@@ -530,9 +530,6 @@ class AppliedChange(Base):
     build_id = Column(ForeignKey('build.id', ondelete='CASCADE'), index=True,
                       nullable=False)
     build = None  # backref
-    # needs to be nullable because we delete old builds
-    prev_build_id = Column(ForeignKey('build.id', ondelete='SET NULL'),
-                           index=True)
     _prev_evr = composite(
         RpmEVR,
         prev_epoch, prev_version, prev_release,
@@ -571,8 +568,6 @@ class UnappliedChange(Base):
 
     package_id = Column(ForeignKey('package.id', ondelete='CASCADE'),
                         index=True, nullable=False)
-    prev_build_id = Column(ForeignKey('build.id', ondelete='CASCADE'),
-                           index=True, nullable=False)
     prev_evr = composite(
         RpmEVR,
         prev_epoch, prev_version, prev_release,
@@ -827,7 +822,7 @@ User.groups = relationship(
 CollectionGroup.collections = relationship(
     Collection,
     secondary=CollectionGroupRelation.__table__,
-    order_by=(Collection.order, Collection.name.desc()),
+    order_by=(Collection.order.desc(), Collection.name.desc()),
     passive_deletes=True,
 )
 CoprRebuildRequest.collection = relationship(Collection)

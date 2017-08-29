@@ -431,6 +431,7 @@ add_packages_tab = Tab('Add packages', 50, requires_user=True)
 def collection_list():
     groups = db.query(CollectionGroup)\
         .options(joinedload(CollectionGroup.collections))\
+        .order_by(CollectionGroup.name)\
         .all()
     categorized_ids = {c.id for g in groups for c in g.collections}
     uncategorized = [c for c in g.collections if c.id not in categorized_ids]

@@ -20,8 +20,13 @@
 
 import six
 
+from datetime import datetime
+
 from test.common import DBTest
-from koschei.models import PackageGroup, PackageGroupRelation
+from koschei.models import (
+    PackageGroup, PackageGroupRelation, Collection, Package, AppliedChange,
+    KojiTask, ResolutionChange, ResolutionProblem,
+)
 from koschei import data
 
 
@@ -78,3 +83,73 @@ class DataTest(DBTest):
     def test_track_packages_nonexistent(self):
         with self.assertRaises(data.PackagesDontExist):
             data.track_packages(self.session, self.collection, ['bar'])
+
+    def test_copy_collection(self):
+        now = datetime.now()
+        source = self.collection
+        _, _, maven1 = self.prepare_packages('rnv', 'eclipse', 'maven')
+        self.prepare_build('rnv')
+        self.prepare_build('eclipse')
+        # the next build is old and shouldn't be copied
+        self.prepare_build('maven', state=True, started='2016-01-01')
+        old_build1 = self.prepare_build('maven', state=True, started=now)
+        new_build1 = self.prepare_build('maven', started=now)
+        copy = Collection(
+            name='copy', display_name='copy', target='a', build_tag='b',
+            dest_tag='c',
+        )
+        self.db.add(copy)
+        change1 = AppliedChange(
+            dep_name='foo', build_id=old_build1.id,
+            prev_version='1', prev_release='1',
+            curr_version='1', curr_release='2',
+        )
+        self.db.add(change1)
+        task1 = KojiTask(
+            build_id=new_build1.id,
+            task_id=new_build1.task_id,
+            state=1,
+            arch='x86_64',
+            started=new_build1.started,
+        )
+        self.db.add(task1)
+        rchange1 = ResolutionChange(
+            package_id=maven1.id,
+            resolved=False,
+            timestamp=now,
+        )
+        self.db.add(rchange1)
+        self.db.flush()
+        problem1 = ResolutionProblem(
+            resolution_id=rchange1.id,
+            problem="It's broken",
+        )
+        self.db.add(problem1)
+        self.db.commit()
+
+        data.copy_collection(self.session, source, copy)
+        self.db.commit()
+
+        maven2 = self.db.query(Package).filter_by(collection=copy, name='maven').first()
+        self.assertIsNotNone(maven2)
+        self.assertNotEqual(maven1.id, maven2.id)
+        self.assertEqual(source.id, maven1.collection_id)
+        self.assertEqual(copy.id, maven2.collection_id)
+        self.assertEqual('maven', maven2.name)
+
+        self.assertEqual(2, len(maven2.all_builds))
+        new_build2, old_build2 = maven2.all_builds
+        self.assertNotEqual(new_build1.id, new_build2.id)
+        self.assertNotEqual(old_build1.id, old_build2.id)
+        self.assertEqual(new_build1.id, maven1.last_build_id)
+        self.assertEqual(old_build1.id, maven1.last_complete_build_id)
+        self.assertEqual(new_build2.id, maven2.last_build_id)
+        self.assertEqual(old_build2.id, maven2.last_complete_build_id)
+        self.assertEqual(1, new_build2.build_arch_tasks[0].state)
+
+        self.assertEqual(1, len(old_build2.dependency_changes))
+        change2 = old_build2.dependency_changes[0]
+        self.assertEqual('2', change2.curr_release)
+
+        rchange2 = self.db.query(ResolutionChange).filter_by(package_id=maven2.id).one()
+        self.assertEqual("It's broken", rchange2.problems[0].problem)
