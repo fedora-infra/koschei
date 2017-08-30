@@ -568,16 +568,25 @@ class UnappliedChange(Base):
 
     package_id = Column(ForeignKey('package.id', ondelete='CASCADE'),
                         index=True, nullable=False)
-    prev_evr = composite(
+    _prev_evr = composite(
         RpmEVR,
         prev_epoch, prev_version, prev_release,
         comparator_factory=RpmEVRComparator,
     )
-    curr_evr = composite(
+
+    @hybrid_property
+    def prev_evr(self):
+        return self._prev_evr if self.prev_version else None
+
+    _curr_evr = composite(
         RpmEVR,
         curr_epoch, curr_version, curr_release,
         comparator_factory=RpmEVRComparator,
     )
+
+    @hybrid_property
+    def curr_evr(self):
+        return self._curr_evr if self.curr_version else None
 
 
 class BuildrootProblem(Base):
