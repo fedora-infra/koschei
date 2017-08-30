@@ -459,6 +459,8 @@ def package_detail(name, form=None, collection=None):
     if not collection:
         collection = g.current_collections[0]
 
+    g.current_collections = [collection]
+
     base = db.query(BasePackage).filter_by(name=name).first_or_404()
     packages = {p.collection_id: p for p in db.query(Package).filter_by(base_id=base.id)}
 
