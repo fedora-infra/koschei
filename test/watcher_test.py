@@ -43,28 +43,22 @@ def generate_state_change(instance='primary', task_id=666, old='OPEN', new='CLOS
 
 class WatcherTest(DBTest):
     def test_ignored_topic(self):
-        def tail_messages_mock():
-            yield ('', '', 'org.fedoraproject.prod.buildsys.task.state.change',
-                   generate_state_change())
-        with patch('fedmsg.tail_messages', tail_messages_mock):
-            Watcher(self.session).main()
+        topic = 'org.fedoraproject.prod.buildsys.task.state.change'
+        msg = generate_state_change()
+        Watcher(self.session).consume(topic, msg)
 
     def test_ignored_instance(self):
-        def tail_messages_mock():
-            yield ('', '', test_topic + '.task.state.change',
-                   generate_state_change(instance='ppc'))
-        with patch('fedmsg.tail_messages', tail_messages_mock):
-            Watcher(self.session).main()
+        topic = test_topic + '.task.state.change'
+        msg = generate_state_change(instance='ppc')
+        Watcher(self.session).consume(topic, msg)
 
     def test_task_completed(self):
-        def tail_messages_mock():
-            yield ('', '', test_topic + '.task.state.change',
-                   generate_state_change())
+        topic = test_topic + '.task.state.change'
+        msg = generate_state_change()
         _, build = self.prepare_basic_data()
-        with patch('fedmsg.tail_messages', tail_messages_mock):
-            with patch('koschei.backend.update_build_state') as update_mock:
-                Watcher(self.session).main()
-                update_mock.assert_called_once_with(self.session, build, 'CLOSED')
+        with patch('koschei.backend.update_build_state') as update_mock:
+            Watcher(self.session).consume(topic, msg)
+            update_mock.assert_called_once_with(self.session, build, 'CLOSED')
 
     def test_real_build(self):
         self.session.koji_mock.getTaskInfo = Mock(return_value=rnv_task)
@@ -89,13 +83,9 @@ class WatcherTest(DBTest):
                 'version': '1.7.11',
             }
         }
-
-        def tail_messages_mock():
-            yield '', '', test_topic + '.tag', msg
-
-        with patch('fedmsg.tail_messages', tail_messages_mock):
-            Watcher(self.session).main()
+        topic = test_topic + '.tag'
+        Watcher(self.session).consume(topic, msg)
         self.assertEqual('ok', package.state_string)
         self.assertEqual(460889, package.last_complete_build.repo_id)
         six.assertCountEqual(self, [(x['id'],) for x in rnv_subtasks],
-                              self.db.query(KojiTask.task_id))
+                             self.db.query(KojiTask.task_id))
