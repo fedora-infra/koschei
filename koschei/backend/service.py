@@ -50,6 +50,7 @@ class Service(object):
         self.log = session.log = logging.getLogger(
             '{}.{}'.format(type(self).__module__, type(self).__name__),
         )
+        self.service_config = get_config('services').get(self.get_name(), {})
 
     @classmethod
     def get_name(cls):
@@ -58,24 +59,26 @@ class Service(object):
     def main(self):
         raise NotImplementedError()
 
+    def memory_check(self):
+        memory_limit = self.service_config.get("memory_limit", None)
+        if memory_limit:
+            current_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            if current_memory > memory_limit:
+                self.log.info("Memory limit reached: {mem}KB. Exiting"
+                              .format(mem=current_memory))
+                sys.exit(3)
+
     def run_service(self):
-        service_config = get_config('services').get(self.get_name(), {})
-        interval = service_config.get('interval', 3)
+        interval = self.service_config.get('interval', 3)
         self.log.info("{name} started".format(name=self.get_name()))
-        memory_limit = service_config.get("memory_limit", None)
         while True:
             self.notify_watchdog()
             try:
                 self.main()
-                if memory_limit:
-                    current_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-                    if current_memory > memory_limit:
-                        self.log.info("Memory limit reached: {mem}KB. Exiting"
-                                      .format(mem=current_memory))
-                        sys.exit(3)
             finally:
                 self.db.rollback()
                 self.db.close()
+            self.memory_check()
             self.notify_watchdog()
             time.sleep(interval)
 
