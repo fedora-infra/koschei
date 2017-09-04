@@ -351,9 +351,11 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %files common
 %license LICENSE.txt
 %{python_sitelib}/*
-%exclude %{python_sitelib}/*/frontend
-%exclude %{python_sitelib}/*/backend
-%exclude %{python_sitelib}/*/plugins
+%exclude %{python_sitelib}/koschei/frontend
+%exclude %{python_sitelib}/koschei/backend
+%exclude %{python_sitelib}/koschei/plugins/*/
+%dir %{python_sitelib}/koschei/plugins
+%{python_sitelib}/koschei/plugins/__init__.*
 %dir %{_datadir}/%{name}
 %{_datadir}/%{name}/config.cfg
 %attr(755, %{name}, %{name}) %{_localstatedir}/cache/%{name}
