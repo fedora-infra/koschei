@@ -627,6 +627,7 @@ def group_detail(name=None, namespace=None):
 @app.route('/user/<username>')
 @package_tab
 @my_packages_tab.master
+@auth.login_required()
 def user_packages(username):
     names = []
     try:
@@ -885,6 +886,7 @@ def edit_collection(name):
 
 
 @app.route('/affected-by/<dep_name>')
+@auth.login_required()
 def affected_by(dep_name):
     if len(g.current_collections) != 1:
         abort(400)
