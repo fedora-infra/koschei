@@ -18,6 +18,7 @@
 
 from mock import Mock, patch
 from sqlalchemy import literal_column
+from datetime import datetime
 
 from test.common import DBTest
 from koschei.models import Build, Package
@@ -61,7 +62,7 @@ class SchedulerTest(DBTest):
                     task_id=self.task_id_counter,
                     version='1',
                     release='1.fc25',
-                    started='2017-10-10 10:00:00',
+                    started=datetime(2017, 10, 10, 10, self.task_id_counter),
                     repo_id=1,
                 )
             )
@@ -77,7 +78,7 @@ class SchedulerTest(DBTest):
                         task_id=self.task_id_counter,
                         version='1',
                         release='1.fc25',
-                        started='2017-10-10 10:00:00',
+                        started=datetime(2017, 10, 10, 10, self.task_id_counter),
                         repo_id=1 if builds[name] != Build.RUNNING
                         else None
                     )
@@ -92,7 +93,7 @@ class SchedulerTest(DBTest):
                       Mock(return_value=['x86_64'])):
             sched = self.get_scheduler()
             with patch('sqlalchemy.sql.expression.func.clock_timestamp',
-                       return_value=literal_column("'2017-10-10 10:00:00'")):
+                       return_value=literal_column("'2017-10-10 10:50:00'")):
                 with patch('koschei.backend.submit_build') as submit_mock:
                     sched.main()
                     if scheduled:

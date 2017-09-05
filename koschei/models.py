@@ -740,7 +740,7 @@ class ResourceConsumptionStats(MaterializedView):
 
 
 # Indices
-Index('ix_build_composite', Build.package_id, Build.id.desc())
+Index('ix_build_composite', Build.package_id, Build.started.desc())
 Index('ix_package_group_name', PackageGroup.namespace, PackageGroup.name,
       unique=True)
 Index('ix_dependency_composite', *Dependency.nevra, unique=True)
@@ -766,7 +766,7 @@ Package.last_build = relationship(
 )
 Package.all_builds = relationship(
     Build,
-    order_by=Build.id.desc(),
+    order_by=Build.started.desc(),
     primaryjoin=(Build.package_id == Package.id),
     backref='package',
     passive_deletes=True,

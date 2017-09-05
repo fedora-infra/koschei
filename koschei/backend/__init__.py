@@ -233,8 +233,8 @@ def set_failed_build_priority(session, package, last_build):
     failed_priority_value = get_config('priorities.failed_build_priority')
     if last_build.state == Build.FAILED:
         prev_build = session.db.query(Build)\
-            .filter(Build.id < last_build.id)\
-            .order_by(Build.id.desc())\
+            .filter(Build.started < last_build.started)\
+            .order_by(Build.started.desc())\
             .first()
         if not prev_build or prev_build.state != Build.FAILED:
             package.build_priority = failed_priority_value
