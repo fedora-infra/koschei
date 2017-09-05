@@ -206,9 +206,9 @@ class Resolver(Service):
     def get_prev_build_for_comparison(self, build):
         return self.db.query(Build)\
             .filter_by(package_id=build.package_id)\
-            .filter(Build.id < build.id)\
+            .filter(Build.started < build.started)\
             .filter(Build.deps_resolved == True)\
-            .order_by(Build.id.desc())\
+            .order_by(Build.started.desc())\
             .options(undefer('dependency_keys'))\
             .first()
 
@@ -579,7 +579,7 @@ class Resolver(Service):
     def process_builds(self, collection):
         # pylint: disable=E1101
         builds = self.db.query(Build.id, Build.repo_id, Build.real, Build.package_id,
-                               Package.name, Build.version, Build.release,
+                               Package.name, Build.version, Build.release, Build.started,
                                Package.last_build_id)\
             .join(Build.package)\
             .filter(Build.deps_resolved == None)\

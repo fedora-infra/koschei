@@ -8,10 +8,12 @@ BEGIN
     WITH lcb AS (
         UPDATE build
         SET last_complete = TRUE
-        WHERE id = (SELECT MAX(id)
+        WHERE id = (SELECT id
                     FROM build
                     WHERE package_id = NEW.package_id
-                          AND (state = 3 OR state = 5))
+                          AND (state = 3 OR state = 5)
+                    ORDER BY started DESC
+                    LIMIT 1)
         RETURNING id, state)
     UPDATE package
     SET last_complete_build_id = lcb.id,
@@ -30,7 +32,7 @@ BEGIN
     FROM (SELECT id, state, started
           FROM build
           WHERE package_id = NEW.package_id
-          ORDER BY id DESC
+          ORDER BY started DESC
           LIMIT 1) AS lb
     WHERE package.id = NEW.package_id
         AND last_build_id IS DISTINCT FROM lb.id;
@@ -46,7 +48,7 @@ BEGIN
           FROM build
           WHERE package_id = OLD.package_id
                 AND build.id != OLD.id
-          ORDER BY id DESC
+          ORDER BY started DESC
           LIMIT 1) AS lb
     WHERE package.id = OLD.package_id
         AND last_build_id IS DISTINCT FROM lb.id;

@@ -197,7 +197,7 @@ class PackagePriorityTest(DBTest):
         self.verify_priority(None)
 
     def test_running_build(self, _):
-        self.prepare_build('rnv')
+        self.prepare_build('rnv', started='2017-10-10 11:00:00')
         self.verify_priority(None)
 
     def test_no_build(self, _):

@@ -20,6 +20,7 @@
 
 import six
 
+import time
 from datetime import datetime
 
 from test.common import DBTest
@@ -92,7 +93,10 @@ class DataTest(DBTest):
         self.prepare_build('eclipse')
         # the next build is old and shouldn't be copied
         self.prepare_build('maven', state=True, started='2016-01-01')
-        old_build1 = self.prepare_build('maven', state=True, started=now)
+        old_build1 = self.prepare_build(
+            'maven', state=True,
+            started=datetime.fromtimestamp(time.time() - 10)
+        )
         new_build1 = self.prepare_build('maven', started=now)
         copy = Collection(
             name='copy', display_name='copy', target='a', build_tag='b',
