@@ -697,8 +697,3 @@ class Resolver(Service):
             if new_packages:
                 with self.prepared_repo(collection, collection.latest_repo_id) as sack:
                     self.resolve_packages(sack, collection, new_packages)
-
-    def main(self):
-        for collection in self.db.query(Collection).all():
-            self.process_builds(collection)
-            self.process_repo(collection)
