@@ -242,7 +242,7 @@ class Resolver(Service):
 
     # pylint: disable=too-many-locals
     @stopwatch(total_time)
-    def persist_resolution_output(self, chunk):
+    def persist_resolution_output(self, chunk, repo_fixed):
         """
         Stores resolution output into the database and sends fedmsg if needed.
 
@@ -373,7 +373,7 @@ class Resolver(Service):
         self.db.commit_no_expire()
 
         # emit fedmsg (if enabled)
-        if state_changes:
+        if state_changes and not repo_fixed:
             for package in self.db.query(Package)\
                 .filter(Package.id.in_(state_changes))\
                 .options(joinedload(Package.groups),
@@ -387,7 +387,7 @@ class Resolver(Service):
                     new_state=new_state,
                 )
 
-    def generate_dependency_changes(self, sack, collection, packages, brs):
+    def generate_dependency_changes(self, sack, collection, packages, brs, repo_fixed):
         """
         Generates and persists dependency changes for given list of packages.
         Emits package state change events.
@@ -423,7 +423,7 @@ class Resolver(Service):
                 last_build_id=package.last_build_id,
             ))
             if len(results) > get_config('dependency.persist_chunk_size'):
-                self.persist_resolution_output(results)
+                self.persist_resolution_output(results, repo_fixed)
                 results = []
             pkgs_done += 1
             current_time = time.time()
@@ -441,7 +441,7 @@ class Resolver(Service):
                 pkgs_reported = pkgs_done
                 progres_reported_at = current_time
 
-        self.persist_resolution_output(results)
+        self.persist_resolution_output(results, repo_fixed)
 
     def resolve_repo(self, sack, collection, repo_id):
         """
@@ -500,7 +500,7 @@ class Resolver(Service):
             query = query.filter(Package.resolved == None)
         return query.all()
 
-    def resolve_packages(self, sack, collection, packages):
+    def resolve_packages(self, sack, collection, packages, repo_fixed):
         """
         Generates new dependency changes for given packages
         Commits data in increments.
@@ -521,7 +521,7 @@ class Resolver(Service):
                 len(packages),
             )
         )
-        self.generate_dependency_changes(sack, collection, packages, brs)
+        self.generate_dependency_changes(sack, collection, packages, brs, repo_fixed)
         self.db.commit()
 
     @contextlib.contextmanager
@@ -685,10 +685,11 @@ class Resolver(Service):
             total_time.reset()
             total_time.start()
             with self.prepared_repo(collection, repo_id) as sack:
+                prev_repo_unresolved = not collection.latest_repo_resolved
                 self.resolve_repo(sack, collection, repo_id)
                 if collection.latest_repo_resolved:
                     packages = self.get_packages(collection)
-                    self.resolve_packages(sack, collection, packages)
+                    self.resolve_packages(sack, collection, packages, prev_repo_unresolved)
             total_time.stop()
             total_time.display()
         elif collection.latest_repo_resolved:
@@ -696,7 +697,7 @@ class Resolver(Service):
             new_packages = self.get_packages(collection, only_new=True)
             if new_packages:
                 with self.prepared_repo(collection, collection.latest_repo_id) as sack:
-                    self.resolve_packages(sack, collection, new_packages)
+                    self.resolve_packages(sack, collection, new_packages, False)
 
     def main(self):
         for collection in self.db.query(Collection).all():
