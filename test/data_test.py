@@ -26,7 +26,7 @@ from datetime import datetime
 from test.common import DBTest
 from koschei.models import (
     PackageGroup, PackageGroupRelation, Collection, Package, AppliedChange,
-    KojiTask, ResolutionChange, ResolutionProblem,
+    KojiTask, ResolutionChange, ResolutionProblem, Dependency
 )
 from koschei import data
 
@@ -103,10 +103,16 @@ class DataTest(DBTest):
             dest_tag='c',
         )
         self.db.add(copy)
+        prev_dep = Dependency(
+            name='foo', version='1', release='1', arch='x86_64'
+        )
+        curr_dep = Dependency(
+            name='foo', version='1', release='2', arch='x86_64'
+        )
         change1 = AppliedChange(
-            dep_name='foo', build_id=old_build1.id,
-            prev_version='1', prev_release='1',
-            curr_version='1', curr_release='2',
+            build_id=old_build1.id,
+            prev_dep=prev_dep,
+            curr_dep=curr_dep,
         )
         self.db.add(change1)
         task1 = KojiTask(
@@ -153,7 +159,7 @@ class DataTest(DBTest):
 
         self.assertEqual(1, len(old_build2.dependency_changes))
         change2 = old_build2.dependency_changes[0]
-        self.assertEqual('2', change2.curr_release)
+        self.assertEqual('2', change2.curr_dep.release)
 
         rchange2 = self.db.query(ResolutionChange).filter_by(package_id=maven2.id).one()
         self.assertEqual("It's broken", rchange2.problems[0].problem)

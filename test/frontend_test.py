@@ -406,12 +406,12 @@ class FrontendTest(DBTest):
         # bar was broken
         b1 = self.prepare_build('bar', True)
         b2 = self.prepare_build('bar', False)
-        self.db.add(AppliedChange(
+        self.prepare_depchange(
             build_id=b2.id,
             dep_name='foo', distance=3,
             prev_epoch=0, prev_version='1.2', prev_release='3',
             curr_epoch=0, curr_version='4.5', curr_release='6',
-        ))
+        )
         self.db.commit()
         reply = self.client.get(
             'affected-by/foo'+
@@ -431,66 +431,66 @@ class FrontendTest(DBTest):
         # bar was broken
         b1 = self.prepare_build('bar', True)
         b2 = self.prepare_build('bar', False)
-        self.db.add(AppliedChange(
+        self.prepare_depchange(
             build_id=b2.id,
             dep_name='foo', distance=3,
             prev_epoch=0, prev_version='1.2', prev_release='3',
             curr_epoch=0, curr_version='4.5', curr_release='6',
-        ))
+        )
         # baz was fixed
         b1 = self.prepare_build('baz', False)
         b2 = self.prepare_build('baz', True)
-        self.db.add(AppliedChange(
+        self.prepare_depchange(
             build_id=b2.id,
             dep_name='foo', distance=3,
             prev_epoch=0, prev_version='1.2', prev_release='3',
             curr_epoch=0, curr_version='4.5', curr_release='6',
-        ))
+        )
         # xyzzy failure is not related
         b1 = self.prepare_build('xyzzy', True)
         b2 = self.prepare_build('xyzzy', False)
-        self.db.add(AppliedChange(
+        self.prepare_depchange(
             build_id=b2.id,
             dep_name='foo', distance=3,
             prev_epoch=0, prev_version='0.5', prev_release='1',
             curr_epoch=0, curr_version='0.7', curr_release='2',
-        ))
+        )
         # abc was broken too
         b1 = self.prepare_build('abc', True)
         b2 = self.prepare_build('abc', False)
-        self.db.add(AppliedChange(
+        self.prepare_depchange(
             build_id=b2.id,
             dep_name='foo', distance=3,
             prev_epoch=0, prev_version='0.5', prev_release='1',
             curr_epoch=0, curr_version='4.5', curr_release='6',
-        ))
+        )
         # klm was broken too
         b1 = self.prepare_build('klm', True)
         b2 = self.prepare_build('klm', False)
-        self.db.add(AppliedChange(
+        self.prepare_depchange(
             build_id=b2.id,
             dep_name='foo', distance=3,
             prev_epoch=0, prev_version='1.2', prev_release='3',
             curr_epoch=666, curr_version='0.7', curr_release='2',
-        ))
+        )
         # ijk was broken too
         b1 = self.prepare_build('ijk', True)
         b2 = self.prepare_build('ijk', False)
-        self.db.add(AppliedChange(
+        self.prepare_depchange(
             build_id=b2.id,
             dep_name='foo', distance=3,
             prev_epoch=0, prev_version='0.5', prev_release='1',
             curr_epoch=666, curr_version='0.7', curr_release='2',
-        ))
+        )
         # pqr was broken too
         b1 = self.prepare_build('pqr', True)
         b2 = self.prepare_build('pqr', False)
-        self.db.add(AppliedChange(
+        self.prepare_depchange(
             build_id=b2.id,
             dep_name='foo', distance=3,
             prev_epoch=0, prev_version='3', prev_release='4',
             curr_epoch=0, curr_version='4', curr_release='5',
-        ))
+        )
         self.db.commit()
         reply = self.client.get(
             'affected-by/foo'+

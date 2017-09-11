@@ -24,6 +24,7 @@ from unittest import skipIf
 import hawkey
 import koji
 from mock import Mock, patch
+from sqlalchemy.orm import aliased
 
 from test.common import DBTest, RepoCacheMock
 from koschei import plugin
@@ -310,10 +311,18 @@ class ResolverTest(DBTest):
                 self.resolver.process_builds(self.collection)
         expected_changes = [(build.id, 'C', 1, 1, '2', '3', '1.fc22', '1.fc22', 2),
                             (build.id, 'E', None, 0, None, '0.1', None, '1.fc22.1', 2)]
-        c = AppliedChange
-        actual_changes = self.db.query(c.build_id, c.dep_name, c.prev_epoch,
-                                       c.curr_epoch, c.prev_version, c.curr_version,
-                                       c.prev_release, c.curr_release, c.distance).all()
+        change = AppliedChange
+        prev = aliased(Dependency)
+        curr = aliased(Dependency)
+        actual_changes = (
+            self.db.query(
+                change.build_id, curr.name, prev.epoch, curr.epoch, prev.version,
+                curr.version, prev.release, curr.release, change.distance,
+            )
+            .outerjoin(prev, change.prev_dep)
+            .outerjoin(curr, change.curr_dep)
+            .all()
+        )
         six.assertCountEqual(self, expected_changes, actual_changes)
 
     def test_repo_generation(self):

@@ -142,8 +142,9 @@ def copy_collection(session, source, copy):
             if c.name != 'id' and c.name not in exclude
         )
 
-    def deepcopy_table(entity, whereclause=''):
-        foreign_keys = entity.__table__.foreign_keys
+    def deepcopy_table(entity, whereclause='', foreign_keys=None):
+        if not foreign_keys:
+            foreign_keys = entity.__table__.foreign_keys
         assert len(foreign_keys) == 1
         foreign_key = next(iter(foreign_keys))
         parent = foreign_key.column.table
@@ -215,4 +216,7 @@ def copy_collection(session, source, copy):
     deepcopy_table(KojiTask)
     deepcopy_table(ResolutionChange)
     deepcopy_table(ResolutionProblem)
-    deepcopy_table(AppliedChange)
+    deepcopy_table(
+        AppliedChange,
+        foreign_keys=AppliedChange.__table__.c.build_id.foreign_keys,
+    )

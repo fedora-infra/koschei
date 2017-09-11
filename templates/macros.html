@@ -214,12 +214,12 @@
     <a href="{{ url_for(
              'affected_by',
              dep_name=change.dep_name,
-             epoch1=change.prev_epoch or '0',
-             version1=change.prev_version,
-             release1=change.prev_release,
-             epoch2=change.curr_epoch or '0',
-             version2=change.curr_version,
-             release2=change.curr_release,
+             epoch1=change.prev_evr.epoch or '0',
+             version1=change.prev_evr.version,
+             release1=change.prev_evr.release,
+             epoch2=change.curr_evr.epoch or '0',
+             version2=change.curr_evr.version,
+             release2=change.curr_evr.release,
              collection=change.package.collection.name,
              ) }}">
       <i class="fa fa-question-circle-o" data-toggle="tooltip" data-placement="right"
