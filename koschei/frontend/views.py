@@ -30,7 +30,7 @@ from sqlalchemy import Integer
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import (joinedload, subqueryload, undefer, contains_eager,
                             aliased)
-from sqlalchemy.sql import exists, func, false, true, cast
+from sqlalchemy.sql import exists, func, false, true, cast, union
 
 from koschei import plugin, data
 from koschei.db import RpmEVR
@@ -41,7 +41,7 @@ from koschei.models import (
     Package, Build, PackageGroup, PackageGroupRelation, AdminNotice,
     BuildrootProblem, BasePackage, GroupACL, Collection, CollectionGroup,
     AppliedChange, UnappliedChange, ResolutionChange, ResourceConsumptionStats,
-    ScalarStats,
+    ScalarStats, Dependency,
 )
 
 packages_per_page = frontend_config['packages_per_page']
@@ -905,11 +905,36 @@ def affected_by(dep_name):
     except (KeyError, ValueError):
         abort(400)
 
-    evr_cmp_expr = (
-        ((AppliedChange.prev_evr > evr1) | (AppliedChange.curr_evr > evr1)) &
-        ((AppliedChange.prev_evr < evr2) | (AppliedChange.curr_evr < evr2))
+    deps_in = (
+        db.query(Dependency.id)
+        .filter(Dependency.name == dep_name)
+        .filter(Dependency.evr > evr1)
+        .filter(Dependency.evr < evr2)
+        .cte('deps_in')
     )
-
+    deps_higher = (
+        db.query(Dependency.id)
+        .filter(Dependency.name == dep_name)
+        .filter(Dependency.evr >= evr2)
+        .cte('deps_higher')
+    )
+    deps_lower = (
+        db.query(Dependency.id)
+        .filter(Dependency.name == dep_name)
+        .filter(Dependency.evr <= evr1)
+        .cte('deps_lower')
+    )
+    filtered_changes = union(
+        db.query(AppliedChange)
+        .filter(AppliedChange.prev_dep_id.in_(db.query(deps_in))),
+        db.query(AppliedChange)
+        .filter(AppliedChange.curr_dep_id.in_(db.query(deps_in))),
+        db.query(AppliedChange)
+        .filter(
+            (AppliedChange.prev_dep_id.in_(db.query(deps_lower))) &
+            (AppliedChange.curr_dep_id.in_(db.query(deps_higher)))
+        ),
+    ).alias('filtered_changes')
     prev_build = aliased(Build)
     subq = db.query(prev_build.state.label('prev_state'))\
         .order_by(prev_build.started.desc())\
@@ -917,27 +942,32 @@ def affected_by(dep_name):
         .filter(prev_build.package_id == Build.package_id)\
         .limit(1)\
         .correlate().as_scalar()
-    failed = db.query(
-        AppliedChange.dep_name,
-        AppliedChange.prev_evr,
-        AppliedChange.curr_evr,
-        AppliedChange.distance,
-        Build.id.label('build_id'),
-        Build.state.label('build_state'),
-        Build.started.label('build_started'),
-        Package.name.label('package_name'),
-        Package.resolved.label('package_resolved'),
-        Package.last_complete_build_state.label('package_lb_state'),
-        subq.label('prev_build_state'),
-    )\
-        .filter(AppliedChange.dep_name == dep_name)\
-        .filter(evr_cmp_expr)\
-        .join(AppliedChange.build).join(Build.package)\
-        .filter_by(blocked=False, tracked=True, collection_id=collection.id)\
-        .filter(Build.state == Build.FAILED)\
-        .filter(subq != Build.FAILED)\
-        .order_by(AppliedChange.distance, Build.started.desc())\
+    prev_dep = aliased(Dependency)
+    curr_dep = aliased(Dependency)
+    failed = (
+        db.query(
+            prev_dep.name.label('dep_name'),
+            prev_dep.evr.label('prev_evr'),
+            curr_dep.evr.label('curr_evr'),
+            AppliedChange.distance,
+            Build.id.label('build_id'),
+            Build.state.label('build_state'),
+            Build.started.label('build_started'),
+            Package.name.label('package_name'),
+            Package.resolved.label('package_resolved'),
+            Package.last_complete_build_state.label('package_lb_state'),
+            subq.label('prev_build_state'),
+        )
+        .select_entity_from(filtered_changes)
+        .join(prev_dep, AppliedChange.prev_dep)
+        .join(curr_dep, AppliedChange.curr_dep)
+        .join(AppliedChange.build).join(Build.package)
+        .filter_by(blocked=False, tracked=True, collection_id=collection.id)
+        .filter(Build.state == Build.FAILED)
+        .filter(subq != Build.FAILED)
+        .order_by(AppliedChange.distance, Build.started.desc())
         .all()
+    )
 
     def package_state(row):
         return Package(

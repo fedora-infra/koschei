@@ -61,12 +61,13 @@ def create_dependency_changes(deps1, deps2, **rest):
         return []
 
     def key(dep):
-        return (dep.name, dep.epoch, dep.version, dep.release)
+        return (dep.name, dep.epoch, dep.version, dep.release, dep.arch)
 
     def new_change(**values):
-        change = dict(prev_version=None, prev_epoch=None,
-                      prev_release=None, curr_version=None,
-                      curr_epoch=None, curr_release=None)
+        change = dict(
+            prev_version=None, prev_epoch=None, prev_release=None, prev_arch=None,
+            curr_version=None, curr_epoch=None, curr_release=None, curr_arch=None,
+        )
         change.update(rest)
         change.update(values)
         return change
@@ -76,14 +77,20 @@ def create_dependency_changes(deps1, deps2, **rest):
 
     changes = {}
     for dep in old:
-        change = new_change(dep_name=dep.name,
-                            prev_version=dep.version, prev_epoch=dep.epoch,
-                            prev_release=dep.release, distance=None)
+        change = new_change(
+            dep_name=dep.name,
+            prev_version=dep.version, prev_epoch=dep.epoch,
+            prev_release=dep.release, prev_arch=dep.arch,
+            distance=None,
+        )
         changes[dep.name] = change
     for dep in new:
         change = changes.get(dep.name) or new_change(dep_name=dep.name)
-        change.update(curr_version=dep.version, curr_epoch=dep.epoch,
-                      curr_release=dep.release, distance=dep.distance)
+        change.update(
+            curr_version=dep.version, curr_epoch=dep.epoch,
+            curr_release=dep.release, curr_arch=dep.arch,
+            distance=dep.distance,
+        )
         changes[dep.name] = change
     return list(changes.values()) if changes else []
 
@@ -111,7 +118,7 @@ class DependencyCache(object):
         del self.nevras[(victim.name, victim.epoch, victim.version,
                          victim.release, victim.arch)]
 
-    def _get_or_create(self, db, nevra):
+    def get_or_create_nevra(self, db, nevra):
         dep = self.nevras.get(nevra)
         if dep is None:
             dep = db.query(*Dependency.inevra)\
@@ -136,7 +143,7 @@ class DependencyCache(object):
     def get_or_create_nevras(self, db, nevras):
         res = []
         for nevra in nevras:
-            res.append(self._get_or_create(db, nevra))
+            res.append(self.get_or_create_nevra(db, nevra))
         return res
 
     @stopwatch(total_time, note='dependency cache')
@@ -413,6 +420,10 @@ class Resolver(Service):
                     changes = create_dependency_changes(
                         prev_deps, curr_deps, package_id=package.id,
                     )
+                    # UnappliedChange doesn't contain arch
+                    for change in changes:
+                        del change['prev_arch']
+                        del change['curr_arch']
             results.append(ResolutionOutput(
                 package=package,
                 prev_resolved=package.resolved,
@@ -554,6 +565,27 @@ class Resolver(Service):
             .filter(Package.last_build_id.in_(build_ids))\
             .update({'build_priority': priority_value})
 
+    def change_to_applied(self, change):
+        applied_change = {
+            'distance': change['distance'],
+            'build_id': change['build_id'],
+        }
+        for state in ('prev', 'curr'):
+            def s(x, state=state):
+                return state + '_' + x
+            if change[s('version')]:
+                applied_change[s('dep_id')] = self.dependency_cache.get_or_create_nevra(
+                    self.db,
+                    (
+                        change['dep_name'],
+                        change[s('epoch')], change[s('version')],
+                        change[s('release')], change[s('arch')],
+                    )
+                ).id
+            else:
+                applied_change[s('dep_id')] = None
+        return applied_change
+
     def process_build(self, sack, entry, curr_deps):
         self.log.info("Processing build {}".format(entry.id))
         prev = self.get_prev_build_for_comparison(entry)
@@ -570,7 +602,10 @@ class Resolver(Service):
                 changes = create_dependency_changes(prev_deps, curr_deps,
                                                     build_id=entry.id)
                 if changes:
-                    self.db.execute(AppliedChange.__table__.insert(), changes)
+                    self.db.execute(
+                        AppliedChange.__table__.insert(),
+                        list(map(self.change_to_applied, changes)),
+                    )
         self.db.query(Build)\
             .filter_by(package_id=entry.package_id)\
             .filter(Build.repo_id < entry.repo_id)\

@@ -36,10 +36,10 @@ from datetime import datetime
 
 from test import testdir, config
 from koschei import plugin
-from koschei.db import get_engine, create_all, Base, Session
+from koschei.db import get_engine, create_all, Base, Session, get_or_create
 from koschei.models import (Package, Build, Collection, BasePackage,
                             PackageGroupRelation, PackageGroup, GroupACL, User,
-                            KojiTask)
+                            KojiTask, Dependency, AppliedChange)
 from koschei.backend import KoscheiBackendSession, repo_util, service
 
 if six.PY2:
@@ -284,6 +284,33 @@ class DBTest(AbstractTest):
                          for user in users])
         self.db.commit()
         return group
+
+    def prepare_depchange(self, dep_name, prev_epoch, prev_version, prev_release,
+                          curr_epoch, curr_version, curr_release, build_id, distance):
+        prev_dep = get_or_create(
+            self.db,
+            Dependency,
+            name=dep_name,
+            epoch=prev_epoch, version=prev_version, release=prev_release,
+            arch='x86_64',
+        )
+        curr_dep = get_or_create(
+            self.db,
+            Dependency,
+            name=dep_name,
+            epoch=curr_epoch, version=curr_version, release=curr_release,
+            arch='x86_64',
+        )
+        self.db.flush()
+        change = AppliedChange(
+            prev_dep_id=prev_dep.id,
+            curr_dep_id=curr_dep.id,
+            distance=distance,
+            build_id=build_id,
+        )
+        self.db.add(change)
+        self.db.commit()
+        return change
 
     @staticmethod
     def parse_pkg(string):
