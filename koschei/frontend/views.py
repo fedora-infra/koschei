@@ -763,6 +763,13 @@ if not frontend_config['auto_tracking']:
             except IndexError:
                 abort(404)
 
+            try:
+                added = data.track_packages(session, collection, names)
+            except data.PackagesDontExist as e:
+                db.rollback()
+                flash_nak(str(e))
+                return render_template("add-packages.html", form=form)
+
             if form.group.data:
                 namespace, name = PackageGroup.parse_name(form.group.data)
                 group = db.query(PackageGroup)\
@@ -771,13 +778,6 @@ if not frontend_config['auto_tracking']:
                 if not group.editable:
                     abort(400)
                 data.set_group_content(session, group, names, append=True)
-
-            try:
-                added = data.track_packages(session, collection, names)
-            except data.PackagesDontExist as e:
-                db.rollback()
-                flash_nak(str(e))
-                return render_template("add-packages.html", form=form)
 
             flash_ack("Packages added: {}".format(','.join(p.name for p in added)))
             db.commit()
