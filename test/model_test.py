@@ -20,11 +20,23 @@ from mock import patch
 from sqlalchemy import literal_column
 from datetime import datetime, timedelta
 
-from koschei.models import Package, Collection, Build, ResourceConsumptionStats, ScalarStats, KojiTask
+from koschei.models import (
+    Package, Collection, Build, ResourceConsumptionStats, ScalarStats, KojiTask,
+    PackageGroup,
+)
 from test.common import DBTest
 
 
 class GroupTest(DBTest):
+    def test_group_name_format(self):
+        group1 = self.prepare_group('foo', content=['foo'])
+        group2 = self.prepare_group('bar', namespace='ns', content=['foo'])
+        self.assertEqual('foo', group1.full_name)
+        self.assertEqual('ns/bar', group2.full_name)
+
+    def test_group_name_parse(self):
+        self.assertEqual((None, 'foo'), PackageGroup.parse_name('foo'))
+        self.assertEqual(('ns', 'bar'), PackageGroup.parse_name('ns/bar'))
 
     def test_group_cardinality(self):
         group = self.prepare_group('xyzzy', content=['foo', 'bar', 'baz'])
