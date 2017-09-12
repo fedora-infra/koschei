@@ -43,8 +43,8 @@ def authenticate(fn):
     @wraps(fn)
     def decorated(*args, **kwargs):
         self = args[0]
-        user = self.prepare_user(name='jdoe', admin=False)
-        login(self.client, user)
+        self.user = self.prepare_user(name='jdoe', admin=False)
+        login(self.client, self.user)
         return fn(*args, **kwargs)
     return decorated
 
@@ -53,13 +53,17 @@ def authenticate_admin(fn):
     @wraps(fn)
     def decorated(*args, **kwargs):
         self = args[0]
-        user = self.prepare_user(name='admin', admin=True)
-        login(self.client, user)
+        self.user = self.prepare_user(name='admin', admin=True)
+        login(self.client, self.user)
         return fn(*args, **kwargs)
     return decorated
 
 
 class FrontendTest(DBTest):
+    def __init__(self, *args, **kwargs):
+        super(FrontendTest, self).__init__(*args, **kwargs)
+        self.user = None
+
     def get_session(self):
         return db
 
@@ -183,6 +187,61 @@ class FrontendTest(DBTest):
         self.assertEqual(200, reply.status_code)
         self.assertIn('Packages added: xpp3', reply.data.decode('utf-8'))
         self.assertTrue(pkg.tracked)
+
+    def _test_add_package_group(self, namespace):
+        pkg = self.prepare_packages('xpp3')[0]
+        group = self.prepare_group(
+            name='foo',
+            namespace=namespace,
+            content=['bar'],
+            owners=[self.user.name],
+        )
+        pkg.tracked = False
+        self.db.commit()
+        reply = self.client.post(
+            'add-packages',
+            data=dict(
+                packages='xpp3',
+                collection=self.collection.name,
+                group=group.full_name,
+            ),
+            follow_redirects=True,
+        )
+        self.assertEqual(200, reply.status_code)
+        self.assertIn('Packages added: xpp3', reply.data.decode('utf-8'))
+        self.assertTrue(pkg.tracked)
+        self.assertEqual([group], pkg.groups)
+
+    @authenticate
+    def test_add_package_user_group(self):
+        self._test_add_package_group(None)
+
+    @authenticate
+    def test_add_package_global_group(self):
+        self._test_add_package_group('user')
+
+    @authenticate
+    def test_add_package_grup_no_permission(self):
+        pkg = self.prepare_packages('xpp3')[0]
+        group = self.prepare_group(
+            name='foo',
+            content=['bar'],
+            owners=['someone_else'],
+        )
+        pkg.tracked = False
+        self.db.commit()
+        reply = self.client.post(
+            'add-packages',
+            data=dict(
+                packages='xpp3',
+                collection=self.collection.name,
+                group=group.full_name,
+            ),
+            follow_redirects=True,
+        )
+        self.assertEqual(400, reply.status_code)
+        self.assertFalse(pkg.tracked)
+        self.assertEqual(0, len(pkg.groups))
 
     def test_create_group_unauth(self):
         reply = self.client.post(

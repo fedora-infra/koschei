@@ -764,7 +764,7 @@ if not frontend_config['auto_tracking']:
                 abort(404)
 
             if form.group.data:
-                name, namespace = PackageGroup.parse_name(form.group.data)
+                namespace, name = PackageGroup.parse_name(form.group.data)
                 group = db.query(PackageGroup)\
                           .filter_by(namespace=namespace, name=name)\
                           .first_or_404()
