@@ -166,9 +166,18 @@ class FrontendTest(DBTest):
 
     @authenticate
     def test_add_package_nonexistent(self):
+        group = self.prepare_group(
+            name='foo',
+            content=['bar'],
+            owners=[self.user.name],
+        )
         reply = self.client.post(
             'add-packages',
-            data=dict(packages='SimplyHTML', collection=self.collection.name),
+            data=dict(
+                packages='SimplyHTML',
+                collection=self.collection.name,
+                group=group.full_name,
+            ),
             follow_redirects=True,
         )
         self.assertEqual(200, reply.status_code)
