@@ -288,7 +288,6 @@ app.jinja_env.globals.update(
     package_state_icon=package_state_icon,
     build_state_icon=build_state_icon,
     resolution_state_icon=resolution_state_icon,
-    auto_tracking=frontend_config['auto_tracking'],
     fedora_assets_url=frontend_config['fedora_assets_url'])
 
 
@@ -747,42 +746,41 @@ def confirm_delete_group(name, namespace=None):
                            form=forms.EmptyForm())
 
 
-if not frontend_config['auto_tracking']:
-    @app.route('/add-packages', methods=['GET', 'POST'])
-    @add_packages_tab.master
-    @auth.login_required()
-    def add_packages():
-        form = forms.AddPackagesForm()
-        if request.method == 'POST':
-            if not form.validate_or_flash():
-                return render_template("add-packages.html", form=form)
-            names = set(form.packages.data)
-            try:
-                collection = [c for c in g.collections
-                              if c.name == form.collection.data][0]
-            except IndexError:
-                abort(404)
+@app.route('/add-packages', methods=['GET', 'POST'])
+@add_packages_tab.master
+@auth.login_required()
+def add_packages():
+    form = forms.AddPackagesForm()
+    if request.method == 'POST':
+        if not form.validate_or_flash():
+            return render_template("add-packages.html", form=form)
+        names = set(form.packages.data)
+        try:
+            collection = [c for c in g.collections
+                          if c.name == form.collection.data][0]
+        except IndexError:
+            abort(404)
 
-            try:
-                added = data.track_packages(session, collection, names)
-            except data.PackagesDontExist as e:
-                db.rollback()
-                flash_nak(str(e))
-                return render_template("add-packages.html", form=form)
+        try:
+            added = data.track_packages(session, collection, names)
+        except data.PackagesDontExist as e:
+            db.rollback()
+            flash_nak(str(e))
+            return render_template("add-packages.html", form=form)
 
-            if form.group.data:
-                namespace, name = PackageGroup.parse_name(form.group.data)
-                group = db.query(PackageGroup)\
-                          .filter_by(namespace=namespace, name=name)\
-                          .first_or_404()
-                if not group.editable:
-                    abort(400)
-                data.set_group_content(session, group, names, append=True)
+        if form.group.data:
+            namespace, name = PackageGroup.parse_name(form.group.data)
+            group = db.query(PackageGroup)\
+                      .filter_by(namespace=namespace, name=name)\
+                      .first_or_404()
+            if not group.editable:
+                abort(400)
+            data.set_group_content(session, group, names, append=True)
 
-            flash_ack("Packages added: {}".format(','.join(p.name for p in added)))
-            db.commit()
-            return redirect(request.form.get('next') or url_for('frontpage'))
-        return render_template("add-packages.html", form=form)
+        flash_ack("Packages added: {}".format(','.join(p.name for p in added)))
+        db.commit()
+        return redirect(request.form.get('next') or url_for('frontpage'))
+    return render_template("add-packages.html", form=form)
 
 
 @app.route('/documentation')
