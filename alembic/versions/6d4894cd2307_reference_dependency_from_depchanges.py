@@ -68,12 +68,18 @@ def upgrade():
             ADD CONSTRAINT applied_change_dep_id_check
             CHECK (COALESCE(prev_dep_id, 0) <> COALESCE(curr_dep_id, 0));
         ALTER SEQUENCE applied_change2_id_seq OWNED BY applied_change2.id;
-        -- the indices should be droppped automatically, but BDR doesn't do that
+
+        -- BDR doesn't drop dependent objects, we have to drop them all manually
         DROP INDEX ix_applied_change_dep_name;
         DROP INDEX ix_applied_change_build_id;
+        DROP INDEX IF EXISTS ix_applied_change_prev_build_id; -- BDR leftover
+        ALTER TABLE applied_change ALTER COLUMN id SET DEFAULT NULL;
+        ALTER TABLE applied_change DROP CONSTRAINT applied_change_pkey;
+        ALTER TABLE applied_change DROP CONSTRAINT applied_change_build_id_fkey;
+        DROP SEQUENCE applied_change_id_seq;
+
         DROP TABLE applied_change;
         DROP TYPE IF EXISTS applied_change; -- BDR-specific hack
-        DROP SEQUENCE IF EXISTS applied_change_id_seq;
         ALTER TABLE applied_change2 RENAME TO applied_change;
         ALTER INDEX applied_change2_pkey RENAME TO applied_change_pkey;
         ALTER SEQUENCE applied_change2_id_seq RENAME TO applied_change_id_seq;
