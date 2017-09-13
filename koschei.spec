@@ -11,7 +11,7 @@
 %endif
 
 Name:           koschei
-Version:        2.0.2
+Version:        2.1.0
 Release:        1%{?dist}
 Summary:        Continuous integration for Fedora packages
 License:        GPLv2+
@@ -423,6 +423,9 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %{python_sitelib}/*/plugins/copr_plugin/backend*
 
 %changelog
+* Wed Sep 13 2017 Mikolaj Izdebski <mizdebsk@redhat.com> - 2.1.0-1
+- Update to upstream version 2.1.0
+
 * Tue Sep  5 2017 Mikolaj Izdebski <mizdebsk@redhat.com> - 2.0.2-1
 - Update to upstream version 2.0.2
 
