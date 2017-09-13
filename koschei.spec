@@ -392,20 +392,17 @@ dummy = posix.readlink(dir) and os.remove(dir)
 
 %files common-fedora
 %{python_sitelib}/*/plugins/fedmsg_plugin
-%{python_sitelib}/*/plugins/pkgdb_plugin
 %{python_sitelib}/*/plugins/pagure_plugin
 %exclude %{python_sitelib}/*/plugins/*/backend*
 %exclude %{python_sitelib}/*/plugins/*/frontend*
 
 %files frontend-fedora
-%{python_sitelib}/*/plugins/pkgdb_plugin/frontend*
 %{python_sitelib}/*/plugins/pagure_plugin/frontend*
 
 %files backend-fedora
 %{_libexecdir}/%{name}/koschei-watcher
 %{_unitdir}/koschei-watcher.service
 %{python_sitelib}/*/plugins/fedmsg_plugin/backend*
-%{python_sitelib}/*/plugins/pkgdb_plugin/backend*
 
 %files common-copr
 %{python_sitelib}/*/plugins/copr_plugin

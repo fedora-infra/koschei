@@ -129,7 +129,7 @@ config = {
         },
     },
     # which plugins are loaded (name is their filename without extension)
-    # "plugins": ['fedmsg', 'pkgdb', 'copr'],
+    # "plugins": ['fedmsg', 'pagure', 'copr'],
     "plugins": [],
     # fedora message bus configuration
     "fedmsg": {
@@ -144,15 +144,6 @@ config = {
         "enabled": False,
         # which modname to publish to
         "modname": "koschei",
-    },
-    # fedora pkgdb plugin
-    "pkgdb": {
-        # URL to used pkgdb instance
-        "pkgdb_url": 'https://admin.fedoraproject.org/pkgdb/api',
-        # which topic to subscribe to in fedmsg for pkgdb changes
-        "topic_re": r'\.prod\.pkgdb\.',
-        # whether to synchronize package tracked status from pkgdb
-        "sync_tracked": False,
     },
     # pagure plugin
     "pagure": {
@@ -225,17 +216,6 @@ config = {
                 },
             },
         },
-        "plugin": {
-            "pkgdb": {
-                "users": {
-                    "backend": "dogpile.cache.dbm",
-                    "expiration_time": 600,
-                    "arguments": {
-                        "filename": "@CACHEDIR@/pkgdb-user-cache.dbm"
-                    },
-                },
-            },
-        },
     },
     # which directories to use. Don't override unless necessary
     "directories": {
@@ -265,9 +245,6 @@ config = {
         # pagination values
         "packages_per_page": 100,
         "builds_per_page": 15,
-        # if pkgdb plugin is set to automatically synchronize tracked packages,
-        # you'll want to set this to True to disable manual adding of packages
-        "auto_tracking": False,
 
         # authentication settings
         "auth": {
@@ -335,8 +312,6 @@ config = {
          "url": "https://apps.fedoraproject.org/packages/{package.name}"},
         {"name": "Bugzilla",
          "url": "https://bugzilla.redhat.com/buglist.cgi?product={package.collection.bugzilla_product}&component={package.name}"},
-        {"name": "PkgDB",
-         "url": "https://admin.fedoraproject.org/pkgdb/package/{package.name}"},
         {"name": "Bodhi",
          "url": "https://bodhi.fedoraproject.org/updates?packages={package.name}"},
         {"name": "Dist-git",
