@@ -92,6 +92,22 @@ class CreateDb(Command):
         command.stamp(alembic_cfg, "head")
 
 
+class Alembic(Command):
+    """ Runs arbitrary alembic command. """
+
+    needs_session = False
+
+    def setup_parser(self, parser):
+        parser.add_argument('args', nargs=argparse.REMAINDER,
+                            help="Arguments passed to alembic")
+
+    def execute(self, args):
+        from alembic.config import main as alembic_main
+        config_path = get_config('alembic.alembic_ini')
+        argv = ['-c', config_path] + args
+        alembic_main(prog='koschei-admin alembic', argv=argv)
+
+
 class Cleanup(Command):
     """ Cleans old builds and resolution changes from the database """
 

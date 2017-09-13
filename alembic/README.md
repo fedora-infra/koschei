@@ -52,7 +52,7 @@ Cheat-sheet
 To set environment variables and aliases:
 
     . aux/set-env.sh
-    alias koschei_alembic="KOSCHEI_CONFIG=$PWD/config.cfg.template:<(echo 'config={\"database_config\":{\"database\":\"koschei\"}}') alembic -c $PWD/alembic.ini"
+    alias koschei_alembic="KOSCHEI_CONFIG=$PWD/config.cfg.template:<(echo 'config={\"database_config\":{\"database\":\"koschei\"},\"alembic\":{\"alembic_ini\":\"alembic.ini\"}}') python3 admin.py alembic"
 
 To create clean DB for tests:
 
