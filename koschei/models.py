@@ -68,9 +68,6 @@ class Collection(Base):
     dest_tag = Column(String, nullable=False)
     build_tag = Column(String, nullable=False)
 
-    # PkgDB branch name, currently unused
-    branch = Column(String)
-
     # bugzilla template fields. If null, bug filling will be disabled
     bugzilla_product = Column(String)
     bugzilla_version = Column(String)

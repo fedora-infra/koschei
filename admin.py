@@ -402,8 +402,6 @@ class CreateOrEditCollectionCommand(object):
                             "First collection becomes the default")
         parser.add_argument('--build-group',
                             help="Build group name")
-        parser.add_argument('--branch',
-                            help="Git branch name. Used by PkgDB plugin. Optional")
         parser.add_argument('--poll-untracked',
                             help="Whether to poll builds for untracked packages. "
                             "Defaults to true")
