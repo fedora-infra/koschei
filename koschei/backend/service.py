@@ -23,7 +23,6 @@ import imp
 import logging
 import os
 import time
-import resource
 
 from koschei import util, plugin
 from koschei.config import get_config
@@ -60,12 +59,18 @@ class Service(object):
         raise NotImplementedError()
 
     def memory_check(self):
-        memory_limit = self.service_config.get("memory_limit", None)
-        if memory_limit:
-            current_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-            if current_memory > memory_limit:
-                self.log.info("Memory limit reached: {mem}KB. Exiting"
-                              .format(mem=current_memory))
+        resident_limit = self.service_config.get("memory_limit", None)
+        virtual_limit = self.service_config.get("virtual_memory_limit", None)
+        if resident_limit or virtual_limit:
+            # see man 5 proc, search for statm
+            with open('/proc/self/statm') as statm_f:
+                statm = statm_f.readline().split()
+            page_size = os.sysconf("SC_PAGE_SIZE") / 1024
+            virtual, resident = [int(pages) * page_size for pages in statm[0:2]]
+            if resident > resident_limit or virtual > virtual_limit:
+                self.log.info("Memory limit reached - resident: {resident} KiB, "
+                              "virtual: {virtual} KiB. Exiting."
+                              .format(virtual=virtual, resident=resident))
                 sys.exit(3)
 
     def run_service(self):
