@@ -239,6 +239,13 @@ def package_state_icon(package_or_state):
 Package.state_icon = property(package_state_icon)
 
 
+def package_running_icon(self):
+    if self.has_running_build:
+        return icon('running')
+    return ''
+Package.running_icon = property(package_running_icon)
+
+
 def resolution_state_icon(resolved):
     if resolved is None:
         return icon('unknown')
@@ -360,11 +367,7 @@ class UnifiedPackage(object):
             )
             self.packages.append(package)
 
-    @property
-    def running_icon(self):
-        if self.has_running_build:
-            return icon('running')
-        return ''
+    running_icon = property(package_running_icon)
 
 
 def unified_package_view(template, query_fn=None, **template_args):
