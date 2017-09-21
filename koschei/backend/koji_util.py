@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2016  Red Hat, Inc.
+# Copyright (C) 2014-2017  Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,8 +61,9 @@ class KojiSession(object):
             object.__setattr__(self.__proxied, name, value)
 
 
-def itercall(koji_session, args, koji_call):
-    chunk_size = get_config('koji_config.multicall_chunk_size')
+def itercall(koji_session, args, koji_call, chunk_size=None):
+    if not chunk_size:
+        chunk_size = get_config('koji_config.multicall_chunk_size')
     while args:
         koji_session.multicall = True
         for arg in args[:chunk_size]:
@@ -83,9 +84,11 @@ def prepare_build_opts(opts=None):
     return build_opts
 
 
-def get_last_srpm(koji_session, tag, name, relative=False):
-    rel_pathinfo = koji.PathInfo(topdir=koji_session.config[
-        'srpm_relative_path_root' if relative else 'topurl'])
+def get_last_srpm(koji_session, tag, name, relative=False, topdir=None):
+    if not topdir:
+        topdir = koji_session.config[
+            'srpm_relative_path_root' if relative else 'topurl']
+    rel_pathinfo = koji.PathInfo(topdir=topdir)
     info = koji_session.listTagged(tag, latest=True,
                                    package=name, inherit=True)
     if info:
@@ -156,9 +159,10 @@ def get_koji_arches(koji_session, build_tag):
 get_koji_arches_cached = cached_koji_call(get_koji_arches)
 
 
-def get_rpm_requires(koji_session, nvras):
+def get_rpm_requires(koji_session, nvras, chunk_size=None):
     deps_list = itercall(koji_session, nvras,
-                         lambda k, nvra: k.getRPMDeps(nvra, koji.DEP_REQUIRE))
+                         lambda k, nvra: k.getRPMDeps(nvra, koji.DEP_REQUIRE),
+                         chunk_size=chunk_size)
     for deps in deps_list:
         requires = []
         for dep in deps:
@@ -206,7 +210,7 @@ def get_koji_load(koji_session, all_arches, arches):
     return min_load if noarch else max_load
 
 
-def get_srpm_arches(koji_session, all_arches, nvra, arch_override=None):
+def get_srpm_arches(koji_session, all_arches, nvra, arch_override=None, build_arches=None):
     # compute arches the same way as koji
     # see kojid/getArchList
     archlist = all_arches
@@ -239,8 +243,9 @@ def get_srpm_arches(koji_session, all_arches, nvra, arch_override=None):
         else:
             archlist = arch_override.split()
 
-    koschei_arches = get_config('koji_config').get('build_arches')
-    allowed_arches = set(tag_archlist) & set(koschei_arches)
+    if not build_arches:
+        build_arches = get_config('koji_config').get('build_arches')
+    allowed_arches = set(tag_archlist) & set(build_arches)
 
     arches = set()
     for arch in archlist:
