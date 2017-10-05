@@ -1,0 +1,67 @@
+{
+    "version": 1,
+    "interactions": [
+        {
+            "request": {
+                "method": "GET",
+                "uri": "https://src.fedoraproject.org/api/0/user/jdoe",
+                "body": null,
+                "headers": {
+                    "User-Agent": [
+                        "python-requests/2.13.0"
+                    ],
+                    "Accept-Encoding": [
+                        "gzip, deflate"
+                    ],
+                    "Accept": [
+                        "*/*"
+                    ],
+                    "Connection": [
+                        "keep-alive"
+                    ]
+                }
+            },
+            "response": {
+                "status": {
+                    "code": 200,
+                    "message": "OK"
+                },
+                "headers": {
+                    "Date": [
+                        "Thu, 05 Oct 2017 06:23:05 GMT"
+                    ],
+                    "Strict-Transport-Security": [
+                        "max-age=15768000; includeSubDomains; preload"
+                    ],
+                    "Set-Cookie": [
+                        "disgit_pagure=eyJfcGVybWFuZW50Ijp0cnVlfQ.DLdhSw.HRzjIpJlwVI2Wj24Ikh4X-vhsBM; Expires=Sun, 05-Nov-2017 06:23:07 GMT; Secure; HttpOnly; Path=/"
+                    ],
+                    "Connection": [
+                        "Keep-Alive"
+                    ],
+                    "Content-Type": [
+                        "application/json"
+                    ],
+                    "AppTime": [
+                        "D=2347557"
+                    ],
+                    "Content-Length": [
+                        "32288"
+                    ],
+                    "Keep-Alive": [
+                        "timeout=15, max=500"
+                    ],
+                    "Server": [
+                        "Apache/2.4.6 (Red Hat Enterprise Linux) OpenSSL/1.0.2k-fips mod_auth_gssapi/1.5.1 mod_wsgi/3.4 Python/2.7.5"
+                    ],
+                    "AppServer": [
+                        "proxy01.phx2.fedoraproject.org"
+                    ]
+                },
+                "body": {
+                    "string": "{'unparseable json....':''"
+                }
+            }
+        }
+    ]
+}

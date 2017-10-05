@@ -27,7 +27,7 @@ import koschei.frontend.auth
 from koschei.frontend import app, db
 from koschei.models import User, PackageGroup, AppliedChange
 
-from test.common import DBTest
+from test.common import DBTest, my_vcr
 
 
 def login(client, user):
@@ -579,3 +579,41 @@ class FrontendTest(DBTest):
         self.assertIn("klm", text)
         self.assertIn("ijk", text)
         self.assertIn("pqr", text)
+
+    def test_user_page_unauthenticated(self):
+        reply = self.client.get('/user/mizdebsk')
+        self.assertEqual(302, reply.status_code)
+        self.assertEqual("http://localhost/login?", reply.location[:23])
+
+    @authenticate
+    @my_vcr.use_cassette('user_page')
+    def test_user_page(self):
+        self.prepare_packages('avalon-framework', 'xyzzy', 'fop')
+        reply = self.client.get('/user/mizdebsk')
+        self.assertEqual(200, reply.status_code)
+        self.assertEqual('text/html; charset=utf-8', reply.content_type)
+        normalized_data = ' '.join(reply.data.decode('utf-8').split())
+        self.assertIn('mizdebsk\'s packages', normalized_data)
+        self.assertIn('packages from 1 to 2 from total 2', normalized_data)
+        self.assertIn('avalon-framework', normalized_data)
+        self.assertNotIn('xyzzy', normalized_data)
+
+    @authenticate
+    @my_vcr.use_cassette('user_page_nonexistent')
+    def test_nonexistent_user_page(self):
+        reply = self.client.get('/user/jdoe')
+        self.assertEqual(200, reply.status_code)
+        self.assertEqual('text/html; charset=utf-8', reply.content_type)
+        normalized_data = ' '.join(reply.data.decode('utf-8').split())
+        self.assertIn('jdoe\'s packages', normalized_data)
+        self.assertIn('packages from 1 to 0 from total 0', normalized_data)
+
+    @authenticate
+    @my_vcr.use_cassette('user_page_unparseable')
+    def test_user_page_unparseable(self):
+        reply = self.client.get('/user/jdoe')
+        self.assertEqual(200, reply.status_code)
+        self.assertEqual('text/html; charset=utf-8', reply.content_type)
+        normalized_data = ' '.join(reply.data.decode('utf-8').split())
+        self.assertIn('jdoe\'s packages', normalized_data)
+        self.assertIn('packages from 1 to 0 from total 0', normalized_data)

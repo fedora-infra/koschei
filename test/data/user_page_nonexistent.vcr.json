@@ -1,0 +1,67 @@
+{
+    "version": 1,
+    "interactions": [
+        {
+            "request": {
+                "method": "GET",
+                "uri": "https://src.fedoraproject.org/api/0/user/jdoe",
+                "body": null,
+                "headers": {
+                    "User-Agent": [
+                        "python-requests/2.13.0"
+                    ],
+                    "Accept-Encoding": [
+                        "gzip, deflate"
+                    ],
+                    "Accept": [
+                        "*/*"
+                    ],
+                    "Connection": [
+                        "keep-alive"
+                    ]
+                }
+            },
+            "response": {
+                "status": {
+                    "code": 404,
+                    "message": "NOT FOUND"
+                },
+                "headers": {
+                    "Strict-Transport-Security": [
+                        "max-age=15768000; includeSubDomains; preload"
+                    ],
+                    "Server": [
+                        "Apache/2.4.6 (Red Hat Enterprise Linux) OpenSSL/1.0.2k-fips mod_auth_gssapi/1.5.1 mod_wsgi/3.4 Python/2.7.5"
+                    ],
+                    "Set-Cookie": [
+                        "disgit_pagure=eyJfcGVybWFuZW50Ijp0cnVlfQ.DLdgYg.Iq6zoLPRnX5KUo6moRSOWF8itoA; Expires=Sun, 05-Nov-2017 06:19:14 GMT; Secure; HttpOnly; Path=/"
+                    ],
+                    "AppTime": [
+                        "D=262024"
+                    ],
+                    "Connection": [
+                        "Keep-Alive"
+                    ],
+                    "Content-Length": [
+                        "62"
+                    ],
+                    "Content-Type": [
+                        "application/json"
+                    ],
+                    "Keep-Alive": [
+                        "timeout=15, max=500"
+                    ],
+                    "AppServer": [
+                        "proxy10.phx2.fedoraproject.org"
+                    ],
+                    "Date": [
+                        "Thu, 05 Oct 2017 06:19:14 GMT"
+                    ]
+                },
+                "body": {
+                    "string": "{\n  \"error\": \"No such user found\",\n  \"error_code\": \"ENOUSER\"\n}"
+                }
+            }
+        }
+    ]
+}
