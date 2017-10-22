@@ -60,4 +60,7 @@ def copr_cleanup(session, older_than):
             .delete()
         for request_id in to_delete_ids:
             shutil.rmtree(get_request_cachedir(request_id), ignore_errors=True)
-        session.log.info("Deleted {} copr requests".format(len(to_delete_ids)))
+        session.log_user_action(
+            "Cleanup: Deleted {} copr requests"
+            .format(len(to_delete_ids))
+        )

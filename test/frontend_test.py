@@ -357,6 +357,8 @@ class FrontendTest(DBTest):
         self.assertEqual(123, package.manual_priority)
         self.assertEqual('x86_64 i386', package.arch_override)
         self.assertEqual(False, package.skip_resolution)
+        self.assert_action_log("Package rnv: manual_priority set from 0 to 123")
+        self.assert_action_log("Package rnv: arch_override set from None to x86_64 i386")
 
     @authenticate
     def test_edit_package_neg_arch_override(self):

@@ -166,6 +166,7 @@ def get_or_create(db, table, **cond):
     if not item:
         item = table(**cond)
         db.add(item)
+        db.flush()
     return item
 
 

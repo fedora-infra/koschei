@@ -24,20 +24,35 @@ from __future__ import print_function, absolute_import
 import re
 import os
 import sys
+import pwd
 import logging
 import argparse
 
 from koschei import data, backend, plugin
 from koschei.backend import koji_util
-from koschei.db import get_engine, create_all
-from koschei.models import (Package, PackageGroup, AdminNotice, Collection,
-                            CollectionGroup, CollectionGroupRelation)
+from koschei.db import get_engine, create_all, get_or_create
+from koschei.models import (
+    Package, PackageGroup, AdminNotice, Collection, User, ActionLog,
+    CollectionGroup, CollectionGroupRelation,
+)
 from koschei.config import load_config, get_config
 
 
 load_config(['/usr/share/koschei/config.cfg',
              '/etc/koschei/config-backend.cfg',
              '/etc/koschei/config-admin.cfg'])
+
+
+class KoscheiAdminSession(backend.KoscheiBackendSession):
+    def __init__(self, log):
+        super(KoscheiAdminSession, self).__init__()
+        self.log = log
+
+    def log_user_action(self, message):
+        username = os.environ.get('SUDO_USER', pwd.getpwuid(os.getuid()).pw_name)
+        user = get_or_create(self.db, User, name=username)
+        self.db.add(ActionLog(environment='admin', user=user, message=message))
+        print(message)
 
 
 class Command(object):
@@ -66,8 +81,7 @@ def main():
     cmd = args.cmd
     kwargs = vars(args)
     log = logging.getLogger('koschei.admin')
-    session = backend.KoscheiBackendSession()
-    session.log = log
+    session = KoscheiAdminSession(log)
     del kwargs['cmd']
     if cmd.load_plugins:
         plugin.load_plugins('backend')
@@ -136,10 +150,13 @@ class Cleanup(Command):
             DELETE FROM resolution_change
                 WHERE "timestamp" < now() - '{months} month':: interval
         """.format(months=older_than))
+        session.log_user_action(
+            "Cleanup: Deleted {} builds".format(build_res.rowcount)
+        )
+        session.log_user_action(
+            "Cleanup: Deleted {} resolution changes".format(resolution_res.rowcount)
+        )
         plugin.dispatch_event('cleanup', session, older_than)
-        session.db.commit()
-        print("Deleted {} builds".format(build_res.rowcount))
-        print("Deleted {} resolution changes".format(resolution_res.rowcount))
 
 
 class SetNotice(Command):
@@ -155,6 +172,7 @@ class SetNotice(Command):
         notice = notice or AdminNotice(key=key)
         notice.content = content
         session.db.add(notice)
+        session.log_user_action("Admin notice added: {}".format(content))
 
 
 class ClearNotice(Command):
@@ -163,6 +181,7 @@ class ClearNotice(Command):
     def execute(self, session):
         key = 'global_notice'
         session.db.query(AdminNotice).filter_by(key=key).delete()
+        session.log_user_action("Admin notice cleared")
 
 
 class AddPkg(Command):
@@ -201,6 +220,7 @@ class AddGroup(Command):
         group_obj = PackageGroup(name=name, namespace=namespace)
         session.db.add(group_obj)
         session.db.flush()
+        session.log_user_action("Group {} created".format(group.full_name))
         try:
             data.set_group_content(session, group, pkgs)
             data.set_group_maintainers(session, group, maintainer)
@@ -231,10 +251,11 @@ class SetPriority(Command):
             not_found = set(names).difference(pkg.name for pkg in pkgs)
             sys.exit('Packages not found: {}'.format(','.join(not_found)))
         for pkg in pkgs:
-            if static:
-                pkg.static_priority = value
-            else:
-                pkg.manual_priority = value
+            data.set_package_attribute(
+                session, pkg,
+                'static_priority' if static else 'manual_priority',
+                value,
+            )
 
 
 class SetArchOverride(Command):
@@ -250,18 +271,19 @@ class SetArchOverride(Command):
                             help="Apply on entire group instead of single package")
 
     def execute(self, session, name, arch_override, group):
+        arch_override = arch_override or None
         if group:
             group_obj = session.db.query(PackageGroup)\
                 .filter_by(name=name).first()
             if not group_obj:
                 sys.exit("Group {} not found".format(name))
             for pkg in group_obj.packages:
-                pkg.arch_override = arch_override
+                data.set_package_attribute(session, pkg, 'arch_override', arch_override)
         else:
             pkg = session.db.query(Package).filter_by(name=name).first()
             if not pkg:
                 sys.exit("Package {} not found".format(name))
-            pkg.arch_override = arch_override
+            data.set_package_attribute(session, pkg, 'arch_override', arch_override)
 
 
 class GroupCommandParser(object):
@@ -308,6 +330,7 @@ class CreateGroup(GroupCommandParser, Command):
         group = PackageGroup(name=name, namespace=ns)
         session.db.add(group)
         session.db.flush()
+        session.log_user_action("Group {} created".format(group.full_name))
         self.set_group_content(session, group, content_from_file, append)
 
 
@@ -437,6 +460,7 @@ class CreateCollection(CreateOrEditCollectionCommand, CreateEntityCommand, Comma
     def execute(self, session, **kwargs):
         collection = super(CreateCollection, self).execute(session, **kwargs)
         self.set_koji_tags(session, collection)
+        session.log_user_action("Collection {} created".format(collection.name))
 
 
 class EditCollection(CreateOrEditCollectionCommand, EditEntityCommand, Command):
@@ -450,6 +474,7 @@ class EditCollection(CreateOrEditCollectionCommand, EditEntityCommand, Command):
             collection.name = new_name
         if kwargs['secondary_mode'] is not None or kwargs['target'] is not None:
             self.set_koji_tags(session, collection)
+        session.log_user_action("Collection {} modified".format(collection.name))
 
 
 class DeleteCollection(Command):
@@ -470,6 +495,7 @@ class DeleteCollection(Command):
             sys.exit("The collection contains packages. Specify --force to delete "
                      "it anyway. It means deleting all the packages build history. "
                      "It cannot be reverted and may take long time to execute")
+        session.log_user_action("Collection {} deleted".format(collection.name))
         session.db.delete(collection)
 
 
@@ -535,6 +561,9 @@ class BranchCollection(CreateOrEditCollectionCommand, Command):
             ))
 
         data.copy_collection(session, master, branched)
+        session.log_user_action(
+            "Collection {} branched from {}".format(new_name, master_collection)
+        )
 
 
 class CreateOrEditCollectionGroupCommand(object):

@@ -31,6 +31,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from koschei.session import KoscheiSession
 from koschei.config import get_config
 from koschei.db import Query, get_engine
+from koschei.models import ActionLog
 
 dirs = get_config('directories')
 app = Flask('koschei', template_folder=dirs['templates'],
@@ -84,6 +85,9 @@ db = scoped_session(sessionmaker(autocommit=False, bind=get_engine(),
 class KoscheiFrontendSession(KoscheiSession):
     db = db
     log = logging.getLogger('koschei.frontend')
+
+    def log_user_action(self, message):
+        self.db.add(ActionLog(environment='frontend', user=g.user, message=message))
 
 
 session = KoscheiFrontendSession()

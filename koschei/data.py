@@ -22,9 +22,9 @@ from sqlalchemy import insert
 
 from koschei.db import get_or_create
 from koschei.models import (
-    Package, BasePackage, PackageGroup, PackageGroupRelation, GroupACL, User,
-    Collection, CollectionGroupRelation, Build, AppliedChange, KojiTask,
-    ResolutionChange, ResolutionProblem,
+    Package, BasePackage, PackageGroupRelation, GroupACL, User, Collection,
+    CollectionGroupRelation, Build, AppliedChange, KojiTask, ResolutionChange,
+    ResolutionProblem,
 )
 
 
@@ -59,38 +59,86 @@ def track_packages(session, collection, package_names):
         session.db.query(Package)\
             .filter(Package.id.in_(p.id for p in to_add))\
             .update({'tracked': True})
+        session.log_user_action(
+            "Packages set to tracked: " + ', '.join(p.name for p in to_add)
+        )
     return to_add
 
 
-def set_group_content(session, group, packages, append=False):
+def set_package_attribute(session, package, attr, new_value):
+    """
+    Sets given package attribute, such as manual_priority, and logs a new user
+    action if needed.
+    """
+    prev = getattr(package, attr)
+    if prev != new_value:
+        session.log_user_action(
+            "Package {}: {} set from {} to {}"
+            .format(package.name, attr, prev, new_value)
+        )
+        setattr(package, attr, new_value)
+
+
+def set_group_content(session, group, packages, append=False, delete=False):
     """
     Makes given group contain given packages (by name).
     In append mode (append=True) doesn't remove any packages from the group.
     With append=False, makes the group contain only specified packages.
+    With delete=True, only deletes given packages from the group.
 
     :param: session koschei session
     :param: group PackageGroup object
     :param: packages list of package names to be in given group
     :param: append whether to clear the group first or append to existing content
+    :param: delete whether to delete instead of adding
     :raises: PackagesDontExist when packages weren't found
     """
+    assert not append or not delete
     contents = set(packages)
-    bases = session.db.query(BasePackage.id, BasePackage.name)\
-        .filter(BasePackage.name.in_(contents))\
+    new_content = set(
+        session.db.query(BasePackage)
+        .filter(BasePackage.name.in_(contents))
         .all()
-    if len(bases) != len(contents):
-        raise PackagesDontExist(contents - {base.name for base in bases})
-    base_ids = {base.id for base in bases}
-    if append:
-        base_ids -= session.db.query(PackageGroupRelation.base_id)\
-            .filter(PackageGroup.id == group.id)\
-            .filter(PackageGroupRelation.base_id.in_(base_ids))\
-            .all_flat(set)
-    rels = [dict(group_id=group.id, base_id=base_id) for base_id in base_ids]
-    if not append:
-        session.db.query(PackageGroupRelation).filter_by(group_id=group.id).delete()
-    if rels:
+    )
+    if len(new_content) != len(contents):
+        raise PackagesDontExist(contents - {base.name for base in new_content})
+    current_content = set(
+        session.db.query(BasePackage)
+        .join(PackageGroupRelation)
+        .filter(PackageGroupRelation.group_id == group.id)
+        .all()
+    )
+    message_parts = []
+    if delete:
+        to_add = set()
+    else:
+        to_add = new_content - current_content
+    if to_add:
+        rels = [dict(group_id=group.id, base_id=base.id) for base in to_add]
         session.db.execute(insert(PackageGroupRelation, rels))
+        message_parts.append(
+            "packages added: " + ', '.join(sorted(base.name for base in to_add))
+        )
+    if append:
+        to_delete = set()
+    elif delete:
+        to_delete = new_content
+    else:
+        to_delete = current_content - new_content
+    if to_delete:
+        (
+            session.db.query(PackageGroupRelation)
+            .filter(PackageGroupRelation.group_id == group.id)
+            .filter(PackageGroupRelation.base_id.in_(base.id for base in to_delete))
+            .delete()
+        )
+        message_parts.append(
+            "packages removed: " + ', '.join(sorted(base.name for base in to_delete))
+        )
+    if message_parts:
+        session.log_user_action(
+            "Group {} modified: {}".format(group.full_name, '; '.join(message_parts))
+        )
 
 
 def set_group_maintainers(session, group, maintainers):
@@ -101,13 +149,50 @@ def set_group_maintainers(session, group, maintainers):
     :param: group PackageGroup object
     :param: maintainers list of maintainer names
     """
-    users = [get_or_create(session.db, User, name=name) for name in set(maintainers)]
-    session.db.query(GroupACL)\
-        .filter(GroupACL.group_id == group.id)\
-        .delete()
-    acls = [dict(group_id=group.id, user_id=user.id)
-            for user in users]
-    session.db.execute(insert(GroupACL), acls)
+    current_users = set(
+        session.db.query(User)
+        .join(GroupACL)
+        .filter(GroupACL.group_id == group.id)
+        .all()
+    )
+    new_users = {get_or_create(session.db, User, name=name) for name in set(maintainers)}
+    session.db.flush()
+    message_parts = []
+    to_add = new_users - current_users
+    if to_add:
+        session.db.execute(
+            insert(GroupACL),
+            [dict(group_id=group.id, user_id=user.id) for user in to_add],
+        )
+        message_parts.append(
+            "maintainers added: " + ', '.join(sorted(user.name for user in to_add))
+        )
+    to_delete = current_users - new_users
+    if to_delete:
+        (
+            session.db.query(GroupACL)
+            .filter(GroupACL.group_id == group.id)
+            .filter(GroupACL.user_id.in_(user.id for user in to_delete))
+            .delete()
+        )
+        message_parts.append(
+            "maintainers removed: " + ', '.join(sorted(user.name for user in to_delete))
+        )
+    if message_parts:
+        session.log_user_action(
+            "Group {} modified: {}".format(group.full_name, '; '.join(message_parts))
+        )
+
+
+def delete_group(session, group):
+    """
+    Deletes given package group
+
+    :param: session koschei session
+    :param: group PackageGroup object
+    """
+    session.log_user_action("Group {} deleted".format(group.name))
+    session.db.delete(group)
 
 
 def set_collection_group_content(session, group, collection_names):

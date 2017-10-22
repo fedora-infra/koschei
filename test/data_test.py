@@ -34,7 +34,7 @@ from koschei import data
 class DataTest(DBTest):
     def test_set_group_contents(self):
         group = PackageGroup(name='foo')
-        bar, a1, a2, a3 = self.prepare_packages('bar', 'a1', 'a2', 'a3')
+        bar, a1, a2, a3 = self.prepare_packages('bar', 'a1', 'a2', 'a3', 'a4')[:4]
         self.db.add(group)
         self.db.flush()
         rel = PackageGroupRelation(group_id=group.id, base_id=bar.base_id)
@@ -46,12 +46,15 @@ class DataTest(DBTest):
         six.assertCountEqual(self, [a1.base_id, a2.base_id, a3.base_id],
                              self.db.query(PackageGroupRelation.base_id)
                              .filter_by(group_id=group.id).all_flat())
+        self.assert_action_log(
+            "Group foo modified: packages added: a1, a2, a3; packages removed: bar"
+        )
 
     def test_append_group_content(self):
         group = PackageGroup(name='foo')
         self.db.add(group)
         self.db.flush()
-        bar, a1, a2, a3 = self.prepare_packages('bar', 'a1', 'a2', 'a3')
+        bar, a1, a2, a3 = self.prepare_packages('bar', 'a1', 'a2', 'a3', 'a4')[:4]
         rel = PackageGroupRelation(group_id=group.id, base_id=bar.base_id)
         self.db.add(rel)
         self.db.commit()
@@ -61,6 +64,30 @@ class DataTest(DBTest):
         six.assertCountEqual(self, [bar.base_id, a1.base_id, a2.base_id, a3.base_id],
                              self.db.query(PackageGroupRelation.base_id)
                              .filter_by(group_id=group.id).all_flat())
+        self.assert_action_log(
+            "Group foo modified: packages added: a1, a2, a3"
+        )
+
+    def test_delete_group_content(self):
+        group = PackageGroup(name='foo')
+        self.db.add(group)
+        self.db.flush()
+        bar, a1, = self.prepare_packages('bar', 'a1', 'a2', 'a3')[:2]
+        rel = PackageGroupRelation(group_id=group.id, base_id=bar.base_id)
+        self.db.add(rel)
+        self.db.commit()
+        rel = PackageGroupRelation(group_id=group.id, base_id=a1.base_id)
+        self.db.add(rel)
+        self.db.commit()
+        content = ['a1']
+        data.set_group_content(self.session, group, content, delete=True)
+
+        six.assertCountEqual(self, [bar.base_id],
+                             self.db.query(PackageGroupRelation.base_id)
+                             .filter_by(group_id=group.id).all_flat())
+        self.assert_action_log(
+            "Group foo modified: packages removed: a1"
+        )
 
     def test_set_group_contents_nonexistent(self):
         group = PackageGroup(name='foo')
@@ -80,6 +107,7 @@ class DataTest(DBTest):
         self.db.commit()
         self.assertFalse(foo.tracked)
         self.assertTrue(bar.tracked)
+        self.assert_action_log("Packages set to tracked: bar")
 
     def test_track_packages_nonexistent(self):
         with self.assertRaises(data.PackagesDontExist):
