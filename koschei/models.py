@@ -611,6 +611,23 @@ class AdminNotice(Base):
     content = Column(String, nullable=False)
 
 
+class ActionLog(Base):
+    id = Column(Integer, primary_key=True)
+    user_id = Column(
+        Integer,
+        ForeignKey('user.id', ondelete='SET NULL'),
+        nullable=True,
+    )
+    user = relationship('User')
+    environment = Column(
+        Enum('admin', 'backend', 'frontend', name='action_log_environment'),
+        nullable=False
+    )
+    timestamp = Column(DateTime, nullable=False,
+                       server_default=func.clock_timestamp())
+    message = Column(String, nullable=False)
+
+
 class RepoMapping(Base):
     secondary_id = Column(Integer, primary_key=True)  # repo_id on secondary
     primary_id = Column(Integer)  # repo_id on primary, not known at the beginning
