@@ -33,9 +33,10 @@ from koschei.config import get_config
 from koschei.backend import koji_util
 from koschei.backend.koji_util import itercall
 from koschei.db import Session
-from koschei.models import (Build, UnappliedChange, KojiTask, Package,
-                            PackageGroup, PackageGroupRelation, BasePackage,
-                            Collection, RepoMapping)
+from koschei.models import (
+    Build, UnappliedChange, KojiTask, Package, PackageGroup,
+    PackageGroupRelation, BasePackage, Collection, RepoMapping, ActionLog,
+)
 from koschei.plugin import dispatch_event
 
 
@@ -45,6 +46,9 @@ class KoscheiBackendSession(KoscheiSession):
         self._db = None
         self._koji_sessions = {}
         self._repo_cache = None
+
+    def log_user_action(self, message):
+        self.db.add(ActionLog(environment='backend', message=message))
 
     @property
     def db(self):

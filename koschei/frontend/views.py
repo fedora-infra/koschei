@@ -594,6 +594,10 @@ def cancel_build(build_id):
             flash_nak("Build already has pending cancelation request.")
         else:
             flash_ack("Cancelation request sent.")
+            session.log_user_action(
+                "Build (id={build.id}, task_id={build.task_id}) cancelation requested"
+                .format(build=build)
+            )
             build.cancel_requested = True
             db.commit()
     return redirect(url_for('package_detail', name=build.package.name))
@@ -730,7 +734,7 @@ def delete_group(name, namespace=None):
               .filter_by(name=name, namespace=namespace).first_or_404()
     if not forms.EmptyForm().validate_or_flash() or not group.editable:
         abort(401)
-    db.delete(group)
+    data.delete_group(session, group)
     db.commit()
     flash_ack("Group was deleted")
     return redirect(url_for('groups_overview'))
@@ -814,6 +818,7 @@ def edit_package(name):
     package = db.query(Package)\
         .filter_by(name=name, collection_id=collection.id)\
         .first_or_404()
+
     for key, prev_val in request.form.items():
         if key.startswith('group-prev-'):
             group = db.query(PackageGroup).get_or_404(int(key[len('group-prev-'):]))
@@ -822,19 +827,25 @@ def edit_package(name):
                 if not group.editable:
                     abort(403)
                 if new_val:
-                    rel = PackageGroupRelation(base_id=package.base_id,
-                                               group_id=group.id)
-                    db.add(rel)
+                    data.set_group_content(session, group, [package.name], append=True)
                 else:
-                    db.query(PackageGroupRelation)\
-                        .filter_by(group_id=group.id, base_id=package.base_id)\
-                        .delete(synchronize_session=False)
+                    data.set_group_content(session, group, [package.name], delete=True)
+
     if form.manual_priority.data is not None:
-        package.manual_priority = form.manual_priority.data
+        data.set_package_attribute(
+            session, package, 'manual_priority',
+            form.manual_priority.data,
+        )
     if form.arch_override.data is not None:
-        package.arch_override = ' '.join(form.arch_override.data)
+        data.set_package_attribute(
+            session, package, 'arch_override',
+            ' '.join(form.arch_override.data) or None,
+        )
     if form.skip_resolution.data is not None:
-        package.skip_resolution = form.skip_resolution.data
+        data.set_package_attribute(
+            session, package, 'skip_resolution',
+            form.skip_resolution.data,
+        )
         if package.skip_resolution:
             package.resolved = None
             db.query(UnappliedChange).filter_by(package_id=package.id).delete()

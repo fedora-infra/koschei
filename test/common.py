@@ -37,9 +37,11 @@ from datetime import datetime
 from test import testdir, config
 from koschei import plugin
 from koschei.db import get_engine, create_all, Base, Session, get_or_create
-from koschei.models import (Package, Build, Collection, BasePackage,
-                            PackageGroupRelation, PackageGroup, GroupACL, User,
-                            KojiTask, Dependency, AppliedChange)
+from koschei.models import (
+    Package, Build, Collection, BasePackage,
+    PackageGroupRelation, PackageGroup, GroupACL, User,
+    KojiTask, Dependency, AppliedChange, ActionLog,
+)
 from koschei.backend import KoscheiBackendSession, repo_util, service
 
 if six.PY2:
@@ -320,6 +322,10 @@ class DBTest(AbstractTest):
         name, version, release = string.rsplit('-', 2)
         return dict(epoch=epoch, name=name, version=version, release=release,
                     arch='x86_64')
+
+    def assert_action_log(self, message):
+        logs = self.db.query(ActionLog.message).all_flat(set)
+        self.assertIn(message, logs)
 
 
 class KojiMock(Mock):
