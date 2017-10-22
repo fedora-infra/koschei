@@ -213,12 +213,20 @@ class SetPriority(Command):
 
     def setup_parser(self, parser):
         parser.add_argument('names', nargs='+')
-        parser.add_argument('value')
+        parser.add_argument('value', type=int)
         parser.add_argument('--static', action='store_true')
+        parser.add_argument('--collection', required=True)
 
-    def execute(self, session, names, value, static):
-        pkgs = session.db.query(Package)\
-            .filter(Package.name.in_(names)).all()
+    def execute(self, session, names, value, static, collection):
+        collection = session.db.query(Collection).filter_by(name=collection).first()
+        if not collection:
+            sys.exit("Collection not found")
+        pkgs = (
+            session.db.query(Package)
+            .filter(Package.name.in_(names))
+            .filter(Package.collection == collection)
+            .all()
+        )
         if len(names) != len(pkgs):
             not_found = set(names).difference(pkg.name for pkg in pkgs)
             sys.exit('Packages not found: {}'.format(','.join(not_found)))
