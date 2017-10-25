@@ -611,7 +611,7 @@ class AdminNotice(Base):
     content = Column(String, nullable=False)
 
 
-class ActionLog(Base):
+class LogEntry(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(
         Integer,
@@ -620,8 +620,8 @@ class ActionLog(Base):
     )
     user = relationship('User')
     environment = Column(
-        Enum('admin', 'backend', 'frontend', name='action_log_environment'),
-        nullable=False
+        Enum('admin', 'backend', 'frontend', name='log_environment'),
+        nullable=False,
     )
     timestamp = Column(DateTime, nullable=False,
                        server_default=func.clock_timestamp())

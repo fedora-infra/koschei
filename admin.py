@@ -32,7 +32,7 @@ from koschei import data, backend, plugin
 from koschei.backend import koji_util
 from koschei.db import get_engine, create_all, get_or_create
 from koschei.models import (
-    Package, PackageGroup, AdminNotice, Collection, User, ActionLog,
+    Package, PackageGroup, AdminNotice, Collection, User, LogEntry,
     CollectionGroup, CollectionGroupRelation,
 )
 from koschei.config import load_config, get_config
@@ -51,7 +51,7 @@ class KoscheiAdminSession(backend.KoscheiBackendSession):
     def log_user_action(self, message):
         username = os.environ.get('SUDO_USER', pwd.getpwuid(os.getuid()).pw_name)
         user = get_or_create(self.db, User, name=username)
-        self.db.add(ActionLog(environment='admin', user=user, message=message))
+        self.db.add(LogEntry(environment='admin', user=user, message=message))
         print(message)
 
 

@@ -40,7 +40,7 @@ from koschei.db import get_engine, create_all, Base, Session, get_or_create
 from koschei.models import (
     Package, Build, Collection, BasePackage,
     PackageGroupRelation, PackageGroup, GroupACL, User,
-    KojiTask, Dependency, AppliedChange, ActionLog,
+    KojiTask, Dependency, AppliedChange, LogEntry,
 )
 from koschei.backend import KoscheiBackendSession, repo_util, service
 
@@ -324,7 +324,7 @@ class DBTest(AbstractTest):
                     arch='x86_64')
 
     def assert_action_log(self, message):
-        logs = self.db.query(ActionLog.message).all_flat(set)
+        logs = self.db.query(LogEntry.message).all_flat(set)
         self.assertIn(message, logs)
 
 
