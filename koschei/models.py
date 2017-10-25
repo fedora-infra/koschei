@@ -612,6 +612,12 @@ class AdminNotice(Base):
 
 
 class LogEntry(Base):
+    __table_args__ = (
+        CheckConstraint(
+            "user_id IS NOT NULL or environment = 'backend'",
+            name='log_entry_user_id_check',
+        ),
+    )
     id = Column(Integer, primary_key=True)
     user_id = Column(
         Integer,
