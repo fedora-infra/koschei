@@ -47,7 +47,10 @@ class DataTest(DBTest):
                              self.db.query(PackageGroupRelation.base_id)
                              .filter_by(group_id=group.id).all_flat())
         self.assert_action_log(
-            "Group foo modified: packages added: a1, a2, a3; packages removed: bar"
+            "Group foo modified: package a1 added",
+            "Group foo modified: package a2 added",
+            "Group foo modified: package a3 added",
+            "Group foo modified: package bar removed",
         )
 
     def test_append_group_content(self):
@@ -65,7 +68,9 @@ class DataTest(DBTest):
                              self.db.query(PackageGroupRelation.base_id)
                              .filter_by(group_id=group.id).all_flat())
         self.assert_action_log(
-            "Group foo modified: packages added: a1, a2, a3"
+            "Group foo modified: package a1 added",
+            "Group foo modified: package a2 added",
+            "Group foo modified: package a3 added",
         )
 
     def test_delete_group_content(self):
@@ -86,7 +91,7 @@ class DataTest(DBTest):
                              self.db.query(PackageGroupRelation.base_id)
                              .filter_by(group_id=group.id).all_flat())
         self.assert_action_log(
-            "Group foo modified: packages removed: a1"
+            "Group foo modified: package a1 removed"
         )
 
     def test_set_group_contents_nonexistent(self):
