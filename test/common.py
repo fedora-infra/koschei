@@ -323,9 +323,9 @@ class DBTest(AbstractTest):
         return dict(epoch=epoch, name=name, version=version, release=release,
                     arch='x86_64')
 
-    def assert_action_log(self, message):
+    def assert_action_log(self, *messages):
         logs = self.db.query(LogEntry.message).all_flat(set)
-        self.assertIn(message, logs)
+        six.assertCountEqual(self, messages, logs)
 
 
 class KojiMock(Mock):

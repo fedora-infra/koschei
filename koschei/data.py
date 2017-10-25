@@ -103,7 +103,6 @@ def set_group_content(session, group, packages, append=False, delete=False):
         .filter(PackageGroupRelation.group_id == group.id)
         .all()
     )
-    message_parts = []
     if delete:
         to_add = set()
     else:
@@ -111,9 +110,10 @@ def set_group_content(session, group, packages, append=False, delete=False):
     if to_add:
         rels = [dict(group_id=group.id, base_id=base.id) for base in to_add]
         session.db.execute(insert(PackageGroupRelation, rels))
-        message_parts.append(
-            "packages added: " + ', '.join(sorted(base.name for base in to_add))
-        )
+        for base in to_add:
+            session.log_user_action(
+                "Group {} modified: package {} added".format(group.name, base.name)
+            )
     if append:
         to_delete = set()
     elif delete:
@@ -127,13 +127,10 @@ def set_group_content(session, group, packages, append=False, delete=False):
             .filter(PackageGroupRelation.base_id.in_(base.id for base in to_delete))
             .delete()
         )
-        message_parts.append(
-            "packages removed: " + ', '.join(sorted(base.name for base in to_delete))
-        )
-    if message_parts:
-        session.log_user_action(
-            "Group {} modified: {}".format(group.full_name, '; '.join(message_parts))
-        )
+        for base in to_delete:
+            session.log_user_action(
+                "Group {} modified: package {} removed".format(group.name, base.name)
+            )
 
 
 def set_group_maintainers(session, group, maintainers):
@@ -152,16 +149,16 @@ def set_group_maintainers(session, group, maintainers):
     )
     new_users = {get_or_create(session.db, User, name=name) for name in set(maintainers)}
     session.db.flush()
-    message_parts = []
     to_add = new_users - current_users
     if to_add:
         session.db.execute(
             insert(GroupACL),
             [dict(group_id=group.id, user_id=user.id) for user in to_add],
         )
-        message_parts.append(
-            "maintainers added: " + ', '.join(sorted(user.name for user in to_add))
-        )
+        for user in to_add:
+            session.log_user_action(
+                "Group {} modified: maintainer {} added".format(group.name, user.name)
+            )
     to_delete = current_users - new_users
     if to_delete:
         (
@@ -170,13 +167,10 @@ def set_group_maintainers(session, group, maintainers):
             .filter(GroupACL.user_id.in_(user.id for user in to_delete))
             .delete()
         )
-        message_parts.append(
-            "maintainers removed: " + ', '.join(sorted(user.name for user in to_delete))
-        )
-    if message_parts:
-        session.log_user_action(
-            "Group {} modified: {}".format(group.full_name, '; '.join(message_parts))
-        )
+        for user in to_delete:
+            session.log_user_action(
+                "Group {} modified: maintainer {} removed".format(group.name, user.name)
+            )
 
 
 def delete_group(session, group):
