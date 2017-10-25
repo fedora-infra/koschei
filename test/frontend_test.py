@@ -408,6 +408,24 @@ class FrontendTest(DBTest):
                 manual_priority=0,
                 arch_override='',
                 skip_resolution='on',
+                skip_resolution__present='1',
+            ),
+            follow_redirects=True,
+        )
+        self.assertEqual(200, reply.status_code)
+        self.assert_validated(reply)
+        self.assertEqual(True, package.skip_resolution)
+
+    @authenticate
+    def test_edit_package_skip_resolution_keep_old_value(self):
+        package = self.prepare_package('rnv')
+        package.skip_resolution = True
+        reply = self.client.post(
+            'package/rnv/edit',
+            data=dict(
+                collection_id=package.collection_id,
+                manual_priority=0,
+                arch_override='',
             ),
             follow_redirects=True,
         )
