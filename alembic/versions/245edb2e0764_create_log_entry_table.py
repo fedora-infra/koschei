@@ -14,15 +14,15 @@ from alembic import op
 
 def upgrade():
     op.execute("""
-    CREATE TYPE action_log_environment AS ENUM (
+    CREATE TYPE log_environment AS ENUM (
         'admin',
         'backend',
         'frontend'
     );
-    CREATE TABLE action_log (
+    CREATE TABLE log_entry (
         id SERIAL NOT NULL PRIMARY KEY,
         user_id integer REFERENCES "user",
-        environment action_log_environment NOT NULL,
+        environment log_environment NOT NULL,
         "timestamp" timestamp without time zone DEFAULT clock_timestamp() NOT NULL,
         message character varying NOT NULL
     );
@@ -31,6 +31,6 @@ def upgrade():
 
 def downgrade():
     op.execute("""
-    DROP TABLE action_log;
-    DROP TYPE action_log_environment;
+    DROP TABLE log_entry;
+    DROP TYPE log_environment;
     """)
