@@ -75,7 +75,11 @@ class FrontendTest(DBTest):
         app.config['WTF_CSRF_ENABLED'] = False  # newer versions of flask-wtf (Fedora)
         self.client = app.test_client()
         self.teardown_appcontext_funcs = app.teardown_appcontext_funcs
-        app.teardown_appcontext_funcs = []
+
+        def rollback_session(exception=None):
+            db.rollback()
+        app.teardown_appcontext_funcs = [rollback_session]
+
 
     def tearDown(self):
         app.teardown_appcontext_funcs = self.teardown_appcontext_funcs
