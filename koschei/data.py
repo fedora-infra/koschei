@@ -55,13 +55,8 @@ def track_packages(session, collection, package_names):
     if nonexistent:
         raise PackagesDontExist(nonexistent)
     to_add = [p for p in existing if not p.tracked]
-    if to_add:
-        session.db.query(Package)\
-            .filter(Package.id.in_(p.id for p in to_add))\
-            .update({'tracked': True})
-        session.log_user_action(
-            "Packages set to tracked: " + ', '.join(p.name for p in to_add)
-        )
+    for package in to_add:
+        set_package_attribute(session, package, 'tracked', True)
     return to_add
 
 
