@@ -24,7 +24,9 @@ def upgrade():
         user_id integer REFERENCES "user",
         environment log_environment NOT NULL,
         "timestamp" timestamp without time zone DEFAULT clock_timestamp() NOT NULL,
-        message character varying NOT NULL
+        message character varying NOT NULL,
+        CONSTRAINT log_entry_user_id_check
+            CHECK (((user_id IS NOT NULL) OR (environment = 'backend'::log_environment)))
     );
     """)
 
