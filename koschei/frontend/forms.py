@@ -27,11 +27,28 @@ from wtforms import (
     StringField, TextAreaField, IntegerField, BooleanField,
 )
 from wtforms.validators import Regexp, ValidationError
-from wtforms.widgets import HiddenInput
+from wtforms.widgets import HTMLString, HiddenInput
 
 from koschei.config import get_koji_config
 
 from koschei.frontend import flash_nak
+
+
+class CheckBoxField(BooleanField):
+    """
+    Check box field that contains an additional hidden field that esures that
+    the value is not set to False when the checkbox was not present at all
+    """
+    # pylint: disable=arguments-differ,attribute-defined-outside-init
+    def process(self, formdata, *args, **kwargs):
+        super(CheckBoxField, self).process(formdata, *args, **kwargs)
+        if formdata and not formdata.get(self.name + '__present', None):
+            self.data = None
+
+    def __call__(self, **kwargs):
+        marker = '<input type="hidden" name="{name}__present" value="1"/>'\
+            .format(name=self.name)
+        return HTMLString(self.meta.render_field(self, kwargs) + marker)
 
 
 class StrippedStringField(StringField):
@@ -124,5 +141,5 @@ class EditPackageForm(EmptyForm):
     )
     manual_priority = IntegerField('manual_priority')
     arch_override = ListField('arch_override', [ArchOverrideValidator()])
-    skip_resolution = BooleanField('skip_resolution')
+    skip_resolution = CheckBoxField('skip_resolution')
     # groups checkboxes are processed manually
