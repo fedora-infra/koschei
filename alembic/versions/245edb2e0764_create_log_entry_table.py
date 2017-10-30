@@ -21,8 +21,8 @@ def upgrade():
     );
     CREATE TABLE log_entry (
         id SERIAL NOT NULL PRIMARY KEY,
-        user_id integer REFERENCES "user",
-        base_id integer REFERENCES base_package,
+        user_id integer REFERENCES "user" ON DELETE CASCADE,
+        base_id integer REFERENCES base_package ON DELETE CASCADE,
         environment log_environment NOT NULL,
         "timestamp" timestamp without time zone DEFAULT clock_timestamp() NOT NULL,
         message character varying NOT NULL,
