@@ -135,6 +135,7 @@ class AddPackagesForm(EmptyForm):
 
 
 class EditPackageForm(EmptyForm):
+    tracked = CheckBoxField('tracked')
     collection_id = IntegerField(
         'collection_id',
         widget=HiddenInput(),
