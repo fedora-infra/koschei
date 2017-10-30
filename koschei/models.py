@@ -621,7 +621,7 @@ class LogEntry(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(
         Integer,
-        ForeignKey('user.id', ondelete='SET NULL'),
+        ForeignKey('user.id', ondelete='CASCADE'),
         nullable=True,
     )
     user = relationship('User')
@@ -634,7 +634,7 @@ class LogEntry(Base):
     message = Column(String, nullable=False)
     base_id = Column(
         Integer,
-        ForeignKey('base_package.id', ondelete='SET NULL'),
+        ForeignKey('base_package.id', ondelete='CASCADE'),
         nullable=True,
     )
 
