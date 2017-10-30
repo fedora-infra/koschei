@@ -632,6 +632,11 @@ class LogEntry(Base):
     timestamp = Column(DateTime, nullable=False,
                        server_default=func.clock_timestamp())
     message = Column(String, nullable=False)
+    base_id = Column(
+        Integer,
+        ForeignKey('base_package.id', ondelete='SET NULL'),
+        nullable=True,
+    )
 
 
 class RepoMapping(Base):

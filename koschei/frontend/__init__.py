@@ -86,8 +86,10 @@ class KoscheiFrontendSession(KoscheiSession):
     db = db
     log = logging.getLogger('koschei.frontend')
 
-    def log_user_action(self, message):
-        self.db.add(LogEntry(environment='frontend', user=g.user, message=message))
+    def log_user_action(self, message, **kwargs):
+        self.db.add(
+            LogEntry(environment='frontend', user=g.user, message=message, **kwargs),
+        )
 
 
 session = KoscheiFrontendSession()

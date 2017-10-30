@@ -68,8 +68,9 @@ def set_package_attribute(session, package, attr, new_value):
     prev = getattr(package, attr)
     if prev != new_value:
         session.log_user_action(
-            "Package {}: {} set from {} to {}"
-            .format(package.name, attr, prev, new_value)
+            "Package {} (collection {}): {} set from {} to {}"
+            .format(package.name, package.collection.name, attr, prev, new_value),
+            base_id=package.base_id,
         )
         setattr(package, attr, new_value)
 
@@ -112,7 +113,8 @@ def set_group_content(session, group, packages, append=False, delete=False):
         session.db.execute(insert(PackageGroupRelation, rels))
         for base in to_add:
             session.log_user_action(
-                "Group {} modified: package {} added".format(group.name, base.name)
+                "Group {} modified: package {} added".format(group.name, base.name),
+                base_id=base.id,
             )
     if append:
         to_delete = set()
@@ -129,7 +131,8 @@ def set_group_content(session, group, packages, append=False, delete=False):
         )
         for base in to_delete:
             session.log_user_action(
-                "Group {} modified: package {} removed".format(group.name, base.name)
+                "Group {} modified: package {} removed".format(group.name, base.name),
+                base_id=base.id,
             )
 
 

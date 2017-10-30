@@ -48,10 +48,10 @@ class KoscheiAdminSession(backend.KoscheiBackendSession):
         super(KoscheiAdminSession, self).__init__()
         self.log = log
 
-    def log_user_action(self, message):
+    def log_user_action(self, message, **kwargs):
         username = os.environ.get('SUDO_USER', pwd.getpwuid(os.getuid()).pw_name)
         user = get_or_create(self.db, User, name=username)
-        self.db.add(LogEntry(environment='admin', user=user, message=message))
+        self.db.add(LogEntry(environment='admin', user=user, message=message, **kwargs))
         print(message)
 
 

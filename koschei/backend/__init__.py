@@ -47,8 +47,8 @@ class KoscheiBackendSession(KoscheiSession):
         self._koji_sessions = {}
         self._repo_cache = None
 
-    def log_user_action(self, message):
-        self.db.add(LogEntry(environment='backend', message=message))
+    def log_user_action(self, message, **kwargs):
+        self.db.add(LogEntry(environment='backend', message=message, **kwargs))
 
     @property
     def db(self):
