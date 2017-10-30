@@ -353,6 +353,7 @@ class FrontendTest(DBTest):
                 collection_id=package.collection_id,
                 manual_priority=123,
                 arch_override='x86_64, i386',
+                tracked__present='1',
             ),
             follow_redirects=True,
         )
@@ -361,9 +362,11 @@ class FrontendTest(DBTest):
         self.assertEqual(123, package.manual_priority)
         self.assertEqual('x86_64 i386', package.arch_override)
         self.assertEqual(False, package.skip_resolution)
+        self.assertEqual(False, package.tracked)
         self.assert_action_log(
             "Package rnv (collection f25): manual_priority set from 0 to 123",
             "Package rnv (collection f25): arch_override set from None to x86_64 i386",
+            "Package rnv (collection f25): tracked set from True to False",
         )
 
     @authenticate

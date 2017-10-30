@@ -547,6 +547,7 @@ def package_detail(name, form=None, collection=None):
 
         if not form:
             form = forms.EditPackageForm(
+                tracked=package.tracked,
                 collection_id=package.collection_id,
                 manual_priority=package.manual_priority,
                 arch_override=(package.arch_override or '').split(' '),
@@ -831,6 +832,11 @@ def edit_package(name):
                 else:
                     data.set_group_content(session, group, [package.name], delete=True)
 
+    if form.tracked.data is not None:
+        data.set_package_attribute(
+            session, package, 'tracked',
+            form.tracked.data,
+        )
     if form.manual_priority.data is not None:
         data.set_package_attribute(
             session, package, 'manual_priority',
