@@ -112,7 +112,7 @@ class DataTest(DBTest):
         self.db.commit()
         self.assertFalse(foo.tracked)
         self.assertTrue(bar.tracked)
-        self.assert_action_log("Package bar: tracked set from False to True")
+        self.assert_action_log("Package bar (collection f25): tracked set from False to True")
 
     def test_track_packages_nonexistent(self):
         with self.assertRaises(data.PackagesDontExist):
