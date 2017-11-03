@@ -25,6 +25,7 @@ import unittest
 import shutil
 import json
 import psycopg2
+import rpm
 import logging
 import requests
 import vcr
@@ -368,3 +369,7 @@ def service_ctor(name, plugin_name=None, plugin_endpoint='backend'):
         ctor = service.load_service(name)
         return ctor(*args, **kwargs)
     return inner
+
+
+def rpmvercmp(v1, v2):
+    return rpm.labelCompare((None, None, v1), (None, None, v2))
