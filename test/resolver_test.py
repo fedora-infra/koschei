@@ -23,10 +23,11 @@ from unittest import skipIf
 
 import hawkey
 import koji
+import rpm
 from mock import Mock, patch
 from sqlalchemy.orm import aliased
 
-from test.common import DBTest, RepoCacheMock
+from test.common import DBTest, RepoCacheMock, rpmvercmp
 from koschei import plugin
 from koschei.backend import koji_util
 from koschei.backend.services.resolver import DependencyCache
@@ -567,7 +568,7 @@ class ResolverTest(DBTest):
 
     # qt-x11 requires (sni-qt(x86-64) if plasma-workspace)
     # since plasma-workspace is not installed, sni-qt should not be instaled either
-    @skipIf(hawkey.VERSION < MINIMAL_HAWKEY_VERSION,
+    @skipIf(rpmvercmp(hawkey.VERSION, MINIMAL_HAWKEY_VERSION) < 0,
             'Rich deps are not supported by this hawkey version')
     def test_rich_deps(self):
         with patch('koschei.backend.koji_util.get_build_group_cached', return_value=['R']):
@@ -581,7 +582,7 @@ class ResolverTest(DBTest):
 
     # qt-x11 requires (sni-qt(x86-64) if plasma-workspace)
     # since plasma-workspace is installed, sni-qt should be instaled too
-    @skipIf(hawkey.VERSION < MINIMAL_HAWKEY_VERSION,
+    @skipIf(rpmvercmp(hawkey.VERSION, MINIMAL_HAWKEY_VERSION) < 0,
             'Rich deps are not supported by this hawkey version')
     def test_rich_deps2(self):
         with patch('koschei.backend.koji_util.get_build_group_cached', return_value=['R']):
