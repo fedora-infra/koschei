@@ -596,3 +596,20 @@ class ResolverTest(DBTest):
             self.assertIsNotNone(deps)
             six.assertCountEqual(self, ['qt-x11', 'plasma-workspace', 'sni-qt', 'R'],
                                  [dep.name for dep in deps])
+
+    # rich deps used directly in BuildRequires
+    @skipIf(rpmvercmp(hawkey.VERSION, MINIMAL_HAWKEY_VERSION) < 0,
+            'Rich deps are not supported by this hawkey version')
+    def test_rich_build_requires(self):
+        with patch('koschei.backend.koji_util.get_build_group_cached', return_value=['R']):
+            sack = get_sack()
+            (resolved, problems, deps) = \
+                self.repo_resolver.resolve_dependencies(sack,
+                                                   ['(sni-qt(x86-64) if plasma-workspace)',
+                                                    'plasma-workspace'],
+                                                   ['R'])
+            six.assertCountEqual(self, [], problems)
+            self.assertTrue(resolved)
+            self.assertIsNotNone(deps)
+            six.assertCountEqual(self, ['plasma-workspace', 'sni-qt', 'R'],
+                                 [dep.name for dep in deps])
