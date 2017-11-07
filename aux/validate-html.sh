@@ -45,7 +45,7 @@ function get()
 
 get add-packages.html 'add-packages?username=vagrant'
 get affected-by.html 'affected-by/ant-junit?release1=5.fc27&version1=1.10.1&version2=1.10.1&release2=6.fc27&collection=f27&epoch2=0&epoch1=0'
-get build-detail.html 'build/2776006'
+get build-detail.html 'build/3695023'
 get collection-detail.html 'collection/epel7'
 get delete-group.html 'groups/eclipse/delete'
 get documentation.html 'documentation'
