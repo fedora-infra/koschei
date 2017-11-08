@@ -74,9 +74,9 @@ def upgrade():
         DROP INDEX ix_applied_change_build_id;
         DROP INDEX IF EXISTS ix_applied_change_prev_build_id; -- BDR leftover
         ALTER TABLE applied_change ALTER COLUMN id SET DEFAULT NULL;
-        ALTER TABLE applied_change DROP CONSTRAINT applied_change_pkey;
-        ALTER TABLE applied_change DROP CONSTRAINT applied_change_build_id_fkey;
-        DROP SEQUENCE applied_change_id_seq;
+        ALTER TABLE applied_change DROP CONSTRAINT IF EXISTS applied_change_pkey;
+        ALTER TABLE applied_change DROP CONSTRAINT IF EXISTS applied_change_build_id_fkey;
+        DROP SEQUENCE IF EXISTS applied_change_id_seq;
 
         DROP TABLE applied_change;
         DROP TYPE IF EXISTS applied_change; -- BDR-specific hack
