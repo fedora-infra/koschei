@@ -442,6 +442,9 @@ class Build(Base):
     # was the build done by koschei or was it real build done by packager
     real = Column(Boolean, nullable=False, server_default=false())
 
+    # was the build untagged/deleted on Koji
+    deleted = Column(Boolean, nullable=False, server_default=false())
+
     dependency_keys = deferred(Column(CompressedKeyArray))
 
     @property
