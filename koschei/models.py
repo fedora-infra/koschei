@@ -470,10 +470,13 @@ class Build(Base):
     def __repr__(self):
         # pylint: disable=W1306
         try:
-            return ('build {b.id} (name={b.package.name}, state={b.state_string}, '
-                    'task_id={b.task_id})').format(b=self)
+            return (
+                'Build(id={b.id}, package={b.package.name}, '
+                'collection={b.package.collection.name}, state={b.state_string}, '
+                'task_id={b.task_id})'
+            ).format(b=self)
         except Exception:
-            return 'build {b.id} (incomplete)'.format(b=self)
+            return 'Build(id={b.id}, incomplete...)'.format(b=self)
 
 
 class ResolutionChange(Base):
