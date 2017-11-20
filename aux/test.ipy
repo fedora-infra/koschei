@@ -28,4 +28,5 @@ db=session.db
 k=koji_session=KojiSession(anonymous=True)
 p=db.query(Package).filter_by(name='rnv').order_by(Package.collection_id).first()
 b=db.query(Build).filter_by(package_id=p.id).order_by(desc(Build.started)).first()
-g=db.query(PackageGroup).filter_by(name='java').one()
+g=db.query(PackageGroup).filter_by(namespace=None, name='java').one()
+c=db.query(Collection).filter_by(display_name='Fedora rawhide').one()
