@@ -133,7 +133,6 @@ class DataTest(DBTest):
         new_build1 = self.prepare_build('maven', started=now)
         copy = Collection(
             name='copy', display_name='copy', target='a', build_tag='b',
-            dest_tag='c',
         )
         self.db.add(copy)
         prev_dep = Dependency(

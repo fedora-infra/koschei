@@ -35,7 +35,7 @@ class ApiTest(FrontendTest):
         self.prepare_build('xpp2', False)
         self.collection = Collection(
             name="epel7", display_name="EPEL 7", target="epel7",
-            dest_tag='epel7', build_tag="epel7-build", priority_coefficient=0.2,
+            build_tag="epel7-build", priority_coefficient=0.2,
             latest_repo_resolved=False, latest_repo_id=456,
         )
         self.db.add(self.collection)

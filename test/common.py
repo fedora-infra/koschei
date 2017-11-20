@@ -148,7 +148,7 @@ class DBTest(AbstractTest):
         self.pkg_name_counter = 1
         self.collection = Collection(
             name="f25", display_name="Fedora Rawhide", target="f25",
-            dest_tag='f25', build_tag="f25-build", priority_coefficient=1.0,
+            build_tag="f25-build", priority_coefficient=1.0,
             latest_repo_resolved=True, latest_repo_id=123,
         )
         self.session = KoscheiSessionMock()

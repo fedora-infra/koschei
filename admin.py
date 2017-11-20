@@ -449,7 +449,6 @@ class CreateOrEditCollectionCommand(object):
         target_info = koji_session.getBuildTarget(collection.target)
         if not target_info:
             sys.exit("Target not found in Koji")
-        collection.dest_tag = target_info['dest_tag_name']
         collection.build_tag = target_info['build_tag_name']
 
 
