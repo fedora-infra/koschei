@@ -94,7 +94,6 @@ class TriggerTest(DBTest):
         self.db.delete(b3)
         self.db.commit()
         self.assertEqual(b2.id, e.last_build_id)
-        self.db.delete(b2)
 
     def test_all_blocked_insert(self):
         [p, e] = self.prepare_packages('rnv', 'eclipse')
