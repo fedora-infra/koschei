@@ -496,6 +496,63 @@ def refresh_packages(session):
         session.db.expire_all()
 
 
+def _check_untagged_builds(session, collection, package_map, build_infos):
+    """
+    Check whether some of the builds we have weren't untagged/deleted in the
+    meantime. Only checks last builds of packages.
+    """
+    for info in build_infos:
+        package = package_map.get(info['package_name'])
+        if package and util.is_build_newer(info, package.last_build):
+            # the last build (possibly more) we have was untagged/deleted
+            last_valid_build_query = (
+                session.db.query(Build)
+                .filter(
+                    (Build.package_id == package.id) &
+                    (Build.epoch == info['epoch']) &
+                    (Build.version == info['version']) &
+                    (Build.release == info['release'])
+                )
+                .order_by(Build.started.desc())
+            )
+            last_valid_build = last_valid_build_query.first()
+            if not last_valid_build:
+                # we don't have the build anymore, register it first
+                register_real_builds(session, collection,
+                                     [(package.id, info)])
+                last_valid_build = last_valid_build_query.first()
+            # set all following builds as deleted
+            # last_build pointers get reset by the trigger
+            (
+                session.db.query(Build)
+                .filter(Build.package_id == package.id)
+                .filter(Build.started > last_valid_build.started)
+                .update({'deleted': True})
+            )
+            session.log.info("Build {} is no longer tagged".format(package.last_build))
+
+
+def _check_retagged_builds(session, collection, package_map, build_infos):
+    """
+    Check whether some of the builds that were marked as untagged/deleted
+    weren't tagged back.
+    """
+    for info in build_infos:
+        package = package_map.get(info['package_name'])
+        if package:
+            (
+                session.db.query(Build)
+                .filter(
+                    (Build.package_id == package.id) &
+                    (Build.epoch == info['epoch']) &
+                    (Build.version == info['version']) &
+                    (Build.release == info['release']) &
+                    (Build.deleted)
+                )
+                .update({'deleted': False})
+            )
+
+
 def _check_new_real_builds(session, collection, package_map, build_infos):
     """
     Checks Koji for latest builds of packages and registers possible
@@ -527,6 +584,8 @@ def refresh_latest_builds(session):
     """
     Processes last builds tagged in koji in order to:
     - Add new real builds
+    - Mark no longer present builds as deleted
+    - Unmark builds that were marked as deleted, but are present again
     """
     for collection in session.db.query(Collection):
         koji_session = session.secondary_koji_for(collection)
@@ -542,6 +601,8 @@ def refresh_latest_builds(session):
             .filter(Package.collection_id == collection.id)
         }
         _check_new_real_builds(session, collection, package_map, build_infos)
+        _check_untagged_builds(session, collection, package_map, build_infos)
+        _check_retagged_builds(session, collection, package_map, build_infos)
         session.db.commit()
 
 
