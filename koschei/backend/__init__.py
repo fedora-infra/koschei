@@ -529,7 +529,7 @@ def _check_untagged_builds(session, collection, package_map, build_infos):
                 .filter(Build.started > last_valid_build.started)
                 .update({'deleted': True})
             )
-            session.log.info("Build {} is no longer tagged".format(package.last_build))
+            session.log.info("{} is no longer tagged".format(package.last_build))
 
 
 def _check_retagged_builds(session, collection, package_map, build_infos):
