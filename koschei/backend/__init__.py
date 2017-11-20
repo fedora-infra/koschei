@@ -496,36 +496,53 @@ def refresh_packages(session):
         session.db.expire_all()
 
 
-def refresh_latest_builds(session):
+def _check_new_real_builds(session, collection, package_map, build_infos):
     """
     Checks Koji for latest builds of packages and registers possible
     new real builds.
     """
+    existing_task_ids = (
+        session.db.query(Build.task_id)
+        .join(Build.package)
+        .filter(Package.collection_id == collection.id)
+        .filter(Build.real)
+        .all_flat(set)
+    )
+    to_add = [info for info in build_infos if info['task_id'] not in existing_task_ids]
+    if to_add:
+        package_build_infos = []
+        for info in to_add:
+            package = package_map.get(info['package_name'])
+            if (
+                    package and
+                    (package.tracked or collection.poll_untracked) and
+                    util.is_build_newer(package.last_build, info)
+            ):
+                package_build_infos.append((package.id, info))
+        if package_build_infos:
+            register_real_builds(session, collection, package_build_infos)
+
+
+def refresh_latest_builds(session):
+    """
+    Processes last builds tagged in koji in order to:
+    - Add new real builds
+    """
     for collection in session.db.query(Collection):
         koji_session = session.secondary_koji_for(collection)
-        infos = koji_session.listTagged(collection.dest_tag, latest=True,
-                                        inherit=True)
-        existing_task_ids = set(session.db.query(Build.task_id)
-                                .join(Build.package)
-                                .filter(Package.collection_id == collection.id)
-                                .filter(Build.real)
-                                .all_flat())
-        to_add = [info for info in infos if info['task_id'] not in existing_task_ids]
-        if to_add:
-            query = session.db.query(Package)\
-                .filter(Package.collection_id == collection.id)\
-                .filter(Package.name.in_(i['package_name'] for i in to_add))\
-                .options(joinedload(Package.last_build))
-            if not collection.poll_untracked:
-                query = query.filter_by(tracked=True)
-            name_mapping = {pkg.name: pkg for pkg in query}
-            package_build_infos = []
-            for info in to_add:
-                package = name_mapping.get(info['package_name'])
-                if package and util.is_build_newer(package.last_build, info):
-                    package_build_infos.append((package.id, info))
-            if package_build_infos:
-                register_real_builds(session, collection, package_build_infos)
+        build_infos = koji_session.listTagged(
+            collection.dest_tag,
+            latest=True,
+            inherit=True,
+        )
+        package_map = {
+            package.name: package for package in
+            session.db.query(Package)
+            .options(joinedload(Package.last_build))
+            .filter(Package.collection_id == collection.id)
+        }
+        _check_new_real_builds(session, collection, package_map, build_infos)
+        session.db.commit()
 
 
 def sync_tracked(session, tracked, collection_id=None):
