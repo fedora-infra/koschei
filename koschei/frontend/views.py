@@ -266,11 +266,14 @@ Build.state_icon = property(build_state_icon)
 
 
 def build_css_class(build):
+    css = ''
+    if build.deleted:
+        css += " kk-deleted-build"
     if build.real:
-        return "table-info"
+        css += " table-info"
     if build.state == Build.FAILED:
-        return "table-warning"
-    return ""
+        css += " table-warning"
+    return css
 Build.css_class = property(build_css_class)
 
 
