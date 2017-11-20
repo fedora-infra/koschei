@@ -44,12 +44,29 @@ def to_snake_case(name):
     return re.sub(r'([A-Z])', lambda s: '_' + s.group(0).lower(), name)[1:]
 
 
-def is_build_newer(current_build, task_info):
+def get_evr(build_or_task_info):
+    if isinstance(build_or_task_info, dict):
+        return (
+            build_or_task_info['epoch'],
+            build_or_task_info['version'],
+            build_or_task_info['release'],
+        )
+
+    return (
+        build_or_task_info.epoch,
+        build_or_task_info.version,
+        build_or_task_info.release,
+    )
+
+
+def is_build_newer(current_build, new_build):
     if current_build is None:
         return True
+    if new_build is None:
+        return False
     return compare_evr(
-        (current_build.epoch, current_build.version, current_build.release),
-        (task_info['epoch'], task_info['version'], task_info['release'])
+        get_evr(current_build),
+        get_evr(new_build)
     ) < 0
 
 

@@ -211,10 +211,10 @@ class BackendTest(DBTest):
             backend.refresh_latest_builds(self.session)
             self.assertEqual(1, self.db.query(Build).count())
 
-    def test_refresh_latest_builds_skip_old(self):
+    def test_refresh_latest_builds_rewind_untagged(self):
         self.session.sec_koji_mock.getTaskInfo = Mock(return_value=rnv_task)
         self.session.sec_koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
-        self.prepare_packages('rnv')
+        rnv = self.prepare_packages('rnv')[0]
         build = self.prepare_build('rnv', False)
         build.real = True
         build.epoch = None
@@ -222,11 +222,37 @@ class BackendTest(DBTest):
         build.release = "11.fc24"
         build.repo_id = 460889
         build.task_id = 12345678
+        build.started = '2017-02-05 04:34:41'
+        self.session.sec_koji_mock.listTagged = Mock(return_value=rnv_build_info)
+        self.db.commit()
+        self.assertTrue(build.last_complete)
+        with patch('koschei.backend.dispatch_event'):
+            backend.refresh_latest_builds(self.session)
+            self.db.commit()
+            self.assertEqual(2, self.db.query(Build).count())
+            self.assertEqual("10.fc24", rnv.last_complete_build.release)
+            self.assertIs(rnv.last_complete_build, rnv.last_build)
+            self.assertTrue(rnv.last_complete_build.last_complete)
+            self.assertFalse(build.last_complete)
+
+    def test_refresh_latest_builds_retag(self):
+        self.session.sec_koji_mock.getTaskInfo = Mock(return_value=rnv_task)
+        self.session.sec_koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
+        rnv = self.prepare_packages('rnv')[0]
+        build = self.prepare_build('rnv', False)
+        build.real = True
+        build.repo_id = 460889
+        build.epoch = rnv_build_info[0]['epoch']
+        build.version = rnv_build_info[0]['version']
+        build.release = rnv_build_info[0]['release']
+        build.task_id = rnv_build_info[0]['task_id']
+        build.deleted = True
         self.session.sec_koji_mock.listTagged = Mock(return_value=rnv_build_info)
         self.db.commit()
         with patch('koschei.backend.dispatch_event'):
             backend.refresh_latest_builds(self.session)
             self.assertEqual(1, self.db.query(Build).count())
+            self.assertEqual(build, rnv.last_build)
 
     def test_register_real_builds(self):
         self.session.sec_koji_mock.getTaskInfo = Mock(return_value=rnv_task)
