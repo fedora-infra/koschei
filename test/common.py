@@ -26,8 +26,6 @@ import shutil
 import json
 import psycopg2
 import rpm
-import logging
-import requests
 import vcr
 import six
 import contextlib
@@ -45,11 +43,6 @@ from koschei.models import (
 )
 from koschei.backend import KoscheiBackendSession, repo_util, service
 
-if six.PY2:
-    from xmlrpclib import loads, dumps
-else:
-    from xmlrpc.client import loads, dumps
-
 workdir = '.workdir'
 
 my_vcr = vcr.VCR(
@@ -66,8 +59,6 @@ class AbstractTest(unittest.TestCase):
         os.chdir(testdir)
         if 'http_proxy' in os.environ:
             del os.environ['http_proxy']
-        # self.koji_session = RecordedKojiSession('http://koji.fedoraproject.org/kojihub')
-        # self.koji_sessions = dict(primary=self.koji_session, secondary=self.koji_session)
         self.oldpwd = os.getcwd()
 
     def _rm_workdir(self):
@@ -100,7 +91,7 @@ class KoscheiSessionMock(KoscheiBackendSession):
         self.log = Mock()
         self.build_from_repo_id_override = False
 
-    def koji(self, koji_id, anonymous=True):
+    def koji(self, koji_id):
         if koji_id == 'primary':
             return self.koji_mock
         elif koji_id == 'secondary':
@@ -243,7 +234,7 @@ class DBTest(AbstractTest):
         }
         if isinstance(state, bool):
             state = states[state]
-        [package] = self.prepare_packages(pkg_name)
+        package = self.prepare_packages(pkg_name)[0]
         package.resolved = resolved
         build = Build(package=package, state=state,
                       repo_id=repo_id or (1 if state != Build.RUNNING else None),
