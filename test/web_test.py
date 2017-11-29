@@ -17,7 +17,6 @@
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 import re
-from functools import wraps
 
 # pylint:disable = unused-import
 import koschei.frontend.api
@@ -28,64 +27,11 @@ from koschei.frontend import app, db
 from koschei.models import User, PackageGroup, AppliedChange
 
 from test.common import DBTest, my_vcr
+from test.frontend_common import FrontendTest, authenticate, authenticate_admin
 
 
-def login(client, user):
-    client.get(
-        'login',
-        environ_base={
-            'REMOTE_USER': user.name,
-        },
-    )
-
-
-def authenticate(fn):
-    @wraps(fn)
-    def decorated(*args, **kwargs):
-        self = args[0]
-        self.user = self.prepare_user(name='jdoe', admin=False)
-        login(self.client, self.user)
-        return fn(*args, **kwargs)
-    return decorated
-
-
-def authenticate_admin(fn):
-    @wraps(fn)
-    def decorated(*args, **kwargs):
-        self = args[0]
-        self.user = self.prepare_user(name='admin', admin=True)
-        login(self.client, self.user)
-        return fn(*args, **kwargs)
-    return decorated
-
-
-class FrontendTest(DBTest):
-    def __init__(self, *args, **kwargs):
-        super(FrontendTest, self).__init__(*args, **kwargs)
-        self.user = None
-
-    def get_session(self):
-        return db
-
-    def setUp(self):
-        super(FrontendTest, self).setUp()
-        self.assertIs(self.db, db)
-        app.config['TESTING'] = True
-        app.config['CSRF_ENABLED'] = False  # older versions of flask-wtf (EPEL 7)
-        app.config['WTF_CSRF_ENABLED'] = False  # newer versions of flask-wtf (Fedora)
-        self.client = app.test_client()
-        self.teardown_appcontext_funcs = app.teardown_appcontext_funcs
-
-        def rollback_session(exception=None):
-            db.rollback()
-        app.teardown_appcontext_funcs = [rollback_session]
-
-
-    def tearDown(self):
-        app.teardown_appcontext_funcs = self.teardown_appcontext_funcs
-        app.do_teardown_appcontext()
-        super(FrontendTest, self).tearDown()
-
+# pylint:disable=too-many-public-methods
+class WebTest(FrontendTest):
     def assert_validated(self, reply):
         data = reply.data.decode('utf-8')
         match = re.search(r'Validation errors: [^<]*', data)
@@ -289,9 +235,9 @@ class FrontendTest(DBTest):
         self.assertIn('foo', reply.data.decode('utf-8'))
         self.assertIn('eclipse', reply.data.decode('utf-8'))
         group = self.db.query(PackageGroup).filter_by(name='foo').one()
-        self.assertEquals('jdoe', group.namespace)
-        self.assertEquals({p.base for p in pkgs}, set(group.packages))
-        self.assertEquals(
+        self.assertEqual('jdoe', group.namespace)
+        self.assertEqual({p.base for p in pkgs}, set(group.packages))
+        self.assertEqual(
             {self.prepare_user(name='jdoe'), self.prepare_user(name='user1')},
             set(group.owners),
         )
@@ -337,9 +283,9 @@ class FrontendTest(DBTest):
             self.db.query(PackageGroup).filter_by(name='foo').count(),
         )
         group = self.db.query(PackageGroup).filter_by(name='bar').one()
-        self.assertEquals('jdoe', group.namespace)
-        self.assertEquals({p.base for p in pkgs[1:]}, set(group.packages))
-        self.assertEquals(
+        self.assertEqual('jdoe', group.namespace)
+        self.assertEqual({p.base for p in pkgs[1:]}, set(group.packages))
+        self.assertEqual(
             {self.prepare_user(name='jdoe'), self.prepare_user(name='user2')},
             set(group.owners),
         )
@@ -456,9 +402,9 @@ class FrontendTest(DBTest):
         )
         self.assertEqual(200, reply.status_code)
         self.assertIn("You don&#39;t have permission", reply.data.decode('utf-8'))
-        self.assertEquals('user1', group.namespace)
-        self.assertEquals({p.base for p in pkgs[:2]}, set(group.packages))
-        self.assertEquals(
+        self.assertEqual('user1', group.namespace)
+        self.assertEqual({p.base for p in pkgs[:2]}, set(group.packages))
+        self.assertEqual(
             {self.prepare_user(name='user1')},
             set(group.owners),
         )
@@ -501,7 +447,7 @@ class FrontendTest(DBTest):
 
     def test_affected_by_unauthenticated(self):
         # bar was broken
-        b1 = self.prepare_build('bar', True)
+        self.prepare_build('bar', True)
         b2 = self.prepare_build('bar', False)
         self.prepare_depchange(
             build_id=b2.id,
@@ -511,7 +457,7 @@ class FrontendTest(DBTest):
         )
         self.db.commit()
         reply = self.client.get(
-            'affected-by/foo'+
+            'affected-by/foo' +
             '?collection=f25' +
             '&epoch1=0' +
             '&version1=1.2' +
@@ -526,7 +472,7 @@ class FrontendTest(DBTest):
     @authenticate
     def test_affected_by_one(self):
         # bar was broken
-        b1 = self.prepare_build('bar', True)
+        self.prepare_build('bar', True)
         b2 = self.prepare_build('bar', False)
         self.prepare_depchange(
             build_id=b2.id,
@@ -535,7 +481,7 @@ class FrontendTest(DBTest):
             curr_epoch=0, curr_version='4.5', curr_release='6',
         )
         # baz was fixed
-        b1 = self.prepare_build('baz', False)
+        self.prepare_build('baz', False)
         b2 = self.prepare_build('baz', True)
         self.prepare_depchange(
             build_id=b2.id,
@@ -544,7 +490,7 @@ class FrontendTest(DBTest):
             curr_epoch=0, curr_version='4.5', curr_release='6',
         )
         # xyzzy failure is not related
-        b1 = self.prepare_build('xyzzy', True)
+        self.prepare_build('xyzzy', True)
         b2 = self.prepare_build('xyzzy', False)
         self.prepare_depchange(
             build_id=b2.id,
@@ -553,7 +499,7 @@ class FrontendTest(DBTest):
             curr_epoch=0, curr_version='0.7', curr_release='2',
         )
         # abc was broken too
-        b1 = self.prepare_build('abc', True)
+        self.prepare_build('abc', True)
         b2 = self.prepare_build('abc', False)
         self.prepare_depchange(
             build_id=b2.id,
@@ -562,7 +508,7 @@ class FrontendTest(DBTest):
             curr_epoch=0, curr_version='4.5', curr_release='6',
         )
         # klm was broken too
-        b1 = self.prepare_build('klm', True)
+        self.prepare_build('klm', True)
         b2 = self.prepare_build('klm', False)
         self.prepare_depchange(
             build_id=b2.id,
@@ -571,7 +517,7 @@ class FrontendTest(DBTest):
             curr_epoch=666, curr_version='0.7', curr_release='2',
         )
         # ijk was broken too
-        b1 = self.prepare_build('ijk', True)
+        self.prepare_build('ijk', True)
         b2 = self.prepare_build('ijk', False)
         self.prepare_depchange(
             build_id=b2.id,
@@ -580,7 +526,7 @@ class FrontendTest(DBTest):
             curr_epoch=666, curr_version='0.7', curr_release='2',
         )
         # pqr was broken too
-        b1 = self.prepare_build('pqr', True)
+        self.prepare_build('pqr', True)
         b2 = self.prepare_build('pqr', False)
         self.prepare_depchange(
             build_id=b2.id,
@@ -590,7 +536,7 @@ class FrontendTest(DBTest):
         )
         self.db.commit()
         reply = self.client.get(
-            'affected-by/foo'+
+            'affected-by/foo' +
             '?collection=f25' +
             '&epoch1=0' +
             '&version1=1.2' +
