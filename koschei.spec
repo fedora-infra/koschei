@@ -123,14 +123,15 @@ Requires:       python3-flask-wtf
 Requires:       python3-wtforms
 Requires:       python3-humanize >= 0.5.1
 Requires:       python3-jinja2
+Requires:       python3-mod_wsgi
 %else
 Requires:       python-flask
 Requires:       python-flask-sqlalchemy
 Requires:       python-flask-wtf
 Requires:       python-humanize >= 0.5.1
 Requires:       python-jinja2
-%endif
 Requires:       mod_wsgi
+%endif
 Requires:       httpd
 Requires:       js-jquery
 
