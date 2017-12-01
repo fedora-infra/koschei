@@ -112,8 +112,6 @@ config = {
         # exact formula
         "t0": 6,
         "t1": 7 * 24,
-        # how often are the priorities persisted to database
-        "calculation_interval": 300, # seconds
     },
 
     # configuration of individual services
