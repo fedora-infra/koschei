@@ -52,6 +52,7 @@ BuildRequires:  python3-jinja2
 BuildRequires:  python3-dogpile-cache
 BuildRequires:  python3-six
 BuildRequires:  python3-copr
+BuildRequires:  python3-requests
 %else
 BuildRequires:  python-nose
 BuildRequires:  python-vcrpy
@@ -70,6 +71,7 @@ BuildRequires:  python-jinja2
 BuildRequires:  python-dogpile-cache
 BuildRequires:  python-six
 BuildRequires:  python-copr >= 1.75
+BuildRequires:  python-requests
 %endif
 %endif
 
@@ -175,6 +177,11 @@ Requires:       %{name}-common = %{version}-%{release}
 Summary:        Fedora-specific Koschei frontend plugins
 Requires:       %{name}-frontend = %{version}-%{release}
 Requires:       %{name}-common-fedora = %{version}-%{release}
+%if %{python3}
+Requires:       python3-requests
+%else
+Requires:       python-reqests
+%endif
 
 %description frontend-fedora
 %{summary}.
