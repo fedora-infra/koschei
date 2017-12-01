@@ -42,11 +42,12 @@ def load_plugins(endpoint, only=None):
                 descriptor = imp.find_module(name, [plugin_dir])
             except ImportError:
                 raise RuntimeError("{} enabled but not installed".format(name))
-            plugin = imp.load_module(name, *descriptor)
+            imp.load_module(name, *descriptor)
+        endpoint_dir = os.path.join(plugin_dir, name)
         qualname = name + '.' + endpoint
         if qualname not in sys.modules:
             try:
-                descriptor = imp.find_module(endpoint, plugin.__path__)
+                descriptor = imp.find_module(endpoint, [endpoint_dir])
             except ImportError:
                 # plugin exists but doesn't have particular endpoint
                 continue
