@@ -172,7 +172,7 @@ class PackagePriorityTest(DBTest):
 
     def test_basic(self, _):
         # time priority for just completed build, no other values
-        self.verify_priority(-30)
+        self.verify_priority(-100)
 
     def test_coefficient(self, _):
         self.pkg.manual_priority = 10
@@ -180,21 +180,22 @@ class PackagePriorityTest(DBTest):
         self.pkg.dependency_priority = 40
         self.pkg.build_priority = 50
         self.pkg.collection.priority_coefficient = 0.5
-        self.verify_priority(10 + 20 + 0.5 * (-30 + 40 + 50))
+        self.verify_priority(10 + 20 + 0.5 * (-100 + 40 + 50))
 
     def test_time(self, _):
+        # now = '2017-10-10 10:00:00'
         # 2 h difference
         self.build.started = '2017-10-10 08:00:00'
-        self.verify_priority(-30)
+        self.verify_priority(-90)
         # 10 h difference
         self.build.started = '2017-10-10 00:00:00'
-        self.verify_priority(39.2446980024098)
+        self.verify_priority(-50)
         # 1 day difference
         self.build.started = '2017-10-9 00:00:00'
-        self.verify_priority(133.26248998925)
+        self.verify_priority(70)
         # 1 month difference
         self.build.started = '2017-9-10 00:00:00'
-        self.verify_priority(368.863607520133)
+        self.verify_priority(3550)
 
     def test_untracked(self, _):
         self.pkg.tracked = False
@@ -224,7 +225,7 @@ class PackagePriorityTest(DBTest):
     def test_resolution_skipped(self, _):
         self.pkg.resolved = None
         self.pkg.skip_resolution = True
-        self.verify_priority(-30)
+        self.verify_priority(-100)
 
 
 class StatsTest(DBTest):

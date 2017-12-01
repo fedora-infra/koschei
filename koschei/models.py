@@ -20,8 +20,6 @@
 
 from __future__ import print_function, absolute_import
 
-import math
-
 from sqlalchemy import (
     Column, Integer, String, Boolean, ForeignKey, DateTime, Index, Float,
     CheckConstraint, UniqueConstraint, Enum, Interval,
@@ -126,23 +124,6 @@ class BasePackage(Base):
     all_blocked = Column(Boolean, nullable=False, server_default=true())
 
 
-class TimePriority(object):
-    """
-    Container for lazy computation of static time priority inputs
-    """
-    def __getattr__(self, name):
-        assert name == 'inputs'
-        t0 = get_config('priorities.t0')
-        t1 = get_config('priorities.t1')
-        a = get_config('priorities.build_threshold') / (math.log10(t1) - math.log10(t0))
-        b = -a * math.log10(t0)
-        setattr(self, 'inputs', (a, b))
-        return self.inputs
-
-
-TIME_PRIORITY = TimePriority()
-
-
 class Package(Base):
     __table_args__ = (
         UniqueConstraint('base_id', 'collection_id',
@@ -215,10 +196,9 @@ class Package(Base):
 
         # compute time priority
         seconds = extract('EPOCH', func.clock_timestamp() - last_build.started)
-        a, b = TIME_PRIORITY.inputs
-        # avoid zero/negative values, when time difference too small
-        log_arg = func.greatest(0.000001, seconds / 3600)
-        dynamic_priority += func.greatest(a * func.log(log_arg) + b, -30)
+        hours = seconds / 3600.0
+        # the formula is taken from the configuration as a python function
+        dynamic_priority += get_config('priorities.time_priority_fn')(hours)
 
         # dynamic priority is affected by coefficient
         dynamic_priority *= collection.priority_coefficient
