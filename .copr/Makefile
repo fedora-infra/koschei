@@ -19,7 +19,7 @@ $(tmpdir)/koschei.spec: $(spec)
 
 $(tmpdir)/$(version).tar.gz: $(gitdir)/..
 	@mkdir -p $(tmpdir)
-	tar --exclude-vcs --exclude-vcs-ignores -C $< --transform 's|^\.|koschei-$(version)|' c . | gzip -9 >$@
+	tar c --exclude-vcs --exclude-vcs-ignores -C $< --transform 's|^\.|koschei-$(version)|' . | gzip -9 >$@
 
 $(outdir)/koschei-$(version)-$(release).src.rpm: $(tmpdir)/koschei.spec $(tmpdir)/$(version).tar.gz
 	@mkdir -p $(outdir)
