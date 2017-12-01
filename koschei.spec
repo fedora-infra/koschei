@@ -11,7 +11,7 @@
 %endif
 
 Name:           koschei
-Version:        2.1.0
+Version:        2.2.0
 Release:        1%{?dist}
 Summary:        Continuous integration for Fedora packages
 License:        GPLv2+
