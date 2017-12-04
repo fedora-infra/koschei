@@ -67,7 +67,10 @@ class Service(object):
                 statm = statm_f.readline().split()
             page_size = os.sysconf("SC_PAGE_SIZE") / 1024
             virtual, resident = [int(pages) * page_size for pages in statm[0:2]]
-            if resident > resident_limit or virtual > virtual_limit:
+            if (
+                    (resident_limit and resident > resident_limit) or
+                    (virtual_limit and virtual > virtual_limit)
+            ):
                 self.log.info("Memory limit reached - resident: {resident} KiB, "
                               "virtual: {virtual} KiB. Exiting."
                               .format(virtual=virtual, resident=resident))
