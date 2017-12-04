@@ -112,7 +112,7 @@ def sd_notify(msg):
         sock_path = '\0' + sock_path[1:]
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
     try:
-        sock.sendto(msg, sock_path)
+        sock.sendto(msg.encode('utf-8'), sock_path)
     finally:
         sock.close()
 
