@@ -52,6 +52,9 @@ my_vcr = vcr.VCR(
 )
 
 
+py3_only = lambda f: unittest.skipUnless(six.PY3, 'Requires Python 3')
+
+
 class AbstractTest(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
