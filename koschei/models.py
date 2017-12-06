@@ -443,7 +443,7 @@ class Build(Base):
     real = Column(Boolean, nullable=False, server_default=false())
 
     # was the build untagged/deleted on Koji
-    deleted = Column(Boolean, nullable=False, server_default=false())
+    untagged = Column(Boolean, nullable=False, server_default=false())
 
     dependency_keys = deferred(Column(CompressedKeyArray))
 

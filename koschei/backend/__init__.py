@@ -521,13 +521,13 @@ def _check_untagged_builds(session, collection, package_map, build_infos):
                 register_real_builds(session, collection,
                                      [(package.id, info)])
                 last_valid_build = last_valid_build_query.first()
-            # set all following builds as deleted
+            # set all following builds as untagged
             # last_build pointers get reset by the trigger
             (
                 session.db.query(Build)
                 .filter(Build.package_id == package.id)
                 .filter(Build.started > last_valid_build.started)
-                .update({'deleted': True})
+                .update({'untagged': True})
             )
             session.log.info("{} is no longer tagged".format(package.last_build))
 
@@ -547,9 +547,9 @@ def _check_retagged_builds(session, collection, package_map, build_infos):
                     (Build.epoch == info['epoch']) &
                     (Build.version == info['version']) &
                     (Build.release == info['release']) &
-                    (Build.deleted)
+                    (Build.untagged)
                 )
-                .update({'deleted': False})
+                .update({'untagged': False})
             )
 
 
@@ -584,8 +584,8 @@ def refresh_latest_builds(session):
     """
     Processes last builds tagged in koji in order to:
     - Add new real builds
-    - Mark no longer present builds as deleted
-    - Unmark builds that were marked as deleted, but are present again
+    - Mark no longer present builds as untagged
+    - Unmark builds that were marked as untagged, but are present again
     """
     for collection in session.db.query(Collection):
         koji_session = session.secondary_koji_for(collection)

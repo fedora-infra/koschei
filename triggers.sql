@@ -8,14 +8,14 @@ BEGIN
     SELECT INTO pkg * FROM package WHERE id = pkg_id;
     SELECT INTO lb * FROM build
         WHERE package_id = pkg_id
-          AND NOT deleted
+          AND NOT untagged
         ORDER BY started DESC
         LIMIT 1;
     IF lb.state = 2 THEN
         SELECT INTO lcb * FROM build
             WHERE package_id = pkg_id
               AND (state = 3 OR state = 5)
-              AND NOT deleted
+              AND NOT untagged
             ORDER BY started DESC
             LIMIT 1;
     ELSE
@@ -83,7 +83,7 @@ CREATE TRIGGER update_last_build_trigger
 DROP TRIGGER IF EXISTS update_last_build_trigger_up ON build;
 CREATE TRIGGER update_last_build_trigger_up
     AFTER UPDATE ON build FOR EACH ROW
-    WHEN (OLD.state != NEW.state OR OLD.deleted != NEW.deleted)
+    WHEN (OLD.state != NEW.state OR OLD.untagged != NEW.untagged)
     EXECUTE PROCEDURE update_last_build_trigger();
 DROP TRIGGER IF EXISTS update_last_build_trigger_del ON build;
 CREATE TRIGGER update_last_build_trigger_del

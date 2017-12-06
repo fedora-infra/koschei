@@ -246,7 +246,7 @@ class BackendTest(DBTest):
         build.version = rnv_build_info[0]['version']
         build.release = rnv_build_info[0]['release']
         build.task_id = rnv_build_info[0]['task_id']
-        build.deleted = True
+        build.untagged = True
         self.session.sec_koji_mock.listTagged = Mock(return_value=rnv_build_info)
         self.db.commit()
         with patch('koschei.backend.dispatch_event'):

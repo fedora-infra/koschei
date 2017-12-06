@@ -50,4 +50,4 @@ html { font-size: 14px; }
 .kk-copr-action-column         { width: 0; white-space: nowrap; }
 .kk-copr-description           { padding-bottom: 20px; }
 
-.kk-deleted-build { filter: contrast(0.6); }
+.kk-untagged-build { filter: contrast(0.6); }
