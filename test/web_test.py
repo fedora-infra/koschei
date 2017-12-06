@@ -445,31 +445,6 @@ class WebTest(FrontendTest):
             self.db.query(PackageGroup).filter_by(name='foo').count(),
         )
 
-    def test_affected_by_unauthenticated(self):
-        # bar was broken
-        self.prepare_build('bar', True)
-        b2 = self.prepare_build('bar', False)
-        self.prepare_depchange(
-            build_id=b2.id,
-            dep_name='foo', distance=3,
-            prev_epoch=0, prev_version='1.2', prev_release='3',
-            curr_epoch=0, curr_version='4.5', curr_release='6',
-        )
-        self.db.commit()
-        reply = self.client.get(
-            'affected-by/foo' +
-            '?collection=f25' +
-            '&epoch1=0' +
-            '&version1=1.2' +
-            '&release1=3' +
-            '&epoch2=0' +
-            '&version2=4.5' +
-            '&release2=6'
-        )
-        self.assertEqual(302, reply.status_code)
-        self.assertEqual("http://localhost/login?", reply.location[:23])
-
-    @authenticate
     def test_affected_by_one(self):
         # bar was broken
         self.prepare_build('bar', True)
