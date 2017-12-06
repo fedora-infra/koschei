@@ -279,7 +279,7 @@
             {% else %}
             {# is a build entry #}
             {% set build = entry %}
-            {% if build.deleted %}
+            {% if build.untagged %}
             <div class="row">
                 <div class="col-sm-12">
                     This build is no loger tagged in koji.

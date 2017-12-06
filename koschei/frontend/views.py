@@ -267,8 +267,8 @@ Build.state_icon = property(build_state_icon)
 
 def build_css_class(build):
     css = ''
-    if build.deleted:
-        css += " kk-deleted-build"
+    if build.untagged:
+        css += " kk-untagged-build"
     if build.real:
         css += " table-info"
     if build.state == Build.FAILED:
