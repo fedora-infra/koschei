@@ -98,7 +98,7 @@ class CoprScheduler(Service):
     def schedule_rebuild(self, rebuild):
         koji_session = self.session.koji(self.get_koji_id(rebuild.package.collection))
         srpm_url = koji_util.get_last_srpm(koji_session,
-                                           rebuild.package.collection.dest_tag,
+                                           rebuild.package.collection.build_tag,
                                            rebuild.package.name)[1]
         self.create_copr_project(rebuild.request, rebuild.copr_name)
         copr_build = copr_client.create_new_build(

@@ -43,13 +43,12 @@ def poll_secondary_repo(session):
     primary = session.koji('primary')
     secondary = session.koji('secondary')
     for collection in db.query(Collection).filter_by(secondary_mode=True):
-        ensure_tag(primary, collection.dest_tag)
         ensure_tag(primary, collection.build_tag)
         target = primary.getBuildTarget(collection.target)
         if not target:
             log.info("Creating new secondary build target")
             primary.createBuildTarget(collection.target, collection.build_tag,
-                                      collection.dest_tag)
+                                      collection.build_tag)
             groups = secondary.getTagGroups(collection.build_tag)
             primary.multicall = True
             for group in groups:

@@ -110,7 +110,7 @@ def submit_build(session, package, arch_override=None):
     # secondary (internal redirect)
     srpm_res = koji_util.get_last_srpm(
         session.secondary_koji_for(package.collection),
-        package.collection.dest_tag,
+        package.collection.build_tag,
         name,
         relative=True
     )
@@ -143,7 +143,7 @@ def submit_build(session, package, arch_override=None):
 
 def get_newer_build_if_exists(session, package):
     [info] = session.secondary_koji_for(package.collection)\
-        .listTagged(package.collection.dest_tag, latest=True,
+        .listTagged(package.collection.build_tag, latest=True,
                     package=package.name, inherit=True) or [None]
     if info and util.is_build_newer(package.last_build, info):
         return info
@@ -462,10 +462,10 @@ def refresh_packages(session):
     """
     bases = {base.name: base for base
              in session.db.query(BasePackage.id, BasePackage.name)}
-    for collection in session.db.query(Collection.id, Collection.dest_tag,
+    for collection in session.db.query(Collection.id, Collection.build_tag,
                                        Collection.secondary_mode):
         koji_session = session.secondary_koji_for(collection)
-        koji_packages = koji_session.listPackages(tagID=collection.dest_tag,
+        koji_packages = koji_session.listPackages(tagID=collection.build_tag,
                                                   inherited=True)
         whitelisted = {p['package_name'] for p in koji_packages if not p['blocked']}
         packages = session.db.query(Package.id, Package.name, Package.blocked)\
@@ -590,7 +590,7 @@ def refresh_latest_builds(session):
     for collection in session.db.query(Collection):
         koji_session = session.secondary_koji_for(collection)
         build_infos = koji_session.listTagged(
-            collection.dest_tag,
+            collection.build_tag,
             latest=True,
             inherit=True,
         )
