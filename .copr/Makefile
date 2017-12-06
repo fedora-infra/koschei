@@ -6,7 +6,7 @@ tmpdir := build
 gitdir := $(dir $(spec))/.git
 
 rev := $(shell sed 's/\(.......\).*/\1/' $(gitdir)/$$(sed -n '/^ref:/{s/.* //;p}' $(gitdir)/HEAD))
-date := $(shell date +%Y%m%d)
+date := $(shell date +%Y%m%d.%H%M)
 
 version := $(shell sed -n '/Version:/{s/.* //;p}' $(spec))
 release := $(date).git.$(rev)
