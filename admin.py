@@ -422,6 +422,8 @@ class CreateOrEditCollectionCommand(object):
         parser.add_argument('-t', '--target',
                             required=self.create,
                             help="Koji target")
+        parser.add_argument('--dest-tag',
+                            help="Koji destination tag used to fetch SRPMs and builds")
         parser.add_argument('-m', '--mode', choices=('primary', 'secondary'),
                             dest='secondary_mode', action=CollectionModeAction,
                             help="Whether target should be in secondary "
@@ -449,8 +451,10 @@ class CreateOrEditCollectionCommand(object):
         target_info = koji_session.getBuildTarget(collection.target)
         if not target_info:
             sys.exit("Target not found in Koji")
-        collection.dest_tag = target_info['dest_tag_name']
         collection.build_tag = target_info['build_tag_name']
+        # dest tag should by default be the same as build_tag
+        if not collection.dest_tag:
+            collection.dest_tag = collection.build_tag
 
 
 class CreateCollection(CreateOrEditCollectionCommand, CreateEntityCommand, Command):
