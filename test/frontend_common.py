@@ -18,15 +18,9 @@
 
 from functools import wraps
 
-# pylint:disable = unused-import
-import koschei.frontend.api
-import koschei.frontend.views
-import koschei.frontend.auth
-
-from koschei.frontend import app, db
-from koschei.models import User, PackageGroup, AppliedChange
-
-from test.common import DBTest, my_vcr
+from koschei.frontend import app
+from koschei.frontend.base import db
+from test.common import DBTest
 
 
 def login(client, user):

@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2016  Red Hat, Inc.
+# Copyright (C) 2014-2017  Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,17 +16,28 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-from __future__ import print_function, absolute_import
+from datetime import datetime
+
+import humanize
+from jinja2 import Markup
 
 from koschei.frontend.base import app
 
-import koschei.frontend.auth
-import koschei.frontend.filters
-import koschei.frontend.model_additions
-import koschei.frontend.template_functions
-import koschei.frontend.api
-import koschei.frontend.views
+app.add_template_filter(humanize.intcomma, 'intcomma')
+app.add_template_filter(humanize.naturaltime, 'naturaltime')
+app.add_template_filter(humanize.naturaldelta, 'naturaldelta')
 
-from koschei import plugin
 
-plugin.load_plugins('frontend')
+@app.template_filter()
+def percentage(val):
+    return format(val * 10000, '.4f') + Markup('&nbsp;&#8241;')
+
+
+@app.template_filter('date')
+def date_filter(date):
+    return date.strftime("%F %T") if date else ''
+
+
+@app.template_filter()
+def epoch(dt):
+    return int((dt - datetime.fromtimestamp(0)).total_seconds())

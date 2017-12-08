@@ -26,9 +26,6 @@ from koschei.config import load_config
 load_config(['config.cfg.template', 'aux/test-config.cfg'])
 
 from koschei.frontend import app as application
-import koschei.frontend.api
-import koschei.frontend.views
-import koschei.frontend.auth
 
 logger = logging.getLogger("koschei.sql")
 logger.setLevel(logging.DEBUG)

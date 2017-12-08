@@ -19,8 +19,8 @@
 from __future__ import absolute_import
 
 from flask import json
-from koschei.models import Collection
 
+from koschei.models import Collection
 from test.frontend_common import FrontendTest
 
 

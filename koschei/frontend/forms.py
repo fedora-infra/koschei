@@ -22,7 +22,6 @@ from __future__ import print_function, absolute_import
 import re
 
 from flask_wtf import Form
-
 from wtforms import (
     StringField, TextAreaField, IntegerField, BooleanField,
 )
@@ -30,8 +29,7 @@ from wtforms.validators import Regexp, ValidationError
 from wtforms.widgets import HTMLString, HiddenInput
 
 from koschei.config import get_koji_config
-
-from koschei.frontend import flash_nak
+from koschei.frontend.util import flash_nak
 
 
 class CheckBoxField(BooleanField):
