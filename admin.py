@@ -648,9 +648,9 @@ class SubmitBuild(Command):
             pkgs = pkgs.filter(Collection.name == collection)
         for pkg in pkgs.all():
             # FIXME there is code duplication with backend/services/scheduler.py
-            koji_session = self.session.koji('primary')
-            all_arches = koji_util.get_koji_arches(
-                self.session,
+            koji_session = session.koji('primary')
+            all_arches = koji_util.get_koji_arches_cached(
+                session,
                 koji_session,
                 pkg.collection.build_tag,
             )
