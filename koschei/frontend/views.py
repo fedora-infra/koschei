@@ -19,133 +19,34 @@
 
 from __future__ import print_function, absolute_import
 
-import re
-import six.moves.urllib as urllib
-from datetime import datetime
 from textwrap import dedent
 
+import six.moves.urllib as urllib
 from flask import abort, render_template, request, url_for, redirect, g
-from jinja2 import Markup, escape
 from sqlalchemy import Integer
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import (joinedload, subqueryload, undefer, contains_eager,
-                            aliased)
+from sqlalchemy.orm import (
+    joinedload, subqueryload, undefer, contains_eager, aliased,
+)
 from sqlalchemy.sql import exists, func, false, true, cast, union
 
 from koschei import plugin, data
-from koschei.db import RpmEVR
 from koschei.config import get_config
-from koschei.frontend import (app, db, frontend_config, auth, session,
-                              forms, Tab, flash_ack, flash_nak)
+from koschei.db import RpmEVR
+from koschei.frontend import forms, auth
+from koschei.frontend.base import frontend_config, db, app, session
+from koschei.frontend.model_additions import package_running_icon
+from koschei.frontend.tabs import Tab
+from koschei.frontend.util import flash_nak, flash_ack, Reversed, NullsLastOrder, \
+    get_order
 from koschei.models import (
-    Package, Build, PackageGroup, PackageGroupRelation, AdminNotice,
-    BuildrootProblem, BasePackage, GroupACL, Collection, CollectionGroup,
-    AppliedChange, UnappliedChange, ResolutionChange, ResourceConsumptionStats,
-    ScalarStats, Dependency,
+    Package, Build, PackageGroup, PackageGroupRelation, BasePackage, GroupACL,
+    CollectionGroup, AppliedChange, UnappliedChange, ResolutionChange,
+    ResourceConsumptionStats, ScalarStats, Dependency,
 )
 
 packages_per_page = frontend_config['packages_per_page']
 builds_per_page = frontend_config['builds_per_page']
-
-plugin.load_plugins('frontend')
-
-
-def page_args(clear=False, **kwargs):
-    def proc_order(order):
-        new_order = []
-        for item in order:
-            if (item.replace('-', '')
-                    not in new_order and '-' + item not in new_order):
-                new_order.append(item)
-        return ','.join(new_order)
-    if 'order_by' in kwargs:
-        kwargs['order_by'] = proc_order(kwargs['order_by'])
-    # the supposedly unnecessary call to items() is needed
-    unfiltered = kwargs if clear else dict(request.args.items(), **kwargs)
-    args = {k: v for k, v in unfiltered.items() if v is not None}
-    encoded = urllib.parse.urlencode(args)
-    return '?' + encoded
-
-
-def generate_links(package):
-    for link_dict in get_config('links'):
-        name = link_dict['name']
-        url = link_dict['url']
-        try:
-            for interp in re.findall(r'\{([^}]+)\}', url):
-                if not re.match(r'package\.?', interp):
-                    raise RuntimeError("Only 'package' variable can be "
-                                       "interpolated into link url")
-                value = package
-                for part in interp.split('.')[1:]:
-                    value = getattr(value, part)
-                if value is None:
-                    raise AttributeError()  # continue the outer loop
-                url = url.replace('{' + interp + '}',
-                                  escape(urllib.parse.quote_plus(str(value))))
-            yield name, url
-        except AttributeError:
-            continue
-
-
-@app.template_filter()
-def epoch(dt):
-    return int((dt - datetime.fromtimestamp(0)).total_seconds())
-
-
-def get_global_notices():
-    notices = [n.content for n in
-               db.query(AdminNotice.content).filter_by(key="global_notice")]
-    for collection in g.current_collections:
-        if collection.latest_repo_resolved is False:
-            problems = db.query(BuildrootProblem)\
-                .filter_by(collection_id=collection.id).all()
-            notices.append("Base buildroot for {} is not installable. "
-                           "Dependency problems:<br/>".format(collection) +
-                           '<br/>'.join((p.problem for p in problems)))
-    notices = list(map(Markup, notices))
-    return notices
-
-
-def require_login():
-    return " " if g.user else ' disabled="true" '
-
-
-def secondary_koji_url(collection):
-    if collection.secondary_mode:
-        return get_config('secondary_koji_config.weburl')
-    return get_config('koji_config.weburl')
-
-
-class Reversed(object):
-    def __init__(self, content):
-        self.content = content
-
-    def desc(self):
-        return self.content
-
-    def asc(self):
-        return self.content.desc()
-
-
-class NullsLastOrder(Reversed):
-    def asc(self):
-        return self.content.desc().nullslast()
-
-
-def get_order(order_map, order_spec):
-    orders = []
-    components = order_spec.split(',')
-    for component in components:
-        if component:
-            if component.startswith('-'):
-                order = [o.desc() for o in order_map.get(component[1:], ())]
-            else:
-                order = [o.asc() for o in order_map.get(component, ())]
-            orders.extend(order)
-    if any(order is None for order in orders):
-        abort(400)
-    return components, orders
 
 
 def populate_package_groups(packages):
@@ -216,139 +117,6 @@ def collection_package_view(template, query_fn=None, **template_args):
     return render_template(template, packages=page.items, page=page,
                            order=order_names, collection=collection,
                            **template_args)
-
-
-def icon(name, title=None):
-    url = url_for('static', filename='images/{}.png'.format(name))
-    return Markup(
-        '<img src="{url}" title="{title}"/>'
-        .format(url=url, title=title or name)
-    )
-
-
-def package_state_icon(package_or_state):
-    state_string = getattr(package_or_state, 'state_string', package_or_state)
-    icon_name = {
-        'ok': 'complete',
-        'failing': 'failed',
-        'unresolved': 'cross',
-        'blocked': 'unknown',
-        'untracked': 'unknown'
-    }.get(state_string, 'unknown')
-    return icon(icon_name, state_string)
-Package.state_icon = property(package_state_icon)
-
-
-def package_running_icon(self):
-    if self.has_running_build:
-        return icon('running')
-    return ''
-Package.running_icon = property(package_running_icon)
-
-
-def resolution_state_icon(resolved):
-    if resolved is None:
-        return icon('unknown')
-    if resolved is True:
-        return icon('complete')
-    return icon('cross')
-
-
-def build_state_icon(build_or_state):
-    if build_or_state is None:
-        return ""
-    if isinstance(build_or_state, int):
-        state_string = Build.REV_STATE_MAP[build_or_state]
-    else:
-        state_string = getattr(build_or_state, 'state_string', build_or_state)
-    return icon(state_string)
-Build.state_icon = property(build_state_icon)
-
-
-def build_css_class(build):
-    css = ''
-    if build.untagged:
-        css += " kk-untagged-build"
-    if build.real:
-        css += " table-info"
-    if build.state == Build.FAILED:
-        css += " table-warning"
-    return css
-Build.css_class = property(build_css_class)
-
-
-def resolution_change_css_class(resolution_change):
-    if resolution_change.resolved:
-        return "table-success"
-    return "table-danger"
-ResolutionChange.css_class = property(resolution_change_css_class)
-
-
-app.jinja_env.globals.update(
-    primary_koji_url=get_config('koji_config.weburl'),
-    secondary_koji_url=secondary_koji_url,
-    koschei_version=get_config('version'),
-    generate_links=generate_links,
-    inext=next, iter=iter,
-    min=min, max=max, page_args=page_args,
-    get_global_notices=get_global_notices,
-    require_login=require_login,
-    Package=Package, Build=Build,
-    ResolutionChange=ResolutionChange,
-    package_state_icon=package_state_icon,
-    build_state_icon=build_state_icon,
-    resolution_state_icon=resolution_state_icon,
-    fedora_assets_url=frontend_config['fedora_assets_url'])
-
-
-@app.teardown_appcontext
-def shutdown_session(exception=None):
-    db.remove()
-
-
-@app.template_filter('date')
-def date_filter(date):
-    return date.strftime("%F %T") if date else ''
-
-
-@app.context_processor
-def inject_times():
-    return {'since': datetime.min, 'until': datetime.now()}
-
-
-@app.context_processor
-def inject_fedmenu():
-    if 'fedmenu_url' in frontend_config:
-        return {
-            'fedmenu_url': frontend_config['fedmenu_url'],
-            'fedmenu_data_url': frontend_config['fedmenu_data_url'],
-        }
-    return {}
-
-
-@app.before_request
-def get_collections():
-    if request.endpoint == 'static':
-        return
-    collection_name = request.args.get('collection')
-    g.collections = db.query(Collection)\
-        .order_by(Collection.order.desc(), Collection.name.desc())\
-        .all()
-    for collection in g.collections:
-        db.expunge(collection)
-    if not g.collections:
-        abort(500, "No collections setup")
-    g.collections_by_name = {c.name: c for c in g.collections}
-    g.collections_by_id = {c.id: c for c in g.collections}
-    g.current_collections = []
-    if collection_name:
-        try:
-            for component in collection_name.split(','):
-                g.current_collections.append(g.collections_by_name[component])
-        except KeyError:
-            abort(404, "Collection not found")
-    else:
-        g.current_collections = g.collections
 
 
 class UnifiedPackage(object):

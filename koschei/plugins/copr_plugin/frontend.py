@@ -19,15 +19,17 @@
 from __future__ import print_function, absolute_import
 
 from flask import abort, render_template, url_for, redirect, g
-from wtforms import validators, widgets, IntegerField, StringField
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload, subqueryload
+from wtforms import validators, widgets, IntegerField, StringField
 
 from koschei.config import get_config
-from koschei.frontend import app, auth, db, Tab, flash_ack
+from koschei.frontend import auth
+from koschei.frontend.base import app, db
 from koschei.frontend.forms import StrippedStringField, EmptyForm
+from koschei.frontend.tabs import Tab
+from koschei.frontend.util import flash_ack
 from koschei.models import User, CoprRebuildRequest, CoprRebuild
-
 
 app.jinja_env.globals.update(
     copr_frontend_url=get_config('copr.frontend_url'),

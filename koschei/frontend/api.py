@@ -18,7 +18,8 @@
 
 from flask import request, Response
 from sqlalchemy.sql import literal_column, case
-from koschei.frontend import app, db
+
+from koschei.frontend.base import db, app
 from koschei.models import Package, Collection, Build
 
 

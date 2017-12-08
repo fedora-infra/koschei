@@ -19,13 +19,15 @@
 
 from __future__ import print_function, absolute_import
 
-import re
 import functools
+import re
+
 from flask import abort, request, session, redirect, url_for, g
 
-from koschei.config import get_config
-from koschei.frontend import app, db, flash_ack, flash_info
 import koschei.models as m
+from koschei.config import get_config
+from koschei.frontend.base import app, db
+from koschei.frontend.util import flash_info, flash_ack
 
 bypass_login = get_config('bypass_login', None)
 user_re = get_config('frontend.auth.user_re')
