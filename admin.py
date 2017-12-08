@@ -513,19 +513,28 @@ class BranchCollection(CreateOrEditCollectionCommand, Command):
     """
 
     def setup_parser(self, parser):
-        parser.add_argument('master_collection',
-                            help="Master collection from which new collection should be branched")
-        parser.add_argument('new_name',
-                            help="New name for the master collection after the branched copy is created")
-        parser.add_argument('-d', '--display-name',
-                            required=True,
-                            help="Human readable name for branched collection")
-        parser.add_argument('-t', '--target',
-                            required=True,
-                            help="New Koji target for the master collection")
-        parser.add_argument('--bugzilla-version',
-                            help="Product version used in bugzilla template for"
-                                 "the branched collection")
+        parser.add_argument(
+            'master_collection',
+            help="Master collection from which new collection should be branched",
+        )
+        parser.add_argument(
+            'new_name',
+            help="New name for the master collection after the branched copy is created",
+        )
+        parser.add_argument(
+            '-d', '--display-name',
+            required=True,
+            help="Human readable name for branched collection",
+        )
+        parser.add_argument(
+            '-t', '--target',
+            required=True,
+            help="New Koji target for the master collection",
+        )
+        parser.add_argument(
+            '--bugzilla-version',
+            help="Product version used in bugzilla template for the branched collection",
+        )
 
     def execute(self, session, master_collection, new_name, display_name,
                 target, bugzilla_version):

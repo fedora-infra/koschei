@@ -56,6 +56,7 @@ class Query(sqlalchemy.orm.Query):
     def delete(self, synchronize_session=False):
         return super(Query, self).delete(synchronize_session=synchronize_session)
 
+    # pylint: disable=arguments-differ
     def update(self, values, synchronize_session=False):
         return super(Query, self).update(
             values,

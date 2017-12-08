@@ -32,6 +32,7 @@ class CacheVersionMismatch(Exception):
     pass
 
 
+# pylint: disable=arguments-differ
 class RepoCache(FileCache):
     """
     Cache of repo files. Allows concurrent access from multiple processes, but

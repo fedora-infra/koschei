@@ -52,6 +52,7 @@ class CheckBoxField(BooleanField):
 
 
 class StrippedStringField(StringField):
+    # pylint:disable=arguments-differ
     def process_formdata(self, values):
         # pylint:disable=W0201
         self.data = values and values[0].strip()

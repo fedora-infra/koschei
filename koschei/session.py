@@ -34,6 +34,7 @@ class KoscheiSession(object):
         if cache_id not in self._caches:
             import dogpile.cache
             import dogpile.cache.util
+            # pylint: disable=not-context-manager
             with _cache_creation_lock:
                 if cache_id not in self._caches:
                     cache = dogpile.cache.make_region(

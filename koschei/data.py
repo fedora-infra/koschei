@@ -272,10 +272,7 @@ def copy_collection(session, source, copy):
     """.format(
         copy=copy, source=source,
         package_cols=get_cols(Package, exclude=['collection_id']),
-        build_cols=get_cols(Build, exclude=['package_id']),
-        applied_change_cols=get_cols(AppliedChange, exclude=['build_id']),
         package_cols_q=get_cols(Package, exclude=['collection_id'], qualify=True),
-        build_cols_q=get_cols(Build, exclude=['package_id'], qualify=True),
     ))
 
     deepcopy_table(

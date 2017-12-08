@@ -212,7 +212,8 @@ def get_koji_load(koji_session, all_arches, arches):
     return min_load if noarch else max_load
 
 
-def get_srpm_arches(koji_session, all_arches, nvra, arch_override=None, build_arches=None):
+def get_srpm_arches(koji_session, all_arches, nvra, arch_override=None,
+                    build_arches=None):
     # compute arches the same way as koji
     # see kojid/getArchList
     archlist = all_arches

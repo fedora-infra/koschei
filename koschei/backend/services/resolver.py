@@ -38,10 +38,10 @@ from koschei.backend import koji_util, depsolve
 from koschei.backend.service import Service
 from koschei.backend.koji_util import itercall
 from koschei.backend.repo_util import KojiRepoDescriptor
-from koschei.models import (Package, Dependency, UnappliedChange,
-                            AppliedChange, Collection, ResolutionProblem,
-                            Build, BuildrootProblem, RepoMapping,
-                            ResolutionChange)
+from koschei.models import (
+    Package, Dependency, UnappliedChange, AppliedChange, ResolutionProblem,
+    Build, BuildrootProblem, RepoMapping, ResolutionChange,
+)
 from koschei.plugin import dispatch_event
 from koschei.util import Stopwatch, stopwatch
 
