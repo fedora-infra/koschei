@@ -275,6 +275,16 @@ class ResolverTest(DBTest):
                 self.build_resolver.process_builds(self.collection)
         self.assertTrue(foo_build.deps_resolved)
 
+    def test_nonexistent_in_group(self):
+        # nonexistent package in build group should be silently ignored
+        foo_build = self.prepare_foo_build()
+        with patch('koschei.backend.koji_util.get_build_group_cached',
+                   return_value=['R', 'nonexistent']):
+            with patch('koschei.backend.koji_util.get_rpm_requires',
+                       return_value=[['F', 'A']]):
+                self.build_resolver.process_builds(self.collection)
+        self.assertTrue(foo_build.deps_resolved)
+
     def test_resolution_fail(self):
         self.prepare_packages('bar')
         b = self.prepare_build('bar', True, repo_id=123, resolved=False)

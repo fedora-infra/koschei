@@ -42,8 +42,9 @@ def run_goal(sack, br, group):
     problems = []
     for name in group:
         sltr = _get_builddep_selector(sack, name)
-        # missing packages are silently skipped as in dnf
-        goal.install(select=sltr)
+        if sltr.matches():
+            # missing packages are silently skipped as in dnf
+            goal.install(select=sltr)
     for r in br:
         sltr = _get_builddep_selector(sack, r)
         # pylint: disable=E1103
