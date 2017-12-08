@@ -438,8 +438,12 @@ def collection_list():
         .options(joinedload(CollectionGroup.collections))\
         .order_by(CollectionGroup.name)\
         .all()
-    categorized_ids = {c.id for g in groups for c in g.collections}
-    uncategorized = [c for c in g.collections if c.id not in categorized_ids]
+    categorized_ids = {
+        collection.id for group in groups for collection in group.collections
+    }
+    uncategorized = [
+        collection for collection in g.collections if collection.id not in categorized_ids
+    ]
     return render_template("list-collections.html", groups=groups,
                            uncategorized=uncategorized)
 
