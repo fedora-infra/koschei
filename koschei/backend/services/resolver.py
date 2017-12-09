@@ -61,37 +61,37 @@ def create_dependency_changes(deps1, deps2, **rest):
         return []
 
     def key(dep):
-        return (dep.name, dep.epoch, dep.version, dep.release, dep.arch)
+        return dep.name, dep.epoch, dep.version, dep.release, dep.arch
 
-    def new_change(**values):
-        change = dict(
+    def create_change(**values):
+        new_change = dict(
             prev_version=None, prev_epoch=None, prev_release=None, prev_arch=None,
             curr_version=None, curr_epoch=None, curr_release=None, curr_arch=None,
         )
-        change.update(rest)
-        change.update(values)
-        return change
+        new_change.update(rest)
+        new_change.update(values)
+        return new_change
 
     old = util.set_difference(deps1, deps2, key)
     new = util.set_difference(deps2, deps1, key)
 
     changes = {}
-    for dep in old:
-        change = new_change(
-            dep_name=dep.name,
-            prev_version=dep.version, prev_epoch=dep.epoch,
-            prev_release=dep.release, prev_arch=dep.arch,
+    for dependency in old:
+        change = create_change(
+            dep_name=dependency.name,
+            prev_version=dependency.version, prev_epoch=dependency.epoch,
+            prev_release=dependency.release, prev_arch=dependency.arch,
             distance=None,
         )
-        changes[dep.name] = change
-    for dep in new:
-        change = changes.get(dep.name) or new_change(dep_name=dep.name)
+        changes[dependency.name] = change
+    for dependency in new:
+        change = changes.get(dependency.name) or create_change(dep_name=dependency.name)
         change.update(
-            curr_version=dep.version, curr_epoch=dep.epoch,
-            curr_release=dep.release, curr_arch=dep.arch,
-            distance=dep.distance,
+            curr_version=dependency.version, curr_epoch=dependency.epoch,
+            curr_release=dependency.release, curr_arch=dependency.arch,
+            distance=dependency.distance,
         )
-        changes[dep.name] = change
+        changes[dependency.name] = change
     return list(changes.values()) if changes else []
 
 
@@ -150,11 +150,10 @@ class DependencyCache(object):
     def get_by_ids(self, db, ids):
         res = []
         missing = []
-        # pylint:disable=redefined-builtin
-        for id in ids:
-            dep = self.ids.get(id)
+        for dep_id in ids:
+            dep = self.ids.get(dep_id)
             if dep is None:
-                missing.append(id)
+                missing.append(dep_id)
             else:
                 res.append(dep)
                 self._access(dep)
@@ -208,7 +207,7 @@ class Resolver(Service):
                 ) for pkg in installs if pkg.arch != 'src'
             ]
             depsolve.compute_dependency_distances(sack, br, deps)
-        return (resolved, problems, deps)
+        return resolved, problems, deps
 
     def get_prev_build_for_comparison(self, build):
         return self.db.query(Build)\
@@ -222,14 +221,15 @@ class Resolver(Service):
     def set_descriptor_tags(self, collection, descriptors):
         def koji_call(koji_session, desc):
             koji_session.repoInfo(desc.repo_id)
+
         result_gen = itercall(self.session.secondary_koji_for(collection),
                               descriptors, koji_call)
-        for desc, repo_info in izip(descriptors, result_gen):
+        for descriptor, repo_info in izip(descriptors, result_gen):
             if repo_info['state'] in (koji.REPO_STATES['READY'],
                                       koji.REPO_STATES['EXPIRED']):
-                desc.build_tag = repo_info['tag_name']
+                descriptor.build_tag = repo_info['tag_name']
             else:
-                self.log.info('Repo {} is dead, skipping'.format(desc.repo_id))
+                self.log.info('Repo {} is dead, skipping'.format(descriptor.repo_id))
 
     @stopwatch(total_time)
     def get_build_for_comparison(self, package):
@@ -445,7 +445,7 @@ class Resolver(Service):
                     .format(
                         pkgs_done,
                         int(pkgs_done / len(packages) * 100.0),
-                        int((pkgs_done - pkgs_reported) / (time_diff) * 60.0)
+                        int((pkgs_done - pkgs_reported) / time_diff * 60.0)
 
                     )
                 )
@@ -548,7 +548,8 @@ class Resolver(Service):
                 )
             yield sack
 
-    def create_repo_descriptor(self, secondary_mode, repo_id):
+    @staticmethod
+    def create_repo_descriptor(secondary_mode, repo_id):
         return KojiRepoDescriptor('secondary' if secondary_mode else 'primary',
                                   None, repo_id)
 
@@ -571,8 +572,8 @@ class Resolver(Service):
             'build_id': change['build_id'],
         }
         for state in ('prev', 'curr'):
-            def s(x, state=state):
-                return state + '_' + x
+            def s(x, prefix=state):
+                return prefix + '_' + x
             if change[s('version')]:
                 applied_change[s('dep_id')] = self.dependency_cache.get_or_create_nevra(
                     self.db,
@@ -586,7 +587,7 @@ class Resolver(Service):
                 applied_change[s('dep_id')] = None
         return applied_change
 
-    def process_build(self, sack, entry, curr_deps):
+    def process_build(self, entry, curr_deps):
         self.log.info("Processing build {}".format(entry.id))
         prev = self.get_prev_build_for_comparison(entry)
         deps = self.store_deps(curr_deps)
@@ -660,7 +661,7 @@ class Resolver(Service):
                         _, _, curr_deps = self.resolve_dependencies(
                             sack, brs, build_group)
                         try:
-                            self.process_build(sack, build, curr_deps)
+                            self.process_build(build, curr_deps)
                             self.db.commit()
                         except (StaleDataError, ObjectDeletedError):
                             # build deleted concurrently
@@ -668,7 +669,7 @@ class Resolver(Service):
                 else:
                     self.log.info("Repo id=%d not available, skipping",
                                   repo_descriptor.repo_id)
-                sack = None
+                del sack
         self.db.query(Build)\
             .filter_by(repo_id=None)\
             .filter(Build.state.in_(Build.FINISHED_STATES))\
@@ -699,8 +700,7 @@ class Resolver(Service):
                     .first()
                 if (
                         mapping and
-                        mapping.primary_id and
-                        (
+                        mapping.primary_id and (
                             self.session.koji('primary')
                             .getTaskInfo(mapping.task_id)['state']
                         ) == koji.TASK_STATES['CLOSED']
