@@ -1,0 +1,5 @@
+language: generic
+sudo: required
+services: docker
+install: docker build -f .travis/Dockerfile -t koschei-testimg .
+script: docker run koschei-testimg
