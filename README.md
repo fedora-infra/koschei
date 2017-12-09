@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/msimacek/koschei.svg?branch=master)](https://travis-ci.org/msimacek/koschei)
+[![Build Status](https://travis-ci.org/msimacek/koschei.svg?branch=master)](https://travis-ci.org/msimacek/koschei) [![test coverage](https://img.shields.io/codecov/c/github/msimacek/koschei/master.svg)](https://codecov.io/gh/msimacek/koschei)
 
 Koschei
 =======
