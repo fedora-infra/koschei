@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/msimacek/koschei.svg?branch=master)](https://travis-ci.org/msimacek/koschei)
+
 Koschei
 =======
 
