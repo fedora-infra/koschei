@@ -27,3 +27,7 @@
 # Vagrant + Ansible
 *.retry
 .vagrant
+
+# Test coverage data
+/.coverage
+/test/cover
