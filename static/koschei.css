@@ -26,6 +26,8 @@ html { font-size: 14px; }
 
 .kk-logo { color: #777; }
 
+.kk-clickable { cursor: pointer; }
+
 .kk-toggle-button[aria-expanded=false] .kk-expanded { display: none; }
 .kk-toggle-button[aria-expanded=true] .kk-collapsed { display: none; }
 
