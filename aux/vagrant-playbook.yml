@@ -22,37 +22,17 @@
     - name: install required packages (please be patient)
       package: name="{{ item }}" state=present
       with_items:
-        - fedmsg
-        - httpd
-        - ipython
-        - js-jquery
-        - koji
         - mod_ssl
-        - mod_wsgi
+        - python-ipython
         - policycoreutils-python
         - postgresql
         - postgresql-server
-        - python2-devel
-        - python-alembic
-        - python-copr
-        - python-dogpile-cache
-        - python-fedmsg-meta-fedora-infrastructure
-        - python-flask
-        - python-flask-sqlalchemy
-        - python-flask-wtf
-        - python-hawkey
-        - python-humanize
-        - python-jinja2
-        - python-librepo
-        - python-mock
-        - python-nose
-        - python-psycopg2
-        - python-setuptools
-        - python-six
-        - python-sqlalchemy
-        - python-vcrpy
-        - rpm-python
-        - systemd
+        - dnf-command(builddep)
+
+    - name: install koschei package requirements
+      command: dnf builddep -y /vagrant/koschei.spec
+      register: dnf_result
+      changed_when: "'Nothing to do' not in dnf_result.stdout"
 
     - name: create koschei user
       user: name=koschei
