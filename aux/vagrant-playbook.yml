@@ -23,11 +23,13 @@
       package: name="{{ item }}" state=present
       with_items:
         - mod_ssl
-        - python-ipython
+        - python3-ipython
         - policycoreutils-python
         - postgresql
         - postgresql-server
         - dnf-command(builddep)
+        - python3-alembic
+        - python3-mod_wsgi
 
     - name: install koschei package requirements
       command: dnf builddep -y /vagrant/koschei.spec
@@ -52,12 +54,12 @@
         - { src: /vagrant/aux/vagrant-config.cfg, dest: /etc/koschei/config-backend.cfg }
         - { src: /vagrant/aux/vagrant-config.cfg, dest: /etc/koschei/config-admin.cfg }
         - { src: /vagrant/aux/vagrant-config.cfg, dest: /etc/koschei/config-frontend.cfg }
-        - { src: /vagrant/koschei, dest: /usr/lib/python2.7/site-packages/koschei }
+        - { src: /vagrant/koschei, dest: /usr/lib/python3.6/site-packages/koschei }
         - { src: /vagrant/static, dest: /usr/share/koschei/static }
         - { src: /vagrant/admin.py, dest: /usr/bin/koschei-admin }
         - { src: /vagrant/httpd.conf, dest: /etc/httpd/conf.d/koschei.conf }
         - { src: /vagrant/koschei.wsgi, dest: /usr/share/koschei/koschei.wsgi }
-        - { src: /usr/bin/python, dest: /usr/libexec/koschei/koschei-admin }
+        - { src: /usr/bin/python3, dest: /usr/libexec/koschei/koschei-admin }
 
     - name: initialize database
       command: postgresql-setup initdb
@@ -102,7 +104,7 @@
       when: "res.rc != 0"
 
     - name: check whether koschei db schema is up-to-date
-      shell: "alembic -c /vagrant/alembic.ini current"
+      shell: "koschei-admin alembic current"
       changed_when: False
       register: res
 
@@ -111,7 +113,7 @@
       when: "'(head)' not in res.stdout"
 
     - name: run alembic database migration
-      shell: "alembic -c /vagrant/alembic.ini upgrade head"
+      shell: "koschei-admin alembic upgrade head"
       when: "'(head)' not in res.stdout"
 
     - name: enable permissive selinux mode for httpd
@@ -142,6 +144,8 @@
 
     - name: install koschei-ipython script
       copy:
-        content: "KOSCHEI_CONFIG=/usr/share/koschei/config.cfg:/etc/koschei/config-backend.cfg exec ipython -i /vagrant/aux/test.ipy \"$@\""
+        content: >
+          KOSCHEI_CONFIG=/usr/share/koschei/config.cfg:/etc/koschei/config-backend.cfg
+          exec ipython3 -i /vagrant/aux/test.ipy "$@"
         dest: /usr/local/bin/koschei-ipython
         mode: 0755
