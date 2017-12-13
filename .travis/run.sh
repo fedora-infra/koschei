@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+
 . aux/set-env.sh
 pg_init
 pg_start
