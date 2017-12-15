@@ -30,6 +30,7 @@
         - dnf-command(builddep)
         - python3-alembic
         - python3-mod_wsgi
+        - js-jquery
 
     - name: install koschei package requirements
       command: dnf builddep -y /vagrant/koschei.spec
