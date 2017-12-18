@@ -29,6 +29,7 @@ import koschei.models as m
 
 bypass_login = get_config('bypass_login', None)
 user_re = get_config('frontend.auth.user_re')
+user_env = get_config('frontend.auth.user_env')
 user_re = re.compile('^{}$'.format(user_re))
 
 
@@ -38,7 +39,7 @@ def login():
         identity = "none"
         user_name = bypass_login
     else:
-        identity = request.environ.get('REMOTE_USER') or abort(501)
+        identity = request.environ.get(user_env) or abort(501)
         user_name = re.match(user_re, identity).group(1)
     user = db.query(m.User).filter_by(name=user_name).first()
     if not user:

@@ -256,6 +256,11 @@ config = {
             #"user_re": "http://(.+)\\.id\\.fedoraproject\\.org/",
             # Kerberos
             #"user_re": "(.+)@EXAMPLE\\.COM",
+
+            # Which environment variable contains the identity string
+            "user_env": "REMOTE_USER",
+            # For OpenID Connect:
+            # "user_env": "OIDC_CLAIM_nickname",
         },
 
         # Global assets for Fedora apps
