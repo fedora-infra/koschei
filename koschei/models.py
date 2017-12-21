@@ -763,21 +763,29 @@ class ScalarStats(MaterializedView):
     scratch_builds = Column(Integer, nullable=False)
 
 
-class ResourceConsumptionStats(MaterializedView):
-    view = (
-        select((
+def _resource_consumption_stats_view():
+    time_difference_expr = func.sum(KojiTask.finished - KojiTask.started)
+    time_difference = extract('EPOCH', time_difference_expr)
+    time_difference_all = select([time_difference]).select_from(KojiTask)
+    return (
+        select([
             Package.name,
             KojiTask.arch,
-            func.sum(KojiTask.finished - KojiTask.started).label('time'),
-            cast((
-                extract('EPOCH', func.sum(KojiTask.finished - KojiTask.started)) /
-                select([extract('EPOCH', func.sum(KojiTask.finished - KojiTask.started))])
-                .select_from(KojiTask)
-            ), Float).label('time_percentage'),
-        ))
-        .select_from(join(join(Package, Build, Package.id == Build.package_id), KojiTask))
+            time_difference_expr.label('time'),
+            cast(time_difference / time_difference_all, Float).label('time_percentage'),
+        ])
+        .select_from(
+            join(
+                join(Package, Build, Package.id == Build.package_id),
+                KojiTask,
+            )
+        )
         .group_by(Package.name, KojiTask.arch)
     )
+
+
+class ResourceConsumptionStats(MaterializedView):
+    view = _resource_consumption_stats_view()
     name = Column(String, primary_key=True)
     arch = Column(String, primary_key=True)
     time = Column(Interval, index=True)
