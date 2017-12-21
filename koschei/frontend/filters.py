@@ -30,6 +30,8 @@ app.add_template_filter(humanize.naturaldelta, 'naturaldelta')
 
 @app.template_filter()
 def percentage(val):
+    if val is None:
+        return 'None'
     return format(val * 10000, '.4f') + Markup('&nbsp;&#8241;')
 
 
