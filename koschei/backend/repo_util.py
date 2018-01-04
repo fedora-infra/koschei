@@ -28,9 +28,6 @@ from functools import total_ordering
 from koschei.config import get_config, get_koji_config
 
 
-REPO_404 = 19
-
-
 @total_ordering
 class KojiRepoDescriptor(object):
     def __init__(self, koji_id, build_tag, repo_id):
@@ -97,7 +94,7 @@ def get_repo(repo_dir, repo_descriptor, download=False):
     try:
         result = h.perform(result)
     except librepo.LibrepoException as e:
-        if e.args[0] == REPO_404:
+        if e.args[0] == librepo.LRE_NOURL:
             return None
         raise
     repodata = result.yum_repo
