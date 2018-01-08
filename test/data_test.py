@@ -18,8 +18,6 @@
 
 # pylint: disable=unbalanced-tuple-unpacking,blacklisted-name
 
-import six
-
 import time
 from datetime import datetime
 
@@ -43,7 +41,7 @@ class DataTest(DBTest):
         content = ['a1', 'a2', 'a3']
         data.set_group_content(self.session, group, content, append=False)
 
-        six.assertCountEqual(self, [a1.base_id, a2.base_id, a3.base_id],
+        self.assertCountEqual([a1.base_id, a2.base_id, a3.base_id],
                              self.db.query(PackageGroupRelation.base_id)
                              .filter_by(group_id=group.id).all_flat())
         self.assert_action_log(
@@ -64,7 +62,7 @@ class DataTest(DBTest):
         content = ['a1', 'a2', 'a3']
         data.set_group_content(self.session, group, content, append=True)
 
-        six.assertCountEqual(self, [bar.base_id, a1.base_id, a2.base_id, a3.base_id],
+        self.assertCountEqual([bar.base_id, a1.base_id, a2.base_id, a3.base_id],
                              self.db.query(PackageGroupRelation.base_id)
                              .filter_by(group_id=group.id).all_flat())
         self.assert_action_log(
@@ -87,7 +85,7 @@ class DataTest(DBTest):
         content = ['a1']
         data.set_group_content(self.session, group, content, delete=True)
 
-        six.assertCountEqual(self, [bar.base_id],
+        self.assertCountEqual([bar.base_id],
                              self.db.query(PackageGroupRelation.base_id)
                              .filter_by(group_id=group.id).all_flat())
         self.assert_action_log(
@@ -101,7 +99,7 @@ class DataTest(DBTest):
         self.db.flush()
         with self.assertRaises(data.PackagesDontExist) as exc:
             data.set_group_content(self.session, group, ['bar', 'a1', 'a2'])
-        six.assertCountEqual(self, {'a1', 'a2'}, exc.exception.packages)
+        self.assertCountEqual({'a1', 'a2'}, exc.exception.packages)
 
     def test_track_packages(self):
         foo, bar = self.prepare_packages('foo', 'bar')

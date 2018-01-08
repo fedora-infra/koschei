@@ -17,8 +17,6 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-import six
-
 from unittest import skipIf
 
 import hawkey
@@ -254,7 +252,7 @@ class ResolverTest(DBTest):
                                     Dependency.version, Dependency.release,
                                     Dependency.arch)\
             .filter(Dependency.id.in_(foo_build.dependency_keys)).all()
-        six.assertCountEqual(self, FOO_DEPS, actual_deps)
+        self.assertCountEqual(FOO_DEPS, actual_deps)
 
     def test_unresolved_build_should_bump_priority(self):
         foo_build = self.prepare_foo_build()
@@ -337,7 +335,7 @@ class ResolverTest(DBTest):
             .outerjoin(curr, change.curr_dep)
             .all()
         )
-        six.assertCountEqual(self, expected_changes, actual_changes)
+        self.assertCountEqual(expected_changes, actual_changes)
 
     def test_repo_generation(self):
         self.prepare_old_build()
@@ -362,7 +360,7 @@ class ResolverTest(DBTest):
         actual_changes = self.db.query(c.package_id, c.dep_name, c.prev_epoch,
                                        c.curr_epoch, c.prev_version, c.curr_version,
                                        c.prev_release, c.curr_release, c.distance).all()
-        six.assertCountEqual(self, expected_changes, actual_changes)
+        self.assertCountEqual(expected_changes, actual_changes)
         resolution_change = self.db.query(ResolutionChange)\
             .filter_by(package_id=foo.id)\
             .one()
@@ -571,10 +569,10 @@ class ResolverTest(DBTest):
             sack = get_sack()
             (resolved, problems, deps) = \
                 self.repo_resolver.resolve_dependencies(sack, ['/bin/csh'], ['R'])
-            six.assertCountEqual(self, [], problems)
+            self.assertCountEqual([], problems)
             self.assertTrue(resolved)
             self.assertIsNotNone(deps)
-            six.assertCountEqual(self, ['B', 'C', 'R'], [dep.name for dep in deps])
+            self.assertCountEqual(['B', 'C', 'R'], [dep.name for dep in deps])
 
     # qt-x11 requires (sni-qt(x86-64) if plasma-workspace)
     # since plasma-workspace is not installed, sni-qt should not be instaled either
@@ -585,10 +583,10 @@ class ResolverTest(DBTest):
             sack = get_sack()
             (resolved, problems, deps) = \
                 self.repo_resolver.resolve_dependencies(sack, ['qt-x11'], ['R'])
-            six.assertCountEqual(self, [], problems)
+            self.assertCountEqual([], problems)
             self.assertTrue(resolved)
             self.assertIsNotNone(deps)
-            six.assertCountEqual(self, ['qt-x11', 'R'], [dep.name for dep in deps])
+            self.assertCountEqual(['qt-x11', 'R'], [dep.name for dep in deps])
 
     # qt-x11 requires (sni-qt(x86-64) if plasma-workspace)
     # since plasma-workspace is installed, sni-qt should be instaled too
@@ -601,10 +599,10 @@ class ResolverTest(DBTest):
                 self.repo_resolver.resolve_dependencies(sack,
                                                    ['qt-x11', 'plasma-workspace'],
                                                    ['R'])
-            six.assertCountEqual(self, [], problems)
+            self.assertCountEqual([], problems)
             self.assertTrue(resolved)
             self.assertIsNotNone(deps)
-            six.assertCountEqual(self, ['qt-x11', 'plasma-workspace', 'sni-qt', 'R'],
+            self.assertCountEqual(['qt-x11', 'plasma-workspace', 'sni-qt', 'R'],
                                  [dep.name for dep in deps])
 
     # rich deps used directly in BuildRequires
@@ -618,8 +616,8 @@ class ResolverTest(DBTest):
                                                    ['(sni-qt(x86-64) if plasma-workspace)',
                                                     'plasma-workspace'],
                                                    ['R'])
-            six.assertCountEqual(self, [], problems)
+            self.assertCountEqual([], problems)
             self.assertTrue(resolved)
             self.assertIsNotNone(deps)
-            six.assertCountEqual(self, ['plasma-workspace', 'sni-qt', 'R'],
+            self.assertCountEqual(['plasma-workspace', 'sni-qt', 'R'],
                                  [dep.name for dep in deps])

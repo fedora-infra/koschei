@@ -27,7 +27,6 @@ import json
 import psycopg2
 import rpm
 import vcr
-import six
 import contextlib
 
 from mock import Mock
@@ -50,10 +49,6 @@ my_vcr = vcr.VCR(
     serializer='json',
     path_transformer=vcr.VCR.ensure_suffix('.vcr.json'),
 )
-
-
-def py3_only(f):
-    return unittest.skipUnless(six.PY3, 'Requires Python 3')(f)
 
 
 class AbstractTest(unittest.TestCase):
@@ -322,7 +317,7 @@ class DBTest(AbstractTest):
 
     def assert_action_log(self, *messages):
         logs = self.db.query(LogEntry.message).all_flat(set)
-        six.assertCountEqual(self, messages, logs)
+        self.assertCountEqual(messages, logs)
 
 
 class KojiMock(Mock):

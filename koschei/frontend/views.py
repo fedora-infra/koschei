@@ -20,8 +20,8 @@
 from __future__ import print_function, absolute_import
 
 from textwrap import dedent
+from urllib.parse import urlencode
 
-import six.moves.urllib as urllib
 from flask import abort, render_template, request, url_for, redirect, g
 from sqlalchemy import Integer
 from sqlalchemy.exc import IntegrityError
@@ -654,7 +654,7 @@ def bugreport(name):
     template = get_config('bugreport.template')
     bug = {key: template[key].format(**variables) for key in template.keys()}
     bug['comment'] = dedent(bug['comment']).strip()
-    query = urllib.parse.urlencode(bug)
+    query = urlencode(bug)
     bugreport_url = get_config('bugreport.url').format(query=query)
     return redirect(bugreport_url)
 

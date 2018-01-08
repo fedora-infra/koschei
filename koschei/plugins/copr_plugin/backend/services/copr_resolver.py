@@ -22,7 +22,6 @@ import re
 import os
 import hawkey
 
-from six.moves import zip as izip
 from collections import defaultdict
 from functools import cmp_to_key
 
@@ -124,7 +123,7 @@ class CoprResolver(Service):
             request.collection.build_tag,
             request.collection.build_group,
         )
-        for package, brs in izip(packages, br_gen):
+        for package, brs in zip(packages, br_gen):
             resolved1, _, installs1 = \
                 depsolve.run_goal(sack_before, brs, build_group)
             resolved2, problems2, installs2 = \

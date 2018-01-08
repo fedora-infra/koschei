@@ -16,8 +16,6 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-import six
-
 from copy import deepcopy
 from datetime import datetime, timedelta
 
@@ -59,7 +57,7 @@ class BackendTest(DBTest):
                                           session=self.session,
                                           package=package,
                                           prev_state='failing', new_state='ok')
-            six.assertCountEqual(self, [(x['id'],) for x in rnv_subtasks],
+            self.assertCountEqual([(x['id'],) for x in rnv_subtasks],
                                  self.db.query(KojiTask.task_id))
 
     def test_update_state_failed(self):
@@ -126,7 +124,7 @@ class BackendTest(DBTest):
             event.assert_called_once_with('package_state_change',
                                           session=self.session, package=package,
                                           prev_state='failing', new_state='ok')
-            six.assertCountEqual(self, [(x['id'],) for x in rnv_subtasks],
+            self.assertCountEqual([(x['id'],) for x in rnv_subtasks],
                                  self.db.query(KojiTask.task_id))
 
     # Regression test for https://github.com/msimacek/koschei/issues/27
@@ -171,7 +169,7 @@ class BackendTest(DBTest):
                                          request=True)
             self.assertEqual('ok', package.state_string)
             self.assertEquals(460889, package.last_complete_build.repo_id)
-            six.assertCountEqual(self, [(x['id'],) for x in rnv_subtasks],
+            self.assertCountEqual([(x['id'],) for x in rnv_subtasks],
                                  self.db.query(KojiTask.task_id))
 
     def test_refresh_latest_builds_already_present(self):
