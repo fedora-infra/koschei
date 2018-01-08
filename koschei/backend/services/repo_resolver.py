@@ -25,7 +25,6 @@ import koji
 import time
 
 from collections import namedtuple
-from six.moves import zip as izip
 
 from sqlalchemy.orm import joinedload, undefer
 from sqlalchemy.sql import insert
@@ -226,7 +225,7 @@ class RepoResolver(Resolver):
 
         build_group = self.get_build_group(collection)
         gen = ((package, self.resolve_dependencies(sack, br, build_group))
-               for package, br in izip(packages, brs))
+               for package, br in zip(packages, brs))
         queue_size = get_config('dependency.resolver_queue_size')
         gen = util.parallel_generator(gen, queue_size=queue_size)
         pkgs_done = 0

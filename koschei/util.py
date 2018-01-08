@@ -25,11 +25,10 @@ import logging
 import rpm
 import time
 import socket
-import six
 import fcntl
 import errno
 
-from six.moves.queue import Queue
+from queue import Queue
 from threading import Thread
 from functools import wraps
 
@@ -70,7 +69,7 @@ def is_build_newer(current_build, new_build):
     ) < 0
 
 
-class parallel_generator(six.Iterator):
+class parallel_generator(object):
     sentinel = object()
 
     def __init__(self, generator, queue_size=1000):
@@ -93,8 +92,6 @@ class parallel_generator(six.Iterator):
         finally:
             self.queue.put(self.sentinel)
 
-    # false positive due to six magic
-    # pylint:disable=non-iterator-returned
     def __iter__(self):
         return self
 

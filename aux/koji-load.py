@@ -19,7 +19,6 @@
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 from __future__ import print_function
-from six.moves import range as xrange
 
 import koji
 import sys
@@ -30,7 +29,7 @@ koji_urls = {'Production': 'https://koji.fedoraproject.org/kojihub',
              'Staging': 'https://koji.stg.fedoraproject.org/kojihub'}
 
 def pretty_table(caption, tab, footer):
-    widths = [max([len(str(row[col])) for row in tab]) for col in xrange(0, len(tab[0]))]
+    widths = [max([len(str(row[col])) for row in tab]) for col in range(0, len(tab[0]))]
     def free_text(text):
         return text + " " * (sum([width + 3 for width in widths]) - len(text) + 1)
     def separator_row(begin, middle, end):

@@ -35,7 +35,6 @@ BuildRequires:  python3-wtforms
 BuildRequires:  python3-humanize >= 0.5.1
 BuildRequires:  python3-jinja2
 BuildRequires:  python3-dogpile-cache
-BuildRequires:  python3-six
 BuildRequires:  python3-copr
 BuildRequires:  python3-requests
 %endif
@@ -50,7 +49,6 @@ provides a web interface to the results.
 Summary:        Acutual python code for koschei backend and frontend
 Requires:       python3-sqlalchemy
 Requires:       python3-psycopg2
-Requires:       python3-six
 Requires:       python3-rpm
 Requires(pre):  shadow-utils
 

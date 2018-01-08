@@ -20,14 +20,13 @@ from __future__ import absolute_import
 
 from koschei.plugin import load_plugins
 
-from test.common import AbstractTest, py3_only
+from test.common import AbstractTest
 
 
 class PluginTest(AbstractTest):
     def test_load_plugins(self):
         load_plugins('frontend', ['pagure'])
 
-    @py3_only
     def test_load_plugin_nonexistent(self):
         with self.assertRaisesRegex(RuntimeError, 'xyzzy_plugin enabled but not installed'):
             load_plugins('frontend', ['xyzzy'])

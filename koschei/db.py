@@ -24,7 +24,6 @@ import re
 import os
 import struct
 import zlib
-import six
 
 import sqlalchemy
 
@@ -186,14 +185,10 @@ class CompressedKeyArray(TypeDecorator):
     impl = BYTEA
 
     def _compress(self, payload):
-        if six.PY2:
-            payload = str(payload)
         return zlib.compress(payload)
 
     def _decompress(self, compressed):
         payload = zlib.decompress(compressed)
-        if six.PY2:
-            payload = str(payload)
         return payload
 
     def process_bind_param(self, value, _):

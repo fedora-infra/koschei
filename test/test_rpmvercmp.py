@@ -16,8 +16,6 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-import six
-
 from sqlalchemy import literal_column
 
 from test.common import DBTest
@@ -106,7 +104,7 @@ class RpmVercmpTest(DBTest):
                 (VALUES {values}) AS q(a, b, exp)
             WHERE exp != rpmvercmp(a, b)
         """.format(values=RPM_DATA.rstrip(',\n '))).fetchall()
-        six.assertCountEqual(self, [], result)
+        self.assertCountEqual([], result)
 
     def test_rpmvercmp_evr(self):
         expr = "rpmvercmp_evr(0, '1.1', '11.fc26', NULL, '1.1', '8.fc26')"

@@ -28,7 +28,6 @@ Python code dependencies:
 - psycopg2
 - rpm
 - sqlalchemy
-- six
 
 Test dependencies (optional):
 - nose

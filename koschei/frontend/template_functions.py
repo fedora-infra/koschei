@@ -21,7 +21,8 @@ from __future__ import print_function, absolute_import
 
 import re
 
-import six.moves.urllib as urllib
+from urllib.parse import urlencode, quote_plus
+
 from flask import request, g
 from jinja2 import Markup, escape
 
@@ -43,7 +44,7 @@ def page_args(clear=False, **kwargs):
     # the supposedly unnecessary call to items() is needed
     unfiltered = kwargs if clear else dict(request.args.items(), **kwargs)
     args = {k: v for k, v in unfiltered.items() if v is not None}
-    encoded = urllib.parse.urlencode(args)
+    encoded = urlencode(args)
     return '?' + encoded
 
 
@@ -62,7 +63,7 @@ def generate_links(package):
                 if value is None:
                     raise AttributeError()  # continue the outer loop
                 url = url.replace('{' + interp + '}',
-                                  escape(urllib.parse.quote_plus(str(value))))
+                                  escape(quote_plus(str(value))))
             yield name, url
         except AttributeError:
             continue

@@ -19,7 +19,6 @@
 from __future__ import print_function, absolute_import
 
 from datetime import datetime, timedelta
-from six.moves import zip as izip
 
 import koji
 from sqlalchemy.exc import IntegrityError
@@ -412,7 +411,7 @@ def sync_tasks(session, collection, builds, real=False):
                     else session.koji('primary'))
     call = itercall(koji_session, builds, lambda k, b: k.getTaskInfo(b.task_id))
     valid_builds = []
-    for build, task_info in izip(builds, call):
+    for build, task_info in zip(builds, call):
         if not task_info:
             continue
         build.started = datetime.fromtimestamp(task_info['create_ts'])
@@ -425,7 +424,7 @@ def sync_tasks(session, collection, builds, real=False):
     call = itercall(koji_session, valid_builds,
                     lambda k, b: k.getTaskChildren(b.task_id, request=True))
     build_tasks = {}
-    for build, subtasks in izip(valid_builds, call):
+    for build, subtasks in zip(valid_builds, call):
         tasks = []
         build_arch_tasks = [task for task in subtasks
                             if task['method'] == 'buildArch']
