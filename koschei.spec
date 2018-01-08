@@ -53,7 +53,6 @@ Requires:       python3-psycopg2
 Requires:       python3-six
 Requires:       python3-rpm
 Requires(pre):  shadow-utils
-Obsoletes:      %{name} < 1.5.1
 
 %description common
 %{summary}.
@@ -229,11 +228,6 @@ getent passwd %{name} >/dev/null || \
     useradd -r -g %{name} -d %{_localstatedir}/cache/%{name} -s /bin/sh \
     -c "Runs %{name} services" %{name}
 exit 0
-
-# Workaround for RPM bug #646523 - can't change symlink to directory
-%pretrans frontend -p <lua>
-dir = "%{_datadir}/%{name}/static"
-dummy = posix.readlink(dir) and os.remove(dir)
 
 %post backend
 %systemd_post %{name}-scheduler.service
