@@ -198,7 +198,6 @@ cp -p %{name}.wsgi %{buildroot}%{_datadir}/%{name}/
 cp -p httpd.conf %{buildroot}%{_sysconfdir}/httpd/conf.d/%{name}.conf
 
 install -dm 755 %{buildroot}%{_libexecdir}/%{name}
-ln -s %{__python3} %{buildroot}%{_libexecdir}/%{name}/koschei-admin
 ln -s %{__python3} %{buildroot}%{_libexecdir}/%{name}/koschei-scheduler
 ln -s %{__python3} %{buildroot}%{_libexecdir}/%{name}/koschei-watcher
 ln -s %{__python3} %{buildroot}%{_libexecdir}/%{name}/koschei-polling
@@ -283,7 +282,6 @@ exit 0
 %files admin
 %{_bindir}/%{name}-admin
 %dir %{_libexecdir}/%{name}
-%{_libexecdir}/%{name}/koschei-admin
 %{_datadir}/%{name}/alembic/
 %{_datadir}/%{name}/*.sql
 %{_datadir}/%{name}/alembic.ini
