@@ -16,8 +16,6 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-from __future__ import print_function, absolute_import
-
 from koschei import plugin
 
 from test.common import DBTest, my_vcr

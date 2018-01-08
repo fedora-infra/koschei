@@ -18,8 +18,6 @@
 #
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-from __future__ import print_function
-
 import koji
 import sys
 from concurrent.futures import ThreadPoolExecutor

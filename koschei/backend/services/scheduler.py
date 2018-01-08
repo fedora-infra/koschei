@@ -16,8 +16,6 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-from __future__ import print_function, absolute_import, division
-
 from koschei import backend
 from koschei.config import get_config
 from koschei.backend import koji_util

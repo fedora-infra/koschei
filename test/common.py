@@ -17,8 +17,6 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-from __future__ import print_function
-
 import os
 import sys
 import unittest
