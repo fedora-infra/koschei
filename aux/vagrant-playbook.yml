@@ -60,7 +60,6 @@
         - { src: /vagrant/admin.py, dest: /usr/bin/koschei-admin }
         - { src: /vagrant/httpd.conf, dest: /etc/httpd/conf.d/koschei.conf }
         - { src: /vagrant/koschei.wsgi, dest: /usr/share/koschei/koschei.wsgi }
-        - { src: /usr/bin/python3, dest: /usr/libexec/koschei/koschei-admin }
 
     - name: initialize database
       command: postgresql-setup initdb
