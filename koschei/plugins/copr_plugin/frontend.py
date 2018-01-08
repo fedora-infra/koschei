@@ -16,8 +16,6 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-from __future__ import print_function, absolute_import
-
 from flask import abort, render_template, url_for, redirect, g
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload, subqueryload

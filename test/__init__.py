@@ -16,8 +16,6 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-from __future__ import print_function
-
 import os
 
 from koschei.config import load_config, get_config

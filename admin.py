@@ -18,8 +18,6 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-from __future__ import print_function, absolute_import
-
 # pylint: disable=W0221
 import re
 import os

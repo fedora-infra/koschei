@@ -16,8 +16,6 @@
 #
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-from __future__ import absolute_import
-
 from koschei.plugin import load_plugins
 
 from test.common import AbstractTest

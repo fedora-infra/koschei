@@ -17,8 +17,6 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-from __future__ import print_function, absolute_import
-
 from textwrap import dedent
 from urllib.parse import urlencode
 
