@@ -16,8 +16,7 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-import imp
-import os
+import importlib
 import logging
 import sys
 
@@ -26,34 +25,25 @@ from collections import defaultdict
 from koschei.config import get_config
 
 listeners = defaultdict(list)
-service_dirs = []
 
 
 def load_plugins(endpoint, only=None):
     log = logging.getLogger('koschei.plugin')
-    plugin_dir = os.path.join(os.path.dirname(__file__), 'plugins')
     for name in only if only is not None else get_config('plugins'):
-        name = name + '_plugin'
-        if name not in sys.modules:
+        qualname = f'koschei.plugins.{name}_plugin'
+        if qualname not in sys.modules:
             log.debug('Loading %s plugin', name)
             try:
-                descriptor = imp.find_module(name, [plugin_dir])
+                importlib.import_module(qualname)
             except ImportError:
-                raise RuntimeError("{} enabled but not installed".format(name))
-            imp.load_module(name, *descriptor)
-        endpoint_dir = os.path.join(plugin_dir, name)
-        qualname = name + '.' + endpoint
+                raise RuntimeError(f"{name} plugin enabled but not installed")
+        qualname = f'{qualname}.{endpoint}'
         if qualname not in sys.modules:
             try:
-                descriptor = imp.find_module(endpoint, [endpoint_dir])
+                importlib.import_module(qualname)
             except ImportError:
                 # plugin exists but doesn't have particular endpoint
                 continue
-            else:
-                imp.load_module(qualname, *descriptor)
-                service_dir = os.path.join(plugin_dir, name, endpoint, 'services')
-                if os.path.isdir(service_dir):
-                    service_dirs.append(service_dir)
 
 
 def listen_event(name):
