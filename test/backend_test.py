@@ -168,9 +168,9 @@ class BackendTest(DBTest):
                 .assert_called_once_with(rnv_build_info[0]['task_id'],
                                          request=True)
             self.assertEqual('ok', package.state_string)
-            self.assertEquals(460889, package.last_complete_build.repo_id)
+            self.assertEqual(460889, package.last_complete_build.repo_id)
             self.assertCountEqual([(x['id'],) for x in rnv_subtasks],
-                                 self.db.query(KojiTask.task_id))
+                                  self.db.query(KojiTask.task_id))
 
     def test_refresh_latest_builds_already_present(self):
         self.session.sec_koji_mock.getTaskInfo = Mock(return_value=rnv_task)
