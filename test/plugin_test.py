@@ -26,7 +26,7 @@ class PluginTest(AbstractTest):
         load_plugins('frontend', ['pagure'])
 
     def test_load_plugin_nonexistent(self):
-        with self.assertRaisesRegex(RuntimeError, 'xyzzy_plugin enabled but not installed'):
+        with self.assertRaisesRegex(RuntimeError, 'xyzzy plugin enabled but not installed'):
             load_plugins('frontend', ['xyzzy'])
 
     def test_load_plugin_nonexistent_endpoint(self):

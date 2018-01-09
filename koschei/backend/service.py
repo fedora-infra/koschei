@@ -17,26 +17,24 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 import sys
-import imp
+import importlib
 import logging
 import os
+import re
 import time
 
-from koschei import util, plugin
+from koschei import util
 from koschei.config import get_config
 
 
 def load_service(name):
-    service_dirs = [os.path.join(os.path.dirname(__file__), 'services')]
-    service_dirs += plugin.service_dirs
-    if name not in sys.modules:
-        try:
-            descriptor = imp.find_module(name, service_dirs)
-        except ImportError:
-            # It may be a plugin
-            pass
-        else:
-            imp.load_module(name, *descriptor)
+    for module in list(sys.modules):
+        if re.match(r'^koschei\.(?:.+\.)?backend', module):
+            try:
+                importlib.import_module(f'{module}.services.{name}')
+            except ImportError:
+                # given module doesn't provide given service submodule
+                continue
     return Service.find_service(name)
 
 
