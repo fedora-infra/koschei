@@ -11,7 +11,7 @@
 %endif
 
 Name:           koschei
-Version:        2.2.0
+Version:        2.2.1
 Release:        1%{?dist}
 Summary:        Continuous integration for Fedora packages
 License:        GPLv2+
@@ -430,6 +430,9 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %changelog
 * Thu Jan 25 2018 Michael Simacek <msimacek@redhat.com> - 2.2.0-1
 - Update to upstream version 2.2.0
+
+* Fri Nov  3 2017 Mikolaj Izdebski <mizdebsk@redhat.com> - 2.1.1-1
+- Update to upstream version 2.1.1
 
 * Wed Sep 13 2017 Mikolaj Izdebski <mizdebsk@redhat.com> - 2.1.0-1
 - Update to upstream version 2.1.0
