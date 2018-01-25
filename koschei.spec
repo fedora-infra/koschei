@@ -428,6 +428,9 @@ dummy = posix.readlink(dir) and os.remove(dir)
 %{python_sitelib}/*/plugins/copr_plugin/backend*
 
 %changelog
+* Thu Jan 25 2018 Michael Simacek <msimacek@redhat.com> - 2.2.0-1
+- Update to upstream version 2.2.0
+
 * Wed Sep 13 2017 Mikolaj Izdebski <mizdebsk@redhat.com> - 2.1.0-1
 - Update to upstream version 2.1.0
 
