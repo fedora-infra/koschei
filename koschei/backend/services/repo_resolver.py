@@ -35,6 +35,7 @@ from koschei.config import get_config
 from koschei.backend import koji_util
 from koschei.plugin import dispatch_event
 from koschei.util import stopwatch
+from koschei.locks import pg_session_lock, Locked, LOCK_REPO_RESOLVER
 from koschei.models import (
     Package, UnappliedChange, ResolutionProblem, BuildrootProblem, RepoMapping,
     ResolutionChange, Collection,
@@ -56,7 +57,15 @@ ResolutionOutput = namedtuple(
 class RepoResolver(Resolver):
     def main(self):
         for collection in self.db.query(Collection).all():
-            self.process_repo(collection)
+            try:
+                with pg_session_lock(
+                    self.db, LOCK_REPO_RESOLVER, collection.id, block=False
+                ):
+                    self.process_repo(collection)
+                    self.db.commit()
+            except Locked:
+                # Locked by another process
+                continue
 
     def process_repo(self, collection):
         """
