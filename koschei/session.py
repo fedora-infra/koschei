@@ -45,3 +45,6 @@ class KoscheiSession(object):
                     cache.configure(**get_config('caching.' + cache_id))
                     self._caches[cache_id] = cache
         return self._caches[cache_id]
+
+    def close(self):
+        pass

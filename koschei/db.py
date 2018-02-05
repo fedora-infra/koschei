@@ -86,6 +86,17 @@ class Query(sqlalchemy.orm.Query):
 
 
 class KoscheiDbSession(sqlalchemy.orm.session.Session):
+    def __init__(self, connection=None, *args, **kwargs):
+        self._connection = connection
+        if connection:
+            kwargs['bind'] = connection
+        super(KoscheiDbSession, self).__init__(*args, **kwargs)
+
+    def close(self):
+        super(KoscheiDbSession, self).close()
+        if self._connection:
+            self._connection.close()
+
     def bulk_insert(self, objects):
         """
         Inserts ORM objects using sqla-core bulk insert. Only handles simple flat
