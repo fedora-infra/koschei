@@ -68,5 +68,4 @@ class Watcher(Service):
                 plugin.dispatch_event('fedmsg_event', self.session, topic, msg)
             finally:
                 self.db.rollback()
-                self.db.close()
             self.memory_check()

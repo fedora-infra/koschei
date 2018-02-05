@@ -32,7 +32,7 @@ from koschei.session import KoscheiSession
 from koschei.config import get_config
 from koschei.backend import koji_util
 from koschei.backend.koji_util import itercall
-from koschei.db import Session
+from koschei.db import Session, get_engine
 from koschei.models import (
     Build, UnappliedChange, KojiTask, Package, PackageGroup,
     PackageGroupRelation, BasePackage, Collection, RepoMapping, LogEntry,
@@ -43,6 +43,7 @@ from koschei.plugin import dispatch_event
 class KoscheiBackendSession(KoscheiSession):
     def __init__(self):
         super(KoscheiBackendSession, self).__init__()
+        self._db_connection = None
         self._db = None
         self._koji_sessions = {}
         self._repo_cache = None
@@ -53,8 +54,15 @@ class KoscheiBackendSession(KoscheiSession):
     @property
     def db(self):
         if self._db is None:
-            self._db = Session()
+            self._db_connection = get_engine().connect()
+            self._db = Session(bind=self._db_connection)
         return self._db
+
+    def close(self):
+        if self._db:
+            self._db.close()
+        if self._db_connection:
+            self._db_connection.close()
 
     @property
     def build_from_repo_id(self):

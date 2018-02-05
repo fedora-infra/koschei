@@ -19,7 +19,7 @@
 from functools import wraps
 
 from koschei.frontend import app
-from koschei.frontend.base import db
+from koschei.frontend.base import KoscheiFrontendSession, db
 from test.common import DBTest
 
 
@@ -57,8 +57,8 @@ class FrontendTest(DBTest):
         super(FrontendTest, self).__init__(*args, **kwargs)
         self.user = None
 
-    def get_session(self):
-        return db
+    def create_session(self):
+        return KoscheiFrontendSession()
 
     def setUp(self):
         super(FrontendTest, self).setUp()

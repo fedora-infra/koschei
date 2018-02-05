@@ -85,7 +85,6 @@ class Service(object):
                 self.main()
             finally:
                 self.db.rollback()
-                self.db.close()
             self.memory_check()
             self.notify_watchdog()
             time.sleep(interval)

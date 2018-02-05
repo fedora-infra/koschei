@@ -86,9 +86,9 @@ class AbstractTest(unittest.TestCase):
             return json.load(fo)
 
 
-class KoscheiSessionMock(KoscheiBackendSession):
+class KoscheiBackendSessionMock(KoscheiBackendSession):
     def __init__(self):
-        super(KoscheiSessionMock, self).__init__()
+        super(KoscheiBackendSessionMock, self).__init__()
         self.koji_mock = KojiMock()
         self.sec_koji_mock = KojiMock()
         self.repo_cache_mock = RepoCacheMock()
@@ -151,7 +151,7 @@ class DBTest(AbstractTest):
             dest_tag='f25', build_tag="f25-build", priority_coefficient=1.0,
             latest_repo_resolved=True, latest_repo_id=123,
         )
-        self.session = KoscheiSessionMock()
+        self.session = None
 
     @classmethod
     def setUpClass(cls):
@@ -162,13 +162,10 @@ class DBTest(AbstractTest):
                 DBTest.init_postgres()
                 DBTest.postgres_initialized = True
 
-    def get_session(self):
-        return Session()
-
     def setUp(self):
+        super(DBTest, self).setUp()
         if not DBTest.postgres_initialized:
             self.skipTest("requires PostgreSQL")
-        super(DBTest, self).setUp()
         conn = get_engine().connect()
         for table in Base.metadata.non_materialized_view_tables:
             conn.execute(table.delete())
@@ -177,13 +174,17 @@ class DBTest(AbstractTest):
         for materialized_view in Base.metadata.materialized_views:
             materialized_view.refresh(conn)
         conn.close()
-        self.db = self.session._db = self.get_session()
+        self.session = self.create_session()
+        self.db = self.session.db
         self.db.add(self.collection)
         self.db.commit()
 
+    def create_session(self):
+        return KoscheiBackendSessionMock()
+
     def tearDown(self):
         super(DBTest, self).tearDown()
-        self.db.close()
+        self.session.close()
 
     def ensure_base_package(self, package):
         if not package.base_id:

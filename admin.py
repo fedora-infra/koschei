@@ -90,7 +90,7 @@ def main():
     cmd.execute(**kwargs)
     if cmd.needs_session:
         session.db.commit()
-        session.db.close()
+        session.close()
 
 
 class CreateDb(Command):
