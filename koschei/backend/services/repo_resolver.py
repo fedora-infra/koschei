@@ -117,9 +117,8 @@ class RepoResolver(Resolver):
 
     @contextlib.contextmanager
     def prepared_repo(self, collection, repo_id):
-        repo_descriptor = self.create_repo_descriptor(collection.secondary_mode, repo_id)
-        self.set_descriptor_tags(collection, [repo_descriptor])
-        if not repo_descriptor.build_tag:
+        repo_descriptor = self.create_repo_descriptor(collection, repo_id)
+        if not repo_descriptor:
             raise RepoGenerationException('Repo {} is dead'.format(repo_id))
         with self.session.repo_cache.get_sack(repo_descriptor) as sack:
             if not sack:
@@ -192,9 +191,8 @@ class RepoResolver(Resolver):
         """
 
         # get buildrequires
-        brs = koji_util.get_rpm_requires_cached(
-            self.session,
-            self.session.secondary_koji_for(collection),
+        brs = self.get_rpm_requires(
+            collection,
             [p.srpm_nvra for p in packages],
         )
 
