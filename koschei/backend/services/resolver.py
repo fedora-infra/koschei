@@ -22,7 +22,6 @@ from __future__ import print_function, absolute_import, division
 import koji
 
 from collections import OrderedDict, namedtuple
-from six.moves import zip as izip
 
 from sqlalchemy.orm import undefer
 from sqlalchemy.sql import insert
@@ -31,7 +30,6 @@ from koschei import util
 from koschei.config import get_config
 from koschei.backend import koji_util, depsolve
 from koschei.backend.service import Service
-from koschei.backend.koji_util import itercall
 from koschei.backend.repo_util import KojiRepoDescriptor
 from koschei.models import Dependency, Build
 from koschei.util import Stopwatch, stopwatch
@@ -130,6 +128,13 @@ class Resolver(Service):
         )
         return group
 
+    def get_rpm_requires(self, collection, nvras):
+        return koji_util.get_rpm_requires_cached(
+            self.session,
+            self.session.secondary_koji_for(collection),
+            nvras,
+        )
+
     @stopwatch(total_time)
     def create_dependency_changes(self, deps1, deps2, **rest):
         if not deps1 or not deps2:
@@ -197,19 +202,6 @@ class Resolver(Service):
             .options(undefer('dependency_keys'))\
             .first()
 
-    def set_descriptor_tags(self, collection, descriptors):
-        def koji_call(koji_session, desc):
-            koji_session.repoInfo(desc.repo_id)
-
-        result_gen = itercall(self.session.secondary_koji_for(collection),
-                              descriptors, koji_call)
-        for descriptor, repo_info in izip(descriptors, result_gen):
-            if repo_info['state'] in (koji.REPO_STATES['READY'],
-                                      koji.REPO_STATES['EXPIRED']):
-                descriptor.build_tag = repo_info['tag_name']
-            else:
-                self.log.info('Repo {} is dead, skipping'.format(descriptor.repo_id))
-
     @stopwatch(total_time)
     def get_build_for_comparison(self, package):
         """
@@ -226,7 +218,19 @@ class Resolver(Service):
             # not yet processed builds are not considered
             return None
 
-    @staticmethod
-    def create_repo_descriptor(secondary_mode, repo_id):
-        return KojiRepoDescriptor('secondary' if secondary_mode else 'primary',
-                                  None, repo_id)
+    def create_repo_descriptor(self, collection, repo_id):
+        """
+        Prepares a RepoDescriptor object for given collection and repo_id.
+        Queries Koji for the repo information.  If the repo is not available
+        anymore, returns None.
+        """
+        valid_repo_states = (koji.REPO_STATES['READY'], koji.REPO_STATES['EXPIRED'])
+        koji_session = self.session.secondary_koji_for(collection)
+
+        repo_info = koji_session.repoInfo(repo_id)
+        if repo_info.get('state') in valid_repo_states:
+            return KojiRepoDescriptor(
+                koji_id='secondary' if collection.secondary_mode else 'primary',
+                build_tag=repo_info['tag_name'],
+                repo_id=repo_id,
+            )
