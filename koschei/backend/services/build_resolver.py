@@ -25,6 +25,7 @@ from sqlalchemy.sql import insert
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
 from koschei.config import get_config
+from koschei.locks import pg_session_lock, Locked, LOCK_BUILD_RESOLVER
 from koschei.models import (
     Collection, Package, AppliedChange, Build,
 )
@@ -48,6 +49,8 @@ class BuildResolver(Resolver):
     def process_builds(self, collection):
         """
         Processes builds in a single collection.
+        Can be executed concurrently from multiple processes. One process
+        always processes one repo ID.
         Commits the transaction in increments.
         """
         builds = (
@@ -61,13 +64,21 @@ class BuildResolver(Resolver):
 
         # Group by repo_id to speed up processing (reuse the sack)
         for repo_id, builds_group in groupby(builds, lambda b: b.repo_id):
-            if repo_id is None:
-                for build in builds_group:
-                    # Builds with no repo id cannot be resolved
-                    self.process_unresolved_build(build)
-            else:
-                self.process_builds_with_repo_id(collection, repo_id, list(builds_group))
-            self.db.commit()
+            try:
+                with pg_session_lock(self.db, LOCK_BUILD_RESOLVER, repo_id, block=False):
+                    if repo_id is None:
+                        for build in builds_group:
+                            # Builds with no repo id cannot be resolved
+                            self.process_unresolved_build(build)
+                    else:
+                        self.process_builds_with_repo_id(
+                            collection,
+                            repo_id,
+                            list(builds_group),
+                        )
+                    self.db.commit()
+            except Locked:
+                continue
 
     def process_builds_with_repo_id(self, collection, repo_id, builds):
         """
