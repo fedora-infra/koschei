@@ -25,6 +25,7 @@ from collections import OrderedDict, namedtuple
 
 from sqlalchemy.orm import undefer
 from sqlalchemy.sql import insert
+from sqlalchemy.exc import IntegrityError
 
 from koschei import util
 from koschei.config import get_config
@@ -65,7 +66,7 @@ class DependencyCache(object):
         del self.nevras[(victim.name, victim.epoch, victim.version,
                          victim.release, victim.arch)]
 
-    def get_or_create_nevra(self, db, nevra):
+    def _get_or_create_nevra(self, db, nevra):
         dep = self.nevras.get(nevra)
         if dep is None:
             dep = db.query(*Dependency.inevra)\
@@ -87,10 +88,18 @@ class DependencyCache(object):
             self._access(dep)
         return dep
 
+    def get_or_create_nevra(self, db, nevra):
+        try:
+            with db.begin_nested():
+                return self._get_or_create_nevra(db, nevra)
+        except IntegrityError:
+            # If there was a concurrent insert, the next query must succeed
+            return self._get_or_create_nevra(db, nevra)
+
     def get_or_create_nevras(self, db, nevras):
         res = []
         for nevra in nevras:
-            res.append(self.get_or_create_nevra(db, nevra))
+            res.append(self._get_or_create_nevra(db, nevra))
         return res
 
     @stopwatch(total_time, note='dependency cache')
