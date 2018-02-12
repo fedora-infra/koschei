@@ -120,6 +120,9 @@ class Resolver(Service):
         self.dependency_cache = DependencyCache(capacity=capacity)
 
     def get_build_group(self, collection):
+        """
+        Returns a Koji build group for given collection.
+        """
         group = koji_util.get_build_group_cached(
             self.session,
             self.session.koji('primary'),
@@ -129,6 +132,10 @@ class Resolver(Service):
         return group
 
     def get_rpm_requires(self, collection, nvras):
+        """
+        Returns a list of lists of build requires of packages with given
+        name-version-release-arch.
+        """
         return koji_util.get_rpm_requires_cached(
             self.session,
             self.session.secondary_koji_for(collection),
@@ -137,6 +144,15 @@ class Resolver(Service):
 
     @stopwatch(total_time)
     def create_dependency_changes(self, deps1, deps2, **rest):
+        """
+        Creates an intermediate representation of a dependency change
+        (difference) between the two sets. The input format is a list of
+        objects with name, epoch, version, release, arch properties.
+        The output format is a list of dicts corresponding to UnappliedChange
+        table row.
+
+        :param: rest Additional key-value parts to store in the output dicts
+        """
         if not deps1 or not deps2:
             # TODO packages with no deps
             return []
@@ -180,6 +196,12 @@ class Resolver(Service):
 
     @stopwatch(total_time, note='separate thread')
     def resolve_dependencies(self, sack, br, build_group):
+        """
+        Does a resolution process to install given buildrequires and build
+        group using given sack.
+
+        :returns: A triple of (resolved:bool, problems:[str], installs:[str]).
+        """
         deps = None
         resolved, problems, installs = depsolve.run_goal(sack, br, build_group)
         if resolved:
@@ -194,13 +216,19 @@ class Resolver(Service):
         return resolved, problems, deps
 
     def get_prev_build_for_comparison(self, build):
-        return self.db.query(Build)\
-            .filter_by(package_id=build.package_id)\
-            .filter(Build.started < build.started)\
-            .filter(Build.deps_resolved == True)\
-            .order_by(Build.started.desc())\
-            .options(undefer('dependency_keys'))\
+        """
+        Finds a preceding build of the same package that is suitable to be
+        compared against.
+        """
+        return (
+            self.db.query(Build)
+            .filter_by(package_id=build.package_id)
+            .filter(Build.started < build.started)
+            .filter(Build.deps_resolved == True)
+            .order_by(Build.started.desc())
+            .options(undefer('dependency_keys'))
             .first()
+        )
 
     @stopwatch(total_time)
     def get_build_for_comparison(self, package):
