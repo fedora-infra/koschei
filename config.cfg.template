@@ -108,10 +108,11 @@ config = {
         # value that is added to package priority after a failed build that was
         # preceded by successful build (i.e. the package started to fail)
         "failed_build_priority": 200,
-        # values used for time priority calculation. See the source for the
-        # exact formula
-        "t0": 6,
-        "t1": 7 * 24,
+        # time priority formula:
+        # expects a function that takes the number of hours since the last
+        # rebuild (as sqlalchemy expression) and returns the desired time
+        # priority
+        "time_priority_fn": lambda hours: 5 * hours - 100,
     },
 
     # configuration of individual services

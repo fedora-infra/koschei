@@ -17,11 +17,11 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 from mock import Mock, patch
-from sqlalchemy import literal_column
 from datetime import datetime
 
 from test.common import DBTest
 from koschei.models import Build, Package
+from koschei.config import get_config
 from koschei.backend.services.scheduler import Scheduler
 
 
@@ -49,8 +49,7 @@ class SchedulerTest(DBTest):
                 name=name,
                 tracked=states.get(name) != 'ignored',
                 collection_id=self.collection.id,
-                # add 30 to offset time priority which will be -30
-                dependency_priority=priorities[name] + 30,
+                dependency_priority=priorities[name],
             )
             self.ensure_base_package(pkg)
             self.db.add(pkg)
@@ -92,8 +91,10 @@ class SchedulerTest(DBTest):
                 patch('koschei.backend.koji_util.get_srpm_arches',
                       Mock(return_value=['x86_64'])):
             sched = self.get_scheduler()
-            with patch('sqlalchemy.sql.expression.func.clock_timestamp',
-                       return_value=literal_column("'2017-10-10 10:50:00'")):
+            priority_config = get_config('priorities')
+            old_fn = priority_config['time_priority_fn']
+            try:
+                priority_config['time_priority_fn'] = lambda _: 0
                 with patch('koschei.backend.submit_build') as submit_mock:
                     sched.main()
                     if scheduled:
@@ -102,6 +103,8 @@ class SchedulerTest(DBTest):
                                                             arch_override=['x86_64'])
                     else:
                         self.assertFalse(submit_mock.called)
+            finally:
+                priority_config['time_priority_fn'] = old_fn
 
     def test_low(self):
         self.prepare_priorities(rnv=10)
