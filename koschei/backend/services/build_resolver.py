@@ -41,7 +41,6 @@ class BuildResolver(Resolver):
         Service entry-point. Processes builds in all collections.
         """
         for collection in self.db.query(Collection).all():
-            self.log.info("Processing builds for collection %s", collection)
             self.process_builds(collection)
 
     def process_builds(self, collection):
@@ -59,6 +58,12 @@ class BuildResolver(Resolver):
             .order_by(Build.repo_id)
             .all()
         )
+
+        if not builds:
+            self.log.debug("No builds to process for collection %s", collection)
+            return
+
+        self.log.info("Processing %d builds for collection %s", len(builds), collection)
 
         # Group by repo_id to speed up processing (reuse the sack)
         for repo_id, builds_group in groupby(builds, lambda b: b.repo_id):
