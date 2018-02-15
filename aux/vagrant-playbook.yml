@@ -43,10 +43,15 @@
     - name: create directories
       file: path="{{ item }}" state=directory owner=vagrant
       with_items:
-        - /home/vagrant/cache/repodata
         - /usr/share/koschei
         - /usr/libexec/koschei
         - /etc/koschei
+
+    - name: create cache directories
+      file: path="{{ item }}" state=directory owner=vagrant mode=0777
+      with_items:
+        - /var/cache/koschei
+        - /var/cache/koschei/repodata
 
     - name: create symlinks
       file: src="{{ item.src }}" dest="{{ item.dest }}" state=link
