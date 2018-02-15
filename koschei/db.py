@@ -29,6 +29,7 @@ from sqlalchemy import create_engine, Table, DDL
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import sessionmaker, evaluator, CompositeProperty
+from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import URL
 from sqlalchemy.event import listen
 from sqlalchemy.types import TypeDecorator
@@ -83,16 +84,25 @@ class Query(sqlalchemy.orm.Query):
 
 
 class KoscheiDbSession(sqlalchemy.orm.session.Session):
-    def __init__(self, connection=None, *args, **kwargs):
-        self._connection = connection
-        if connection:
-            kwargs['bind'] = connection
-        super(KoscheiDbSession, self).__init__(*args, **kwargs)
+    def __init__(self, bind, binds=None, **kwargs):
+        assert binds is None, "binds argument not supported"
+        assert isinstance(bind, Engine), "bind argument must be engine"
+        self.__engine = bind
+        self.__connection = None
+        super(KoscheiDbSession, self).__init__(**kwargs)
 
-    def close(self):
-        super(KoscheiDbSession, self).close()
-        if self._connection:
-            self._connection.close()
+    def get_bind(self, mapper=None, clause=None):
+        if not self.__connection:
+            self.__connection = self.__engine.contextual_connect()
+        return self.__connection
+
+    def close_connection(self):
+        self.close()
+        if self.__connection:
+            # In order to really close, it needs to be detached from the pool
+            self.__connection.detach()
+            self.__connection.close()
+            self.__connection = None
 
     def bulk_insert(self, objects):
         """

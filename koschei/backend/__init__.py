@@ -40,7 +40,6 @@ from koschei.plugin import dispatch_event
 class KoscheiBackendSession(KoscheiSession):
     def __init__(self):
         super(KoscheiBackendSession, self).__init__()
-        self._db_connection = None
         self._db = None
         self._koji_sessions = {}
         self._repo_cache = None
@@ -51,15 +50,12 @@ class KoscheiBackendSession(KoscheiSession):
     @property
     def db(self):
         if self._db is None:
-            self._db_connection = get_engine().connect()
-            self._db = Session(bind=self._db_connection)
+            self._db = Session()
         return self._db
 
     def close(self):
         if self._db:
-            self._db.close()
-        if self._db_connection:
-            self._db_connection.close()
+            self._db.close_connection()
 
     @property
     def build_from_repo_id(self):
