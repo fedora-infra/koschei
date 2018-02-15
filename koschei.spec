@@ -58,7 +58,7 @@ Requires(pre):  shadow-utils
 
 %package admin
 Summary:        Administration script and DB migrations for koschei
-Requires:       %{name}-common = %{version}-%{release}
+Requires:       %{name}-backend = %{version}-%{release}
 Requires:       python3-alembic
 Requires:       postgresql
 
