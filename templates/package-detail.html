@@ -297,7 +297,7 @@
             <div class="row">
               <div class="col-sm-12">
                 Real build:
-                <a href="{{ secondary_koji_url(package.collection) }}/search?match=&type=build&terms={{ package.name }}-{{ build.version }}-{{ build.release }}">{{ package.name }}-{{ build.version }}-{{ build.release }}</a>
+                <a href="{{ secondary_koji_url(package.collection) }}/search?match=&type=build&terms={{ package.name | urlencode }}-{{ build.version | urlencode }}-{{ build.release | urlencode }}">{{ package.name }}-{{ build.version }}-{{ build.release }}</a>
               </div>
             </div>
             {% endif %}
