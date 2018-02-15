@@ -16,6 +16,8 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+from sqlalchemy.exc import ProgrammingError
+
 from test.common import DBTest
 
 from koschei.locks import (
@@ -46,6 +48,15 @@ class LocksTest(DBTest):
                 with self.assertRaises(Locked):
                     with pg_session_lock(self.s2.db, LOCK_REPO_RESOLVER, 1, block=False):
                         pass
+        # Try if it's unlocked
+        with pg_session_lock(self.s2.db, LOCK_REPO_RESOLVER, 1, block=False):
+            pass
+
+    def test_session_lock_exception_propagation(self):
+        with self.assertRaises(ProgrammingError):
+            with pg_session_lock(self.s1.db, LOCK_REPO_RESOLVER, 1, block=False):
+                # Execute some invalid statement
+                self.s1.db.execute("ALTER TABLE asdf RENAME TO sdfjk")
         # Try if it's unlocked
         with pg_session_lock(self.s2.db, LOCK_REPO_RESOLVER, 1, block=False):
             pass
