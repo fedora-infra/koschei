@@ -250,7 +250,7 @@
           <tr
             {% if entry.version %} {# test whether it's a build #}
             {% set detail_url = url_for('build_detail', build_id=entry.id) %}
-            class="{{ entry.css_class }} kk-clickable" onClick="if (arguments[0].target.tagName != 'A') window.location = '{{ detail_url }}'"
+            class="{{ entry.css_class }} kk-clickable" onClick="for (var node = arguments[0].target; node != null; node = node.parentElement) if (node.tagName == 'A') return; window.location = '{{ detail_url }}'"
             {% else %}
             class="{{ entry.css_class }}"
             {% endif %}
