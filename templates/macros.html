@@ -276,7 +276,7 @@ but is part of minimal buildroot (buildsys-build group)">B</span>
       <a class="nav-link active">{{ g.current_collections | join(' + ') }}</a>
     </li>
     {% endif %}
-    {% if allow_all %}
+    {% if allow_all and g.collections | length > 1 %}
     <li class="nav-item">
       <a class="nav-link{% if g.current_collections == g.collections %} active{% endif %}" href="{{ page_args(page=None, collection=None) }}">All collections</a>
     </li>
