@@ -90,11 +90,26 @@ def pg_session_lock(db, namespace, key, block=True, shared=False):
     Context manager for obtaining a session lock.
     With block=True (default) blocks until the resource is locked.
     """
-    locked = False
+    pg_lock(db, namespace, key, block=block, shared=shared)
+    locked = True
+    captured_exception = None
     try:
-        pg_lock(db, namespace, key, block=block, shared=shared)
-        locked = True
         yield
+    except Exception as e:
+        captured_exception = e
     finally:
-        if locked:
+        try:
             pg_unlock(db, namespace, key, shared=shared)
+            locked = False
+        except Exception as e:
+            # Swallow the exception if it was a consequence of exception from
+            # the main block
+            captured_exception = captured_exception or e
+        finally:
+            # If the transaction is aborted, the unlock fails. We need to
+            # terminate the connection entirely
+            if locked:
+                db.close_connection()
+    if captured_exception:
+        # pylint:disable=raising-bad-type
+        raise captured_exception
