@@ -272,6 +272,9 @@ def package_detail(name, form=None, collection=None):
         base.available_groups = [group for group, checked in user_groups
                                  if not checked]
 
+    # modes: boundary build or build history (default)
+    mode = request.args.get('mode')
+
     # history entry pagination pivot id
     last_seen_ts = request.args.get('last_seen_ts')
     if last_seen_ts:
@@ -293,24 +296,50 @@ def package_detail(name, form=None, collection=None):
                 last_build=package.last_build,
             )
         ).filter(Package.id == package.id).scalar()
-        # prepare history entries - builds and resolution changes
-        builds = db.query(Build)\
-            .filter_by(package_id=package.id)\
-            .filter(to_ts(Build.started) < last_seen_ts
-                    if last_seen_ts else true())\
+        # Common part of following queries
+        build_query = (
+            db.query(Build)
+            .filter(Build.package_id == package.id)
             .options(subqueryload(Build.dependency_changes),
-                     subqueryload(Build.build_arch_tasks))\
-            .order_by(Build.started.desc())\
-            .limit(builds_per_page)\
-            .all()
-        resolutions = db.query(ResolutionChange)\
-            .filter_by(package_id=package.id)\
-            .filter(to_ts(ResolutionChange.timestamp) < last_seen_ts
-                    if last_seen_ts else true())\
-            .options(joinedload(ResolutionChange.problems))\
-            .order_by(ResolutionChange.timestamp.desc())\
-            .limit(builds_per_page)\
-            .all()
+                     subqueryload(Build.build_arch_tasks))
+        )
+        builds = []
+        resolutions = []
+        if mode == 'boundary_build':
+            # prepare boundary build - the build when state changed from ok to failing
+            last_build = package.last_complete_build
+            if last_build and last_build.state == Build.FAILED:
+                last_successful = (
+                    build_query
+                    .filter(Build.state == Build.COMPLETE)
+                    .filter(Build.started < last_build.started)
+                    .order_by(Build.started.desc())
+                    .first()
+                )
+                if last_successful:
+                    boundary_build = (
+                        build_query
+                        .filter(Build.started > last_successful.started)
+                        .order_by(Build.started)
+                        .first()
+                    )
+                    builds.append(boundary_build)
+        else:
+            # prepare history entries - builds and resolution changes
+            builds = build_query \
+                .filter(to_ts(Build.started) < last_seen_ts
+                        if last_seen_ts else true()) \
+                .order_by(Build.started.desc()) \
+                .limit(builds_per_page) \
+                .all()
+            resolutions = db.query(ResolutionChange) \
+                .filter_by(package_id=package.id) \
+                .filter(to_ts(ResolutionChange.timestamp) < last_seen_ts
+                        if last_seen_ts else true()) \
+                .options(joinedload(ResolutionChange.problems)) \
+                .order_by(ResolutionChange.timestamp.desc()) \
+                .limit(builds_per_page) \
+                .all()
 
         entries = sorted(
             builds + resolutions,
@@ -336,6 +365,7 @@ def package_detail(name, form=None, collection=None):
         form=form,
         entries=entries,
         all_packages=all_packages,
+        mode=mode,
         is_continuation=bool(last_seen_ts),
         is_last=len(entries) < builds_per_page if package else True,
     )

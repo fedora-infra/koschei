@@ -214,16 +214,32 @@
   </div>
 </div>
 
-{% if is_continuation %}
-<h3>Historical builds</h3>
-{% else %}
-<h3>Most recent builds</h3>
-{% endif %}
+<div>
+  <h3>Build history</h3>
+  <ul class="nav nav-tabs">
+    <li class="nav-item ">
+      <a class="nav-link {% if mode != 'boundary_build' and not is_continuation %}active{% endif %}"
+         href="?collection={{ collection.name }}">
+        Most recent builds
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if mode == 'boundary_build' %}active{% endif %}"
+         href="?collection={{ collection.name }}&mode=boundary_build">
+        Build when the package started to fail
+      </a>
+    </li>
+  </ul>
+</div>
+
 
 <div class="row">
   <div class="col-sm-12">
     <div class="card mb-3">
       <table class="card-block table table-hover">
+        {% if is_continuation %}
+        <tr><td>Continuing from previous page</td></tr>
+        {% endif %}
         {% for entry in entries %}
           <tr
             {% if entry.version %} {# test whether it's a build #}
