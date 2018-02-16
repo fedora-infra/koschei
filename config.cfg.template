@@ -233,6 +233,10 @@ config = {
         "SECRET_KEY": "isecretlylovebabymetal",
     },
     "frontend": {
+        # Externally visible URL of the instance (currently used in bugreports)
+        # By default uses headers from the request
+        # "external_url": "http://localhost/",
+
         # function bound to frontpage endpoint. Useful values are:
         # 'package_list', 'collection_list', 'groups', 'login'
         # Other possible options can be obtained by inspecting the source, but
