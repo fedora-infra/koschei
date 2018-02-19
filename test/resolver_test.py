@@ -59,28 +59,23 @@ def get_sack():
 
 
 class ResolverTest(DBTest):
-    def __init__(self, *args, **kwargs):
-        super(ResolverTest, self).__init__(*args, **kwargs)
-
     def setUp(self):
         super(ResolverTest, self).setUp()
         plugin.load_plugins('backend', ['fedmsg'])
-        self.session.koji_mock.repoInfo.return_value = {
-            'id': 123,
-            'tag_name': 'f25-build',
-            'state': koji.REPO_STATES['READY'],
-        }
-        self.session.sec_koji_mock.repoInfo.return_value = {
-            'id': 123,
-            'tag_name': 'f25-build',
-            'state': koji.REPO_STATES['READY'],
-        }
         self.repo_resolver = RepoResolver(self.session)
         self.build_resolver = BuildResolver(self.session)
         self.db.commit()
 
     @contextmanager
-    def mocks(self, build_group=['R'], requires=['A', 'F'], repo=REPO):
+    def mocks(self, build_group=['R'], requires=['A', 'F'], repo_id=123,
+              repo_available=True):
+        repo_info = self.session.koji_mock.repoInfo.return_value = {
+            'id': repo_id,
+            'tag_name': 'f25-build',
+            'state': koji.REPO_READY if repo_available else koji.REPO_DELETED,
+        }
+        self.session.koji_mock.repoInfo.return_value = repo_info
+        self.session.sec_koji_mock.repoInfo.return_value = repo_info
         with patch('koschei.backend.koji_util.get_build_group_cached',
                    return_value=build_group):
             if requires and isinstance(requires[0], str):
@@ -88,7 +83,7 @@ class ResolverTest(DBTest):
             with patch('koschei.backend.koji_util.get_rpm_requires',
                        return_value=requires):
                 with patch('koschei.backend.koji_util.get_latest_repo',
-                           return_value=repo):
+                           return_value=repo_info):
                     with patch('fedmsg.publish') as fedmsg_mock:
                         yield fedmsg_mock
 
@@ -266,7 +261,7 @@ class ResolverTest(DBTest):
         foo = self.db.query(Package).filter_by(name='foo').one()
 
         # first run, success
-        with self.mocks(repo={'id': 123}) as fedmsg_mock:
+        with self.mocks(repo_id=123) as fedmsg_mock:
             self.repo_resolver.main()
             result = self.db.query(ResolutionChange)\
                 .filter_by(package_id=foo.id).one()
@@ -276,7 +271,7 @@ class ResolverTest(DBTest):
             self.assert_collection_fedmsg_emitted(fedmsg_mock, 'unknown', 'ok')
 
         # second run, fail
-        with self.mocks(repo={'id': 124}, requires=['F', 'nonexistent']) as fedmsg_mock:
+        with self.mocks(repo_id=124, requires=['F', 'nonexistent']) as fedmsg_mock:
             self.repo_resolver.main()
             result = self.db.query(ResolutionChange).filter_by(package_id=foo.id)\
                 .filter(ResolutionChange.id > result.id).one()
@@ -298,7 +293,7 @@ class ResolverTest(DBTest):
             )
 
         # third run, still fail, should not produce additional RR
-        with self.mocks(repo={'id': 125}, requires=['F', 'nonexistent']) as fedmsg_mock:
+        with self.mocks(repo_id=125, requires=['F', 'nonexistent']) as fedmsg_mock:
             self.repo_resolver.main()
             self.assertFalse(foo.resolved)
             self.assertEqual(0, self.db.query(ResolutionChange)
@@ -307,7 +302,7 @@ class ResolverTest(DBTest):
             self.assertFalse(fedmsg_mock.called)
 
         # fourth run, fail with different problems, should produce RR
-        with self.mocks(repo={'id': 126}, requires=['F', 'getrekt']) as fedmsg_mock:
+        with self.mocks(repo_id=126, requires=['F', 'getrekt']) as fedmsg_mock:
             self.repo_resolver.main()
             self.assertFalse(foo.resolved)
             result = self.db.query(ResolutionChange).filter_by(package_id=foo.id)\
@@ -318,7 +313,7 @@ class ResolverTest(DBTest):
             self.assertFalse(fedmsg_mock.called)
 
         # fifth run, back to normal
-        with self.mocks(repo={'id': 127}) as fedmsg_mock:
+        with self.mocks(repo_id=127) as fedmsg_mock:
             self.repo_resolver.main()
             result = self.db.query(ResolutionChange).filter_by(package_id=foo.id)\
                 .filter(ResolutionChange.id > result.id).one()
@@ -340,7 +335,7 @@ class ResolverTest(DBTest):
             )
 
         # sixth run, shouldn't produce additional RR
-        with self.mocks(repo={'id': 128}) as fedmsg_mock:
+        with self.mocks(repo_id=127) as fedmsg_mock:
             self.repo_resolver.main()
             self.assertIsNone(self.db.query(ResolutionChange)
                               .filter_by(package_id=foo.id)
@@ -354,7 +349,7 @@ class ResolverTest(DBTest):
         self.collection.latest_repo_resolved = None
         self.collection.latest_repo_id = None
         self.prepare_packages('bar')
-        with self.mocks(repo={'id': 123}, build_group=['bar']) as fedmsg_mock:
+        with self.mocks(repo_id=123, build_group=['bar']) as fedmsg_mock:
             self.repo_resolver.main()
             self.assert_collection_fedmsg_emitted(fedmsg_mock, 'unknown', 'unresolved')
         self.assertFalse(self.collection.latest_repo_resolved)
@@ -362,7 +357,7 @@ class ResolverTest(DBTest):
         self.assertIn('nonexistent',
                       ''.join(p.problem for p in self.db.query(BuildrootProblem)))
 
-        with self.mocks(repo={'id': 124}) as fedmsg_mock:
+        with self.mocks(repo_id=124) as fedmsg_mock:
             self.repo_resolver.main()
             self.assert_collection_fedmsg_emitted(fedmsg_mock, 'unresolved', 'ok')
         self.assertTrue(self.collection.latest_repo_resolved)
