@@ -28,7 +28,6 @@ from sqlalchemy.orm import aliased
 from test.common import DBTest, RepoCacheMock, rpmvercmp
 from koschei import plugin
 from koschei.backend import koji_util
-from koschei.backend.services.resolver import DependencyCache
 from koschei.backend.services.repo_resolver import RepoResolver
 from koschei.backend.services.build_resolver import BuildResolver
 from koschei.backend.repo_util import KojiRepoDescriptor
@@ -57,129 +56,6 @@ def get_sack():
     desc = KojiRepoDescriptor(koji_id='primary', repo_id=123, build_tag='f25-build')
     with RepoCacheMock().get_sack(desc) as sack:
         return sack
-
-
-# pylint:disable=unbalanced-tuple-unpacking
-class DependencyCacheTest(DBTest):
-    def __init__(self, *args, **kwargs):
-        super(DependencyCacheTest, self).__init__(*args, **kwargs)
-
-    def dep(self, i):
-        return (i, 'foo', 0, str(i), '1', 'x86_64')
-
-    def nevra(self, i):
-        return ('foo', 0, str(i), '1', 'x86_64')
-
-    def setUp(self):
-        super(DependencyCacheTest, self).setUp()
-        deps = [str(self.nevra(i)) for i in range(1, 4)]
-        self.db.execute(
-            "INSERT INTO dependency(name,epoch,version,release,arch) VALUES {}"
-            .format(','.join(deps)))
-        self.db.commit()
-
-    def test_get_ids(self):
-        cache = DependencyCache(10)
-        # from db
-        dep1, dep2 = cache.get_by_ids(self.db, [2, 3])
-        self.assertEqual(self.dep(2), dep1)
-        self.assertEqual(self.dep(3), dep2)
-        hash(dep1)
-        hash(dep2)
-        # from cache
-        dep1, dep2 = cache.get_by_ids(None, [2, 3])
-        self.assertEqual(self.dep(2), dep1)
-        self.assertEqual(self.dep(3), dep2)
-        hash(dep1)
-        hash(dep2)
-        # mixed
-        dep1, dep2 = cache.get_by_ids(self.db, [2, 1])
-        self.assertEqual(self.dep(2), dep1)
-        self.assertEqual(self.dep(1), dep2)
-        hash(dep1)
-        hash(dep2)
-
-    def test_get_nevras(self):
-        cache = DependencyCache(10)
-        # from db
-        dep1, dep2 = cache.get_or_create_nevras(self.db, [self.nevra(2), self.nevra(3)])
-        self.assertEqual(self.dep(2), dep1)
-        self.assertEqual(self.dep(3), dep2)
-        hash(dep1)
-        hash(dep2)
-        # from cache
-        dep1, dep2 = cache.get_or_create_nevras(None, [self.nevra(2), self.nevra(3)])
-        self.assertEqual(self.dep(2), dep1)
-        self.assertEqual(self.dep(3), dep2)
-        hash(dep1)
-        hash(dep2)
-        # insert
-        dep1, dep2 = cache.get_or_create_nevras(self.db, [self.nevra(4), self.nevra(5)])
-        self.assertEqual(self.dep(4), dep1)
-        self.assertEqual(self.dep(5), dep2)
-        hash(dep1)
-        hash(dep2)
-        # mixed
-        dep1, dep2, dep3 = cache.get_or_create_nevras(self.db, [self.nevra(6),
-                                                                self.nevra(4),
-                                                                self.nevra(2)])
-        self.assertEqual(self.dep(6), dep1)
-        self.assertEqual(self.dep(4), dep2)
-        self.assertEqual(self.dep(2), dep3)
-        hash(dep1)
-        hash(dep2)
-        hash(dep3)
-
-        # now get them by id
-        dep1, dep2, dep3 = cache.get_by_ids(self.db, [dep1.id, dep2.id, dep3.id])
-        self.assertEqual(self.dep(6), dep1)
-        self.assertEqual(self.dep(4), dep2)
-        self.assertEqual(self.dep(2), dep3)
-        hash(dep1)
-        hash(dep2)
-        hash(dep3)
-
-    def test_lru(self):
-        cache = DependencyCache(2)
-        # from db
-        cache.get_by_ids(self.db, [2, 3])
-        # one more
-        cache.get_by_ids(self.db, [1])
-        # from cache
-        cache.get_by_ids(None, [3])
-        self.db.query(Dependency).filter_by(version="2").update({'name': 'bar'})
-        self.db.commit()
-        # refetch
-        dep = cache.get_by_ids(self.db, [2])[0]
-        self.assertEqual('bar', dep.name)
-        # still cached
-        cache.get_by_ids(None, [3])
-
-    def test_lru2(self):
-        cache = DependencyCache(2)
-        # from db
-        dep1, dep2 = cache.get_or_create_nevras(self.db, [self.nevra(2), self.nevra(3)])
-        self.assertEqual(self.dep(2), dep1)
-        self.assertEqual(self.dep(3), dep2)
-        # one mode
-        dep1 = cache.get_or_create_nevras(self.db, [self.nevra(1)])[0]
-        self.assertEqual(self.dep(1), dep1)
-        hash(dep1)
-        # from cache
-        dep3 = cache.get_or_create_nevras(None, [self.nevra(3)])[0]
-        self.assertEqual(self.dep(3), dep3)
-        hash(dep3)
-
-        self.db.query(Dependency).filter_by(version="2").update({'name': 'bar'})
-        self.db.commit()
-        # 2 should be expired, this should insert new
-        dep = cache.get_or_create_nevras(self.db, [self.nevra(2)])[0]
-        self.assertEqual('foo', dep.name)
-        hash(dep)
-        # still cached
-        dep3 = cache.get_or_create_nevras(None, [self.nevra(3)])[0]
-        self.assertEqual(self.dep(3), dep3)
-        hash(dep3)
 
 
 class ResolverTest(DBTest):
