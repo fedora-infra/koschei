@@ -120,6 +120,7 @@ class CoprResolver(Service):
             self.session.koji('primary'),
             request.collection.build_tag,
             request.collection.build_group,
+            request.collection.latest_repo_id,
         )
         for package, brs in zip(packages, br_gen):
             resolved1, _, installs1 = \

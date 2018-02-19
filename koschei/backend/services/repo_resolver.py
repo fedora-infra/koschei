@@ -150,7 +150,7 @@ class RepoResolver(Resolver):
                 collection.name,
             )
         )
-        build_group = self.get_build_group(collection)
+        build_group = self.get_build_group(collection, repo_id)
         resolved, base_problems, _ = self.resolve_dependencies(sack, [], build_group)
         self.db.query(BuildrootProblem)\
             .filter_by(collection_id=collection.id)\
@@ -222,7 +222,7 @@ class RepoResolver(Resolver):
         # pylint:disable=too-many-locals
         results = []
 
-        build_group = self.get_build_group(collection)
+        build_group = self.get_build_group(collection, repo_id)
         gen = ((package, self.resolve_dependencies(sack, br, build_group))
                for package, br in zip(packages, brs))
         queue_size = get_config('dependency.resolver_queue_size')
