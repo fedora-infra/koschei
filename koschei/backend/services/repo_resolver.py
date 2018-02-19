@@ -77,18 +77,19 @@ class RepoResolver(Resolver):
             total_time.reset()
             total_time.start()
             with self.prepared_repo(collection, repo_id) as sack:
-                self.resolve_repo(sack, collection, repo_id)
+                self.resolve_repo(collection, repo_id, sack)
                 if collection.latest_repo_resolved:
                     packages = self.get_packages(collection)
-                    self.resolve_packages(sack, collection, packages)
+                    self.resolve_packages(collection, repo_id, sack, packages)
             total_time.stop()
             total_time.display()
         elif collection.latest_repo_resolved:
             # we don't have a new repo, but we can at least resolve new packages
             new_packages = self.get_packages(collection, only_new=True)
             if new_packages:
-                with self.prepared_repo(collection, collection.latest_repo_id) as sack:
-                    self.resolve_packages(sack, collection, new_packages)
+                repo_id = collection.latest_repo_id
+                with self.prepared_repo(collection, repo_id) as sack:
+                    self.resolve_packages(collection, repo_id, sack, new_packages)
 
     def get_new_repo_id(self, collection):
         """
@@ -133,7 +134,7 @@ class RepoResolver(Resolver):
                 )
             yield sack
 
-    def resolve_repo(self, sack, collection, repo_id):
+    def resolve_repo(self, collection, repo_id, sack):
         """
         Resolves given repo base buildroot. Stores buildroot problems if any.
         Updates collection metadata (latest_repo_id, latest_repo_resolved).
@@ -190,7 +191,7 @@ class RepoResolver(Resolver):
             query = query.filter(Package.resolved == None)
         return query.all()
 
-    def resolve_packages(self, sack, collection, packages):
+    def resolve_packages(self, collection, repo_id, sack, packages):
         """
         Generates new dependency changes for given packages
         Commits data in increments.
@@ -205,15 +206,15 @@ class RepoResolver(Resolver):
         self.log.info(
             "Resolving dependencies (repo_id={}, collection={}) for {} packages"
             .format(
-                collection.latest_repo_id,
+                repo_id,
                 collection.name,
                 len(packages),
             )
         )
-        self.generate_dependency_changes(sack, collection, packages, brs)
+        self.generate_dependency_changes(collection, repo_id, sack, packages, brs)
         self.db.commit()
 
-    def generate_dependency_changes(self, sack, collection, packages, brs):
+    def generate_dependency_changes(self, collection, repo_id, sack, packages, brs):
         """
         Generates and persists dependency changes for given list of packages.
         Emits package state change events.
