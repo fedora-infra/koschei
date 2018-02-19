@@ -85,10 +85,14 @@ class BuildResolver(Resolver):
         descriptor = self.create_repo_descriptor(collection, repo_id)
         if not descriptor:
             self.log.info("Repo ID %d is dead. Skipping.", repo_id)
-            for build in builds:
-                # Builds with no repo cannot be resolved
-                self.process_unresolved_build(build)
-            self.db.commit()
+            # Builds with no repo cannot be resolved
+            self.process_unresolved_builds(builds)
+            return
+
+        build_group = self.get_build_group(collection, repo_id)
+        if not build_group:
+            self.log.info("Failed to obtain build group for repo ID %d", repo_id)
+            self.process_unresolved_builds(builds)
             return
 
         with self.session.repo_cache.get_sack(descriptor) as sack:
@@ -97,7 +101,6 @@ class BuildResolver(Resolver):
                 # The repo was not marked as deleted in Koji, so this is likely
                 # a temporary failure, which will be retried on the next cycle
                 return
-            build_group = self.get_build_group(collection, repo_id)
             nvras = [b.srpm_nvra for b in builds]
             all_brs = self.get_rpm_requires(collection, nvras)
             for build, brs in zip(builds, all_brs):
@@ -119,6 +122,13 @@ class BuildResolver(Resolver):
         except (StaleDataError, ObjectDeletedError):
             # build deleted concurrently, can be skipped
             self.db.rollback()
+
+    def process_unresolved_builds(self, builds):
+        """
+        Calls process_unresolved_build for multiple builds
+        """
+        for build in builds:
+            self.process_unresolved_build(build)
 
     def process_unresolved_build(self, build):
         """
