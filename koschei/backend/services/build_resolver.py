@@ -54,6 +54,7 @@ class BuildResolver(Resolver):
             self.db.query(Build)
             .join(Build.package)
             .filter(Build.deps_resolved == None)
+            .filter(Build.repo_id != None)
             .filter(Package.collection_id == collection.id)
             .order_by(Build.repo_id)
             .all()
@@ -67,18 +68,10 @@ class BuildResolver(Resolver):
 
         # Group by repo_id to speed up processing (reuse the sack)
         for repo_id, builds_group in groupby(builds, lambda b: b.repo_id):
+            builds_group = list(builds_group)
             try:
                 with pg_session_lock(self.db, LOCK_BUILD_RESOLVER, repo_id, block=False):
-                    if repo_id is None:
-                        for build in builds_group:
-                            # Builds with no repo id cannot be resolved
-                            self.process_unresolved_build(build)
-                    else:
-                        self.process_builds_with_repo_id(
-                            collection,
-                            repo_id,
-                            list(builds_group),
-                        )
+                    self.process_builds_with_repo_id(collection, repo_id, builds_group)
                     self.db.commit()
             except Locked:
                 continue
