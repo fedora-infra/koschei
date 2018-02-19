@@ -148,6 +148,21 @@ class ResolverTest(DBTest):
         self.assertEqual(0, foo_build.package.build_priority)
         with self.mocks(requires=['nonexistent', 'A']):
             self.build_resolver.process_builds(self.collection)
+        self.assertIs(foo_build.deps_resolved, False)
+        self.assertEqual(3000, foo_build.package.build_priority)
+
+    def test_build_repo_deleted(self):
+        foo_build = self.prepare_foo_build()
+        with self.mocks(repo_available=False):
+            self.build_resolver.process_builds(self.collection)
+        self.assertIs(foo_build.deps_resolved, False)
+        self.assertEqual(3000, foo_build.package.build_priority)
+
+    def test_build_no_build_group(self):
+        foo_build = self.prepare_foo_build()
+        with self.mocks(build_group=None):
+            self.build_resolver.process_builds(self.collection)
+        self.assertIs(foo_build.deps_resolved, False)
         self.assertEqual(3000, foo_build.package.build_priority)
 
     def test_virtual_in_group(self):
