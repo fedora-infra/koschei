@@ -31,8 +31,10 @@ from koschei.backend import koji_util
 from koschei.backend.services.repo_resolver import RepoResolver
 from koschei.backend.services.build_resolver import BuildResolver
 from koschei.backend.repo_util import KojiRepoDescriptor
-from koschei.models import (Dependency, UnappliedChange, AppliedChange, Package,
-                            ResolutionProblem, BuildrootProblem, ResolutionChange)
+from koschei.models import (
+    Dependency, UnappliedChange, AppliedChange, Package, ResolutionProblem,
+    BuildrootProblem, ResolutionChange, Build,
+)
 
 MINIMAL_HAWKEY_VERSION = '0.6.2'
 
@@ -132,6 +134,14 @@ class ResolverTest(DBTest):
                                     Dependency.arch)\
             .filter(Dependency.id.in_(foo_build.dependency_keys)).all()
         self.assertCountEqual(FOO_DEPS, actual_deps)
+
+    def test_dont_resolve_running_build_with_no_repo_id(self):
+        foo_build = self.prepare_foo_build()
+        foo_build.state = Build.RUNNING
+        foo_build.repo_id = None
+        with self.mocks():
+            self.build_resolver.process_builds(self.collection)
+        self.assertIsNone(foo_build.deps_resolved)
 
     def test_unresolved_build_should_bump_priority(self):
         foo_build = self.prepare_foo_build()
