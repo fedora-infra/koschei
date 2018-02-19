@@ -301,8 +301,9 @@ def stopwatch(parent, note=None):
         @wraps(fn)
         def decorated(*args, **kwargs):
             watch.start()
-            res = fn(*args, **kwargs)
-            watch.stop()
-            return res
+            try:
+                return fn(*args, **kwargs)
+            finally:
+                watch.stop()
         return decorated
     return decorator
