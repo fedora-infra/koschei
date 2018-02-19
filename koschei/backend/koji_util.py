@@ -143,11 +143,20 @@ def cached_koji_call(fn):
     return decorated
 
 
-def get_build_group(koji_session, tag_name, group_name):
-    groups = koji_session.getTagGroups(tag_name)
-    [packages] = [group['packagelist'] for group in groups if group['name'] == group_name]
-    return [package['package'] for package in packages
-            if not package['blocked'] and package['type'] in ('default', 'mandatory')]
+def get_build_group(koji_session, tag_name, group_name, repo_id):
+    repo_info = koji_session.repoInfo(repo_id)
+    if not repo_info:
+        return None
+    groups = koji_session.getTagGroups(tag_name, event=repo_info['create_event'])
+    if not groups:
+        return None
+    groups = [group['packagelist'] for group in groups if group['name'] == group_name]
+    if not groups:
+        return None
+    return [
+        package['package'] for package in groups[0]
+        if not package['blocked'] and package['type'] in ('default', 'mandatory')
+    ]
 
 get_build_group_cached = cached_koji_call(get_build_group)
 

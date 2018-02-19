@@ -135,6 +135,7 @@ class Resolver(Service):
             self.session.koji('primary'),
             collection.build_tag,
             collection.build_group,
+            repo_id,
         )
         return group
 

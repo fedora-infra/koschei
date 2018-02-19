@@ -97,7 +97,7 @@ class BuildResolver(Resolver):
                 # The repo was not marked as deleted in Koji, so this is likely
                 # a temporary failure, which will be retried on the next cycle
                 return
-            build_group = self.get_build_group(collection)
+            build_group = self.get_build_group(collection, repo_id)
             nvras = [b.srpm_nvra for b in builds]
             all_brs = self.get_rpm_requires(collection, nvras)
             for build, brs in zip(builds, all_brs):
