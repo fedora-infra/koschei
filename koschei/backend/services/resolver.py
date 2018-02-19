@@ -126,7 +126,7 @@ class Resolver(Service):
         capacity = get_config('dependency.dependency_cache_capacity')
         self.dependency_cache = DependencyCache(capacity=capacity)
 
-    def get_build_group(self, collection):
+    def get_build_group(self, collection, repo_id):
         """
         Returns a Koji build group for given collection.
         """
