@@ -143,6 +143,7 @@ class DBTest(AbstractTest):
             name="f25", display_name="Fedora Rawhide", target="f25",
             dest_tag='f25', build_tag="f25-build", priority_coefficient=1.0,
             latest_repo_resolved=True, latest_repo_id=123,
+            bugzilla_product="Fedora", bugzilla_version="25",
         )
         self.session = None
 
