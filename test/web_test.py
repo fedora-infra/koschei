@@ -18,6 +18,9 @@
 
 import re
 
+from textwrap import dedent
+from urllib.parse import urlparse, parse_qs
+
 from koschei.models import PackageGroup
 from test.common import my_vcr
 from test.frontend_common import FrontendTest, authenticate, authenticate_admin
@@ -560,3 +563,35 @@ class WebTest(FrontendTest):
         normalized_data = ' '.join(reply.data.decode('utf-8').split())
         self.assertIn('jdoe\'s packages', normalized_data)
         self.assertIn('packages from 1 to 0 from total 0', normalized_data)
+
+    def test_bugreport(self):
+        self.prepare_build('groovy', state=True)
+        reply = self.client.get('/bugreport/groovy?collection=f25')
+        self.assertEqual(302, reply.status_code)
+        url = urlparse(reply.location)
+        self.assertEqual('https', url.scheme)
+        self.assertEqual('bugzilla.redhat.com', url.netloc)
+        self.assertEqual('/enter_bug.cgi', url.path)
+        query = parse_qs(url.query)
+        self.assertEqual('Fedora', query['product'][0])
+        self.assertEqual('25', query['version'][0])
+        self.assertEqual('groovy', query['component'][0])
+        self.assertEqual('groovy: FTBFS in Fedora Rawhide', query['short_desc'][0])
+        self.assertEqual('http://example.com/package/groovy', query['bug_file_loc'][0])
+        self.assertEqual(
+            dedent("""
+                Description of problem:
+                Package groovy fails to build from source in Fedora Rawhide.
+
+                Version-Release number of selected component (if applicable):
+                1-1.fc25
+
+                Steps to Reproduce:
+                koji build --scratch f25 groovy-1-1.fc25.src.rpm
+
+                Additional info:
+                This package is tracked by Koschei. See:
+                http://example.com/package/groovy
+                """).strip(),
+            query['comment'][0].strip(),
+        )
