@@ -48,6 +48,17 @@ class KojiUtilTest(AbstractTest):
         load = koji_util.get_koji_load(self.session, self.all_arches, ['armv7hl'])
         self.assertAlmostEqual(0.8958, load, 4)
 
+    @my_vcr.use_cassette('koji_get_build_group')
+    def test_get_build_group(self):
+        group = koji_util.get_build_group(self.session, 'f27-build', 'build', 9000370)
+        expected_group = [
+            'tar', 'xz', 'sed', 'findutils', 'gcc', 'redhat-rpm-config',
+            'make', 'shadow-utils', 'coreutils', 'which', 'gcc-c++', 'unzip',
+            'fedora-release', 'bzip2', 'gawk', 'cpio', 'util-linux', 'bash',
+            'info', 'grep', 'rpm-build', 'patch', 'diffutils', 'gzip',
+        ]
+        self.assertCountEqual(expected_group, group)
+
 
 class KojiArchesTest(AbstractTest):
     def setUp(self):
