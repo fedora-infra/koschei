@@ -66,15 +66,23 @@ def pg_lock(db, namespace, key, block=True, transaction=False, shared=False):
         raise Locked()
 
 
-def pg_unlock(db, namespace, key, shared=False):
+def pg_unlock(db, namespace, key, shared=False, ignore_exceptions=False):
     """
     Unlocks given advisory session lock. Arguments have the same meaning as in pg_lock
     """
-    fn_name = 'pg_advisory_unlock'
-    if shared:
-        fn_name += '_shared'
-    function = getattr(func, fn_name)
-    db.query(function(namespace, key)).one()
+    try:
+        fn_name = 'pg_advisory_unlock'
+        if shared:
+            fn_name += '_shared'
+        function = getattr(func, fn_name)
+        db.query(function(namespace, key)).one()
+    except Exception as e:
+        try:
+            db.close_connection()
+        except Exception:
+            pass
+        if not ignore_exceptions:
+            raise e
 
 
 def pg_unlock_all(db):
@@ -91,25 +99,9 @@ def pg_session_lock(db, namespace, key, block=True, shared=False):
     With block=True (default) blocks until the resource is locked.
     """
     pg_lock(db, namespace, key, block=block, shared=shared)
-    locked = True
-    captured_exception = None
     try:
         yield
+        pg_unlock(db, namespace, key, shared=shared, ignore_exceptions=False)
     except Exception as e:
-        captured_exception = e
-    finally:
-        try:
-            pg_unlock(db, namespace, key, shared=shared)
-            locked = False
-        except Exception as e:
-            # Swallow the exception if it was a consequence of exception from
-            # the main block
-            captured_exception = captured_exception or e
-        finally:
-            # If the transaction is aborted, the unlock fails. We need to
-            # terminate the connection entirely
-            if locked:
-                db.close_connection()
-    if captured_exception:
-        # pylint:disable=raising-bad-type
-        raise captured_exception
+        pg_unlock(db, namespace, key, shared=shared, ignore_exceptions=True)
+        raise e
