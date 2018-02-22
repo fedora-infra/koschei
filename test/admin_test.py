@@ -50,3 +50,15 @@ class AdminTest(DBTest):
         b2 = self.db.query(Build).get(b2_id)
         self.assertIs(None, b1)
         self.assertIsNot(None, b2)
+
+    def test_add_pkg(self):
+        rnv = self.prepare_package('rnv', tracked=False)
+        eclipse = self.prepare_package('eclipse', tracked=False)
+        maven = self.prepare_package('maven', tracked=True)
+        self.call_command('add-pkg -c f25 eclipse maven')
+        self.assertFalse(rnv.tracked)
+        self.assertTrue(eclipse.tracked)
+        self.assertTrue(maven.tracked)
+        self.assert_action_log(
+            "Package eclipse (collection f25): tracked set from False to True",
+        )
