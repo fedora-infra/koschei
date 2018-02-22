@@ -268,6 +268,7 @@ exit 0
 %files common
 %license LICENSE.txt
 %{python3_sitelib}/*
+%exclude %{python3_sitelib}/koschei/admin.py
 %exclude %{python3_sitelib}/koschei/frontend
 %exclude %{python3_sitelib}/koschei/backend
 %exclude %{python3_sitelib}/koschei/plugins/*/
@@ -282,6 +283,7 @@ exit 0
 %files admin
 %{_bindir}/%{name}-admin
 %dir %{_libexecdir}/%{name}
+%{python3_sitelib}/koschei/admin.py
 %{_datadir}/%{name}/alembic/
 %{_datadir}/%{name}/*.sql
 %{_datadir}/%{name}/alembic.ini
