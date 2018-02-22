@@ -22,11 +22,37 @@ from datetime import datetime
 from tempfile import NamedTemporaryFile
 
 from test.common import DBTest
-from koschei.models import AdminNotice, Build, PackageGroup
+from koschei.models import AdminNotice, Build, PackageGroup, Collection
 from koschei.admin import main
 
 
 class AdminTest(DBTest):
+    def setUp(self):
+        super().setUp()
+
+        def getBuildTarget(target):
+            if target == 'f28':
+                return {
+                    'build_tag': 1928,
+                    'build_tag_name': 'f28-build',
+                    'dest_tag': 1924,
+                    'dest_tag_name': 'f28-pending',
+                    'id': 1291,
+                    'name': 'f28',
+                }
+            if target == 'f29':
+                return {
+                    'build_tag': 3428,
+                    'build_tag_name': 'f29-build',
+                    'dest_tag': 3430,
+                    'dest_tag_name': 'f29-pending',
+                    'id': 2032,
+                    'name': 'f29',
+                }
+            self.fail("Unexpected target")
+
+        self.session.koji_mock.getBuildTarget.side_effect = getBuildTarget
+
     def call_command(self, args):
         if isinstance(args, str):
             args = shlex.split(args)
@@ -103,3 +129,36 @@ class AdminTest(DBTest):
                 f'edit-group me/my-packages --content-from-file {fo.name}'
             )
         self.assertCountEqual([eclipse.base], group2.packages)
+
+    def test_collection_commands(self):
+        self.call_command(
+            'create-collection f28 -d"Fedora Rawhide" -t f28 -o 128 \
+             --bugzilla-product Fedora --bugzilla-version 28'
+        )
+        collection = self.db.query(Collection).filter_by(name='f28').one()
+        self.assertEqual("Fedora Rawhide", str(collection))
+        self.assertEqual("f28", collection.target)
+        self.assertEqual("f28-build", collection.build_tag)
+        self.assertEqual("f28-build", collection.dest_tag)
+        self.assertEqual("28", collection.bugzilla_version)
+
+        self.call_command(
+            'edit-collection f28 --bugzilla-version rawhide'
+        )
+        self.assertEqual("rawhide", collection.bugzilla_version)
+
+        self.call_command(
+            'branch-collection f28 f29 -d"Fedora 28" -t f29 --bugzilla-version 28'
+        )
+        branched = self.db.query(Collection).filter_by(name='f28').one()
+        self.assertIsNot(branched, collection)
+        self.assertEqual("f28", branched.target)
+        self.assertEqual("f28-build", branched.build_tag)
+        self.assertEqual("f28-build", branched.dest_tag)
+        self.assertEqual("28", branched.bugzilla_version)
+        self.assertEqual(128, branched.order)
+        self.assertEqual("f29", collection.target)
+        self.assertEqual("f29-build", collection.build_tag)
+        self.assertEqual("f29-build", collection.dest_tag)
+        self.assertEqual("rawhide", collection.bugzilla_version)
+        self.assertEqual(129, collection.order)
