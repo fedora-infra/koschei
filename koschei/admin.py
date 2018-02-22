@@ -524,12 +524,16 @@ class BranchCollection(CreateOrEditCollectionCommand, Command):
             help="New Koji target for the master collection",
         )
         parser.add_argument(
+            '--dest-tag',
+            help="New destination tag for the master collection (defaults to build tag)",
+        )
+        parser.add_argument(
             '--bugzilla-version',
             help="Product version used in bugzilla template for the branched collection",
         )
 
     def execute(self, session, master_collection, new_name, display_name,
-                target, bugzilla_version):
+                target, dest_tag, bugzilla_version):
         master = (
             session.db.query(Collection)
             .filter_by(name=master_collection)
@@ -547,10 +551,12 @@ class BranchCollection(CreateOrEditCollectionCommand, Command):
             bugzilla_version=bugzilla_version,
         )
         for key in ('secondary_mode', 'priority_coefficient', 'bugzilla_product',
-                    'poll_untracked', 'build_group', 'target', 'name', 'order'):
+                    'poll_untracked', 'build_group', 'target', 'name', 'order',
+                    'dest_tag'):
             setattr(branched, key, getattr(master, key))
         master.name = new_name
         master.target = target
+        master.dest_tag = dest_tag
         master.order += 1
         self.set_koji_tags(session, branched)
         self.set_koji_tags(session, master)
