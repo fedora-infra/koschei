@@ -83,7 +83,6 @@ def main(args, session=None):
     cmd.execute(**kwargs)
     if cmd.needs_session:
         session.db.commit()
-        session.close()
 
 
 class CreateDb(Command):
