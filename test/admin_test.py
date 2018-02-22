@@ -19,9 +19,10 @@
 import shlex
 
 from datetime import datetime
+from tempfile import NamedTemporaryFile
 
 from test.common import DBTest
-from koschei.models import AdminNotice, Build
+from koschei.models import AdminNotice, Build, PackageGroup
 from koschei.admin import main
 
 
@@ -62,3 +63,43 @@ class AdminTest(DBTest):
         self.assert_action_log(
             "Package eclipse (collection f25): tracked set from False to True",
         )
+
+    def test_group_commands(self):
+        self.call_command('create-group global-group')
+        group1 = self.db.query(PackageGroup).filter_by(name='global-group').one()
+        self.assertIs(None, group1.namespace)
+        self.call_command('create-group me/my-packages')
+        group2 = self.db.query(PackageGroup).filter_by(name='my-packages').one()
+        self.assertEqual('me', group2.namespace)
+
+        maven = self.prepare_package('maven')
+        eclipse = self.prepare_package('eclipse')
+        rnv = self.prepare_package('rnv')
+        with NamedTemporaryFile() as fo:
+            fo.write(b'maven eclipse')
+            fo.flush()
+            self.call_command(
+                f'edit-group global-group --content-from-file {fo.name}'
+            )
+        self.assertCountEqual([maven.base, eclipse.base], group1.packages)
+        with NamedTemporaryFile() as fo:
+            fo.write(b'rnv')
+            fo.flush()
+            self.call_command(
+                f'edit-group global-group --append --content-from-file {fo.name}'
+            )
+        self.assertCountEqual([maven.base, eclipse.base, rnv.base], group1.packages)
+        with NamedTemporaryFile() as fo:
+            fo.write(b'rnv')
+            fo.flush()
+            self.call_command(
+                f'edit-group global-group --content-from-file {fo.name}'
+            )
+        self.assertCountEqual([rnv.base], group1.packages)
+        with NamedTemporaryFile() as fo:
+            fo.write(b'eclipse')
+            fo.flush()
+            self.call_command(
+                f'edit-group me/my-packages --content-from-file {fo.name}'
+            )
+        self.assertCountEqual([eclipse.base], group2.packages)
