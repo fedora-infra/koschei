@@ -18,8 +18,10 @@
 
 import shlex
 
+from datetime import datetime
+
 from test.common import DBTest
-from koschei.models import AdminNotice
+from koschei.models import AdminNotice, Build
 from koschei.admin import main
 
 
@@ -39,3 +41,12 @@ class AdminTest(DBTest):
         notices = self.db.query(AdminNotice).all()
         self.assertEqual(0, len(notices))
         self.assert_action_log("Admin notice added: foo", "Admin notice cleared")
+
+    def test_cleanup(self):
+        b1_id = self.prepare_build('rnv', state=True, started='2016-1-1').id
+        b2_id = self.prepare_build('rnv', state=True, started=datetime.now()).id
+        self.call_command('cleanup')
+        b1 = self.db.query(Build).get(b1_id)
+        b2 = self.db.query(Build).get(b2_id)
+        self.assertIs(None, b1)
+        self.assertIsNot(None, b2)
