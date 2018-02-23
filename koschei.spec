@@ -1,7 +1,7 @@
 %bcond_without tests
 
 Name:           koschei
-Version:        2.2.1
+Version:        2.3.0
 Release:        1%{?dist}
 Summary:        Continuous integration for Fedora packages
 License:        GPLv2+
@@ -340,6 +340,9 @@ exit 0
 %{python3_sitelib}/*/plugins/copr_plugin/backend*
 
 %changelog
+* Fri Feb 23 2018 Michael Simacek <msimacek@redhat.com> - 2.3.0-1
+- Update to upstream version 2.3.0
+
 * Wed Feb 07 2018 Fedora Release Engineering <releng@fedoraproject.org> - 2.2.0-2
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_28_Mass_Rebuild
 
