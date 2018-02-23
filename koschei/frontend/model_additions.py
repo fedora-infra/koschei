@@ -17,11 +17,15 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
+import re
+
 from flask import url_for
 from jinja2 import Markup
 
 from koschei.frontend.base import app
-from koschei.models import Package, Build, ResolutionChange
+from koschei.models import (
+    Package, Build, ResolutionChange, AppliedChange, UnappliedChange,
+)
 
 
 def icon(name, title=None):
@@ -88,6 +92,26 @@ def resolution_change_css_class(resolution_change):
         return "table-success"
     return "table-danger"
 ResolutionChange.css_class = property(resolution_change_css_class)
+
+
+EVR_SEPARATORS_RE = re.compile(r'([-._~])')
+
+
+def dependency_change_pretty_evrs(change):
+    s1, s2 = [
+        EVR_SEPARATORS_RE.split(str(evr)) if evr else []
+        for evr in (change.prev_evr, change.curr_evr )
+    ]
+    for i in range(min(len(s1), len(s2))):
+        if s1[i] != s2[i]:
+            s1[i] = f'<span class="kk-evr-diff">{s1[i]}</span>'
+            s2[i] = f'<span class="kk-evr-diff">{s2[i]}</span>'
+            break
+    return Markup(''.join(s1)), Markup(''.join(s2))
+
+
+AppliedChange.pretty_evrs = property(dependency_change_pretty_evrs)
+UnappliedChange.pretty_evrs = property(dependency_change_pretty_evrs)
 
 
 app.jinja_env.globals.update(
