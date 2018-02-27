@@ -662,7 +662,7 @@ class SubmitBuild(Command):
                 pkg.collection.build_tag,
             )
             arches = koji_util.get_srpm_arches(
-                koji_session=koji_session,
+                koji_session=session.koji('secondary'),
                 all_arches=all_arches,
                 nvra=pkg.srpm_nvra,
                 arch_override=pkg.arch_override,
