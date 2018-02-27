@@ -132,7 +132,7 @@ class Resolver(Service):
         """
         group = koji_util.get_build_group_cached(
             self.session,
-            self.session.koji('primary'),
+            self.session.koji('secondary'),
             collection.build_tag,
             collection.build_group,
             repo_id,
