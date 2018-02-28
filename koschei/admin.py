@@ -36,9 +36,9 @@ from koschei.config import get_config
 
 
 class KoscheiAdminSession(backend.KoscheiBackendSession):
-    def __init__(self, log):
-        super(KoscheiAdminSession, self).__init__()
-        self.log = log
+    def __init__(self):
+        super().__init__()
+        self.log = logging.getLogger('koschei.admin')
 
     def log_user_action(self, message, **kwargs):
         username = os.environ.get('SUDO_USER', pwd.getpwuid(os.getuid()).pw_name)
@@ -72,9 +72,8 @@ def main(args, session=None):
     args = main_parser.parse_args(args)
     cmd = args.cmd
     kwargs = vars(args)
-    log = logging.getLogger('koschei.admin')
     if not session:
-        session = KoscheiAdminSession(log)
+        session = KoscheiAdminSession()
     del kwargs['cmd']
     if cmd.load_plugins:
         plugin.load_plugins('backend')

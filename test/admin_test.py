@@ -21,12 +21,19 @@ import shlex
 from datetime import datetime
 from tempfile import NamedTemporaryFile
 
-from test.common import DBTest
+from test.common import DBTest, KoscheiMockSessionMixin
 from koschei.models import AdminNotice, Build, PackageGroup, Collection
-from koschei.admin import main
+from koschei.admin import main, KoscheiAdminSession
+
+
+class KoscheiAdminSessionMock(KoscheiMockSessionMixin, KoscheiAdminSession):
+    pass
 
 
 class AdminTest(DBTest):
+    def create_session(self):
+        return KoscheiAdminSessionMock(self)
+
     def setUp(self):
         super().setUp()
 
