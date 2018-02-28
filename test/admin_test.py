@@ -61,6 +61,7 @@ class AdminTest(DBTest):
         self.session.koji_mock.getBuildTarget.side_effect = getBuildTarget
 
     def call_command(self, args):
+        self.db.commit()
         if isinstance(args, str):
             args = shlex.split(args)
         main(args=args, session=self.session)
@@ -96,6 +97,25 @@ class AdminTest(DBTest):
         self.assert_action_log(
             "Package eclipse (collection f25): tracked set from False to True",
         )
+
+    def test_set_priority(self):
+        rnv = self.prepare_package('rnv')
+        eclipse = self.prepare_package('eclipse')
+        eclipse.manual_priority = 3000
+        self.call_command('set-priority --collection f25 rnv eclipse 2000')
+        self.assertEqual(2000, rnv.manual_priority)
+        self.assertEqual(2000, eclipse.manual_priority)
+        self.assert_action_log(
+            "Package rnv (collection f25): manual_priority set from 0 to 2000",
+            "Package eclipse (collection f25): manual_priority set from 3000 to 2000",
+        )
+
+    def test_set_priority_nonexistent(self):
+        rnv = self.prepare_package('rnv')
+        with self.assertRaises(SystemExit, msg="Packages not found: eclipse"):
+            self.call_command('set-priority --collection f25 rnv eclipse 2000')
+        self.assertEqual(0, rnv.manual_priority)
+        self.assert_action_log()
 
     def test_group_commands(self):
         self.call_command('create-group global-group')
