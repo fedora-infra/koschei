@@ -212,7 +212,7 @@ class ResolverTest(DBTest):
         self.assertIs(False, b.deps_resolved)
 
     def prepare_old_build(self):
-        old_build = self.prepare_foo_build(repo_id=555, version='3')
+        old_build = self.prepare_foo_build(repo_id=122, version='3')
         old_build.deps_resolved = True
         old_deps = FOO_DEPS[:]
         old_deps[2] = ('C', 1, '2', '1.fc22', 'x86_64')
