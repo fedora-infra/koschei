@@ -161,6 +161,7 @@ class BuildResolver(Resolver):
                 if changes:
                     applied_changes = [self.change_to_applied(c) for c in changes]
                     self.db.execute(insert(AppliedChange, applied_changes))
+            prev_build.dependency_keys = None
 
     def store_dependencies(self, build, installs):
         """
@@ -176,13 +177,6 @@ class BuildResolver(Resolver):
         ]
         deps = self.dependency_cache.get_or_create_nevras(self.db, dep_tuples)
         build.dependency_keys = [dep.id for dep in deps]
-        # Remove previous build's dependency_keys to save space
-        (
-            self.db.query(Build)
-            .filter_by(package_id=build.package_id)
-            .filter(Build.repo_id < build.repo_id)
-            .update({'dependency_keys': None})
-        )
 
     def get_build_dependencies(self, build):
         """
