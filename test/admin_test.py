@@ -24,7 +24,9 @@ from tempfile import NamedTemporaryFile
 from sqlalchemy.exc import InvalidRequestError
 
 from test.common import DBTest, KoscheiMockSessionMixin
-from koschei.models import AdminNotice, Build, PackageGroup, Collection, Package
+from koschei.models import (
+    AdminNotice, Build, PackageGroup, Collection, Package, CollectionGroup,
+)
 from koschei.admin import main, KoscheiAdminSession
 
 
@@ -160,6 +162,7 @@ class AdminTest(DBTest):
         self.assertCountEqual([eclipse.base], group2.packages)
 
     def test_collection_commands(self):
+        # test create collection
         self.call_command(
             'create-collection f28 -d"Fedora Rawhide" -t f28 -o 128 \
              --bugzilla-product Fedora --bugzilla-version 28'
@@ -173,11 +176,22 @@ class AdminTest(DBTest):
 
         rnv = self.prepare_package('rnv', collection_id=collection.id)
 
+        # test edit collection
         self.call_command(
             'edit-collection f28 --bugzilla-version rawhide'
         )
         self.assertEqual("rawhide", collection.bugzilla_version)
 
+        # add it to collection group
+        self.call_command('create-collection-group fedora -d Fedora -c f28')
+        group = self.db.query(CollectionGroup).one()
+        self.assertEqual('fedora', group.name)
+        self.assertEqual('Fedora', group.display_name)
+        self.assertEqual('Fedora', str(group))
+        self.assertEqual(1, len(group.collections))
+        self.assertIs(collection, group.collections[0])
+
+        # test branch collection
         self.call_command(
             'branch-collection f28 f29 -d"Fedora 28" -t f29 --bugzilla-version 28'
         )
@@ -199,12 +213,17 @@ class AdminTest(DBTest):
             .one()
         )
         self.assertIsNot(rnv_branched, rnv)
+        self.assertEqual(2, len(group.collections))
+        self.assertCountEqual([collection, branched], group.collections)
 
+        # test delete collection
         self.call_command('delete-collection --force f28')
         with self.assertRaises(InvalidRequestError):
             self.db.refresh(branched)
         with self.assertRaises(InvalidRequestError):
             self.db.refresh(rnv_branched)
+
+        self.assertEqual(1, len(group.collections))
 
         self.assert_action_log(
             "Collection f28 created",
