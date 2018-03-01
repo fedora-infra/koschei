@@ -23,16 +23,16 @@ import hawkey
 import koji
 from contextlib import contextmanager
 from mock import Mock, patch
-from sqlalchemy.orm import aliased
 
 from test.common import DBTest, RepoCacheMock, rpmvercmp
 from koschei import plugin
+from koschei.db import RpmEVR
 from koschei.backend import koji_util
 from koschei.backend.services.repo_resolver import RepoResolver
 from koschei.backend.services.build_resolver import BuildResolver
 from koschei.backend.repo_util import KojiRepoDescriptor
 from koschei.models import (
-    Dependency, UnappliedChange, AppliedChange, Package, ResolutionProblem,
+    Dependency, UnappliedChange, Package, ResolutionProblem,
     BuildrootProblem, ResolutionChange, Build,
 )
 
@@ -109,6 +109,38 @@ class ResolverTest(DBTest):
             topic='collection.state.change'
         )
 
+    def test_process_build(self):
+        old_build = self.prepare_old_build()
+        build = self.prepare_foo_build(repo_id=123, version='4')
+
+        with self.mocks():
+            self.build_resolver.main()
+            self.db.rollback()
+
+        self.assertIs(True, build.deps_resolved)
+
+        expected_changes = [
+            (build.id, 'C', 2, RpmEVR(1, '2', '1.fc22'), RpmEVR(1, '3', '1.fc22')),
+            (build.id, 'E', 2, None, RpmEVR(0, '0.1', '1.fc22.1')),
+        ]
+        actual_changes = [
+            (c.build_id, c.dep_name, c.distance, c.prev_evr, c.curr_evr)
+            for c in build.dependency_changes
+        ]
+        self.assertCountEqual(expected_changes, actual_changes)
+
+        actual_deps = (
+            self.db.query(
+                Dependency.name, Dependency.epoch, Dependency.version,
+                Dependency.release, Dependency.arch,
+            )
+            .filter(Dependency.id.in_(build.dependency_keys))
+            .all()
+        )
+        self.assertCountEqual(FOO_DEPS, actual_deps)
+
+        self.assertIsNone(old_build.dependency_keys)
+
     def test_dont_resolve_against_old_build_when_new_is_running(self):
         foo = self.prepare_packages('foo')[0]
         build = self.prepare_build('foo', False, repo_id=2)
@@ -124,16 +156,6 @@ class ResolverTest(DBTest):
         self.db.commit()
         with self.mocks(build_group=['gcc', 'bash']):
             self.assertEqual(b1, self.repo_resolver.get_build_for_comparison(foo))
-
-    def test_resolve_build(self):
-        foo_build = self.prepare_foo_build()
-        with self.mocks():
-            self.build_resolver.process_builds(self.collection)
-        actual_deps = self.db.query(Dependency.name, Dependency.epoch,
-                                    Dependency.version, Dependency.release,
-                                    Dependency.arch)\
-            .filter(Dependency.id.in_(foo_build.dependency_keys)).all()
-        self.assertCountEqual(FOO_DEPS, actual_deps)
 
     def test_dont_resolve_running_build_with_no_repo_id(self):
         foo_build = self.prepare_foo_build()
@@ -204,27 +226,6 @@ class ResolverTest(DBTest):
         old_build.dependency_keys = dependency_keys
         self.db.commit()
         return old_build
-
-    def test_differences(self):
-        self.prepare_old_build()
-        build = self.prepare_foo_build(repo_id=123, version='4')
-        with self.mocks():
-            self.build_resolver.process_builds(self.collection)
-        expected_changes = [(build.id, 'C', 1, 1, '2', '3', '1.fc22', '1.fc22', 2),
-                            (build.id, 'E', None, 0, None, '0.1', None, '1.fc22.1', 2)]
-        change = AppliedChange
-        prev = aliased(Dependency)
-        curr = aliased(Dependency)
-        actual_changes = (
-            self.db.query(
-                change.build_id, curr.name, prev.epoch, curr.epoch, prev.version,
-                curr.version, prev.release, curr.release, change.distance,
-            )
-            .outerjoin(prev, change.prev_dep)
-            .outerjoin(curr, change.curr_dep)
-            .all()
-        )
-        self.assertCountEqual(expected_changes, actual_changes)
 
     def test_repo_generation(self):
         self.prepare_old_build()
