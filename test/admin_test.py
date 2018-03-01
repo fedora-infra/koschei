@@ -21,8 +21,10 @@ import shlex
 from datetime import datetime
 from tempfile import NamedTemporaryFile
 
+from sqlalchemy.exc import InvalidRequestError
+
 from test.common import DBTest, KoscheiMockSessionMixin
-from koschei.models import AdminNotice, Build, PackageGroup, Collection
+from koschei.models import AdminNotice, Build, PackageGroup, Collection, Package
 from koschei.admin import main, KoscheiAdminSession
 
 
@@ -169,6 +171,8 @@ class AdminTest(DBTest):
         self.assertEqual("f28-build", collection.dest_tag)
         self.assertEqual("28", collection.bugzilla_version)
 
+        rnv = self.prepare_package('rnv', collection_id=collection.id)
+
         self.call_command(
             'edit-collection f28 --bugzilla-version rawhide'
         )
@@ -189,3 +193,22 @@ class AdminTest(DBTest):
         self.assertEqual("f29-build", collection.dest_tag)
         self.assertEqual("rawhide", collection.bugzilla_version)
         self.assertEqual(129, collection.order)
+        rnv_branched = (
+            self.db.query(Package)
+            .filter_by(name='rnv', collection=branched)
+            .one()
+        )
+        self.assertIsNot(rnv_branched, rnv)
+
+        self.call_command('delete-collection --force f28')
+        with self.assertRaises(InvalidRequestError):
+            self.db.refresh(branched)
+        with self.assertRaises(InvalidRequestError):
+            self.db.refresh(rnv_branched)
+
+        self.assert_action_log(
+            "Collection f28 created",
+            "Collection f28 modified",
+            "Collection f29 branched from f28",
+            "Collection f28 deleted",
+        )
