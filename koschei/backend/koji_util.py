@@ -224,7 +224,7 @@ def get_srpm_arches(koji_session, all_arches, nvra, arch_override=None,
     # compute arches the same way as koji
     # see kojid/getArchList
     archlist = all_arches
-    tag_archlist = [koji.canonArch(a) for a in archlist]
+    tag_archlist = {koji.canonArch(a) for a in archlist}
     headers = koji_session.getRPMHeaders(
         rpmID=nvra,
         headers=['BUILDARCHS', 'EXCLUDEARCH', 'EXCLUSIVEARCH'],
@@ -255,7 +255,8 @@ def get_srpm_arches(koji_session, all_arches, nvra, arch_override=None,
 
     if not build_arches:
         build_arches = get_config('koji_config').get('build_arches')
-    allowed_arches = set(tag_archlist) & set(build_arches)
+    build_arches = {koji.canonArch(arch) for arch in build_arches}
+    allowed_arches = tag_archlist & build_arches
 
     arches = set()
     for arch in archlist:
