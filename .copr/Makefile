@@ -5,7 +5,7 @@ outdir := $(CURDIR)
 tmpdir := build
 gitdir := $(dir $(spec))/.git
 
-rev := $(shell sed 's/\(.......\).*/\1/' $(gitdir)/$$(sed -n '/^ref:/{s/.* //;p}' $(gitdir)/HEAD))
+rev := $(shell ref="$$(cat $(gitdir)/HEAD)"; [[ "$$ref" == "ref: "* ]] && ref="$$(cat "$(gitdir)/$${ref\#ref: }")"; echo "$${ref:0:7}")
 date := $(shell date +%Y%m%d.%H%M)
 
 version := $(shell sed -n '/Version:/{s/.* //;p}' $(spec))
