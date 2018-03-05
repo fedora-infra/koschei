@@ -142,3 +142,13 @@ class KojiArchesTest(AbstractTest):
             koji_util.get_srpm_arches(self.session, self.all_arches, nvra,
                                       arch_override="^armv7hl"),
         )
+
+    @my_vcr.use_cassette('get_srpm_arches')
+    def test_get_srpm_arches_non_canon_build_arches(self):
+        nvra = {'arch': 'src', 'name': 'rnv', 'release': '11.fc26',
+                'version': '1.7.11'}
+        self.assertEqual(
+            {'aarch64', 'armv7hl', 'i686', 'ppc64', 'ppc64le', 's390x', 'x86_64'},
+            koji_util.get_srpm_arches(self.session, self.all_arches, nvra,
+                                      build_arches=self.all_arches),
+        )
