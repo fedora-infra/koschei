@@ -45,43 +45,34 @@ class SchedulerTest(DBTest):
                   if name.endswith('_state')}
         pkgs = []
         for name in list(priorities.keys()):
-            pkg = Package(
+            pkg = self.prepare_package(
                 name=name,
                 tracked=states.get(name) != 'ignored',
-                collection_id=self.collection.id,
                 # add 30 to offset time priority which will be -30
                 dependency_priority=priorities[name] + 30,
             )
-            self.ensure_base_package(pkg)
-            self.db.add(pkg)
-            self.db.flush()
-            self.db.add(
-                Build(
-                    package_id=pkg.id,
-                    state=Build.COMPLETE,
-                    task_id=self.task_id_counter,
-                    version='1',
-                    release='1.fc25',
-                    started=datetime(2017, 10, 10, 10, self.task_id_counter),
-                    repo_id=1,
-                )
+            self.prepare_build(
+                package=pkg,
+                state=Build.COMPLETE,
+                task_id=self.task_id_counter,
+                version='1',
+                release='1.fc25',
+                started=datetime(2017, 10, 10, 10, self.task_id_counter),
+                repo_id=1,
             )
             self.task_id_counter += 1
             if states.get(name, True) is not None:
                 pkg.resolved = states.get(name) != 'unresolved'
             pkgs.append((name, pkg))
             if name in builds:
-                self.db.add(
-                    Build(
-                        package_id=pkg.id,
-                        state=builds[name],
-                        task_id=self.task_id_counter,
-                        version='1',
-                        release='1.fc25',
-                        started=datetime(2017, 10, 10, 10, self.task_id_counter),
-                        repo_id=1 if builds[name] != Build.RUNNING
-                        else None
-                    )
+                self.prepare_build(
+                    package=pkg,
+                    state=builds[name],
+                    task_id=self.task_id_counter,
+                    version='1',
+                    release='1.fc25',
+                    started=datetime(2017, 10, 10, 10, self.task_id_counter),
+                    repo_id=1 if builds[name] != Build.RUNNING else None,
                 )
                 self.task_id_counter += 1
         self.db.commit()

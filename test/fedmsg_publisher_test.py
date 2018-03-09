@@ -27,19 +27,10 @@ class FedmsgSenderTest(DBTest):
         super(FedmsgSenderTest, self).setUp()
         plugin.load_plugins('backend', ['fedmsg'])
 
-    def prepare_package(self):
-        pkg = self.prepare_basic_data()[0]
-        groups = PackageGroup(name='c'), PackageGroup(name='xml', namespace='foo')
-        for group in groups:
-            self.db.add(group)
-            self.db.flush()
-            self.db.add(PackageGroupRelation(group_id=group.id,
-                                             base_id=pkg.base_id))
-        self.db.commit()
-        return pkg
-
     def test_event(self):
-        package = self.prepare_package()
+        package = self.prepare_package('rnv')
+        self.prepare_group('c', content=['rnv'])
+        self.prepare_group('xml', namespace='foo', content=['rnv'])
         with patch('fedmsg.publish') as publish:
             plugin.dispatch_event('package_state_change', self.session, package=package,
                                   prev_state='failed', new_state='ok')
@@ -67,7 +58,9 @@ class FedmsgSenderTest(DBTest):
 
 
     def test_same_state(self):
-        package = self.prepare_package()
+        package = self.prepare_package('rnv')
+        self.prepare_group('c', content=['rnv'])
+        self.prepare_group('xml', namespace='foo', content=['rnv'])
         with patch('fedmsg.publish') as publish:
             plugin.dispatch_event('package_state_change', self.session, package=package,
                                   prev_state='ok', new_state='ok')
