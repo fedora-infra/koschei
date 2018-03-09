@@ -20,6 +20,7 @@ import shlex
 
 from datetime import datetime
 from tempfile import NamedTemporaryFile
+from mock import patch
 
 from sqlalchemy.exc import InvalidRequestError
 
@@ -206,3 +207,16 @@ class AdminTest(DBTest):
             "Collection f29 branched from f28",
             "Collection f28 deleted",
         )
+
+    @with_koji_cassette
+    def test_submit_build(self):
+        collection = self.prepare_collection('f29')
+        rnv = self.prepare_package('rnv', collection=collection)
+        self.prepare_build('rnv', state='complete', version='1.7.11', release='15.fc28')
+        with patch('koschei.backend.submit_build') as submit_build_mock:
+            self.call_command('submit-build rnv')
+            submit_build_mock.assert_called_once_with(
+                self.session,
+                rnv,
+                arch_override={'x86_64', 'armv7hl', 'i686'},
+            )

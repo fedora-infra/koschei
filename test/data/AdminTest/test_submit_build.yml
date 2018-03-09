@@ -1,0 +1,29 @@
+- method: getBuildConfig
+  args:
+  - f29-build
+  result:
+    arches: armv7hl i686 x86_64 aarch64 ppc64 ppc64le s390x
+    extra:
+      mock.package_manager: dnf
+    id: 3428
+    locked: false
+    maven_include_all: false
+    maven_support: false
+    name: f29-build
+    perm: null
+    perm_id: null
+- method: getRPMHeaders
+  kwargs:
+    headers:
+    - BUILDARCHS
+    - EXCLUDEARCH
+    - EXCLUSIVEARCH
+    rpmID:
+      arch: src
+      name: rnv
+      release: 15.fc28
+      version: 1.7.11
+  result:
+    BUILDARCHS: []
+    EXCLUDEARCH: []
+    EXCLUSIVEARCH: []
