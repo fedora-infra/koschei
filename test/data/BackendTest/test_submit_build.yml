@@ -1,0 +1,58 @@
+- method: listTagged
+  args:
+  - f29-build
+  kwargs:
+    inherit: true
+    latest: true
+    package: rnv
+  result:
+  - build_id: 1046486
+    completion_time: '2018-02-19 14:53:27.266744'
+    creation_event_id: 31182427
+    creation_time: '2018-02-19 14:50:04.780087'
+    epoch: null
+    id: 1046486
+    name: rnv
+    nvr: rnv-1.7.11-15.fc28
+    owner_id: 2645
+    owner_name: msimacek
+    package_id: 16808
+    package_name: rnv
+    release: 15.fc28
+    start_time: '2018-02-19 14:50:04.780087'
+    state: 1
+    tag_id: 3418
+    tag_name: f29
+    task_id: 25162638
+    version: 1.7.11
+    volume_id: 0
+    volume_name: DEFAULT
+- method: listRPMs
+  kwargs:
+    arches: src
+    buildID: 1046486
+  result:
+  - arch: src
+    build_id: 1046486
+    buildroot_id: 11546358
+    buildtime: 1519051855
+    epoch: null
+    external_repo_id: 0
+    external_repo_name: INTERNAL
+    extra: null
+    id: 13070627
+    metadata_only: false
+    name: rnv
+    nvr: rnv-1.7.11-15.fc28
+    payloadhash: bdb3076880abc8c5959a902968f7703a
+    release: 15.fc28
+    size: 159212
+    version: 1.7.11
+- method: build
+  args:
+  - ../packages/rnv/1.7.11/15.fc28/src/rnv-1.7.11-15.fc28.src.rpm
+  - f29
+  - scratch: true
+  kwargs:
+    priority: 30
+  result: 25560834

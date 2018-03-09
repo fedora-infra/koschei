@@ -19,7 +19,7 @@
 from copy import deepcopy
 from datetime import datetime, timedelta
 
-from test.common import DBTest
+from test.common import DBTest, with_koji_cassette
 from test.koji_data import *
 from mock import Mock, patch
 from koschei import plugin, backend
@@ -299,43 +299,36 @@ class BackendTest(DBTest):
         self.assertFalse(rnv.blocked)
         self.assertTrue(tools.blocked)
 
+    @with_koji_cassette
     def test_submit_build(self):
-        package = self.prepare_packages('rnv')[0]
-        with patch('koschei.backend.koji_util.get_last_srpm', return_value=({'epoch': '111',
-                                                                             'version': '222',
-                                                                             'release': '333'}, 'the_url')) as get_last_srpm:
-            with patch('koschei.backend.koji_util.koji_scratch_build', return_value=7541) as koji_scratch_build:
-                backend.submit_build(self.session, package)
-                get_last_srpm.assert_called_once_with(self.session.sec_koji_mock, 'f25', 'rnv', relative=True)
-                koji_scratch_build.assert_called_once_with(self.session.koji_mock, 'f25', 'rnv', 'the_url', {})
+        collection = self.prepare_collection('f29')
+        package = self.prepare_package('rnv', collection=collection)
+        backend.submit_build(self.session, package)
         self.db.commit()
-        self.assertEqual(7541, package.last_build.task_id)
+        self.assertIsNot(None, package.last_build)
+        self.assertEqual(Build.RUNNING, package.last_build.state)
+        self.assertEqual(25560834, package.last_build.task_id)
         self.assertIsNone(package.last_build.repo_id)
+        self.assertEqual(None, package.last_build.epoch)
+        self.assertEqual('1.7.11', package.last_build.version)
+        self.assertEqual('15.fc28', package.last_build.release)
+        self.assertIsNot(None, package.last_build.started)
 
+    @with_koji_cassette
     def test_submit_build_arch_override(self):
-        package = self.prepare_packages('rnv')[0]
-        arch_override = ['x86_64', 'alpha']
+        collection = self.prepare_collection('f29')
+        package = self.prepare_package('rnv', collection=collection)
+        arch_override = ['x86_64', 'armhfp']
+        backend.submit_build(self.session, package, arch_override=arch_override)
         self.db.commit()
-        with patch('koschei.backend.koji_util.get_last_srpm', return_value=({'epoch': '111',
-                                                                             'version': '222',
-                                                                             'release': '333'}, 'the_url')) as get_last_srpm:
-            with patch('koschei.backend.koji_util.koji_scratch_build', return_value=7541) as koji_scratch_build:
-                backend.submit_build(self.session, package, arch_override=arch_override)
-                get_last_srpm.assert_called_once_with(self.session.sec_koji_mock, 'f25', 'rnv', relative=True)
-                koji_scratch_build.assert_called_once_with(self.session.koji_mock, 'f25', 'rnv', 'the_url', {'arch_override': 'x86_64 alpha'})
-        self.db.commit()
-        self.assertEqual(7541, package.last_build.task_id)
+        self.assertEqual(25561246, package.last_build.task_id)
 
+    @with_koji_cassette
     def test_submit_build_from_repo_id(self):
+        collection = self.prepare_collection('f29')
+        package = self.prepare_package('rnv', collection=collection)
         self.session.build_from_repo_id_override = True
-        package = self.prepare_packages('rnv')[0]
-        with patch('koschei.backend.koji_util.get_last_srpm', return_value=({'epoch': '111',
-                                                                             'version': '222',
-                                                                             'release': '333'}, 'the_url')) as get_last_srpm:
-            with patch('koschei.backend.koji_util.koji_scratch_build', return_value=7541) as koji_scratch_build:
-                backend.submit_build(self.session, package)
-                get_last_srpm.assert_called_once_with(self.session.sec_koji_mock, 'f25', 'rnv', relative=True)
-                koji_scratch_build.assert_called_once_with(self.session.koji_mock, None, 'rnv', 'the_url', {'repo_id': 123})
+        backend.submit_build(self.session, package)
         self.db.commit()
-        self.assertEqual(7541, package.last_build.task_id)
+        self.assertEqual(25560834, package.last_build.task_id)
         self.assertEqual(123, package.last_build.repo_id)
