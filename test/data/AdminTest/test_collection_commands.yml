@@ -1,0 +1,20 @@
+- method: getBuildTarget
+  args:
+  - f28
+  result:
+    build_tag: 1928
+    build_tag_name: f28-build
+    dest_tag: 1918
+    dest_tag_name: f28-updates-candidate
+    id: 1291
+    name: f28
+- method: getBuildTarget
+  args:
+  - f29
+  result:
+    build_tag: 3428
+    build_tag_name: f29-build
+    dest_tag: 3430
+    dest_tag_name: f29-pending
+    id: 2032
+    name: f29
