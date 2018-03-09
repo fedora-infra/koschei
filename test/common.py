@@ -200,6 +200,25 @@ class DBTest(AbstractTest):
         self.db.commit()
         return pkg, build
 
+    def prepare_collection(self, name, **kwargs):
+        values = dict(
+            name=name,
+            target=name,
+            display_name="Fedora Rawhide",
+            latest_repo_resolved=True,
+            latest_repo_id=123,
+            bugzilla_product="Fedora",
+            bugzilla_version="rawhide",
+            build_tag=f'{name}-build',
+            dest_tag=f'{name}-build',
+        )
+        values.update(**kwargs)
+
+        collection = Collection(**values)
+        self.db.add(collection)
+        self.db.commit()
+        return collection
+
     def prepare_package(self, name=None, **kwargs):
         if 'collection_id' not in kwargs:
             kwargs['collection_id'] = self.collection.id
