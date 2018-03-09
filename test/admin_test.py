@@ -23,7 +23,7 @@ from tempfile import NamedTemporaryFile
 
 from sqlalchemy.exc import InvalidRequestError
 
-from test.common import DBTest, KoscheiMockSessionMixin
+from test.common import DBTest, KoscheiMockSessionMixin, with_koji_cassette
 from koschei.models import (
     AdminNotice, Build, PackageGroup, Collection, Package, CollectionGroup,
 )
@@ -37,32 +37,6 @@ class KoscheiAdminSessionMock(KoscheiMockSessionMixin, KoscheiAdminSession):
 class AdminTest(DBTest):
     def create_session(self):
         return KoscheiAdminSessionMock(self)
-
-    def setUp(self):
-        super().setUp()
-
-        def getBuildTarget(target):
-            if target == 'f28':
-                return {
-                    'build_tag': 1928,
-                    'build_tag_name': 'f28-build',
-                    'dest_tag': 1924,
-                    'dest_tag_name': 'f28-pending',
-                    'id': 1291,
-                    'name': 'f28',
-                }
-            if target == 'f29':
-                return {
-                    'build_tag': 3428,
-                    'build_tag_name': 'f29-build',
-                    'dest_tag': 3430,
-                    'dest_tag_name': 'f29-pending',
-                    'id': 2032,
-                    'name': 'f29',
-                }
-            self.fail("Unexpected target")
-
-        self.session.koji_mock.getBuildTarget.side_effect = getBuildTarget
 
     def call_command(self, args):
         self.db.commit()
@@ -161,6 +135,7 @@ class AdminTest(DBTest):
             )
         self.assertCountEqual([eclipse.base], group2.packages)
 
+    @with_koji_cassette
     def test_collection_commands(self):
         # test create collection
         self.call_command(
@@ -174,7 +149,7 @@ class AdminTest(DBTest):
         self.assertEqual("f28-build", collection.dest_tag)
         self.assertEqual("28", collection.bugzilla_version)
 
-        rnv = self.prepare_package('rnv', collection_id=collection.id)
+        rnv = self.prepare_package('rnv', collection=collection)
 
         # test edit collection
         self.call_command(
