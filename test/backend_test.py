@@ -33,99 +33,120 @@ class BackendTest(DBTest):
         super(BackendTest, self).setUp()
         self.collection.secondary_mode = True
         self.db.commit()
+
         plugin.load_plugins('backend', ['fedmsg'])
 
+    @with_koji_cassette('BackendTest/test_update_state')
     def test_update_state(self):
-        self.session.koji_mock.getTaskInfo = Mock(return_value=rnv_task)
-        self.session.koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
-        package = self.prepare_packages('rnv')[0]
-        self.prepare_build('rnv', False)
-        running_build = self.prepare_build('rnv')
-        running_build.task_id = rnv_task['id']
-        self.db.commit()
+        collection = self.prepare_collection('f29')
+        package = self.prepare_package('rnv', collection=collection)
+        self.prepare_build(package, 'failed')
+        build = self.prepare_build(package, 'running', task_id=9107738)
         self.assertEqual('failing', package.state_string)
         with patch('koschei.backend.dispatch_event') as event:
-            backend.update_build_state(self.session, running_build, 'CLOSED')
-            self.session.koji_mock.getTaskInfo.assert_called_once_with(rnv_task['id'])
-            self.session.koji_mock.getTaskChildren.assert_called_once_with(
-                rnv_task['id'],
-                request=True,
-            )
+            backend.update_build_state(self.session, build, 'CLOSED')
+            self.assertEqual('complete', build.state_string)
             self.assertEqual('ok', package.state_string)
             self.assertEqual(0, package.build_priority)
-            event.assert_called_once_with('package_state_change',
-                                          session=self.session,
-                                          package=package,
-                                          prev_state='failing', new_state='ok')
-            self.assertCountEqual([(x['id'],) for x in rnv_subtasks],
-                                 self.db.query(KojiTask.task_id))
+            event.assert_called_once_with(
+                'package_state_change',
+                session=self.session,
+                package=package,
+                prev_state='failing',
+                new_state='ok',
+            )
+            # ordered by arch
+            tasks = build.build_arch_tasks
+            self.assertEqual(3, len(tasks))
 
+            self.assertEqual(9107739, tasks[0].task_id)
+            self.assertEqual(koji.TASK_STATES['CLOSED'], tasks[0].state)
+            self.assertEqual('armhfp', tasks[0].arch)
+
+            self.assertEqual(9107741, tasks[1].task_id)
+            self.assertEqual(koji.TASK_STATES['CLOSED'], tasks[1].state)
+            self.assertEqual('i386', tasks[1].arch)
+
+            self.assertEqual(9107740, tasks[2].task_id)
+            self.assertEqual(koji.TASK_STATES['CLOSED'], tasks[2].state)
+            self.assertEqual('x86_64', tasks[2].arch)
+
+    @with_koji_cassette('BackendTest/test_update_state_failed')
     def test_update_state_failed(self):
-        self.session.koji_mock.getTaskInfo = Mock(return_value=rnv_task)
-        self.session.koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
-        package = self.prepare_packages('rnv')[0]
-        self.prepare_build('rnv', True)
-        running_build = self.prepare_build('rnv')
-        running_build.task_id = rnv_task['id']
+        collection = self.prepare_collection('f29')
+        package = self.prepare_package('eclipse', collection=collection)
+        self.prepare_build(package, 'complete')
+        build = self.prepare_build(package, 'running', task_id=14503213)
         self.db.commit()
-        with patch('koschei.backend.dispatch_event'):
-            backend.update_build_state(self.session, running_build, 'FAILED')
+        with patch('koschei.backend.dispatch_event') as event:
+            backend.update_build_state(self.session, build, 'FAILED')
+            self.assertEqual('failed', build.state_string)
             self.assertEqual('failing', package.state_string)
             self.assertEqual(200, package.build_priority)
+            event.assert_called_once_with(
+                'package_state_change',
+                session=self.session,
+                package=package,
+                prev_state='ok',
+                new_state='failing',
+            )
 
+    @with_koji_cassette('BackendTest/test_update_state_failed')
     def test_update_state_already_failing(self):
-        self.session.koji_mock.getTaskInfo = Mock(return_value=rnv_task)
-        self.session.koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
-        package = self.prepare_packages('rnv')[0]
-        self.prepare_build('rnv', False)
-        running_build = self.prepare_build('rnv')
-        running_build.task_id = rnv_task['id']
+        collection = self.prepare_collection('f29')
+        package = self.prepare_package('eclipse', collection=collection)
+        self.prepare_build(package, 'failed')
+        build = self.prepare_build(package, 'running', task_id=14503213)
         self.db.commit()
-        with patch('koschei.backend.dispatch_event'):
-            backend.update_build_state(self.session, running_build, 'FAILED')
+        with patch('koschei.backend.dispatch_event') as event:
+            backend.update_build_state(self.session, build, 'FAILED')
+            self.assertEqual('failed', build.state_string)
             self.assertEqual('failing', package.state_string)
             self.assertEqual(0, package.build_priority)
+            self.assertFalse(event.called)
 
-    def test_update_state_failed_no_prev(self):
-        self.session.koji_mock.getTaskInfo = Mock(return_value=rnv_task)
-        self.session.koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
-        package = self.prepare_packages('rnv')[0]
-        running_build = self.prepare_build('rnv')
-        running_build.task_id = rnv_task['id']
-        self.db.commit()
-        with patch('koschei.backend.dispatch_event'):
-            backend.update_build_state(self.session, running_build, 'FAILED')
-            self.assertEqual('failing', package.state_string)
-            self.assertEqual(200, package.build_priority)
-
+    @with_koji_cassette('BackendTest/test_update_state')
     def test_update_state_existing_task(self):
-        self.session.koji_mock.getTaskInfo = Mock(return_value=rnv_task)
-        self.session.koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
-        package = self.prepare_packages('rnv')[0]
-        self.prepare_build('rnv', False)
-        running_build = self.prepare_build('rnv')
-        running_build.task_id = rnv_task['id']
-        koji_task = KojiTask(task_id=rnv_subtasks[0]['id'],
-                             arch='noarch',
-                             state=koji.TASK_STATES['OPEN'],
-                             started=datetime.fromtimestamp(123),
-                             build_id=running_build.id)
+        collection = self.prepare_collection('f29')
+        package = self.prepare_package('rnv', collection=collection)
+        self.prepare_build(package, 'failed')
+        build = self.prepare_build(package, 'running', task_id=9107738)
+        koji_task = KojiTask(
+            task_id=9107739,
+            arch='armhfp',
+            state=koji.TASK_STATES['OPEN'],
+            started=datetime.fromtimestamp(123),
+            build=build,
+        )
         self.db.add(koji_task)
         self.db.commit()
-        self.assertEqual('failing', package.state_string)
         with patch('koschei.backend.dispatch_event') as event:
-            backend.update_build_state(self.session, running_build, 'CLOSED')
-            self.session.koji_mock.getTaskInfo.assert_called_once_with(rnv_task['id'])
-            self.session.koji_mock.getTaskChildren.assert_called_once_with(
-                rnv_task['id'],
-                request=True,
-            )
+            backend.update_build_state(self.session, build, 'CLOSED')
+            self.assertEqual('complete', build.state_string)
             self.assertEqual('ok', package.state_string)
-            event.assert_called_once_with('package_state_change',
-                                          session=self.session, package=package,
-                                          prev_state='failing', new_state='ok')
-            self.assertCountEqual([(x['id'],) for x in rnv_subtasks],
-                                 self.db.query(KojiTask.task_id))
+            self.assertEqual(0, package.build_priority)
+            event.assert_called_once_with(
+                'package_state_change',
+                session=self.session,
+                package=package,
+                prev_state='failing',
+                new_state='ok',
+            )
+            # ordered by arch
+            tasks = build.build_arch_tasks
+            self.assertEqual(3, len(tasks))
+
+            self.assertEqual(9107739, tasks[0].task_id)
+            self.assertEqual(koji.TASK_STATES['CLOSED'], tasks[0].state)
+            self.assertEqual('armhfp', tasks[0].arch)
+
+            self.assertEqual(9107741, tasks[1].task_id)
+            self.assertEqual(koji.TASK_STATES['CLOSED'], tasks[1].state)
+            self.assertEqual('i386', tasks[1].arch)
+
+            self.assertEqual(9107740, tasks[2].task_id)
+            self.assertEqual(koji.TASK_STATES['CLOSED'], tasks[2].state)
+            self.assertEqual('x86_64', tasks[2].arch)
 
     # Regression test for https://github.com/msimacek/koschei/issues/27
     def test_update_state_inconsistent(self):
@@ -288,16 +309,16 @@ class BackendTest(DBTest):
         self.session.koji_mock.cancelTask.assert_called_once_with(running_build.task_id)
         self.assertEqual(0, self.db.query(Build).count())
 
+    @with_koji_cassette
     def test_refresh_packages(self):
-        self.prepare_packages('eclipse')
-        self.session.sec_koji_mock.listPackages.return_value = package_list
+        eclipse = self.prepare_package('eclipse')
+        rnv = self.prepare_package('rnv', blocked=False)
         backend.refresh_packages(self.session)
-        eclipse = self.db.query(Package).filter_by(name='eclipse').one()
-        rnv = self.db.query(Package).filter_by(name='eclipse').one()
         tools = self.db.query(Package).filter_by(name='maven-doxia-tools').one()
         self.assertFalse(eclipse.blocked)
         self.assertFalse(rnv.blocked)
         self.assertTrue(tools.blocked)
+        self.assertEqual(9, self.db.query(Package).count())
 
     @with_koji_cassette
     def test_submit_build(self):

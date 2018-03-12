@@ -1,0 +1,137 @@
+- method: getTaskResult
+  args:
+  - 14503213
+  exception:
+    type:
+      module: koji
+      class: BuildError
+    args:
+    - error building package (arch i686), mock exited with status 1; see build.log
+      for more information
+- method: getTaskInfo
+  args:
+  - 14503213
+  result:
+    arch: noarch
+    awaited: null
+    channel_id: 10
+    completion_time: '2016-06-15 15:01:23.824821'
+    completion_ts: 1466002883.82482
+    create_time: '2016-06-15 14:49:36.926994'
+    create_ts: 1466002176.92699
+    host_id: 163
+    id: 14503213
+    label: null
+    method: build
+    owner: 654
+    parent: null
+    priority: 20
+    start_time: '2016-06-15 14:49:42.845793'
+    start_ts: 1466002182.84579
+    state: 5
+    waiting: true
+    weight: 0.2
+- method: getTaskChildren
+  args:
+  - 14503213
+  kwargs:
+    request: true
+  result:
+  - arch: x86_64
+    awaited: true
+    channel_id: 10
+    completion_time: '2016-06-15 15:01:22.523348'
+    completion_ts: 1466002882.52335
+    create_time: '2016-06-15 14:53:41.073110'
+    create_ts: 1466002421.07311
+    host_id: 65
+    id: 14503257
+    label: x86_64
+    method: buildArch
+    owner: 654
+    parent: 14503213
+    priority: 19
+    request:
+    - tasks/3216/14503216/eclipse-4.6.0-1.fc25.src.rpm
+    - 342
+    - x86_64
+    - false
+    - repo_id: 611386
+    start_time: '2016-06-15 14:53:51.999091'
+    start_ts: 1466002431.99909
+    state: 3
+    waiting: null
+    weight: 6.0
+  - arch: armhfp
+    awaited: true
+    channel_id: 10
+    completion_time: '2016-06-15 15:01:22.523348'
+    completion_ts: 1466002882.52335
+    create_time: '2016-06-15 14:53:40.592885'
+    create_ts: 1466002420.59289
+    host_id: 132
+    id: 14503255
+    label: armv7hl
+    method: buildArch
+    owner: 654
+    parent: 14503213
+    priority: 19
+    request:
+    - tasks/3216/14503216/eclipse-4.6.0-1.fc25.src.rpm
+    - 342
+    - armv7hl
+    - true
+    - repo_id: 611386
+    start_time: '2016-06-15 14:53:54.579813'
+    start_ts: 1466002434.57981
+    state: 3
+    waiting: null
+    weight: 6.0
+  - arch: i386
+    awaited: false
+    channel_id: 10
+    completion_time: '2016-06-15 15:01:14.237095'
+    completion_ts: 1466002874.2371
+    create_time: '2016-06-15 14:53:41.616082'
+    create_ts: 1466002421.61608
+    host_id: 78
+    id: 14503258
+    label: i686
+    method: buildArch
+    owner: 654
+    parent: 14503213
+    priority: 19
+    request:
+    - tasks/3216/14503216/eclipse-4.6.0-1.fc25.src.rpm
+    - 342
+    - i686
+    - false
+    - repo_id: 611386
+    start_time: '2016-06-15 14:53:52.553694'
+    start_ts: 1466002432.55369
+    state: 5
+    waiting: null
+    weight: 6.0
+  - arch: noarch
+    awaited: false
+    channel_id: 10
+    completion_time: '2016-06-15 14:53:29.820946'
+    completion_ts: 1466002409.82095
+    create_time: '2016-06-15 14:49:45.412513'
+    create_ts: 1466002185.41251
+    host_id: 83
+    id: 14503216
+    label: srpm
+    method: buildSRPMFromSCM
+    owner: 654
+    parent: 14503213
+    priority: 19
+    request:
+    - git://pkgs.fedoraproject.org/rpms/eclipse?#4bce9c460d2958f5f251c4c2dfbde8a934e75cea
+    - 342
+    - repo_id: 611386
+    start_time: '2016-06-15 14:49:54.941527'
+    start_ts: 1466002194.94153
+    state: 2
+    waiting: null
+    weight: 1.0
