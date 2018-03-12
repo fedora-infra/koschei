@@ -1,0 +1,77 @@
+- method: listPackages
+  kwargs:
+    inherited: true
+    tagID: f25
+  result:
+  - blocked: false
+    extra_arches: null
+    owner_id: 3445
+    owner_name: releng
+    package_id: 183
+    package_name: eclipse
+    tag_id: 335
+    tag_name: f25
+  - blocked: false
+    extra_arches: null
+    owner_id: 3445
+    owner_name: releng
+    package_id: 16808
+    package_name: rnv
+    tag_id: 335
+    tag_name: f25
+  - blocked: true
+    extra_arches: null
+    owner_id: 1758
+    owner_name: jcapik
+    package_id: 10326
+    package_name: maven-doxia-tools
+    tag_id: 335
+    tag_name: f25
+  - blocked: false
+    extra_arches: null
+    owner_id: 3445
+    owner_name: releng
+    package_id: 2
+    package_name: anaconda
+    tag_id: 335
+    tag_name: f25
+  - blocked: false
+    extra_arches: null
+    owner_id: 3445
+    owner_name: releng
+    package_id: 3
+    package_name: fedora-release-notes
+    tag_id: 335
+    tag_name: f25
+  - blocked: true
+    extra_arches: null
+    owner_id: 440
+    owner_name: orphan
+    package_id: 4
+    package_name: classpathx-mail
+    tag_id: 335
+    tag_name: f25
+  - blocked: false
+    extra_arches: null
+    owner_id: 3445
+    owner_name: releng
+    package_id: 5
+    package_name: coolkey
+    tag_id: 335
+    tag_name: f25
+  - blocked: false
+    extra_arches: null
+    owner_id: 3445
+    owner_name: releng
+    package_id: 7
+    package_name: xen
+    tag_id: 335
+    tag_name: f25
+  - blocked: false
+    extra_arches: (i586,i686,noarch)
+    owner_id: 3445
+    owner_name: releng
+    package_id: 8
+    package_name: kernel
+    tag_id: 335
+    tag_name: f25
