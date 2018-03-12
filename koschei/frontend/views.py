@@ -547,6 +547,11 @@ def add_packages():
         except data.PackagesDontExist as e:
             db.rollback()
             flash_nak(str(e))
+            flash_nak(dedent("""
+                If a package has been just created, it is possible that it
+                hasn't been propagated to our database yet. In that case,
+                please, try again later.
+            """))
             return render_template("add-packages.html", form=form)
 
         if form.group.data:
