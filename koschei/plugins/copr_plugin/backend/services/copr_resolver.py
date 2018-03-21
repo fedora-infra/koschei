@@ -123,9 +123,9 @@ class CoprResolver(Service):
             request.collection.latest_repo_id,
         )
         for package, brs in zip(packages, br_gen):
-            resolved1, _, installs1 = \
+            resolved1, _, installs1, _, _ = \
                 depsolve.run_goal(sack_before, brs, build_group)
-            resolved2, problems2, installs2 = \
+            resolved2, problems2, installs2, resolved_brs2, goal2 = \
                 depsolve.run_goal(sack_after, brs, build_group)
             if resolved1 != resolved2:
                 change = dict(
@@ -138,17 +138,9 @@ class CoprResolver(Service):
                 )
                 resolution_changes.append(change)
             elif resolved2:
-                installs1 = set(installs1)
-                installs2 = set(installs2)
                 if installs1 != installs2:
-                    changed_deps = [
-                        depsolve.DependencyWithDistance(
-                            name=pkg.name, epoch=pkg.epoch,
-                            version=pkg.version, release=pkg.release,
-                            arch=pkg.arch,
-                        ) for pkg in installs2 if pkg not in installs1
-                    ]
-                    depsolve.compute_dependency_distances(sack_after, brs, changed_deps)
+                    changed_deps = depsolve.compute_dependency_distances(
+                        goal2, installs2 - installs1, resolved_brs2)
                     priority = sum(100 / (d.distance * 2)
                                    for d in changed_deps if d.distance)
                     rebuild = dict(

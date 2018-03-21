@@ -211,16 +211,10 @@ class Resolver(Service):
         :returns: A triple of (resolved:bool, problems:[str], installs:[str]).
         """
         deps = None
-        resolved, problems, installs = depsolve.run_goal(sack, br, build_group)
+        resolved, problems, installs, resolved_br, goal = depsolve.run_goal(sack, br, build_group)
         if resolved:
             problems = []
-            deps = [
-                depsolve.DependencyWithDistance(
-                    name=pkg.name, epoch=pkg.epoch, version=pkg.version,
-                    release=pkg.release, arch=pkg.arch,
-                ) for pkg in installs if pkg.arch != 'src'
-            ]
-            depsolve.compute_dependency_distances(sack, br, deps)
+            deps = depsolve.compute_dependency_distances(goal, installs, resolved_br)
         return resolved, problems, deps
 
     def get_prev_build_for_comparison(self, build):

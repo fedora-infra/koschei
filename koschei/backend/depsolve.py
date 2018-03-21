@@ -38,6 +38,7 @@ def run_goal(sack, br, group):
     # pylint:disable=E1101
     goal = hawkey.Goal(sack)
     problems = []
+    br_matches = set()
     for name in group:
         sltr = _get_builddep_selector(sack, name)
         if sltr.matches():
@@ -45,6 +46,7 @@ def run_goal(sack, br, group):
             goal.install(select=sltr)
     for r in br:
         sltr = _get_builddep_selector(sack, r)
+        br_matches.update(sltr.matches())
         # pylint: disable=E1103
         if not sltr.matches():
             problems.append("No package found for: {}".format(r))
@@ -55,36 +57,30 @@ def run_goal(sack, br, group):
         if get_config('dependency.ignore_weak_deps'):
             kwargs = {'ignore_weak_deps': True}
         resolved = goal.run(**kwargs)
-        return resolved, goal.problems, goal.list_installs() if resolved else None
-    return False, problems, None
+        return resolved, goal.problems, set(goal.list_installs()) if resolved else None, br_matches, goal
+    return False, problems, None, None, None
 
 
 class DependencyWithDistance(object):
-    def __init__(self, name, epoch, version, release, arch):
-        self.name = name
-        self.epoch = epoch
-        self.version = version
-        self.release = release
-        self.arch = arch
-        self.distance = None
+    def __init__(self, pkg, distance):
+        self.name = pkg.name
+        self.epoch = pkg.epoch
+        self.version = pkg.version
+        self.release = pkg.release
+        self.arch = pkg.arch
+        self.distance = distance
 
 
-def compute_dependency_distances(sack, br, deps):
-    dep_map = {dep.name: dep for dep in deps}
-    visited = set()
-    level = 1
-    # pylint:disable=E1103
-    pkgs_on_level = {x for r in br for x in
-                     _get_builddep_selector(sack, r).matches()}
-    while pkgs_on_level:
-        for pkg in pkgs_on_level:
-            dep = dep_map.get(pkg.name)
-            if dep and dep.distance is None:
-                dep.distance = level
-        level += 1
-        if level >= 5:
+def compute_dependency_distances(goal, pkgs, roots, max_level=4):
+    distances = []
+    done = set()
+    revdepmap = {pkg: set(goal.whatrequires_package(pkg)) for pkg in pkgs}
+    for level in range(1, max_level):
+        if not roots:
             break
-        reldeps = {req for pkg in pkgs_on_level if pkg not in visited
-                   for req in pkg.requires}
-        visited.update(pkgs_on_level)
-        pkgs_on_level = set(hawkey.Query(sack).filter(provides=reldeps))
+        distances.extend(DependencyWithDistance(pkg, level) for pkg in roots)
+        done = done | roots
+        pkgs = pkgs - roots
+        roots = {pkg for pkg in pkgs if revdepmap[pkg] & done}
+    distances.extend(DependencyWithDistance(pkg, None) for pkg in pkgs)
+    return distances
