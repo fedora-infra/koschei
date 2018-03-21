@@ -27,6 +27,7 @@ from koschei.locks import pg_session_lock, Locked, LOCK_BUILD_RESOLVER
 from koschei.models import (
     Collection, Package, AppliedChange, Build,
 )
+from koschei.backend.depsolve import Solver
 
 from koschei.backend.services.resolver import Resolver
 
@@ -101,19 +102,21 @@ class BuildResolver(Resolver):
                 # The repo was not marked as deleted in Koji, so this is likely
                 # a temporary failure, which will be retried on the next cycle
                 return
+            solver = Solver(sack)
+            buildroot = solver.buildroot(build_group)
             nvras = [b.srpm_nvra for b in builds]
             all_brs = self.get_rpm_requires(collection, nvras)
             for build, brs in zip(builds, all_brs):
-                self.process_build(sack, build_group, build, brs)
+                self.process_build(buildroot, build, brs)
 
-    def process_build(self, sack, build_group, build, brs):
+    def process_build(self, solver, build, brs):
         """
         Processes single build in given sack.
         Commits the transaction.
         """
         self.log.info("Processing %s", build)
         try:
-            resolved, _, installs = self.resolve_dependencies(sack, brs, build_group)
+            resolved, _, installs = self.resolve_dependencies(solver, brs)
             if not resolved:
                 self.process_unresolved_build(build)
             else:

@@ -30,8 +30,9 @@ from koschei import util
 from koschei.models import (Package, CoprRebuildRequest, CoprRebuild,
                             CoprResolutionChange)
 from koschei.config import get_config
-from koschei.backend import depsolve, koji_util, repo_util
+from koschei.backend import koji_util, repo_util
 from koschei.backend.service import Service
+from koschei.backend.depsolve import Solver
 
 from koschei.plugins.copr_plugin.backend.common import (
     copr_client, RequestProcessingError, prepare_comps, repo_descriptor_for_request,
@@ -71,7 +72,7 @@ class CoprResolver(Service):
             request.yum_repo,
         )
 
-    def add_repo_to_sack(self, request, sack):
+    def get_solver_with_repo(self, request, sack):
         desc = self.get_user_repo_descriptor(request)
         repo_dir = os.path.join(get_config('directories.cachedir'), 'user_repos')
         repo = repo_util.get_repo(repo_dir, desc, download=True)
@@ -96,8 +97,9 @@ class CoprResolver(Service):
                     exclusions += sorted(pkgs, key=cmp_to_key(pkg_cmp))[:-1]
 
             sack.add_excludes(exclusions)
+        return Solver(sack)
 
-    def resolve_request(self, request, sack_before, sack_after):
+    def resolve_request(self, request, solver_before, solver_after):
         self.log.info("Processing rebuild request id {}".format(request.id))
 
         # packages with no build have no srpm to fetch buildrequires, so filter them
@@ -122,33 +124,25 @@ class CoprResolver(Service):
             request.collection.build_group,
             request.collection.latest_repo_id,
         )
+        buildroot1 = solver_before.buildroot(build_group)
+        buildroot2 = solver_after.buildroot(build_group)
         for package, brs in zip(packages, br_gen):
-            resolved1, _, installs1 = \
-                depsolve.run_goal(sack_before, brs, build_group)
-            resolved2, problems2, installs2 = \
-                depsolve.run_goal(sack_after, brs, build_group)
-            if resolved1 != resolved2:
+            solution1 = buildroot1.builddep(brs)
+            solution2 = buildroot2.builddep(brs)
+            if solution1.resolved != solution2.resolved:
                 change = dict(
                     request_id=request.id,
                     package_id=package.id,
-                    prev_resolved=resolved1,
-                    curr_resolved=resolved2,
-                    problems=problems2,
+                    prev_resolved=solution1.resolved,
+                    curr_resolved=solution2.resolved,
+                    problems=solution2.problems,
                     # TODO compare problems as well?
                 )
                 resolution_changes.append(change)
-            elif resolved2:
-                installs1 = set(installs1)
-                installs2 = set(installs2)
-                if installs1 != installs2:
-                    changed_deps = [
-                        depsolve.DependencyWithDistance(
-                            name=pkg.name, epoch=pkg.epoch,
-                            version=pkg.version, release=pkg.release,
-                            arch=pkg.arch,
-                        ) for pkg in installs2 if pkg not in installs1
-                    ]
-                    depsolve.compute_dependency_distances(sack_after, brs, changed_deps)
+            elif solution2.resolved:
+                if solution1.installs != solution2.installs:
+                    changed_deps = solution2.compute_dependency_distances(
+                        solution2.installs - solution1.installs)
                     priority = sum(100 / (d.distance * 2)
                                    for d in changed_deps if d.distance)
                     rebuild = dict(
@@ -186,10 +180,11 @@ class CoprResolver(Service):
                 with self.session.repo_cache.get_sack(repo_descriptor) as sack_before:
                     if not sack_before:
                         raise RuntimeError("Couldn't download koji repo")
+                    solver_before = Solver(sack_before)
                     sack_after = self.session.repo_cache.get_sack_copy(repo_descriptor)
-                    self.add_repo_to_sack(request, sack_after)
+                    solver_after = self.get_solver_with_repo(request, sack_after)
                     prepare_comps(self.session, request, repo_descriptor)
-                    self.resolve_request(request, sack_before, sack_after)
+                    self.resolve_request(request, solver_before, solver_after)
                     self.db.commit()
             except RequestProcessingError as e:
                 request.state = 'failed'

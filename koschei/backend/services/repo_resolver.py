@@ -30,6 +30,7 @@ from sqlalchemy.sql import insert
 from koschei import util, backend
 from koschei.config import get_config
 from koschei.backend import koji_util
+from koschei.backend.depsolve import Solver
 from koschei.plugin import dispatch_event
 from koschei.util import stopwatch
 from koschei.locks import pg_session_lock, Locked, LOCK_REPO_RESOLVER
@@ -77,10 +78,11 @@ class RepoResolver(Resolver):
             total_time.reset()
             total_time.start()
             with self.prepared_repo(collection, repo_id) as sack:
-                self.resolve_repo(collection, repo_id, sack)
+                solver = Solver(sack)
+                buildroot = self.resolve_repo(collection, repo_id, solver)
                 if collection.latest_repo_resolved:
                     packages = self.get_packages(collection)
-                    self.resolve_packages(collection, repo_id, sack, packages)
+                    self.resolve_packages(collection, repo_id, buildroot, packages)
             total_time.stop()
             total_time.display()
         elif collection.latest_repo_resolved:
@@ -89,7 +91,9 @@ class RepoResolver(Resolver):
             if new_packages:
                 repo_id = collection.latest_repo_id
                 with self.prepared_repo(collection, repo_id) as sack:
-                    self.resolve_packages(collection, repo_id, sack, new_packages)
+                    solver = Solver(sack)
+                    buildroot = solver.buildroot(self.get_build_group(collection, repo_id))
+                    self.resolve_packages(collection, repo_id, buildroot, new_packages)
 
     def get_new_repo_id(self, collection):
         """
@@ -134,7 +138,7 @@ class RepoResolver(Resolver):
                 )
             yield sack
 
-    def resolve_repo(self, collection, repo_id, sack):
+    def resolve_repo(self, collection, repo_id, solver):
         """
         Resolves given repo base buildroot. Stores buildroot problems if any.
         Updates collection metadata (latest_repo_id, latest_repo_resolved).
@@ -151,23 +155,24 @@ class RepoResolver(Resolver):
             )
         )
         build_group = self.get_build_group(collection, repo_id)
-        resolved, base_problems, _ = self.resolve_dependencies(sack, [], build_group)
+        buildroot = solver.buildroot(build_group)
         self.db.query(BuildrootProblem)\
             .filter_by(collection_id=collection.id)\
             .delete()
         prev_state = collection.state_string
         collection.latest_repo_id = repo_id
-        collection.latest_repo_resolved = resolved
+        collection.latest_repo_resolved = buildroot.resolved
         new_state = collection.state_string
-        if not resolved:
+        if not buildroot.resolved:
             self.log.info("Build group not resolvable for {}"
                           .format(collection.name))
             self.db.execute(BuildrootProblem.__table__.insert(),
                             [{'collection_id': collection.id, 'problem': problem}
-                             for problem in base_problems])
+                             for problem in buildroot.problems])
         self.db.commit()
         dispatch_event('collection_state_change', self.session,
                        collection=collection, prev_state=prev_state, new_state=new_state)
+        return buildroot
 
     def get_packages(self, collection, only_new=False):
         """
@@ -191,7 +196,7 @@ class RepoResolver(Resolver):
             query = query.filter(Package.resolved == None)
         return query.all()
 
-    def resolve_packages(self, collection, repo_id, sack, packages):
+    def resolve_packages(self, collection, repo_id, buildroot, packages):
         """
         Generates new dependency changes for given packages
         Commits data in increments.
@@ -211,10 +216,10 @@ class RepoResolver(Resolver):
                 len(packages),
             )
         )
-        self.generate_dependency_changes(collection, repo_id, sack, packages, brs)
+        self.generate_dependency_changes(collection, repo_id, buildroot, packages, brs)
         self.db.commit()
 
-    def generate_dependency_changes(self, collection, repo_id, sack, packages, brs):
+    def generate_dependency_changes(self, collection, repo_id, buildroot, packages, brs):
         """
         Generates and persists dependency changes for given list of packages.
         Emits package state change events.
@@ -222,8 +227,7 @@ class RepoResolver(Resolver):
         # pylint:disable=too-many-locals
         results = []
 
-        build_group = self.get_build_group(collection, repo_id)
-        gen = ((package, self.resolve_dependencies(sack, br, build_group))
+        gen = ((package, self.resolve_dependencies(buildroot, br))
                for package, br in zip(packages, brs))
         queue_size = get_config('dependency.resolver_queue_size')
         gen = util.parallel_generator(gen, queue_size=queue_size)

@@ -31,6 +31,7 @@ from koschei.backend import koji_util
 from koschei.backend.services.repo_resolver import RepoResolver
 from koschei.backend.services.build_resolver import BuildResolver
 from koschei.backend.repo_util import KojiRepoDescriptor
+from koschei.backend.depsolve import Solver
 from koschei.models import (
     Dependency, UnappliedChange, Package, ResolutionProblem,
     BuildrootProblem, ResolutionChange, Build,
@@ -54,10 +55,14 @@ REPO = {
 }
 
 
-def get_sack():
+def get_buildroot(build_group=['R']):
     desc = KojiRepoDescriptor(koji_id='primary', repo_id=123, build_tag='f25-build')
     with RepoCacheMock().get_sack(desc) as sack:
-        return sack
+        solver = Solver(sack)
+        buildroot = solver.buildroot(build_group)
+        assert buildroot.resolved
+        assert not buildroot.problems
+        return buildroot
 
 
 class ResolverTest(DBTest):
@@ -409,9 +414,9 @@ class ResolverTest(DBTest):
 
     def test_virtual_file_provides(self):
         with self.mocks():
-            sack = get_sack()
+            buildroot = get_buildroot()
             (resolved, problems, deps) = \
-                self.repo_resolver.resolve_dependencies(sack, ['/bin/csh'], ['R'])
+                self.repo_resolver.resolve_dependencies(buildroot, ['/bin/csh'])
             self.assertCountEqual([], problems)
             self.assertTrue(resolved)
             self.assertIsNotNone(deps)
@@ -423,9 +428,9 @@ class ResolverTest(DBTest):
             'Rich deps are not supported by this hawkey version')
     def test_rich_deps1(self):
         with self.mocks():
-            sack = get_sack()
+            buildroot = get_buildroot()
             (resolved, problems, deps) = \
-                self.repo_resolver.resolve_dependencies(sack, ['qt-x11'], ['R'])
+                self.repo_resolver.resolve_dependencies(buildroot, ['qt-x11'])
             self.assertCountEqual([], problems)
             self.assertTrue(resolved)
             self.assertIsNotNone(deps)
@@ -437,11 +442,10 @@ class ResolverTest(DBTest):
             'Rich deps are not supported by this hawkey version')
     def test_rich_deps2(self):
         with self.mocks():
-            sack = get_sack()
+            buildroot = get_buildroot()
             (resolved, problems, deps) = \
-                self.repo_resolver.resolve_dependencies(sack,
-                                                   ['qt-x11', 'plasma-workspace'],
-                                                   ['R'])
+                self.repo_resolver.resolve_dependencies(buildroot,
+                                                   ['qt-x11', 'plasma-workspace'])
             self.assertCountEqual([], problems)
             self.assertTrue(resolved)
             self.assertIsNotNone(deps)
@@ -453,12 +457,11 @@ class ResolverTest(DBTest):
             'Rich deps are not supported by this hawkey version')
     def test_rich_build_requires(self):
         with self.mocks():
-            sack = get_sack()
+            buildroot = get_buildroot()
             (resolved, problems, deps) = \
-                self.repo_resolver.resolve_dependencies(sack,
+                self.repo_resolver.resolve_dependencies(buildroot,
                                                    ['(sni-qt(x86-64) if plasma-workspace)',
-                                                    'plasma-workspace'],
-                                                   ['R'])
+                                                    'plasma-workspace'])
             self.assertCountEqual([], problems)
             self.assertTrue(resolved)
             self.assertIsNotNone(deps)

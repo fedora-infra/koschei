@@ -203,7 +203,7 @@ class Resolver(Service):
         return list(changes.values()) if changes else []
 
     @stopwatch(total_time, note='separate thread')
-    def resolve_dependencies(self, sack, br, build_group):
+    def resolve_dependencies(self, buildroot, br):
         """
         Does a resolution process to install given buildrequires and build
         group using given sack.
@@ -211,17 +211,10 @@ class Resolver(Service):
         :returns: A triple of (resolved:bool, problems:[str], installs:[str]).
         """
         deps = None
-        resolved, problems, installs = depsolve.run_goal(sack, br, build_group)
-        if resolved:
-            problems = []
-            deps = [
-                depsolve.DependencyWithDistance(
-                    name=pkg.name, epoch=pkg.epoch, version=pkg.version,
-                    release=pkg.release, arch=pkg.arch,
-                ) for pkg in installs if pkg.arch != 'src'
-            ]
-            depsolve.compute_dependency_distances(sack, br, deps)
-        return resolved, problems, deps
+        solution = buildroot.builddep(br)
+        if solution.resolved:
+            deps = solution.compute_dependency_distances(solution.installs)
+        return solution.resolved, solution.problems, deps
 
     def get_prev_build_for_comparison(self, build):
         """
