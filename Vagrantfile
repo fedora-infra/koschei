@@ -15,7 +15,8 @@ Vagrant.configure(2) do |config|
   end
 
   config.vm.provision "ansible" do |ansible|
-      ansible.playbook = "aux/vagrant-playbook.yml"
+    ansible.compatibility_mode = "2.0"
+    ansible.playbook = "aux/vagrant-playbook.yml"
   end
 
   config.vm.post_up_message = <<-EOF
