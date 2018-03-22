@@ -221,34 +221,41 @@ class DBTest(AbstractTest):
             with patch.object(self.session, 'koji', new_callable=lambda: get_koji):
                 yield get_koji
 
-    def ensure_base_package(self, package):
-        if not package.base_id:
-            base = self.db.query(BasePackage).filter_by(name=package.name).first()
-            if not base:
-                base = BasePackage(name=package.name)
-                self.db.add(base)
-                self.db.flush()
-            package.base_id = base.id
-
     def prepare_basic_data(self):
-        pkg = Package(name='rnv', collection_id=self.collection.id)
-        self.ensure_base_package(pkg)
-        self.db.add(pkg)
-        self.db.flush()
-        build = Build(package_id=pkg.id, state=Build.RUNNING,
-                      task_id=666, repo_id=1, started=datetime.fromtimestamp(123))
-        self.db.add(build)
-        self.db.commit()
-        return pkg, build
+        package = self.prepare_package('rnv')
+        build = self.prepare_build(package, task_id=666, repo_id=1)
+        return package, build
 
-    def prepare_package(self, name=None, **kwargs):
+    def prepare_collection(self, name, **kwargs):
+        values = dict(
+            name=name,
+            target=name,
+            display_name="Fedora Rawhide",
+            latest_repo_resolved=True,
+            latest_repo_id=123,
+            bugzilla_product="Fedora",
+            bugzilla_version="rawhide",
+            build_tag=f'{name}-build',
+            dest_tag=f'{name}-build',
+        )
+        values.update(**kwargs)
+
+        collection = Collection(**values)
+        self.db.add(collection)
+        self.db.commit()
+        return collection
+
+    def prepare_package(self, name=None, collection=None, **kwargs):
         if 'collection_id' not in kwargs:
-            kwargs['collection_id'] = self.collection.id
+            if collection is None:
+                collection = self.collection
         if not name:
             name = 'p{}'.format(self.pkg_name_counter)
             self.pkg_name_counter += 1
-        pkg = Package(name=name, **kwargs)
-        self.ensure_base_package(pkg)
+        base = self.db.query(BasePackage).filter_by(name=name).first()
+        if not base:
+            base = BasePackage(name=name)
+        pkg = Package(name=name, base=base, collection=collection, **kwargs)
         self.db.add(pkg)
         self.db.commit()
         return pkg
@@ -258,31 +265,36 @@ class DBTest(AbstractTest):
         for name in pkg_names:
             pkg = self.db.query(Package).filter_by(name=name).first()
             if not pkg:
-                pkg = Package(name=name, collection_id=self.collection.id)
-                self.ensure_base_package(pkg)
-                self.db.add(pkg)
+                pkg = self.prepare_package(name)
             pkgs.append(pkg)
         self.db.commit()
         return pkgs
 
-    def prepare_build(self, pkg_name, state=None, repo_id=None, resolved=True,
-                      arches=(), started=None):
+    def prepare_build(self, package, state=None, repo_id=None, resolved=True,
+                      arches=(), task_id=None, started=None, untagged=False,
+                      epoch=None, version='1', release='1.fc25', real=False):
         states = {
             True: Build.COMPLETE,
             False: Build.FAILED,
             None: Build.RUNNING,
+            'complete': Build.COMPLETE,
+            'failed': Build.FAILED,
+            'running': Build.RUNNING,
         }
-        if isinstance(state, bool):
+        if isinstance(state, (bool, str)):
             state = states[state]
-        package = self.prepare_packages(pkg_name)[0]
-        package.resolved = resolved
+        if isinstance(package, str):
+            found = self.db.query(Package).filter_by(name=package).first()
+            package = found or self.prepare_package(package)
         build = Build(package=package, state=state,
                       repo_id=repo_id or (1 if state != Build.RUNNING else None),
-                      version='1', release='1.fc25',
-                      task_id=self.task_id_counter,
+                      version=version, release=release,
+                      untagged=untagged, real=real,
+                      task_id=task_id or self.task_id_counter,
                       started=started or datetime.fromtimestamp(self.task_id_counter),
                       deps_resolved=resolved)
-        self.task_id_counter += 1
+        if not task_id:
+            self.task_id_counter += 1
         self.db.add(build)
         self.db.commit()
         for arch in arches:

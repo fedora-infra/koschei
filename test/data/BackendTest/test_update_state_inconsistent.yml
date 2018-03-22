@@ -1,0 +1,109 @@
+# hand edited last task to running and no finished time
+- method: getTaskResult
+  args:
+  - 9107738
+  result: null
+- method: getTaskInfo
+  args:
+  - 9107738
+  result:
+    arch: noarch
+    awaited: null
+    channel_id: 1
+    completion_time: '2015-03-01 13:43:25.800364'
+    completion_ts: 1425217405.80036
+    create_time: '2015-03-01 13:39:38.041833'
+    create_ts: 1425217178.04183
+    host_id: 63
+    id: 9107738
+    label: null
+    method: build
+    owner: 2645
+    parent: null
+    priority: 50
+    start_time: '2015-03-01 13:39:38.191753'
+    start_ts: 1425217178.19175
+    state: 2
+    waiting: false
+    weight: 0.2
+- method: getTaskChildren
+  args:
+  - 9107738
+  kwargs:
+    request: true
+  result:
+  - arch: armhfp
+    awaited: false
+    channel_id: 1
+    completion_time: '2015-03-01 13:43:14.307429'
+    completion_ts: 1425217394.30743
+    create_time: '2015-03-01 13:39:39.263872'
+    create_ts: 1425217179.26387
+    host_id: 126
+    id: 9107739
+    label: armv7hl
+    method: buildArch
+    owner: 2645
+    parent: 9107738
+    priority: 49
+    request:
+    - ../packages/rnv/1.7.11/7.fc22/src/rnv-1.7.11-7.fc22.src.rpm
+    - 299
+    - armv7hl
+    - true
+    - repo_id: 460889
+    start_time: '2015-03-01 13:39:41.486608'
+    start_ts: 1425217181.48661
+    state: 2
+    waiting: null
+    weight: 1.64134472187
+  - arch: i386
+    awaited: false
+    channel_id: 1
+    completion_time: '2015-03-01 13:41:54.777992'
+    completion_ts: 1425217314.77799
+    create_time: '2015-03-01 13:39:39.389699'
+    create_ts: 1425217179.3897
+    host_id: 60
+    id: 9107741
+    label: i686
+    method: buildArch
+    owner: 2645
+    parent: 9107738
+    priority: 49
+    request:
+    - ../packages/rnv/1.7.11/7.fc22/src/rnv-1.7.11-7.fc22.src.rpm
+    - 299
+    - i686
+    - false
+    - repo_id: 460889
+    start_time: '2015-03-01 13:39:46.519139'
+    start_ts: 1425217186.51914
+    state: 2
+    waiting: null
+    weight: 1.64134472187
+  - arch: x86_64
+    awaited: false
+    channel_id: 1
+    completion_time: null
+    completion_ts: null
+    create_time: '2015-03-01 13:39:39.346411'
+    create_ts: 1425217179.34641
+    host_id: 82
+    id: 9107740
+    label: x86_64
+    method: buildArch
+    owner: 2645
+    parent: 9107738
+    priority: 49
+    request:
+    - ../packages/rnv/1.7.11/7.fc22/src/rnv-1.7.11-7.fc22.src.rpm
+    - 299
+    - x86_64
+    - false
+    - repo_id: 460889
+    start_time: '2015-03-01 13:39:41.574641'
+    start_ts: 1425217181.57464
+    state: 1
+    waiting: null
+    weight: 1.64134472187

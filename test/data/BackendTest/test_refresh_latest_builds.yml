@@ -1,0 +1,1221 @@
+- method: listTagged
+  args:
+  - f29-build
+  kwargs:
+    inherit: true
+    latest: true
+  result:
+  - build_id: 1046486
+    completion_time: '2018-02-19 14:53:27.266744'
+    creation_event_id: 31182427
+    creation_time: '2018-02-19 14:50:04.780087'
+    epoch: null
+    id: 1046486
+    name: rnv
+    nvr: rnv-1.7.11-15.fc28
+    owner_id: 2645
+    owner_name: msimacek
+    package_id: 16808
+    package_name: rnv
+    release: 15.fc28
+    start_time: '2018-02-19 14:50:04.780087'
+    state: 1
+    tag_id: 3418
+    tag_name: f29
+    task_id: 25162638
+    version: 1.7.11
+    volume_id: 0
+    volume_name: DEFAULT
+  - build_id: 1060955
+    completion_time: '2018-03-21 18:25:29.387826'
+    creation_event_id: 32029812
+    creation_time: '2018-03-21 14:39:38.862159'
+    epoch: 1
+    id: 1060955
+    name: eclipse
+    nvr: eclipse-4.7.3-2.fc29
+    owner_id: 654
+    owner_name: mbooth
+    package_id: 183
+    package_name: eclipse
+    release: 2.fc29
+    start_time: '2018-03-21 14:39:38.862159'
+    state: 1
+    tag_id: 3418
+    tag_name: f29
+    task_id: 25859902
+    version: 4.7.3
+    volume_id: 0
+    volume_name: DEFAULT
+  - build_id: 1058559
+    completion_time: '2018-03-15 14:23:06.855050'
+    creation_event_id: 31861452
+    creation_time: '2018-03-15 14:14:40.628664'
+    epoch: 1
+    id: 1058559
+    name: maven
+    nvr: maven-3.5.3-1.fc29
+    owner_id: 2645
+    owner_name: msimacek
+    package_id: 11290
+    package_name: maven
+    release: 1.fc29
+    start_time: '2018-03-15 14:14:40.628664'
+    state: 1
+    tag_id: 3418
+    tag_name: f29
+    task_id: 25725733
+    version: 3.5.3
+    volume_id: 0
+    volume_name: DEFAULT
+  - build_id: 1060323
+    completion_time: '2018-03-20 11:53:43.155638'
+    creation_event_id: 32002195
+    creation_time: '2018-03-20 11:51:47.242599'
+    epoch: 0
+    id: 1060323
+    name: slf4j
+    nvr: slf4j-1.7.25-4.fc29
+    owner_id: 2645
+    owner_name: msimacek
+    package_id: 9136
+    package_name: slf4j
+    release: 4.fc29
+    start_time: '2018-03-20 11:51:47.242599'
+    state: 1
+    tag_id: 3418
+    tag_name: f29
+    task_id: 25834603
+    version: 1.7.25
+    volume_id: 0
+    volume_name: DEFAULT
+  - build_id: 1046474
+    completion_time: '2018-02-19 14:39:23.831022'
+    creation_event_id: 31181852
+    creation_time: '2018-02-19 14:35:33.091726'
+    epoch: null
+    id: 1046474
+    name: lbzip2
+    nvr: lbzip2-2.5-10.fc28
+    owner_id: 2645
+    owner_name: msimacek
+    package_id: 11313
+    package_name: lbzip2
+    release: 10.fc28
+    start_time: '2018-02-19 14:35:33.091726'
+    state: 1
+    tag_id: 3418
+    tag_name: f29
+    task_id: 25162095
+    version: '2.5'
+    volume_id: 0
+    volume_name: DEFAULT
+  - build_id: 984431
+    completion_time: '2017-10-13 09:00:18.577899'
+    creation_event_id: 27830427
+    creation_time: '2017-10-13 08:36:06.695316'
+    epoch: null
+    id: 984431
+    name: log4j
+    nvr: log4j-2.9.1-2.fc28
+    owner_id: 2645
+    owner_name: msimacek
+    package_id: 525
+    package_name: log4j
+    release: 2.fc28
+    start_time: '2017-10-13 08:36:06.695316'
+    state: 1
+    tag_id: 3418
+    tag_name: f29
+    task_id: 22416320
+    version: 2.9.1
+    volume_id: 0
+    volume_name: DEFAULT
+  - build_id: 1038071
+    completion_time: '2018-02-09 09:39:25.250468'
+    creation_event_id: 30827320
+    creation_time: '2018-02-09 09:35:10.411604'
+    epoch: null
+    id: 1038071
+    name: guava
+    nvr: guava-24.0-2.fc28
+    owner_id: 2546
+    owner_name: ignatenkobrain
+    package_id: 10511
+    package_name: guava
+    release: 2.fc28
+    start_time: '2018-02-09 09:35:10.411604'
+    state: 1
+    tag_id: 3418
+    tag_name: f29
+    task_id: 24877415
+    version: '24.0'
+    volume_id: 0
+    volume_name: DEFAULT
+- method: getTaskInfo
+  args:
+  - 25859902
+  result:
+    arch: noarch
+    awaited: null
+    channel_id: 1
+    completion_time: '2018-03-21 18:25:47.153830'
+    completion_ts: 1521656747.15383
+    create_time: '2018-03-21 14:36:25.761628'
+    create_ts: 1521642985.76163
+    host_id: 236
+    id: 25859902
+    label: null
+    method: build
+    owner: 654
+    parent: null
+    priority: 20
+    start_time: '2018-03-21 14:36:29.054511'
+    start_ts: 1521642989.05451
+    state: 2
+    waiting: false
+    weight: 0.2
+- method: getTaskInfo
+  args:
+  - 25834603
+  result:
+    arch: noarch
+    awaited: null
+    channel_id: 1
+    completion_time: '2018-03-20 11:54:04.315795'
+    completion_ts: 1521546844.31579
+    create_time: '2018-03-20 11:49:01.035560'
+    create_ts: 1521546541.03556
+    host_id: 276
+    id: 25834603
+    label: null
+    method: build
+    owner: 2645
+    parent: null
+    priority: 20
+    start_time: '2018-03-20 11:49:01.289907'
+    start_ts: 1521546541.28991
+    state: 2
+    waiting: false
+    weight: 0.2
+- method: getTaskInfo
+  args:
+  - 25725733
+  result:
+    arch: noarch
+    awaited: null
+    channel_id: 1
+    completion_time: '2018-03-15 14:23:34.080386'
+    completion_ts: 1521123814.08039
+    create_time: '2018-03-15 14:13:38.159052'
+    create_ts: 1521123218.15905
+    host_id: 296
+    id: 25725733
+    label: null
+    method: build
+    owner: 2645
+    parent: null
+    priority: 20
+    start_time: '2018-03-15 14:13:38.670925'
+    start_ts: 1521123218.67092
+    state: 2
+    waiting: false
+    weight: 0.2
+- method: getTaskInfo
+  args:
+  - 22416320
+  result:
+    arch: noarch
+    awaited: null
+    channel_id: 1
+    completion_time: '2017-10-13 09:00:37.909669'
+    completion_ts: 1507885237.90967
+    create_time: '2017-10-13 08:35:09.564388'
+    create_ts: 1507883709.56439
+    host_id: 277
+    id: 22416320
+    label: null
+    method: build
+    owner: 2645
+    parent: null
+    priority: 20
+    start_time: '2017-10-13 08:35:09.695640'
+    start_ts: 1507883709.69564
+    state: 2
+    waiting: false
+    weight: 0.2
+- method: getTaskInfo
+  args:
+  - 25162638
+  result:
+    arch: noarch
+    awaited: null
+    channel_id: 1
+    completion_time: '2018-02-19 14:53:46.705299'
+    completion_ts: 1519052026.7053
+    create_time: '2018-02-19 14:48:45.862631'
+    create_ts: 1519051725.86263
+    host_id: 158
+    id: 25162638
+    label: null
+    method: build
+    owner: 2645
+    parent: null
+    priority: 20
+    start_time: '2018-02-19 14:48:48.357059'
+    start_ts: 1519051728.35706
+    state: 2
+    waiting: false
+    weight: 0.2
+- method: getTaskChildren
+  args:
+  - 25859902
+  kwargs:
+    request: true
+  result:
+  - arch: noarch
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-03-21 14:39:18.939210'
+    completion_ts: 1521643158.93921
+    create_time: '2018-03-21 14:36:29.858968'
+    create_ts: 1521642989.85897
+    host_id: 232
+    id: 25859904
+    label: srpm
+    method: buildSRPMFromSCM
+    owner: 654
+    parent: 25859902
+    priority: 19
+    request:
+    - git+https://src.fedoraproject.org/rpms/eclipse.git?#2d676dbd55ba0fcec3238f732c2f7cba497f930e
+    - 3428
+    - repo_id: 880568
+      scratch: null
+    start_time: '2018-03-21 14:36:30.282269'
+    start_ts: 1521642990.28227
+    state: 2
+    waiting: null
+    weight: 1.0
+  - arch: x86_64
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-03-21 15:14:14.559902'
+    completion_ts: 1521645254.5599
+    create_time: '2018-03-21 14:39:38.895380'
+    create_ts: 1521643178.89538
+    host_id: 62
+    id: 25860019
+    label: x86_64
+    method: buildArch
+    owner: 654
+    parent: 25859902
+    priority: 19
+    request:
+    - tasks/9904/25859904/eclipse-4.7.3-2.fc29.src.rpm
+    - 3428
+    - x86_64
+    - true
+    - repo_id: 880568
+    start_time: '2018-03-21 14:39:43.692331'
+    start_ts: 1521643183.69233
+    state: 2
+    waiting: null
+    weight: 6.0
+  - arch: ppc64le
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-03-21 15:36:26.739509'
+    completion_ts: 1521646586.73951
+    create_time: '2018-03-21 14:39:38.919261'
+    create_ts: 1521643178.91926
+    host_id: 239
+    id: 25860020
+    label: ppc64le
+    method: buildArch
+    owner: 654
+    parent: 25859902
+    priority: 19
+    request:
+    - tasks/9904/25859904/eclipse-4.7.3-2.fc29.src.rpm
+    - 3428
+    - ppc64le
+    - false
+    - repo_id: 880568
+    start_time: '2018-03-21 14:39:42.966884'
+    start_ts: 1521643182.96688
+    state: 2
+    waiting: null
+    weight: 6.0
+  - arch: ppc64
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-03-21 15:50:22.096269'
+    completion_ts: 1521647422.09627
+    create_time: '2018-03-21 14:39:38.984049'
+    create_ts: 1521643178.98405
+    host_id: 278
+    id: 25860022
+    label: ppc64
+    method: buildArch
+    owner: 654
+    parent: 25859902
+    priority: 19
+    request:
+    - tasks/9904/25859904/eclipse-4.7.3-2.fc29.src.rpm
+    - 3428
+    - ppc64
+    - false
+    - repo_id: 880568
+    start_time: '2018-03-21 14:39:58.082371'
+    start_ts: 1521643198.08237
+    state: 2
+    waiting: null
+    weight: 6.0
+  - arch: s390x
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-03-21 18:25:12.893193'
+    completion_ts: 1521656712.89319
+    create_time: '2018-03-21 14:39:39.028872'
+    create_ts: 1521643179.02887
+    host_id: 310
+    id: 25860024
+    label: s390x
+    method: buildArch
+    owner: 654
+    parent: 25859902
+    priority: 19
+    request:
+    - tasks/9904/25859904/eclipse-4.7.3-2.fc29.src.rpm
+    - 3428
+    - s390x
+    - false
+    - repo_id: 880568
+    start_time: '2018-03-21 14:39:58.804243'
+    start_ts: 1521643198.80424
+    state: 2
+    waiting: null
+    weight: 6.0
+  - arch: noarch
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-03-21 18:25:42.231800'
+    completion_ts: 1521656742.2318
+    create_time: '2018-03-21 18:25:35.237188'
+    create_ts: 1521656735.23719
+    host_id: 326
+    id: 25863465
+    label: tag
+    method: tagBuild
+    owner: 654
+    parent: 25859902
+    priority: 19
+    request:
+    - 3430
+    - 1060955
+    - false
+    - null
+    - true
+    start_time: '2018-03-21 18:25:40.972917'
+    start_ts: 1521656740.97292
+    state: 2
+    waiting: null
+    weight: 1.0
+  - arch: armhfp
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-03-21 17:01:36.305451'
+    completion_ts: 1521651696.30545
+    create_time: '2018-03-21 14:39:39.052656'
+    create_ts: 1521643179.05266
+    host_id: 294
+    id: 25860025
+    label: armv7hl
+    method: buildArch
+    owner: 654
+    parent: 25859902
+    priority: 19
+    request:
+    - tasks/9904/25859904/eclipse-4.7.3-2.fc29.src.rpm
+    - 3428
+    - armv7hl
+    - false
+    - repo_id: 880568
+    start_time: '2018-03-21 14:39:43.043162'
+    start_ts: 1521643183.04316
+    state: 2
+    waiting: null
+    weight: 6.0
+  - arch: aarch64
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-03-21 16:04:17.404148'
+    completion_ts: 1521648257.40415
+    create_time: '2018-03-21 14:39:38.953514'
+    create_ts: 1521643178.95351
+    host_id: 333
+    id: 25860021
+    label: aarch64
+    method: buildArch
+    owner: 654
+    parent: 25859902
+    priority: 19
+    request:
+    - tasks/9904/25859904/eclipse-4.7.3-2.fc29.src.rpm
+    - 3428
+    - aarch64
+    - false
+    - repo_id: 880568
+    start_time: '2018-03-21 14:39:57.721435'
+    start_ts: 1521643197.72144
+    state: 2
+    waiting: null
+    weight: 6.0
+  - arch: i386
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-03-21 15:08:56.772826'
+    completion_ts: 1521644936.77283
+    create_time: '2018-03-21 14:39:39.007277'
+    create_ts: 1521643179.00728
+    host_id: 158
+    id: 25860023
+    label: i686
+    method: buildArch
+    owner: 654
+    parent: 25859902
+    priority: 19
+    request:
+    - tasks/9904/25859904/eclipse-4.7.3-2.fc29.src.rpm
+    - 3428
+    - i686
+    - false
+    - repo_id: 880568
+    start_time: '2018-03-21 14:39:44.389501'
+    start_ts: 1521643184.3895
+    state: 2
+    waiting: null
+    weight: 6.0
+- method: getTaskChildren
+  args:
+  - 25834603
+  kwargs:
+    request: true
+  result:
+  - arch: noarch
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-03-20 11:51:46.570858'
+    completion_ts: 1521546706.57086
+    create_time: '2018-03-20 11:49:01.517303'
+    create_ts: 1521546541.5173
+    host_id: 299
+    id: 25834604
+    label: srpm
+    method: buildSRPMFromSCM
+    owner: 2645
+    parent: 25834603
+    priority: 19
+    request:
+    - git+https://src.fedoraproject.org/rpms/slf4j.git?#d7cd96bc7a8e8d8d62c8bc62baa7df02cef56c63
+    - 3428
+    - scratch: null
+    start_time: '2018-03-20 11:49:03.532127'
+    start_ts: 1521546543.53213
+    state: 2
+    waiting: null
+    weight: 1.0
+  - arch: noarch
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-03-20 11:53:47.143263'
+    completion_ts: 1521546827.14326
+    create_time: '2018-03-20 11:53:44.917200'
+    create_ts: 1521546824.9172
+    host_id: 313
+    id: 25834671
+    label: tag
+    method: tagBuild
+    owner: 2645
+    parent: 25834603
+    priority: 19
+    request:
+    - 3430
+    - 1060323
+    - false
+    - null
+    - true
+    start_time: '2018-03-20 11:53:45.896642'
+    start_ts: 1521546825.89664
+    state: 2
+    waiting: null
+    weight: 1.0
+  - arch: noarch
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-03-20 11:53:32.495453'
+    completion_ts: 1521546812.49545
+    create_time: '2018-03-20 11:51:47.370745'
+    create_ts: 1521546707.37074
+    host_id: 77
+    id: 25834632
+    label: noarch
+    method: buildArch
+    owner: 2645
+    parent: 25834603
+    priority: 19
+    request:
+    - tasks/4604/25834604/slf4j-1.7.25-4.fc29.src.rpm
+    - 3428
+    - noarch
+    - true
+    - {}
+    start_time: '2018-03-20 11:51:47.652924'
+    start_ts: 1521546707.65292
+    state: 2
+    waiting: null
+    weight: 1.60410797125
+- method: getTaskChildren
+  args:
+  - 25725733
+  kwargs:
+    request: true
+  result:
+  - arch: noarch
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-03-15 14:22:53.012806'
+    completion_ts: 1521123773.01281
+    create_time: '2018-03-15 14:14:40.915021'
+    create_ts: 1521123280.91502
+    host_id: 231
+    id: 25725788
+    label: noarch
+    method: buildArch
+    owner: 2645
+    parent: 25725733
+    priority: 19
+    request:
+    - tasks/5735/25725735/maven-3.5.3-1.fc29.src.rpm
+    - 3428
+    - noarch
+    - true
+    - repo_id: 876874
+    start_time: '2018-03-15 14:14:41.376365'
+    start_ts: 1521123281.37636
+    state: 2
+    waiting: null
+    weight: 1.6564403525
+  - arch: noarch
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-03-15 14:23:07.816964'
+    completion_ts: 1521123787.81696
+    create_time: '2018-03-15 14:23:07.186367'
+    create_ts: 1521123787.18637
+    host_id: 280
+    id: 25726009
+    label: tag
+    method: tagBuild
+    owner: 2645
+    parent: 25725733
+    priority: 19
+    request:
+    - 3430
+    - 1058559
+    - false
+    - null
+    - true
+    start_time: '2018-03-15 14:23:07.524065'
+    start_ts: 1521123787.52407
+    state: 2
+    waiting: null
+    weight: 1.0
+  - arch: noarch
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-03-15 14:14:33.875822'
+    completion_ts: 1521123273.87582
+    create_time: '2018-03-15 14:13:39.129099'
+    create_ts: 1521123219.1291
+    host_id: 157
+    id: 25725735
+    label: srpm
+    method: buildSRPMFromSCM
+    owner: 2645
+    parent: 25725733
+    priority: 19
+    request:
+    - git+https://src.fedoraproject.org/rpms/maven.git?#8a72aae90423f32a50f28c28d4448ea4b40599f0
+    - 3428
+    - repo_id: 876874
+      scratch: null
+    start_time: '2018-03-15 14:13:39.490301'
+    start_ts: 1521123219.4903
+    state: 2
+    waiting: null
+    weight: 1.0
+- method: getTaskChildren
+  args:
+  - 22416320
+  kwargs:
+    request: true
+  result:
+  - arch: noarch
+    awaited: false
+    channel_id: 1
+    completion_time: '2017-10-13 09:00:19.923090'
+    completion_ts: 1507885219.92309
+    create_time: '2017-10-13 09:00:19.562270'
+    create_ts: 1507885219.56227
+    host_id: 89
+    id: 22416780
+    label: tag
+    method: tagBuild
+    owner: 2645
+    parent: 22416320
+    priority: 19
+    request:
+    - 1924
+    - 984431
+    - false
+    - null
+    - true
+    start_time: '2017-10-13 09:00:19.677814'
+    start_ts: 1507885219.67781
+    state: 2
+    waiting: null
+    weight: 1.0
+  - arch: noarch
+    awaited: false
+    channel_id: 1
+    completion_time: '2017-10-13 09:00:00.371207'
+    completion_ts: 1507885200.37121
+    create_time: '2017-10-13 08:36:07.134416'
+    create_ts: 1507883767.13442
+    host_id: 327
+    id: 22416332
+    label: noarch
+    method: buildArch
+    owner: 2645
+    parent: 22416320
+    priority: 19
+    request:
+    - tasks/6321/22416321/log4j-2.9.1-2.fc28.src.rpm
+    - 1928
+    - noarch
+    - true
+    - repo_id: 798060
+    start_time: '2017-10-13 08:36:08.642355'
+    start_ts: 1507883768.64235
+    state: 2
+    waiting: null
+    weight: 1.67158989541667
+  - arch: noarch
+    awaited: false
+    channel_id: 1
+    completion_time: '2017-10-13 08:36:04.499423'
+    completion_ts: 1507883764.49942
+    create_time: '2017-10-13 08:35:09.872208'
+    create_ts: 1507883709.87221
+    host_id: 64
+    id: 22416321
+    label: srpm
+    method: buildSRPMFromSCM
+    owner: 2645
+    parent: 22416320
+    priority: 19
+    request:
+    - git://pkgs.fedoraproject.org/rpms/log4j?#53e4975dee1e1866d1f91b8d11d8e506f3660f45
+    - 1928
+    - repo_id: 798060
+      scratch: null
+    start_time: '2017-10-13 08:35:10.022491'
+    start_ts: 1507883710.02249
+    state: 2
+    waiting: null
+    weight: 1.0
+- method: getTaskChildren
+  args:
+  - 25162638
+  kwargs:
+    request: true
+  result:
+  - arch: s390x
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:51:12.164194'
+    completion_ts: 1519051872.16419
+    create_time: '2018-02-19 14:50:04.979774'
+    create_ts: 1519051804.97977
+    host_id: 327
+    id: 25162663
+    label: s390x
+    method: buildArch
+    owner: 2645
+    parent: 25162638
+    priority: 19
+    request:
+    - tasks/2639/25162639/rnv-1.7.11-15.fc28.src.rpm
+    - 1928
+    - s390x
+    - false
+    - repo_id: 859626
+    start_time: '2018-02-19 14:50:06.182989'
+    start_ts: 1519051806.18299
+    state: 2
+    waiting: null
+    weight: 6.0
+  - arch: armhfp
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:53:17.005545'
+    completion_ts: 1519051997.00554
+    create_time: '2018-02-19 14:50:05.009855'
+    create_ts: 1519051805.00986
+    host_id: 320
+    id: 25162664
+    label: armv7hl
+    method: buildArch
+    owner: 2645
+    parent: 25162638
+    priority: 19
+    request:
+    - tasks/2639/25162639/rnv-1.7.11-15.fc28.src.rpm
+    - 1928
+    - armv7hl
+    - false
+    - repo_id: 859626
+    start_time: '2018-02-19 14:50:09.317671'
+    start_ts: 1519051809.31767
+    state: 2
+    waiting: null
+    weight: 6.0
+  - arch: ppc64le
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:52:53.869705'
+    completion_ts: 1519051973.8697
+    create_time: '2018-02-19 14:50:04.849949'
+    create_ts: 1519051804.84995
+    host_id: 245
+    id: 25162659
+    label: ppc64le
+    method: buildArch
+    owner: 2645
+    parent: 25162638
+    priority: 19
+    request:
+    - tasks/2639/25162639/rnv-1.7.11-15.fc28.src.rpm
+    - 1928
+    - ppc64le
+    - false
+    - repo_id: 859626
+    start_time: '2018-02-19 14:50:22.459647'
+    start_ts: 1519051822.45965
+    state: 2
+    waiting: null
+    weight: 6.0
+  - arch: x86_64
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:51:09.127877'
+    completion_ts: 1519051869.12788
+    create_time: '2018-02-19 14:50:04.820394'
+    create_ts: 1519051804.82039
+    host_id: 88
+    id: 25162658
+    label: x86_64
+    method: buildArch
+    owner: 2645
+    parent: 25162638
+    priority: 19
+    request:
+    - tasks/2639/25162639/rnv-1.7.11-15.fc28.src.rpm
+    - 1928
+    - x86_64
+    - true
+    - repo_id: 859626
+    start_time: '2018-02-19 14:50:05.081795'
+    start_ts: 1519051805.08179
+    state: 2
+    waiting: null
+    weight: 6.0
+  - arch: i386
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:51:20.615801'
+    completion_ts: 1519051880.6158
+    create_time: '2018-02-19 14:50:04.947235'
+    create_ts: 1519051804.94724
+    host_id: 65
+    id: 25162662
+    label: i686
+    method: buildArch
+    owner: 2645
+    parent: 25162638
+    priority: 19
+    request:
+    - tasks/2639/25162639/rnv-1.7.11-15.fc28.src.rpm
+    - 1928
+    - i686
+    - false
+    - repo_id: 859626
+    start_time: '2018-02-19 14:50:08.085696'
+    start_ts: 1519051808.0857
+    state: 2
+    waiting: null
+    weight: 6.0
+  - arch: noarch
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:53:29.285358'
+    completion_ts: 1519052009.28536
+    create_time: '2018-02-19 14:53:28.936492'
+    create_ts: 1519052008.93649
+    host_id: 156
+    id: 25162745
+    label: tag
+    method: tagBuild
+    owner: 2645
+    parent: 25162638
+    priority: 19
+    request:
+    - 1924
+    - 1046486
+    - false
+    - null
+    - true
+    start_time: '2018-02-19 14:53:29.033867'
+    start_ts: 1519052009.03387
+    state: 2
+    waiting: null
+    weight: 1.0
+  - arch: noarch
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:49:46.411998'
+    completion_ts: 1519051786.412
+    create_time: '2018-02-19 14:48:48.881573'
+    create_ts: 1519051728.88157
+    host_id: 89
+    id: 25162639
+    label: srpm
+    method: buildSRPMFromSCM
+    owner: 2645
+    parent: 25162638
+    priority: 19
+    request:
+    - git+https://src.fedoraproject.org/rpms/rnv.git?#52afd5bfb1657e63cf25ee54b23eeed6e890acde
+    - 1928
+    - repo_id: 859626
+      scratch: null
+    start_time: '2018-02-19 14:48:49.343329'
+    start_ts: 1519051729.34333
+    state: 2
+    waiting: null
+    weight: 1.0
+  - arch: aarch64
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:53:08.928630'
+    completion_ts: 1519051988.92863
+    create_time: '2018-02-19 14:50:04.885188'
+    create_ts: 1519051804.88519
+    host_id: 217
+    id: 25162660
+    label: aarch64
+    method: buildArch
+    owner: 2645
+    parent: 25162638
+    priority: 19
+    request:
+    - tasks/2639/25162639/rnv-1.7.11-15.fc28.src.rpm
+    - 1928
+    - aarch64
+    - false
+    - repo_id: 859626
+    start_time: '2018-02-19 14:50:05.457652'
+    start_ts: 1519051805.45765
+    state: 2
+    waiting: null
+    weight: 6.0
+  - arch: ppc64
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:53:07.495877'
+    completion_ts: 1519051987.49588
+    create_time: '2018-02-19 14:50:04.920114'
+    create_ts: 1519051804.92011
+    host_id: 229
+    id: 25162661
+    label: ppc64
+    method: buildArch
+    owner: 2645
+    parent: 25162638
+    priority: 19
+    request:
+    - tasks/2639/25162639/rnv-1.7.11-15.fc28.src.rpm
+    - 1928
+    - ppc64
+    - false
+    - repo_id: 859626
+    start_time: '2018-02-19 14:50:05.180705'
+    start_ts: 1519051805.18071
+    state: 2
+    waiting: null
+    weight: 6.0
+- method: getTaskInfo
+  args:
+  - 25162095
+  result:
+    arch: noarch
+    awaited: null
+    channel_id: 1
+    completion_time: '2018-02-19 14:39:41.824426'
+    completion_ts: 1519051181.82443
+    create_time: '2018-02-19 14:34:30.333117'
+    create_ts: 1519050870.33312
+    host_id: 329
+    id: 25162095
+    label: null
+    method: build
+    owner: 2645
+    parent: null
+    priority: 20
+    start_time: '2018-02-19 14:34:30.827105'
+    start_ts: 1519050870.82711
+    state: 2
+    waiting: false
+    weight: 0.2
+- method: getTaskChildren
+  args:
+  - 25162095
+  kwargs:
+    request: true
+  result:
+  - arch: ppc64
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:38:11.351927'
+    completion_ts: 1519051091.35193
+    create_time: '2018-02-19 14:35:33.500683'
+    create_ts: 1519050933.50068
+    host_id: 341
+    id: 25162125
+    label: ppc64
+    method: buildArch
+    owner: 2645
+    parent: 25162095
+    priority: 19
+    request:
+    - tasks/2096/25162096/lbzip2-2.5-10.fc28.src.rpm
+    - 1928
+    - ppc64
+    - false
+    - repo_id: 859607
+    start_time: '2018-02-19 14:35:34.475228'
+    start_ts: 1519050934.47523
+    state: 2
+    waiting: null
+    weight: 3.09728192020833
+  - arch: ppc64le
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:37:52.386969'
+    completion_ts: 1519051072.38697
+    create_time: '2018-02-19 14:35:33.303619'
+    create_ts: 1519050933.30362
+    host_id: 239
+    id: 25162123
+    label: ppc64le
+    method: buildArch
+    owner: 2645
+    parent: 25162095
+    priority: 19
+    request:
+    - tasks/2096/25162096/lbzip2-2.5-10.fc28.src.rpm
+    - 1928
+    - ppc64le
+    - false
+    - repo_id: 859607
+    start_time: '2018-02-19 14:35:35.856271'
+    start_ts: 1519050935.85627
+    state: 2
+    waiting: null
+    weight: 3.09728192020833
+  - arch: s390x
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:37:08.218262'
+    completion_ts: 1519051028.21826
+    create_time: '2018-02-19 14:35:33.695498'
+    create_ts: 1519050933.6955
+    host_id: 323
+    id: 25162127
+    label: s390x
+    method: buildArch
+    owner: 2645
+    parent: 25162095
+    priority: 19
+    request:
+    - tasks/2096/25162096/lbzip2-2.5-10.fc28.src.rpm
+    - 1928
+    - s390x
+    - false
+    - repo_id: 859607
+    start_time: '2018-02-19 14:35:38.304044'
+    start_ts: 1519050938.30404
+    state: 2
+    waiting: null
+    weight: 3.09728192020833
+  - arch: noarch
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:39:25.562202'
+    completion_ts: 1519051165.5622
+    create_time: '2018-02-19 14:39:25.055661'
+    create_ts: 1519051165.05566
+    host_id: 73
+    id: 25162248
+    label: tag
+    method: tagBuild
+    owner: 2645
+    parent: 25162095
+    priority: 19
+    request:
+    - 1924
+    - 1046474
+    - false
+    - null
+    - true
+    start_time: '2018-02-19 14:39:25.313386'
+    start_ts: 1519051165.31339
+    state: 2
+    waiting: null
+    weight: 1.0
+  - arch: aarch64
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:38:48.823663'
+    completion_ts: 1519051128.82366
+    create_time: '2018-02-19 14:35:33.405264'
+    create_ts: 1519050933.40526
+    host_id: 215
+    id: 25162124
+    label: aarch64
+    method: buildArch
+    owner: 2645
+    parent: 25162095
+    priority: 19
+    request:
+    - tasks/2096/25162096/lbzip2-2.5-10.fc28.src.rpm
+    - 1928
+    - aarch64
+    - false
+    - repo_id: 859607
+    start_time: '2018-02-19 14:35:34.324715'
+    start_ts: 1519050934.32471
+    state: 2
+    waiting: null
+    weight: 3.09728192020833
+  - arch: armhfp
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:39:12.177226'
+    completion_ts: 1519051152.17723
+    create_time: '2018-02-19 14:35:33.794907'
+    create_ts: 1519050933.79491
+    host_id: 300
+    id: 25162128
+    label: armv7hl
+    method: buildArch
+    owner: 2645
+    parent: 25162095
+    priority: 19
+    request:
+    - tasks/2096/25162096/lbzip2-2.5-10.fc28.src.rpm
+    - 1928
+    - armv7hl
+    - false
+    - repo_id: 859607
+    start_time: '2018-02-19 14:35:34.199358'
+    start_ts: 1519050934.19936
+    state: 2
+    waiting: null
+    weight: 3.09728192020833
+  - arch: i386
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:37:01.960360'
+    completion_ts: 1519051021.96036
+    create_time: '2018-02-19 14:35:33.598623'
+    create_ts: 1519050933.59862
+    host_id: 73
+    id: 25162126
+    label: i686
+    method: buildArch
+    owner: 2645
+    parent: 25162095
+    priority: 19
+    request:
+    - tasks/2096/25162096/lbzip2-2.5-10.fc28.src.rpm
+    - 1928
+    - i686
+    - false
+    - repo_id: 859607
+    start_time: '2018-02-19 14:35:34.817202'
+    start_ts: 1519050934.8172
+    state: 2
+    waiting: null
+    weight: 3.09728192020833
+  - arch: x86_64
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:36:44.730307'
+    completion_ts: 1519051004.73031
+    create_time: '2018-02-19 14:35:33.203836'
+    create_ts: 1519050933.20384
+    host_id: 64
+    id: 25162122
+    label: x86_64
+    method: buildArch
+    owner: 2645
+    parent: 25162095
+    priority: 19
+    request:
+    - tasks/2096/25162096/lbzip2-2.5-10.fc28.src.rpm
+    - 1928
+    - x86_64
+    - true
+    - repo_id: 859607
+    start_time: '2018-02-19 14:35:33.922122'
+    start_ts: 1519050933.92212
+    state: 2
+    waiting: null
+    weight: 3.09728192020833
+  - arch: noarch
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:35:26.006693'
+    completion_ts: 1519050926.00669
+    create_time: '2018-02-19 14:34:31.955688'
+    create_ts: 1519050871.95569
+    host_id: 65
+    id: 25162096
+    label: srpm
+    method: buildSRPMFromSCM
+    owner: 2645
+    parent: 25162095
+    priority: 19
+    request:
+    - git+https://src.fedoraproject.org/rpms/lbzip2.git?#e585cb998e18145c3762f80976eec112260a34a0
+    - 1928
+    - repo_id: 859607
+      scratch: null
+    start_time: '2018-02-19 14:34:32.070166'
+    start_ts: 1519050872.07017
+    state: 2
+    waiting: null
+    weight: 1.0
