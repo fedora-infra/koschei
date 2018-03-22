@@ -81,7 +81,7 @@ class AbstractTest(unittest.TestCase):
             return json.load(fo)
 
     @contextlib.contextmanager
-    def koji_cassette(self, *cassettes):
+    def koji_cassette(self, *cassettes, secondary_mode=False):
         koji_url = getattr(
             self, 'koji_url',
             'https://koji.fedoraproject.org/kojihub'
@@ -92,10 +92,26 @@ class AbstractTest(unittest.TestCase):
 
         with patch_config('koji_config.server', koji_url):
             with patch_config('secondary_koji_config.server', secondary_koji_url):
-                koji_session = koji_util.KojiSession('primary', anonymous=not logged_in)
-                vcr = koji_vcr.KojiVCR(koji_session, cassettes)
-                yield vcr.create_mock()
-                vcr.write_cassette()
+                primary_koji = koji_util.KojiSession('primary', anonymous=not logged_in)
+                primary_vcr = koji_vcr.KojiVCR(primary_koji, cassettes)
+                primary_mock = primary_vcr.create_mock()
+                if secondary_mode:
+                    secondary_koji = koji_util.KojiSession('secondary')
+                    secondary_cassettes = [f'{c}.secondary' for c in cassettes]
+                    secondary_vcr = koji_vcr.KojiVCR(secondary_koji, secondary_cassettes)
+                    secondary_mock = secondary_vcr.create_mock()
+
+                def get_koji(koji_id):
+                    assert koji_id in ('primary', 'secondary')
+                    if koji_id == 'secondary' and secondary_mode:
+                        return secondary_mock
+                    return primary_mock
+
+                yield get_koji
+
+                primary_vcr.write_cassette()
+                if secondary_mode:
+                    secondary_vcr.write_cassette()
 
 
 class KoscheiBackendSessionMock(KoscheiBackendSession):
@@ -200,12 +216,10 @@ class DBTest(AbstractTest):
         self.session.close()
 
     @contextlib.contextmanager
-    def koji_cassette(self, *cassettes):
-        with super().koji_cassette(*cassettes) as koji_mock:
-            def get_koji():
-                return lambda koji_id: koji_mock
-            with patch.object(self.session, 'koji', new_callable=get_koji):
-                yield koji_mock
+    def koji_cassette(self, *cassettes, secondary_mode=False):
+        with super().koji_cassette(*cassettes, secondary_mode=secondary_mode) as get_koji:
+            with patch.object(self.session, 'koji', new_callable=lambda: get_koji):
+                yield get_koji
 
     def ensure_base_package(self, package):
         if not package.base_id:
