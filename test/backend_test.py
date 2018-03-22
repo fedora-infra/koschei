@@ -149,146 +149,93 @@ class BackendTest(DBTest):
             self.assertEqual('x86_64', tasks[2].arch)
 
     # Regression test for https://github.com/msimacek/koschei/issues/27
+    @with_koji_cassette
     def test_update_state_inconsistent(self):
-        self.session.koji_mock.getTaskInfo = Mock(return_value=rnv_task)
-        self.session.koji_mock.getTaskChildren = Mock(return_value=inconsistent_subtask)
-        package = self.prepare_packages('rnv')[0]
-        self.prepare_build('rnv', False)
-        running_build = self.prepare_build('rnv')
-        running_build.task_id = rnv_task['id']
-        self.db.commit()
-        self.assertEqual('failing', package.state_string)
+        collection = self.prepare_collection('f29')
+        package = self.prepare_package('rnv', collection=collection)
+        self.prepare_build(package, 'complete')
+        build = self.prepare_build(package, 'running', task_id=9107738)
         with patch('koschei.backend.dispatch_event') as event:
-            backend.update_build_state(self.session, running_build, 'CLOSED')
-            self.session.koji_mock.getTaskInfo.assert_called_once_with(rnv_task['id'])
-            self.session.koji_mock.getTaskChildren.assert_called_once_with(
-                rnv_task['id'],
-                request=True,
-            )
+            backend.update_build_state(self.session, build, 'CLOSED')
             self.assertEqual('ok', package.state_string)
-            event.assert_called_once_with('package_state_change', session=self.session,
-                                          package=package,
-                                          prev_state='failing', new_state='ok')
+            self.assertFalse(event.called)
 
+    @with_koji_cassette
     def test_refresh_latest_builds(self):
-        self.session.sec_koji_mock.getTaskInfo = Mock(return_value=rnv_task)
-        self.session.sec_koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
-        package = self.prepare_packages('rnv')[0]
-        build = self.prepare_build('rnv', False)
-        build.repo_id = 1
-        build.epoch = None
-        build.version = "1.7.11"
-        build.release = "9.fc24"
-        self.session.sec_koji_mock.listTagged = Mock(return_value=rnv_build_info)
-        self.db.commit()
-        with patch('koschei.backend.dispatch_event'):
-            backend.refresh_latest_builds(self.session)
-            self.session.sec_koji_mock.getTaskInfo\
-                .assert_called_once_with(rnv_build_info[0]['task_id'])
-            self.session.sec_koji_mock.getTaskChildren\
-                .assert_called_once_with(rnv_build_info[0]['task_id'],
-                                         request=True)
-            self.assertEqual('ok', package.state_string)
-            self.assertEqual(460889, package.last_complete_build.repo_id)
-            self.assertCountEqual([(x['id'],) for x in rnv_subtasks],
-                                  self.db.query(KojiTask.task_id))
+        self.db.delete(self.collection)
+        collection = self.prepare_collection('f29')
+        # rnv has a new real build, which changes state from failed to ok
+        rnv = self.prepare_package('rnv', collection=collection)
+        rnv_build = self.prepare_build(
+            rnv, 'failed', version='1.7.11', release='14.fc28',
+            task_id=25038558, started='2018-02-14 11:16:55',
+        )
+        # eclipse has a new build, no change in state
+        eclipse = self.prepare_package('eclipse', collection=collection)
+        eclipse_build = self.prepare_build(
+            eclipse, 'complete', real=True, version='4.7.2', release='2.fc28',
+            task_id=24736744, started='2018-02-05 20:42:27',
+        )
+        # maven has no new build
+        maven = self.prepare_package('maven', collection=collection)
+        maven_build = self.prepare_build(
+            maven, 'complete', real=True, version='3.5.3', release='1.fc29',
+            task_id=25725733, started='2018-03-15 14:13:38',
+        )
+        # slf4j has new build - was hand-edited to have no subtasks (-> no repo_id)
+        slf4j = self.prepare_package('slf4j', collection=collection)
+        slf4j_build = self.prepare_build(
+            slf4j, 'complete', version='1.7.25', release='3.fc28',
+            task_id=25743564, started='2018-03-16 14:15:22',
+        )
+        # lbzip2 has a latest build which is not in koji, should be untagged in koschei
+        lbzip2 = self.prepare_package('lbzip2', collection=collection)
+        lbzip2_build = self.prepare_build(
+            lbzip2, 'complete', version='2.5', release='11.fc28',
+            task_id=35743564, started='2018-02-20 14:35:33',
+        )
+        # log4j has a build marked as  untagged, but is tagged in koji - should
+        # be retagged
+        log4j = self.prepare_package('log4j', collection=collection)
+        log4j_build = self.prepare_build(
+            log4j, 'complete', real=True, version='2.9.1', release='2.fc28',
+            untagged=True, task_id=22416320, started='2017-10-13 08:35:09',
+        )
 
-    def test_refresh_latest_builds_already_present(self):
-        self.session.sec_koji_mock.getTaskInfo = Mock(return_value=rnv_task)
-        self.session.sec_koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
-        self.prepare_packages('rnv')
-        build = self.prepare_build('rnv', False)
-        build.real = True
-        build.repo_id = 460889
-        build.epoch = None
-        build.version = "1.7.11"
-        build.release = "9.fc24"
-        build.task_id = rnv_build_info[0]['task_id']
-        self.session.sec_koji_mock.listTagged = Mock(return_value=rnv_build_info)
-        self.db.commit()
-        with patch('koschei.backend.dispatch_event'):
-            backend.refresh_latest_builds(self.session)
-            self.assertEqual(1, self.db.query(Build).count())
-
-    def test_refresh_latest_builds_no_repo_id(self):
-        self.session.sec_koji_mock.getTaskInfo = Mock(return_value=rnv_task)
-        subtasks = deepcopy(rnv_subtasks)
-        for subtask in subtasks:
-            del subtask['request']
-        self.session.sec_koji_mock.getTaskChildren = Mock(return_value=subtasks)
-        self.prepare_packages('rnv')
-        build = self.prepare_build('rnv', False)
-        build.real = True
-        build.repo_id = 460889
-        build.epoch = None
-        build.version = "1.7.11"
-        build.release = "9.fc24"
-        build.task_id = 1234
-        self.session.sec_koji_mock.listTagged = Mock(return_value=rnv_build_info)
-        self.db.commit()
-        with patch('koschei.backend.dispatch_event'):
-            backend.refresh_latest_builds(self.session)
-            self.assertEqual(1, self.db.query(Build).count())
-
-    def test_refresh_latest_builds_rewind_untagged(self):
-        self.session.sec_koji_mock.getTaskInfo = Mock(return_value=rnv_task)
-        self.session.sec_koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
-        rnv = self.prepare_packages('rnv')[0]
-        build = self.prepare_build('rnv', False)
-        build.real = True
-        build.epoch = None
-        build.version = "1.7.11"
-        build.release = "11.fc24"
-        build.repo_id = 460889
-        build.task_id = 12345678
-        build.started = '2017-02-05 04:34:41'
-        self.session.sec_koji_mock.listTagged = Mock(return_value=rnv_build_info)
-        self.db.commit()
-        self.assertTrue(build.last_complete)
         with patch('koschei.backend.dispatch_event'):
             backend.refresh_latest_builds(self.session)
             self.db.commit()
-            self.assertEqual(2, self.db.query(Build).count())
-            self.assertEqual("10.fc24", rnv.last_complete_build.release)
-            self.assertIs(rnv.last_complete_build, rnv.last_build)
-            self.assertTrue(rnv.last_complete_build.last_complete)
-            self.assertFalse(build.last_complete)
 
-    def test_refresh_latest_builds_retag(self):
-        self.session.sec_koji_mock.getTaskInfo = Mock(return_value=rnv_task)
-        self.session.sec_koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
-        rnv = self.prepare_packages('rnv')[0]
-        build = self.prepare_build('rnv', False)
-        build.real = True
-        build.repo_id = 460889
-        build.epoch = rnv_build_info[0]['epoch']
-        build.version = rnv_build_info[0]['version']
-        build.release = rnv_build_info[0]['release']
-        build.task_id = rnv_build_info[0]['task_id']
-        build.untagged = True
-        self.session.sec_koji_mock.listTagged = Mock(return_value=rnv_build_info)
-        self.db.commit()
-        with patch('koschei.backend.dispatch_event'):
-            backend.refresh_latest_builds(self.session)
-            self.assertEqual(1, self.db.query(Build).count())
-            self.assertEqual(build, rnv.last_build)
+        # ordinary real build
+        self.assertEqual('ok', rnv.state_string)
+        self.assertIsNot(rnv_build, rnv.last_build)
+        self.assertIs(True, rnv.last_build.real)
+        self.assertEqual(25162638, rnv.last_build.task_id)
+        self.assertEqual(859626, rnv.last_build.repo_id)
+        self.assertEqual(7, len(rnv.last_build.build_arch_tasks))
 
-    def test_register_real_builds(self):
-        self.session.sec_koji_mock.getTaskInfo = Mock(return_value=rnv_task)
-        self.session.sec_koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
-        package = self.prepare_packages('rnv')[0]
-        build = self.prepare_build('rnv', False)
-        build.repo_id = 1
-        build.epoch = None
-        build.version = "1.7.11"
-        build.release = "9.fc24"
-        self.db.commit()
-        build_infos = [(package.id, rnv_build_info[0])]
-        backend.register_real_builds(self.session, self.collection, build_infos)
-        self.assertEqual(2, self.db.query(Build).count())
-        # now test that it won't insert duplicates
-        backend.register_real_builds(self.session, self.collection, build_infos)
-        self.assertEqual(2, self.db.query(Build).count())
+        # ordinary real build
+        self.assertEqual('ok', eclipse.state_string)
+        self.assertIsNot(eclipse_build, eclipse.last_build)
+        self.assertIs(True, eclipse.last_build.real)
+        self.assertEqual(25859902, eclipse.last_build.task_id)
+        self.assertEqual(880568, eclipse.last_build.repo_id)
+        self.assertEqual(7, len(eclipse.last_build.build_arch_tasks))
+
+        # no new build
+        self.assertIs(maven_build, maven.last_build)
+
+        # latest build had no repo_id, was ignored
+        self.assertIs(slf4j_build, slf4j.last_build)
+
+        # should untag build
+        self.assertIs(True, lbzip2_build.untagged)
+        self.assertIsNot(lbzip2_build, lbzip2.last_build)
+        self.assertEqual('10.fc28', lbzip2.last_build.release)
+
+        # should retag build
+        self.assertIs(False, log4j_build.untagged)
+        self.assertIs(log4j_build, log4j.last_build)
 
     def test_cancel_timed_out(self):
         self.prepare_packages('rnv')
