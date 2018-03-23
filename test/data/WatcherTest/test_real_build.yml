@@ -1,0 +1,282 @@
+- method: listTagged
+  args:
+  - f29-build
+  kwargs:
+    inherit: true
+    latest: true
+    package: rnv
+  result:
+  - build_id: 1046486
+    completion_time: '2018-02-19 14:53:27.266744'
+    creation_event_id: 31182427
+    creation_time: '2018-02-19 14:50:04.780087'
+    epoch: null
+    id: 1046486
+    name: rnv
+    nvr: rnv-1.7.11-15.fc28
+    owner_id: 2645
+    owner_name: msimacek
+    package_id: 16808
+    package_name: rnv
+    release: 15.fc28
+    start_time: '2018-02-19 14:50:04.780087'
+    state: 1
+    tag_id: 3418
+    tag_name: f29
+    task_id: 25162638
+    version: 1.7.11
+    volume_id: 0
+    volume_name: DEFAULT
+- method: getTaskInfo
+  args:
+  - 25162638
+  result:
+    arch: noarch
+    awaited: null
+    channel_id: 1
+    completion_time: '2018-02-19 14:53:46.705299'
+    completion_ts: 1519052026.7053
+    create_time: '2018-02-19 14:48:45.862631'
+    create_ts: 1519051725.86263
+    host_id: 158
+    id: 25162638
+    label: null
+    method: build
+    owner: 2645
+    parent: null
+    priority: 20
+    start_time: '2018-02-19 14:48:48.357059'
+    start_ts: 1519051728.35706
+    state: 2
+    waiting: false
+    weight: 0.2
+- method: getTaskChildren
+  args:
+  - 25162638
+  kwargs:
+    request: true
+  result:
+  - arch: s390x
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:51:12.164194'
+    completion_ts: 1519051872.16419
+    create_time: '2018-02-19 14:50:04.979774'
+    create_ts: 1519051804.97977
+    host_id: 327
+    id: 25162663
+    label: s390x
+    method: buildArch
+    owner: 2645
+    parent: 25162638
+    priority: 19
+    request:
+    - tasks/2639/25162639/rnv-1.7.11-15.fc28.src.rpm
+    - 1928
+    - s390x
+    - false
+    - repo_id: 859626
+    start_time: '2018-02-19 14:50:06.182989'
+    start_ts: 1519051806.18299
+    state: 2
+    waiting: null
+    weight: 6.0
+  - arch: armhfp
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:53:17.005545'
+    completion_ts: 1519051997.00554
+    create_time: '2018-02-19 14:50:05.009855'
+    create_ts: 1519051805.00986
+    host_id: 320
+    id: 25162664
+    label: armv7hl
+    method: buildArch
+    owner: 2645
+    parent: 25162638
+    priority: 19
+    request:
+    - tasks/2639/25162639/rnv-1.7.11-15.fc28.src.rpm
+    - 1928
+    - armv7hl
+    - false
+    - repo_id: 859626
+    start_time: '2018-02-19 14:50:09.317671'
+    start_ts: 1519051809.31767
+    state: 2
+    waiting: null
+    weight: 6.0
+  - arch: ppc64le
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:52:53.869705'
+    completion_ts: 1519051973.8697
+    create_time: '2018-02-19 14:50:04.849949'
+    create_ts: 1519051804.84995
+    host_id: 245
+    id: 25162659
+    label: ppc64le
+    method: buildArch
+    owner: 2645
+    parent: 25162638
+    priority: 19
+    request:
+    - tasks/2639/25162639/rnv-1.7.11-15.fc28.src.rpm
+    - 1928
+    - ppc64le
+    - false
+    - repo_id: 859626
+    start_time: '2018-02-19 14:50:22.459647'
+    start_ts: 1519051822.45965
+    state: 2
+    waiting: null
+    weight: 6.0
+  - arch: x86_64
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:51:09.127877'
+    completion_ts: 1519051869.12788
+    create_time: '2018-02-19 14:50:04.820394'
+    create_ts: 1519051804.82039
+    host_id: 88
+    id: 25162658
+    label: x86_64
+    method: buildArch
+    owner: 2645
+    parent: 25162638
+    priority: 19
+    request:
+    - tasks/2639/25162639/rnv-1.7.11-15.fc28.src.rpm
+    - 1928
+    - x86_64
+    - true
+    - repo_id: 859626
+    start_time: '2018-02-19 14:50:05.081795'
+    start_ts: 1519051805.08179
+    state: 2
+    waiting: null
+    weight: 6.0
+  - arch: i386
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:51:20.615801'
+    completion_ts: 1519051880.6158
+    create_time: '2018-02-19 14:50:04.947235'
+    create_ts: 1519051804.94724
+    host_id: 65
+    id: 25162662
+    label: i686
+    method: buildArch
+    owner: 2645
+    parent: 25162638
+    priority: 19
+    request:
+    - tasks/2639/25162639/rnv-1.7.11-15.fc28.src.rpm
+    - 1928
+    - i686
+    - false
+    - repo_id: 859626
+    start_time: '2018-02-19 14:50:08.085696'
+    start_ts: 1519051808.0857
+    state: 2
+    waiting: null
+    weight: 6.0
+  - arch: noarch
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:53:29.285358'
+    completion_ts: 1519052009.28536
+    create_time: '2018-02-19 14:53:28.936492'
+    create_ts: 1519052008.93649
+    host_id: 156
+    id: 25162745
+    label: tag
+    method: tagBuild
+    owner: 2645
+    parent: 25162638
+    priority: 19
+    request:
+    - 1924
+    - 1046486
+    - false
+    - null
+    - true
+    start_time: '2018-02-19 14:53:29.033867'
+    start_ts: 1519052009.03387
+    state: 2
+    waiting: null
+    weight: 1.0
+  - arch: noarch
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:49:46.411998'
+    completion_ts: 1519051786.412
+    create_time: '2018-02-19 14:48:48.881573'
+    create_ts: 1519051728.88157
+    host_id: 89
+    id: 25162639
+    label: srpm
+    method: buildSRPMFromSCM
+    owner: 2645
+    parent: 25162638
+    priority: 19
+    request:
+    - git+https://src.fedoraproject.org/rpms/rnv.git?#52afd5bfb1657e63cf25ee54b23eeed6e890acde
+    - 1928
+    - repo_id: 859626
+      scratch: null
+    start_time: '2018-02-19 14:48:49.343329'
+    start_ts: 1519051729.34333
+    state: 2
+    waiting: null
+    weight: 1.0
+  - arch: aarch64
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:53:08.928630'
+    completion_ts: 1519051988.92863
+    create_time: '2018-02-19 14:50:04.885188'
+    create_ts: 1519051804.88519
+    host_id: 217
+    id: 25162660
+    label: aarch64
+    method: buildArch
+    owner: 2645
+    parent: 25162638
+    priority: 19
+    request:
+    - tasks/2639/25162639/rnv-1.7.11-15.fc28.src.rpm
+    - 1928
+    - aarch64
+    - false
+    - repo_id: 859626
+    start_time: '2018-02-19 14:50:05.457652'
+    start_ts: 1519051805.45765
+    state: 2
+    waiting: null
+    weight: 6.0
+  - arch: ppc64
+    awaited: false
+    channel_id: 1
+    completion_time: '2018-02-19 14:53:07.495877'
+    completion_ts: 1519051987.49588
+    create_time: '2018-02-19 14:50:04.920114'
+    create_ts: 1519051804.92011
+    host_id: 229
+    id: 25162661
+    label: ppc64
+    method: buildArch
+    owner: 2645
+    parent: 25162638
+    priority: 19
+    request:
+    - tasks/2639/25162639/rnv-1.7.11-15.fc28.src.rpm
+    - 1928
+    - ppc64
+    - false
+    - repo_id: 859626
+    start_time: '2018-02-19 14:50:05.180705'
+    start_ts: 1519051805.18071
+    state: 2
+    waiting: null
+    weight: 6.0

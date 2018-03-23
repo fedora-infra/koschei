@@ -16,11 +16,9 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-from mock import Mock, patch
+from mock import patch
 
-from test.common import DBTest, service_ctor
-from test.koji_data import *
-from koschei.models import KojiTask
+from test.common import DBTest, service_ctor, with_koji_cassette
 
 test_topic = 'org.fedoraproject.test.buildsys'
 
@@ -58,32 +56,31 @@ class WatcherTest(DBTest):
             Watcher(self.session).consume(topic, msg)
             update_mock.assert_called_once_with(self.session, build, 'CLOSED')
 
+    @with_koji_cassette
     def test_real_build(self):
-        self.session.koji_mock.getTaskInfo = Mock(return_value=rnv_task)
-        self.session.koji_mock.getTaskChildren = Mock(return_value=rnv_subtasks)
-        package = self.prepare_packages('rnv')[0]
-        build = self.prepare_build('rnv', False)
-        build.repo_id = 1
-        build.epoch = None
-        build.version = "1.7.11"
-        build.release = "9.fc24"
-        self.session.koji_mock.listTagged = Mock(return_value=rnv_build_info)
-        self.db.commit()
+        collection = self.prepare_collection('f29')
+        package = self.prepare_package('rnv', collection=collection)
+        build = self.prepare_build(
+            package, 'failed', version='1.7.11', release='14.fc28',
+            task_id=25038558, started='2018-02-14 11:16:55',
+        )
         msg = {
             'msg': {
-                'name': 'rnv',
-                'owner': 'msimacek',
-                'release': '10.fc24',
-                'tag': 'f25',
-                'tag_id': 335,
-                'user': 'msimacek',
-                'instance': 'primary',
-                'version': '1.7.11',
+                "build_id": 1046486,
+                "name": "rnv",
+                "tag_id": 3418,
+                "instance": "primary",
+                "tag": "f29",
+                "user": "mohanboddu",
+                "version": "1.7.11",
+                "owner": "msimacek",
+                "release": "15.fc28"
             }
         }
         topic = test_topic + '.tag'
         Watcher(self.session).consume(topic, msg)
         self.assertEqual('ok', package.state_string)
-        self.assertEqual(460889, package.last_complete_build.repo_id)
-        self.assertCountEqual([(x['id'],) for x in rnv_subtasks],
-                             self.db.query(KojiTask.task_id))
+        self.assertIsNot(build, package.last_complete_build)
+        self.assertEqual(859626, package.last_complete_build.repo_id)
+        self.assertEqual(25162638, package.last_complete_build.task_id)
+        self.assertEqual(7, len(package.last_complete_build.build_arch_tasks))
