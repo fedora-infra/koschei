@@ -16,11 +16,11 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-from copy import deepcopy
+import koji
+
 from datetime import datetime, timedelta
 
 from test.common import DBTest, with_koji_cassette
-from test.koji_data import *
 from mock import Mock, patch
 from koschei import plugin, backend
 from koschei.models import Package, Build, KojiTask
