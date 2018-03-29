@@ -1,28 +1,6 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 
-{% macro collapse_btn(items, max, type, id) %}
-{% if items|length > max %}
-<div class="row">
-  <div class="col-sm-2 offset-5 mt-2">
-    <a class="btn btn-secondary btn-sm kk-toggle-button"
-       data-toggle="collapse" href="#kkid-{{ type }}-{{ id }}" aria-expanded="false">
-      <span class="kk-collapsed">
-        <i class="fa fa-angle-double-down"></i>
-        show {{ items|length - max }} more
-        <i class="fa fa-angle-double-down"></i>
-      </span>
-      <span class="kk-expanded">
-        <i class="fa fa-angle-double-up"></i>
-        collapse
-        <i class="fa fa-angle-double-up"></i>
-      </span>
-    </a>
-  </div>
-</div>
-{% endif %}
-{% endmacro %}
-
 {% block title %}Koschei - {{ base.name }}{% endblock %}
 {% block subheader %}
 <h2>{{ base.name }}</h2>
@@ -267,22 +245,14 @@
                 <div class="row">
                   <div class="col-sm-3">Package resolution failed</div>
                   <ul class="col-sm-9 list-unstyled">
-                    {% for problem in entry.problems[:5] %}
+                    {% call(problem) macros.collapsed_list(entry.problems, 5) %}
                     <li>{{ problem }}</li>
-                    {% endfor %}
-                    {% if entry.problems|length > 5 %}
-                    <div class="collapse" id="kkid-problems-{{ entry.id }}">
-                      {% for problem in entry.problems[5:] %}
-                      <li>{{ problem }}</li>
-                      {% endfor %}
-                    </div>
-                    {% endif %}
+                    {% endcall %}
                   </ul>
                 </div>
               </div>
               {% endif %}
             </div>
-            {{ collapse_btn(entry.problems, 5, 'problems', entry.id) }}
             {% else %}
             {# is a build entry #}
             {% set build = entry %}
@@ -307,12 +277,7 @@
               </div>
               <div class="col-sm-8">
                 {% if build.deps_resolved %}
-                {{ macros.depchange_table(build.dependency_changes[:10]) }}
-                {% if build.dependency_changes|length > 10 %}
-                <div class="collapse" id="kkid-dep-changes-{{ build.id }}">
-                  {{ macros.depchange_table(build.dependency_changes[10:]) }}
-                </div>
-                {% endif %}
+                {{ macros.depchange_table(build.dependency_changes) }}
                 {% elif build.deps_resolved is sameas False %}
                 Dependencies for this build couldn't be processed
                 {% else %}
@@ -320,7 +285,6 @@
                 {% endif %}
               </div>
             </div>
-            {{ collapse_btn(build.dependency_changes, 10, 'dep-changes', build.id) }}
             {% endif %}
           </td>
         </tr>
