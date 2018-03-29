@@ -85,9 +85,19 @@ def require_login():
     return " " if g.user else ' disabled="true" '
 
 
+__key_counter = 0
+
+
+def next_key():
+    global __key_counter
+    __key_counter += 1
+    return __key_counter
+
+
 app.jinja_env.globals.update(
     page_args=page_args,
     generate_links=generate_links,
     get_global_notices=get_global_notices,
     require_login=require_login,
+    next_key=next_key,
 )

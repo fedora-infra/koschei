@@ -207,8 +207,7 @@
 {% endfor %}
 {% endmacro %}
 
-{% macro depchange_table(dependency_changes) %}
-{% for change in dependency_changes %}
+{% macro depchange_row(change) %}
 <div class="row">
   <div class="col-sm-4">
     <a href="{{ url_for(
@@ -263,9 +262,47 @@ but is part of minimal buildroot (buildsys-build group)">B</span>
     {% endif %}
   </div>
 </div>
+{% endmacro %}
+
+{% macro collapsed_list(items, show_count=10) %}
+{% set key = next_key() %}
+{% for item in items[:show_count] %}
+{{ caller(item) }}
+{% endfor %}
+<div class="collapse" id="kkid-collapsed-{{ key }}">
+  {% for item in items[show_count:] %}
+  {{ caller(item) }}
+  {% endfor %}
+</div>
+{% if show_count >= 0 and items|length > show_count %}
+<div class="row">
+  <div class="col-sm-2 offset-5 mt-2">
+    <a class="btn btn-secondary btn-sm kk-toggle-button"
+       data-toggle="collapse" href="#kkid-collapsed-{{ key }}" aria-expanded="false">
+      <span class="kk-collapsed">
+        <i class="fa fa-angle-double-down"></i>
+        show {{ items|length - show_count }} more
+        <i class="fa fa-angle-double-down"></i>
+      </span>
+      <span class="kk-expanded">
+        <i class="fa fa-angle-double-up"></i>
+        collapse
+        <i class="fa fa-angle-double-up"></i>
+      </span>
+    </a>
+  </div>
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro depchange_table(dependency_changes) %}
+{% if dependency_changes %}
+{% call(change) collapsed_list(dependency_changes) %}
+{{ depchange_row(change) }}
+{% endcall %}
 {% else %}
 <small>No dependency changes</small>
-{% endfor %}
+{% endif %}
 {% endmacro %}
 
 {% macro collection_chooser(allow_all=True) %}
