@@ -50,6 +50,20 @@ class WebTest(FrontendTest):
         self.assertIn('Packages from 1 to 0 from total 0', normalized_data)
         self.assertIn('Package summary', normalized_data)
 
+    def test_package_detail(self):
+        rnv = self.prepare_package('rnv')
+        build = self.prepare_build(rnv, 'complete')
+        self.prepare_depchange(
+            build_id=build.id,
+            dep_name='foobar', distance=3,
+            prev_epoch=0, prev_version='1.2', prev_release='3',
+            curr_epoch=0, curr_version='4.5', curr_release='6',
+        )
+        reply = self.client.get('/package/rnv')
+        self.assertEqual(200, reply.status_code)
+        text = reply.data.decode('utf-8')
+        self.assertIn('foobar', text)
+
     def test_404(self):
         reply = self.client.get('/xyzzy')
         self.assertEqual(404, reply.status_code)
