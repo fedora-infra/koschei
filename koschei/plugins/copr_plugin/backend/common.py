@@ -21,7 +21,7 @@ import copr
 
 from koschei.config import get_config
 from koschei.models import CoprRebuildRequest
-from koschei.backend.repo_util import KojiRepoDescriptor
+from koschei.backend.koji_util import KojiRepoDescriptor
 
 copr_client = copr.client.CoprClient.create_from_file_config(
     get_config('copr.config_path')

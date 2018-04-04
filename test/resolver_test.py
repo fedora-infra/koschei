@@ -30,7 +30,6 @@ from koschei.db import RpmEVR
 from koschei.backend import koji_util
 from koschei.backend.services.repo_resolver import RepoResolver
 from koschei.backend.services.build_resolver import BuildResolver
-from koschei.backend.repo_util import KojiRepoDescriptor
 from koschei.models import (
     Dependency, UnappliedChange, Package, ResolutionProblem,
     BuildrootProblem, ResolutionChange, Build,
@@ -55,7 +54,7 @@ REPO = {
 
 
 def get_sack():
-    desc = KojiRepoDescriptor(koji_id='primary', repo_id=123, build_tag='f25-build')
+    desc = koji_util.KojiRepoDescriptor(koji_id='primary', repo_id=123, build_tag='f25-build')
     with RepoCacheMock().get_sack(desc) as sack:
         return sack
 

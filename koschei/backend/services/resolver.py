@@ -29,7 +29,7 @@ from koschei import util
 from koschei.config import get_config
 from koschei.backend import koji_util, depsolve
 from koschei.backend.service import Service
-from koschei.backend.repo_util import KojiRepoDescriptor
+from koschei.backend.koji_util import KojiRepoDescriptor
 from koschei.models import Dependency, Build
 from koschei.util import Stopwatch, stopwatch
 

@@ -430,7 +430,7 @@ class RepoCacheMock(object):
     @contextlib.contextmanager
     def get_sack(self, desc):
         if 123 < desc.repo_id < 130:
-            desc = repo_util.KojiRepoDescriptor(desc.koji_id, desc.build_tag, 123)
+            desc = koji_util.KojiRepoDescriptor(desc.koji_id, desc.build_tag, 123)
         yield repo_util.load_sack(os.path.join(testdir, 'repos'), desc)
 
     def get_comps_path(self, desc):
