@@ -107,11 +107,12 @@ class AbstractTest(unittest.TestCase):
                         return secondary_mock
                     return primary_mock
 
-                yield get_koji
-
-                primary_vcr.write_cassette()
-                if secondary_mode:
-                    secondary_vcr.write_cassette()
+                try:
+                    yield get_koji
+                finally:
+                    primary_vcr.write_cassette()
+                    if secondary_mode:
+                        secondary_vcr.write_cassette()
 
 
 class KoscheiBackendSessionMock(KoscheiBackendSession):
