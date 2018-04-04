@@ -1,0 +1,4 @@
+- method: cancelTask
+  args:
+  - 25561246
+  result: null
