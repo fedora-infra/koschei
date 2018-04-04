@@ -70,23 +70,31 @@ class ResolverTest(DBTest):
     @contextmanager
     def mocks(self, build_group=['R'], requires=['A', 'F'], repo_id=123,
               repo_available=True):
-        repo_info = self.session.koji_mock.repoInfo.return_value = {
+        repo_info = {
             'id': repo_id,
             'tag_name': 'f25-build',
             'state': koji.REPO_READY if repo_available else koji.REPO_DELETED,
         }
-        self.session.koji_mock.repoInfo.return_value = repo_info
-        self.session.sec_koji_mock.repoInfo.return_value = repo_info
+        if repo_available:
+            descriptor = koji_util.KojiRepoDescriptor(
+                koji_id='primary',
+                build_tag='f25-build',
+                repo_id=repo_id,
+            )
+        else:
+            descriptor = None
+        if requires and isinstance(requires[0], str):
+            requires = [requires]
         with patch('koschei.backend.koji_util.get_build_group_cached',
-                   return_value=build_group):
-            if requires and isinstance(requires[0], str):
-                requires = [requires]
-            with patch('koschei.backend.koji_util.get_rpm_requires',
-                       return_value=requires):
-                with patch('koschei.backend.koji_util.get_latest_repo',
-                           return_value=repo_info):
-                    with patch('fedmsg.publish') as fedmsg_mock:
-                        yield fedmsg_mock
+                   return_value=build_group), \
+            patch('koschei.backend.koji_util.get_rpm_requires',
+                  return_value=requires), \
+            patch('koschei.backend.koji_util.get_latest_repo',
+                  return_value=repo_info), \
+            patch('koschei.backend.koji_util.create_repo_descriptor',
+                  return_value=descriptor):
+            with patch('fedmsg.publish') as fedmsg_mock:
+                yield fedmsg_mock
 
     def prepare_foo_build(self, repo_id=123, version='4'):
         self.prepare_packages('foo')
