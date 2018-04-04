@@ -17,8 +17,6 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-import koji
-
 from collections import OrderedDict, namedtuple
 
 from sqlalchemy.orm import undefer
@@ -29,7 +27,6 @@ from koschei import util
 from koschei.config import get_config
 from koschei.backend import koji_util, depsolve
 from koschei.backend.service import Service
-from koschei.backend.koji_util import KojiRepoDescriptor
 from koschei.models import Dependency, Build
 from koschei.util import Stopwatch, stopwatch
 
@@ -260,13 +257,7 @@ class Resolver(Service):
         Queries Koji for the repo information.  If the repo is not available
         anymore, returns None.
         """
-        valid_repo_states = (koji.REPO_STATES['READY'], koji.REPO_STATES['EXPIRED'])
-        koji_session = self.session.secondary_koji_for(collection)
-
-        repo_info = koji_session.repoInfo(repo_id)
-        if repo_info.get('state') in valid_repo_states:
-            return KojiRepoDescriptor(
-                koji_id='secondary' if collection.secondary_mode else 'primary',
-                build_tag=repo_info['tag_name'],
-                repo_id=repo_id,
-            )
+        return koji_util.create_repo_descriptor(
+            koji_session=self.session.secondary_koji_for(collection),
+            repo_id=repo_id,
+        )

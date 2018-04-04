@@ -312,3 +312,15 @@ class KojiRepoDescriptor(object):
         url = '{topurl}/repos/{build_tag}/{repo_id}/{arch}'
         return url.format(topurl=topurl, build_tag=self.build_tag,
                           repo_id=self.repo_id, arch=arch)
+
+
+def create_repo_descriptor(koji_session, repo_id):
+    valid_repo_states = (koji.REPO_STATES['READY'], koji.REPO_STATES['EXPIRED'])
+
+    repo_info = koji_session.repoInfo(repo_id)
+    if repo_info and repo_info.get('state') in valid_repo_states:
+        return KojiRepoDescriptor(
+            koji_id=koji_session.koji_id,
+            build_tag=repo_info['tag_name'],
+            repo_id=repo_id,
+        )
