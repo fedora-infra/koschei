@@ -237,23 +237,24 @@ class BackendTest(DBTest):
         self.assertIs(False, log4j_build.untagged)
         self.assertIs(log4j_build, log4j.last_build)
 
-    def test_cancel_timed_out(self):
+    @with_koji_cassette
+    def test_cancel(self):
         self.prepare_packages('rnv')
-        running_build = self.prepare_build('rnv')
-        running_build.started = datetime.now() - timedelta(999)
-        self.db.commit()
-        self.session.koji_mock.cancelTask = Mock(side_effect=koji.GenericError)
-        backend.update_build_state(self.session, running_build, 'FREE')
-        self.session.koji_mock.cancelTask.assert_called_once_with(running_build.task_id)
-        self.assertEqual(0, self.db.query(Build).count())
-
-    def test_cancel_requested(self):
-        self.prepare_packages('rnv')
-        running_build = self.prepare_build('rnv')
+        running_build = self.prepare_build('rnv', task_id=25561246)
         running_build.cancel_requested = True
         self.db.commit()
+        # cancel call succeeds
         backend.update_build_state(self.session, running_build, 'ASSIGNED')
-        self.session.koji_mock.cancelTask.assert_called_once_with(running_build.task_id)
+        self.assertEqual(0, self.db.query(Build).count())
+
+    @with_koji_cassette
+    def test_cancel_exception(self):
+        self.prepare_packages('rnv')
+        running_build = self.prepare_build('rnv', task_id=25561246)
+        running_build.cancel_requested = True
+        self.db.commit()
+        # cancel call raises exception
+        backend.update_build_state(self.session, running_build, 'ASSIGNED')
         self.assertEqual(0, self.db.query(Build).count())
 
     @with_koji_cassette

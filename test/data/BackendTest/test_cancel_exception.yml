@@ -1,0 +1,9 @@
+- method: cancelTask
+  args:
+  - 25561246
+  exception:
+    type:
+      module: koji
+      class: GenericError
+    args:
+    - Test exception. Could have been timeout
