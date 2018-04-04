@@ -19,40 +19,30 @@
 import koji
 from mock import patch, call
 
-from test.common import DBTest
+from test.common import DBTest, with_koji_cassette
 from koschei.backend.services.polling import Polling
 
 
 class PollingTest(DBTest):
+    @with_koji_cassette
     def test_poll_none(self):
-        self.prepare_build('rnv', True)
-        self.prepare_build('eclipse', False)
+        self.prepare_build('rnv', 'complete')
+        self.prepare_build('eclipse', 'failed')
         with patch('koschei.backend.update_build_state') as update_mock:
             polling = Polling(self.session)
             polling.poll_builds()
-            self.assertFalse(self.session.koji_mock.getTaskInfo.called)
             self.assertFalse(update_mock.called)
 
-    def test_poll_complete(self):
-        build = self.prepare_build('rnv')
-        self.session.koji_mock.getTaskInfo.return_value = \
-            {'state': koji.TASK_STATES['CLOSED']}
-        with patch('koschei.backend.update_build_state') as update_mock:
-            polling = Polling(self.session)
-            polling.poll_builds()
-            update_mock.assert_called_once_with(self.session, build, 'CLOSED')
-
+    @with_koji_cassette
     def test_poll_multiple(self):
-        rnv_build = self.prepare_build('rnv')
-        eclipse_build = self.prepare_build('eclipse')
-        self.prepare_build('expat', False)
-        self.session.koji_mock.getTaskInfo.return_value = \
-            {'state': koji.TASK_STATES['FAILED']}
+        rnv_build = self.prepare_build('rnv', 'running', task_id=26033406)
+        eclipse_build = self.prepare_build('eclipse', 'running', task_id=26151873)
+        self.prepare_build('maven', 'complete', task_id=26035462)
         with patch('koschei.backend.update_build_state') as update_mock:
             polling = Polling(self.session)
             polling.poll_builds()
             update_mock.assert_has_calls(
-                [call(self.session, rnv_build, 'FAILED'),
-                 call(self.session, eclipse_build, 'FAILED')],
+                [call(self.session, rnv_build, 'CLOSED'),
+                 call(self.session, eclipse_build, 'CLOSED')],
                 any_order=True,
             )
