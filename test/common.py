@@ -115,21 +115,23 @@ class AbstractTest(unittest.TestCase):
                         secondary_vcr.write_cassette()
 
 
+class DummyKoji(object):
+    def __init__(self, koji_id):
+        self.koji_id = koji_id
+
+    def __getattr__(self, key):
+        assert False, "Unexpected access to Koji"
+
+
 class KoscheiBackendSessionMock(KoscheiBackendSession):
     def __init__(self):
         super(KoscheiBackendSessionMock, self).__init__()
-        self.koji_mock = KojiMock()
-        self.sec_koji_mock = KojiMock()
         self.repo_cache_mock = RepoCacheMock()
         self.log = Mock()
         self.build_from_repo_id_override = False
 
     def koji(self, koji_id):
-        if koji_id == 'primary':
-            return self.koji_mock
-        elif koji_id == 'secondary':
-            return self.sec_koji_mock
-        assert False
+        return DummyKoji(koji_id)
 
     @property
     def repo_cache(self):
@@ -401,30 +403,6 @@ def with_koji_cassette(*cassettes):
         # invocation without arguments
         return decorator(fn)
     return decorator
-
-
-class KojiMock(Mock):
-    def __init__(self, *args, **kwargs):
-        Mock.__init__(self, *args, **kwargs)
-        self.koji_id = 'primary'
-        self.multicall = False
-        self._mcall_list = []
-
-    def __getattribute__(self, key):
-        if (key.lower() != 'multicall' and
-                not key.startswith('_') and
-                object.__getattribute__(self, 'multicall')):
-            def mcall_method(*args, **kwargs):
-                object.__getattribute__(self, '_mcall_list').append((key, args, kwargs))
-            return mcall_method
-        return Mock.__getattribute__(self, key)
-
-    def multiCall(self):
-        self.multicall = False
-        ret = [[getattr(self, key)(*args, **kwargs)]
-               for key, args, kwargs in self._mcall_list]
-        self._mcall_list = []
-        return ret
 
 
 class RepoCacheMock(object):
