@@ -27,7 +27,7 @@ from koschei.models import Build, CoprRebuildRequest, CoprRebuild
 from koschei.config import get_config
 from koschei.backend import koji_util
 from koschei.backend.service import Service
-from koschei.backend.repo_util import KojiRepoDescriptor
+from koschei.backend.koji_util import KojiRepoDescriptor
 
 from koschei.plugins.copr_plugin.backend.common import (
     copr_client, get_request_comps_path, repo_descriptor_for_request, prepare_comps

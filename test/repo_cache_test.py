@@ -25,7 +25,7 @@ from mock import patch, Mock
 
 from test.common import DBTest
 from koschei.backend import repo_cache
-from koschei.backend.repo_util import KojiRepoDescriptor
+from koschei.backend.koji_util import KojiRepoDescriptor
 
 
 @contextlib.contextmanager
