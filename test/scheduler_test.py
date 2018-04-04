@@ -27,15 +27,11 @@ from koschei.backend.services.scheduler import Scheduler
 
 # pylint:disable = too-many-public-methods, unbalanced-tuple-unpacking
 class SchedulerTest(DBTest):
-    def setUp(self):
-        super(SchedulerTest, self).setUp()
-        self.session.koji_mock.getBuildConfig.return_value = {'arches': 'x86_64'}
-
     def get_scheduler(self):
         sched = Scheduler(self.session)
         return sched
 
-    def prepare_priorities(self, tablename='tmp', **kwargs):
+    def prepare_priorities(self, **kwargs):
         priorities = {
             name: prio for name, prio in list(kwargs.items()) if '_' not in name
         }
@@ -80,8 +76,10 @@ class SchedulerTest(DBTest):
     def assert_scheduled(self, scheduled, koji_load=0.3):
         with patch('koschei.backend.koji_util.get_koji_load',
                    Mock(return_value=koji_load)), \
-                patch('koschei.backend.koji_util.get_srpm_arches',
-                      Mock(return_value=['x86_64'])):
+             patch('koschei.backend.koji_util.get_srpm_arches',
+                   Mock(return_value=['x86_64'])), \
+             patch('koschei.backend.koji_util.get_koji_arches_cached',
+                   Mock(return_value=['x86_64'])):
             sched = self.get_scheduler()
             with patch('sqlalchemy.sql.expression.func.clock_timestamp',
                        return_value=literal_column("'2017-10-10 10:50:00'")):
