@@ -1,0 +1,46 @@
+- method: getTaskInfo
+  args:
+  - 26033406
+  result:
+    arch: noarch
+    awaited: null
+    channel_id: 1
+    completion_time: '2018-03-29 06:16:19.795473'
+    completion_ts: 1522304179.79547
+    create_time: '2018-03-29 06:13:23.770168'
+    create_ts: 1522304003.77017
+    host_id: 240
+    id: 26033406
+    label: null
+    method: build
+    owner: 3199
+    parent: null
+    priority: 50
+    start_time: '2018-03-29 06:13:23.995420'
+    start_ts: 1522304003.99542
+    state: 2
+    waiting: false
+    weight: 0.2
+- method: getTaskInfo
+  args:
+  - 26151873
+  result:
+    arch: noarch
+    awaited: null
+    channel_id: 1
+    completion_time: '2018-04-03 23:39:43.184789'
+    completion_ts: 1522798783.18479
+    create_time: '2018-04-03 22:16:25.083930'
+    create_ts: 1522793785.08393
+    host_id: 279
+    id: 26151873
+    label: null
+    method: build
+    owner: 3199
+    parent: null
+    priority: 50
+    start_time: '2018-04-03 22:16:25.572401'
+    start_ts: 1522793785.5724
+    state: 2
+    waiting: false
+    weight: 0.2
