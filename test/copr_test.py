@@ -47,11 +47,6 @@ def get_repo_mock(repo_dir, descriptor, download=False):
 class CoprResolverTest(DBTest):
     def setUp(self):
         super(CoprResolverTest, self).setUp()
-        self.session.koji_mock.repoInfo.return_value = {
-            'id': 123,
-            'tag_name': 'f25-build',
-            'state': koji.REPO_STATES['READY'],
-        }
         self.request = CoprRebuildRequest(
             user_id=self.prepare_user(name='user').id,
             collection_id=self.collection.id,
