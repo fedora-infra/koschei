@@ -16,6 +16,12 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+"""
+This module is an implementation of cassete-based mocks of Koji session.
+The functionality is supposed to be used via `AbstractTest.koji_cassette` context manager
+and `with_koji_cassette` decorator. See their respective documentation.
+"""
+
 import os
 import yaml
 import importlib
