@@ -51,6 +51,17 @@ my_vcr = vcr.VCR(
 )
 
 
+class DummyKoji(object):
+    """
+    Dummy Koji Session for tests that don't need to access Koji, but still need a session.
+    """
+    def __init__(self, koji_id):
+        self.koji_id = koji_id
+
+    def __getattr__(self, key):
+        assert False, "Unexpected access to Koji"
+
+
 class AbstractTest(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
@@ -59,6 +70,17 @@ class AbstractTest(unittest.TestCase):
         if 'http_proxy' in os.environ:
             del os.environ['http_proxy']
         self.oldpwd = os.getcwd()
+
+    def koji(self, koji_id):
+        """
+        Returns a Koji session for particular `koji_id`, like the `koji` method of
+        KoscheiBackendSession. If the session is expected to be used, it needs to be
+        setup first, using `koji_cassette` method or `with_koji_cassette` decorator
+        function.
+
+        :param koji_id: 'primary' or 'secondary'
+        """
+        return DummyKoji(koji_id)
 
     def _rm_workdir(self):
         try:
@@ -82,6 +104,33 @@ class AbstractTest(unittest.TestCase):
 
     @contextlib.contextmanager
     def koji_cassette(self, *cassettes, secondary_mode=False):
+        """
+        Creates a mock Koji session(s) backed by VCR-like cassette storage. When
+        running for the first time with no cassette, the code under test accesses real
+        Koji over the Internet, but interactions of the code with Koji are recorded to
+        a YAML file called a cassette. Next time the test is run, the calls from the
+        cassette are replayed and no Internet connection is made. Cassettes can also be
+        written by hand or edited. To force a re-recoding of a cassette, delete the
+        file on disk.
+
+        To make the session authenticated when recording, set `TEST_ALLOW_LOGGED_IN=1`
+        environment variable.
+
+        To use different Koji instance than Fedora's production Koji when recording,
+        set `koji_url` (and possibly `secondary_koji_url`) class attributes on the test
+        suite class.
+
+        The Koji session(s) is accessible via the `koji` method of this class.
+        When using mock backend session (such as, when inheriting from `DBTest`),
+        the mock backend session will automatically use the VCR-backed Koji session.
+
+        :param cassettes: A list of cassette names. Only the last one will be used for
+                          recording. Slashes in names are interpreted as directory
+                          separator, nonexistent directories will be created.
+        :param secondary_mode: Whether to create a separate secondary session with
+                               separate cassettes suffixed with `.secondary`. Otherwise,
+                               requests for secondary session will return primary session.
+        """
         koji_url = getattr(
             self, 'koji_url',
             'https://koji.fedoraproject.org/kojihub'
@@ -107,31 +156,25 @@ class AbstractTest(unittest.TestCase):
                         return secondary_mock
                     return primary_mock
 
-                try:
-                    yield get_koji
-                finally:
-                    primary_vcr.write_cassette()
-                    if secondary_mode:
-                        secondary_vcr.write_cassette()
-
-
-class DummyKoji(object):
-    def __init__(self, koji_id):
-        self.koji_id = koji_id
-
-    def __getattr__(self, key):
-        assert False, "Unexpected access to Koji"
+                with patch.object(self, 'koji', new_callable=lambda: get_koji):
+                    try:
+                        yield
+                    finally:
+                        primary_vcr.write_cassette()
+                        if secondary_mode:
+                            secondary_vcr.write_cassette()
 
 
 class KoscheiBackendSessionMock(KoscheiBackendSession):
-    def __init__(self):
-        super(KoscheiBackendSessionMock, self).__init__()
+    def __init__(self, testsuite):
+        super().__init__()
         self.repo_cache_mock = RepoCacheMock()
         self.log = Mock()
         self.build_from_repo_id_override = False
+        self.testsuite = testsuite
 
     def koji(self, koji_id):
-        return DummyKoji(koji_id)
+        return self.testsuite.koji(koji_id)
 
     @property
     def repo_cache(self):
@@ -212,17 +255,11 @@ class DBTest(AbstractTest):
         self.db.commit()
 
     def create_session(self):
-        return KoscheiBackendSessionMock()
+        return KoscheiBackendSessionMock(self)
 
     def tearDown(self):
         super(DBTest, self).tearDown()
         self.session.close()
-
-    @contextlib.contextmanager
-    def koji_cassette(self, *cassettes, secondary_mode=False):
-        with super().koji_cassette(*cassettes, secondary_mode=secondary_mode) as get_koji:
-            with patch.object(self.session, 'koji', new_callable=lambda: get_koji):
-                yield get_koji
 
     def prepare_basic_data(self):
         package = self.prepare_package('rnv')
@@ -391,6 +428,13 @@ def patch_config(key, value):
 
 
 def with_koji_cassette(*cassettes):
+    """
+    Decorator version of `AbstractTest.koji_cassette`, see its documentation.
+
+    The decorator can be invoked both with and without arguments. If no cassette name
+    is provided, it defaults to `{TestCase}/{test_method}` name, where test case and
+    method name are determined from the function name and enclosing class.
+    """
     def decorator(fn):
         @wraps(fn)
         def decorated(self, *args, **kwargs):
