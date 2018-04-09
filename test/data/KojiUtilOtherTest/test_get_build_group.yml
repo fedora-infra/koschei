@@ -1,0 +1,538 @@
+- method: repoInfo
+  args:
+  - 888027
+  result:
+    create_event: 32436754
+    create_ts: 1522927082.08001
+    creation_time: '2018-04-05 11:18:02.080010'
+    dist: false
+    id: 888027
+    state: 1
+    tag_id: 3428
+    tag_name: f29-build
+- method: getTagGroups
+  args:
+  - f29-build
+  kwargs:
+    event: 32436754
+  result:
+  - biarchonly: false
+    blocked: false
+    description: null
+    display_name: build
+    exported: true
+    group_id: 1
+    grouplist: []
+    is_default: null
+    langonly: null
+    name: build
+    packagelist:
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: tar
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: xz
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: sed
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: findutils
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: gcc
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: redhat-rpm-config
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: make
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: shadow-utils
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: coreutils
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: which
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: gcc-c++
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: unzip
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: fedora-release
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: bzip2
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: gawk
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: cpio
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: util-linux
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: bash
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: info
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: grep
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: rpm-build
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: patch
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: diffutils
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 1
+      package: gzip
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    tag_id: 3418
+    uservisible: true
+  - biarchonly: false
+    blocked: false
+    description: null
+    display_name: srpm-build
+    exported: true
+    group_id: 2
+    grouplist: []
+    is_default: null
+    langonly: null
+    name: srpm-build
+    packagelist:
+    - basearchonly: null
+      blocked: false
+      group_id: 2
+      package: fedora-release
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 2
+      package: redhat-rpm-config
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 2
+      package: fedpkg-minimal
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 2
+      package: gnupg2
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 2
+      package: shadow-utils
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 2
+      package: rpm-build
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 2
+      package: bash
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    tag_id: 3418
+    uservisible: true
+  - biarchonly: false
+    blocked: false
+    description: null
+    display_name: livecd-build
+    exported: true
+    group_id: 4
+    grouplist: []
+    is_default: null
+    langonly: null
+    name: livecd-build
+    packagelist:
+    - basearchonly: null
+      blocked: false
+      group_id: 4
+      package: sssd-client
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 4
+      package: unzip
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 4
+      package: fedora-release
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 4
+      package: tar
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 4
+      package: python-dbus
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 4
+      package: fedora-logos
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 4
+      package: squashfs-tools
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 4
+      package: livecd-tools
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 4
+      package: shadow-utils
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 4
+      package: coreutils
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 4
+      package: sed
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 4
+      package: yum
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 4
+      package: selinux-policy-targeted
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 4
+      package: which
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 4
+      package: util-linux
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 4
+      package: policycoreutils
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 4
+      package: bash
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    tag_id: 3418
+    uservisible: true
+  - biarchonly: false
+    blocked: false
+    description: null
+    display_name: appliance-build
+    exported: true
+    group_id: 5
+    grouplist: []
+    is_default: null
+    langonly: null
+    name: appliance-build
+    packagelist:
+    - basearchonly: null
+      blocked: false
+      group_id: 5
+      package: parted
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 5
+      package: grub
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 5
+      package: sssd-client
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 5
+      package: perl
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 5
+      package: shadow-utils
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 5
+      package: coreutils
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 5
+      package: selinux-policy
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 5
+      package: appliance-tools
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 5
+      package: policycoreutils
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 5
+      package: bash
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    tag_id: 3418
+    uservisible: true
+  - biarchonly: false
+    blocked: false
+    description: null
+    display_name: livemedia-build
+    exported: true
+    group_id: 7
+    grouplist: []
+    is_default: null
+    langonly: null
+    name: livemedia-build
+    packagelist:
+    - basearchonly: null
+      blocked: false
+      group_id: 7
+      package: shadow-utils
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 7
+      package: lorax-lmc-novirt
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 7
+      package: coreutils
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 7
+      package: selinux-policy-targeted
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 7
+      package: util-linux
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 7
+      package: bash
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    - basearchonly: null
+      blocked: false
+      group_id: 7
+      package: glibc-all-langpacks
+      requires: null
+      tag_id: 3418
+      type: mandatory
+    tag_id: 3418
+    uservisible: true

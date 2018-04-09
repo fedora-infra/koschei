@@ -1,0 +1,12 @@
+- method: repoInfo
+  args:
+  - 888027
+  result:
+    create_event: 32436754
+    create_ts: 1522927082.08001
+    creation_time: '2018-04-05 11:18:02.080010'
+    dist: false
+    id: 888027
+    state: 1
+    tag_id: 3428
+    tag_name: f29-build
