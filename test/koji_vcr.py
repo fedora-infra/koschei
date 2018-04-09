@@ -85,6 +85,10 @@ class KojiMock(object):
     def config(self):
         return self.__vcr.koji_session.config
 
+    @property
+    def koji_id(self):
+        return self.__vcr.koji_session.koji_id
+
 
 class KojiVCR(object):
     def __init__(self, koji_session, cassettes):

@@ -18,11 +18,11 @@
 
 import koji
 
-from test.common import AbstractTest, my_vcr
+from test.common import AbstractTest, my_vcr, with_koji_cassette
 from koschei.backend import koji_util
 
 
-class KojiUtilTest(AbstractTest):
+class KojiUtilLoadTest(AbstractTest):
     def setUp(self):
         self.session = koji.ClientSession('https://koji.stg.fedoraproject.org/kojihub')
 
@@ -47,17 +47,6 @@ class KojiUtilTest(AbstractTest):
     def test_koji_load_arm(self):
         load = koji_util.get_koji_load(self.session, self.all_arches, ['armv7hl'])
         self.assertAlmostEqual(0.8958, load, 4)
-
-    @my_vcr.use_cassette('koji_get_build_group')
-    def test_get_build_group(self):
-        group = koji_util.get_build_group(self.session, 'f27-build', 'build', 9000370)
-        expected_group = [
-            'tar', 'xz', 'sed', 'findutils', 'gcc', 'redhat-rpm-config',
-            'make', 'shadow-utils', 'coreutils', 'which', 'gcc-c++', 'unzip',
-            'fedora-release', 'bzip2', 'gawk', 'cpio', 'util-linux', 'bash',
-            'info', 'grep', 'rpm-build', 'patch', 'diffutils', 'gzip',
-        ]
-        self.assertCountEqual(expected_group, group)
 
 
 class KojiArchesTest(AbstractTest):
@@ -151,4 +140,29 @@ class KojiArchesTest(AbstractTest):
             {'aarch64', 'armv7hl', 'i686', 'ppc64', 'ppc64le', 's390x', 'x86_64'},
             koji_util.get_srpm_arches(self.session, self.all_arches, nvra,
                                       build_arches=self.all_arches),
+        )
+
+
+class KojiUtilOtherTest(AbstractTest):
+    @with_koji_cassette
+    def test_get_build_group(self):
+        koji_session = self.koji('primary')
+        group = koji_util.get_build_group(koji_session, 'f29-build', 'build', 888027)
+        expected_group = [
+            'tar', 'xz', 'sed', 'findutils', 'gcc', 'redhat-rpm-config',
+            'make', 'shadow-utils', 'coreutils', 'which', 'gcc-c++', 'unzip',
+            'fedora-release', 'bzip2', 'gawk', 'cpio', 'util-linux', 'bash',
+            'info', 'grep', 'rpm-build', 'patch', 'diffutils', 'gzip',
+        ]
+        self.assertCountEqual(expected_group, group)
+
+    @with_koji_cassette
+    def test_create_repo_descriptor(self):
+        desc = koji_util.create_repo_descriptor(self.koji('primary'), 888027)
+        self.assertEqual('primary', desc.koji_id)
+        self.assertEqual('f29-build', desc.build_tag)
+        self.assertEqual(888027, desc.repo_id)
+        self.assertEqual(
+            'koji.fake/repos/f29-build/888027/x86_64',
+            desc.url,
         )
