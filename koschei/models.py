@@ -262,7 +262,7 @@ class Package(Base):
         if self.last_complete_build_id != self.last_build_id:
             reasons.append("Package has a running build")
         if self.resolved is False:
-            reasons.append("Package dependencies are not reasolvable")
+            reasons.append("Package dependencies are not resolvable")
         if self.resolved is None and not self.skip_resolution:
             reasons.append("Package dependencies were not resolved yet")
         if not self.last_build_id:
