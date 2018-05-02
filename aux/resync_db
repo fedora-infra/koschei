@@ -4,4 +4,4 @@ dropdb --if-exists koschei
 createdb koschei
 curl https://infrastructure.fedoraproject.org/infra/db-dumps/koschei.dump.xz \
     | unxz | psql koschei
-alembic upgrade head
+./admin.py alembic upgrade head
