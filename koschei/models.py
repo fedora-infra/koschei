@@ -27,8 +27,9 @@ from sqlalchemy import (
 from sqlalchemy.sql.expression import (
     func, select, join, false, true, extract, case, null, cast,
 )
-from sqlalchemy.orm import (relationship, column_property,
-                            configure_mappers, deferred, composite)
+from sqlalchemy.orm import (
+    relationship, column_property, configure_mappers, deferred, composite,
+)
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.dialects.postgresql import ARRAY
 
@@ -47,8 +48,10 @@ class User(Base):
 
 class Collection(Base):
     __table_args__ = (
-        CheckConstraint('(latest_repo_resolved IS NULL) = (latest_repo_id IS NULL)',
-                        name='collection_latest_repo_id_check'),
+        CheckConstraint(
+            '(latest_repo_resolved IS NULL) = (latest_repo_id IS NULL)',
+            name='collection_latest_repo_id_check',
+        ),
     )
 
     id = Column(Integer, primary_key=True)
@@ -86,8 +89,11 @@ class Collection(Base):
 
     @property
     def state_string(self):
-        return {True: 'ok', False: 'unresolved', None: 'unknown'}[
-            self.latest_repo_resolved]
+        return {
+            True: 'ok',
+            False: 'unresolved',
+            None: 'unknown',
+        }[self.latest_repo_resolved]
 
     def __str__(self):
         return self.display_name
@@ -104,12 +110,10 @@ class CollectionGroup(Base):
 
 class CollectionGroupRelation(Base):
     group_id = Column(
-        Integer,
         ForeignKey('collection_group.id', ondelete='CASCADE'),
         primary_key=True
     )
     collection_id = Column(
-        Integer,
         ForeignKey('collection.id', ondelete='CASCADE'),
         primary_key=True,
     )
@@ -150,12 +154,16 @@ class Package(Base):
     )
 
     id = Column(Integer, primary_key=True)
-    base_id = Column(Integer, ForeignKey(BasePackage.id, ondelete='CASCADE'),
-                     nullable=False)
-
-    name = Column(String, nullable=False, index=True)  # denormalized from base_package
-    collection_id = Column(Integer, ForeignKey(Collection.id, ondelete='CASCADE'),
-                           nullable=False)
+    base_id = Column(
+        ForeignKey(BasePackage.id, ondelete='CASCADE'),
+        nullable=False,
+    )
+    # denormalized name from base_package
+    name = Column(String, nullable=False, index=True)
+    collection_id = Column(
+        ForeignKey(Collection.id, ondelete='CASCADE'),
+        nullable=False,
+    )
     collection = None  # backref, shut up pylint
 
     arch_override = Column(String)
@@ -164,19 +172,26 @@ class Package(Base):
     skip_resolution = Column(Boolean, nullable=False, server_default=false())
 
     # denormalized fields, updated by trigger on inser/update (no delete)
-    last_complete_build_id = \
-        Column(Integer, ForeignKey('build.id', use_alter=True,
-                                   name='fkey_package_last_complete_build_id'),
-               nullable=True)
+    last_complete_build_id = Column(
+        ForeignKey(
+            'build.id',
+            use_alter=True,
+            name='fkey_package_last_complete_build_id',
+        ),
+        nullable=True,
+    )
     last_complete_build_state = Column(Integer)
-    last_build_id = \
-        Column(Integer, ForeignKey('build.id', use_alter=True,
-                                   name='fkey_package_last_build_id',
-                                   # it's first updated by trigger, this is
-                                   # fallback, when there's nothing to update
-                                   # it to
-                                   ondelete='SET NULL'),
-               nullable=True)
+    last_build_id = Column(
+        ForeignKey(
+            'build.id',
+            use_alter=True,
+            name='fkey_package_last_build_id',
+            # it's first updated by trigger, this is fallback, when there's
+            # nothing to update it to
+            ondelete='SET NULL',
+        ),
+        nullable=True,
+    )
     resolved = Column(Boolean)
 
     # priority calculation input values
@@ -311,12 +326,16 @@ class Package(Base):
 
 
 class KojiTask(Base):
-    __table_args__ = (CheckConstraint('state BETWEEN 0 AND 5',
-                                      name='koji_task_state_check'),)
+    __table_args__ = (
+        CheckConstraint('state BETWEEN 0 AND 5', name='koji_task_state_check'),
+    )
 
     id = Column(Integer, primary_key=True)
-    build_id = Column(ForeignKey('build.id', ondelete='CASCADE'),
-                      nullable=False, index=True)
+    build_id = Column(
+        ForeignKey('build.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+    )
     task_id = Column(Integer, nullable=False)
     arch = Column(String, nullable=False)
     state = Column(Integer, nullable=False)
@@ -342,29 +361,41 @@ class KojiTask(Base):
     def results_url(self):
         # pathinfo = koji.PathInfo(topdir=self._koji_config['topurl'])
         # return pathinfo.task(self.task_id)
-        return '{}/work/tasks/{}/{}'.format(self._koji_config['topurl'],
-                                            self.task_id % 10000, self.task_id)
+        return '{}/work/tasks/{}/{}'.format(
+            self._koji_config['topurl'],
+            self.task_id % 10000,
+            self.task_id,
+        )
 
     @property
     def taskinfo_url(self):
-        return '{}/taskinfo?taskID={}'.format(self._koji_config['weburl'], self.task_id)
+        return '{}/taskinfo?taskID={}'.format(
+            self._koji_config['weburl'],
+            self.task_id,
+        )
 
 
 class PackageGroupRelation(Base):
-    group_id = Column(Integer, ForeignKey('package_group.id',
-                                          ondelete='CASCADE'),
-                      primary_key=True)  # there should be index on whole PK
-    base_id = Column(Integer, ForeignKey('base_package.id', ondelete='CASCADE'),
-                     primary_key=True, index=True)
+    group_id = Column(
+        ForeignKey('package_group.id', ondelete='CASCADE'),
+        primary_key=True,  # there should be index on whole PK
+    )
+    base_id = Column(
+        ForeignKey('base_package.id', ondelete='CASCADE'),
+        primary_key=True,
+        index=True,
+    )
 
 
 class GroupACL(Base):
-    group_id = Column(Integer, ForeignKey('package_group.id',
-                                          ondelete='CASCADE'),
-                      primary_key=True)
-    user_id = Column(Integer, ForeignKey('user.id',
-                                         ondelete='CASCADE'),
-                     primary_key=True)
+    group_id = Column(
+        ForeignKey('package_group.id', ondelete='CASCADE'),
+        primary_key=True,
+    )
+    user_id = Column(
+        ForeignKey('user.id', ondelete='CASCADE'),
+        primary_key=True,
+    )
 
 
 class PackageGroup(Base):
@@ -372,8 +403,12 @@ class PackageGroup(Base):
     namespace = Column(String)
     name = Column(String, nullable=False)
 
-    owners = relationship(User, secondary=GroupACL.__table__,
-                          order_by=User.name, passive_deletes=True)
+    owners = relationship(
+        User,
+        secondary=GroupACL.__table__,
+        order_by=User.name,
+        passive_deletes=True,
+    )
 
     @property
     def full_name(self):
@@ -401,9 +436,11 @@ class Build(Base):
         CheckConstraint('NOT real OR state <> 2', name='build_real_complete_check'),
     )
 
-    STATE_MAP = {'running': 2,
-                 'complete': 3,
-                 'failed': 5}
+    STATE_MAP = {
+        'running': 2,
+        'complete': 3,
+        'failed': 5,
+    }
     RUNNING = STATE_MAP['running']
     COMPLETE = STATE_MAP['complete']
     FAILED = STATE_MAP['failed']
@@ -412,11 +449,13 @@ class Build(Base):
     FINISHED_STATES = [COMPLETE, FAILED]
     STATES = [RUNNING] + FINISHED_STATES
 
-    KOJI_STATE_MAP = {'CLOSED': COMPLETE,
-                      'FAILED': FAILED}
+    KOJI_STATE_MAP = {
+        'CLOSED': COMPLETE,
+        'FAILED': FAILED,
+    }
 
     id = Column(Integer, primary_key=True)
-    package_id = Column(Integer, ForeignKey('package.id', ondelete='CASCADE'))
+    package_id = Column(ForeignKey('package.id', ondelete='CASCADE'))
     package = None  # backref
     state = Column(Integer, nullable=False, default=RUNNING)
     task_id = Column(Integer, nullable=False)
@@ -434,9 +473,12 @@ class Build(Base):
     # deps_resolved is null before the build resolution is attempted
     deps_resolved = Column(Boolean)
 
-    build_arch_tasks = relationship(KojiTask, backref='build',
-                                    order_by=KojiTask.arch,
-                                    passive_deletes=True)
+    build_arch_tasks = relationship(
+        KojiTask,
+        backref='build',
+        order_by=KojiTask.arch,
+        passive_deletes=True,
+    )
     # was the build done by koschei or was it real build done by packager
     real = Column(Boolean, nullable=False, server_default=false())
 
@@ -452,10 +494,12 @@ class Build(Base):
     @property
     def srpm_nvra(self):
         # pylint:disable=no-member
-        return dict(name=self.package.name,
-                    version=self.version,
-                    release=self.release,
-                    arch='src')
+        return {
+            'name': self.package.name,
+            'version': self.version,
+            'release': self.release,
+            'arch': 'src',
+        }
 
     @property
     def taskinfo_url(self):
@@ -482,7 +526,6 @@ class ResolutionChange(Base):
     resolved = Column(Boolean, nullable=False)
     timestamp = Column(DateTime, nullable=False, server_default=func.clock_timestamp())
     package_id = Column(
-        Integer,
         ForeignKey(Package.id, ondelete='CASCADE'),
         nullable=False,
         index=True,
@@ -492,7 +535,6 @@ class ResolutionChange(Base):
 class ResolutionProblem(Base):
     id = Column(Integer, primary_key=True)
     resolution_id = Column(
-        Integer,
         ForeignKey(ResolutionChange.id, ondelete='CASCADE'),
         nullable=False,
         index=True,
@@ -536,14 +578,14 @@ class AppliedChange(Base):
         index=True,
         nullable=False,
     )
-    prev_dep_id = Column(Integer, ForeignKey('dependency.id'), index=True)
+    prev_dep_id = Column(ForeignKey('dependency.id'), index=True)
     prev_dep = relationship(
         Dependency,
         foreign_keys=prev_dep_id,
         uselist=False,
         lazy='joined',
     )
-    curr_dep_id = Column(Integer, ForeignKey('dependency.id'), index=True)
+    curr_dep_id = Column(ForeignKey('dependency.id'), index=True)
     curr_dep = relationship(
         Dependency,
         foreign_keys=curr_dep_id,
@@ -581,8 +623,11 @@ class UnappliedChange(Base):
     curr_release = Column(String)
     distance = Column(Integer)
 
-    package_id = Column(ForeignKey('package.id', ondelete='CASCADE'),
-                        index=True, nullable=False)
+    package_id = Column(
+        ForeignKey('package.id', ondelete='CASCADE'),
+        index=True,
+        nullable=False,
+    )
     _prev_evr = composite(
         RpmEVR,
         prev_epoch, prev_version, prev_release,
@@ -606,7 +651,10 @@ class UnappliedChange(Base):
 
 class BuildrootProblem(Base):
     id = Column(Integer, primary_key=True)
-    collection_id = Column(ForeignKey(Collection.id, ondelete='CASCADE'), index=True)
+    collection_id = Column(
+        ForeignKey(Collection.id, ondelete='CASCADE'),
+        index=True,
+    )
     problem = Column(String, nullable=False)
 
 
@@ -624,7 +672,6 @@ class LogEntry(Base):
     )
     id = Column(Integer, primary_key=True)
     user_id = Column(
-        Integer,
         ForeignKey('user.id', ondelete='CASCADE'),
         nullable=True,
     )
@@ -633,11 +680,13 @@ class LogEntry(Base):
         Enum('admin', 'backend', 'frontend', name='log_environment'),
         nullable=False,
     )
-    timestamp = Column(DateTime, nullable=False,
-                       server_default=func.clock_timestamp())
+    timestamp = Column(
+        DateTime,
+        nullable=False,
+        server_default=func.clock_timestamp(),
+    )
     message = Column(String, nullable=False)
     base_id = Column(
-        Integer,
         ForeignKey('base_package.id', ondelete='CASCADE'),
         nullable=True,
     )
@@ -652,33 +701,38 @@ class RepoMapping(Base):
 class CoprRebuildRequest(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(
-        Integer,
         ForeignKey('user.id', ondelete='CASCADE'),
         nullable=False,
     )
     collection_id = Column(
-        Integer,
         ForeignKey('collection.id', ondelete='CASCADE'),
         nullable=False,
     )
     repo_source = Column(String, nullable=False)
     yum_repo = Column(String)  # set by resolver to raw yum repo path
-    timestamp = Column(DateTime, nullable=False,
-                       server_default=func.clock_timestamp())
+    timestamp = Column(
+        DateTime,
+        nullable=False,
+        server_default=func.clock_timestamp(),
+    )
     description = Column(String)
     repo_id = Column(Integer)
     # how many builds should be scheduled. User can bump this value
     schedule_count = Column(Integer)
     scheduler_queue_index = Column(Integer)
 
-    state = Column(Enum(
-        'new',  # just submitted by user
-        'in progress',  # resolved, scheduling in progress
-        'scheduled',  # every build was scheduled
-        'finished',  # every build completed
-        'failed',  # error occured, processing stopped
-        name='rebuild_request_state',
-    ), nullable=False, server_default='new')
+    state = Column(
+        Enum(
+            'new',  # just submitted by user
+            'in progress',  # resolved, scheduling in progress
+            'scheduled',  # every build was scheduled
+            'finished',  # every build completed
+            'failed',  # error occured, processing stopped
+            name='rebuild_request_state',
+        ),
+        nullable=False,
+        server_default='new',
+    )
     error = Column(String)
 
     def __str__(self):
@@ -687,12 +741,10 @@ class CoprRebuildRequest(Base):
 
 class CoprResolutionChange(Base):
     request_id = Column(
-        Integer,
         ForeignKey('copr_rebuild_request.id', ondelete='CASCADE'),
         primary_key=True,
     )
     package_id = Column(
-        Integer,
         ForeignKey('package.id', ondelete='CASCADE'),
         primary_key=True,
     )
@@ -713,12 +765,10 @@ class CoprRebuild(Base):
     )
 
     request_id = Column(
-        Integer,
         ForeignKey('copr_rebuild_request.id', ondelete='CASCADE'),
         primary_key=True,
     )
     package_id = Column(
-        Integer,
         ForeignKey('package.id', ondelete='CASCADE'),
         primary_key=True,
     )
@@ -791,16 +841,39 @@ class ResourceConsumptionStats(MaterializedView):
 
 
 # Indices
-Index('ix_build_composite', Build.package_id, Build.started.desc())
-Index('ix_package_group_name', PackageGroup.namespace, PackageGroup.name,
-      unique=True)
-Index('ix_dependency_composite', *Dependency.nevra, unique=True)
-Index('ix_package_collection_id', Package.collection_id, Package.tracked,
-      postgresql_where=(~Package.blocked))
-Index('ix_builds_unprocessed', Build.task_id,
-      postgresql_where=(Build.deps_resolved.is_(None) & Build.repo_id.isnot(None)))
-Index('ix_builds_last_complete', Build.package_id, Build.task_id,
-      postgresql_where=(Build.last_complete))
+Index(
+    'ix_build_composite',
+    Build.package_id,
+    Build.started.desc(),
+)
+Index(
+    'ix_package_group_name',
+    PackageGroup.namespace,
+    PackageGroup.name,
+    unique=True,
+)
+Index(
+    'ix_dependency_composite',
+    *Dependency.nevra,
+    unique=True,
+)
+Index(
+    'ix_package_collection_id',
+    Package.collection_id,
+    Package.tracked,
+    postgresql_where=(~Package.blocked),
+)
+Index(
+    'ix_builds_unprocessed',
+    Build.task_id,
+    postgresql_where=(Build.deps_resolved.is_(None) & Build.repo_id.isnot(None)),
+)
+Index(
+    'ix_builds_last_complete',
+    Build.package_id,
+    Build.task_id,
+    postgresql_where=(Build.last_complete),
+)
 
 
 # Relationships
