@@ -34,6 +34,8 @@
 
     - name: install koschei package requirements
       command: dnf builddep -y /vagrant/koschei.spec
+      args:
+        warn: no
       register: dnf_result
       changed_when: "'Nothing to do' not in dnf_result.stdout"
 
