@@ -43,6 +43,23 @@ class DependencyCache(object):
         self.capacity = capacity
         self.nevras = {}
         self.ids = OrderedDict()
+        self.hits = 0
+        self.misses = 0
+        self.inserts = 0
+
+    def clear_stats(self):
+        self.hits = 0
+        self.misses = 0
+        self.inserts = 0
+
+    def get_stats(self):
+        return ', '.join([
+            f'hits={self.hits}',
+            f'misses={self.misses}',
+            f'inserts={self.inserts}',
+            f'total_items={len(self.ids)}',
+            f'capacity={self.capacity}',
+        ])
 
     def _add(self, dep):
         self.ids[dep.id] = dep
@@ -78,8 +95,12 @@ class DependencyCache(object):
                                            returning=(Dependency.id,)))\
                     .fetchone().id
                 dep = DepTuple(id=dep_id, **kwds)
+                self.inserts += 1
+            else:
+                self.misses += 1
             self._add(dep)
         else:
+            self.hits += 1
             self._access(dep)
         return dep
 
@@ -108,6 +129,8 @@ class DependencyCache(object):
             else:
                 res.append(dep)
                 self._access(dep)
+        self.misses += len(missing)
+        self.hits += len(res)
         if missing:
             deps = db.query(*Dependency.inevra).filter(Dependency.id.in_(missing)).all()
             for dep in deps:

@@ -76,6 +76,7 @@ class RepoResolver(Resolver):
             # we have repo to resolve, so just try to resolve everything
             total_time.reset()
             total_time.start()
+            self.dependency_cache.clear_stats()
             with self.prepared_repo(collection, repo_id) as sack:
                 self.resolve_repo(collection, repo_id, sack)
                 if collection.latest_repo_resolved:
@@ -83,6 +84,7 @@ class RepoResolver(Resolver):
                     self.resolve_packages(collection, repo_id, sack, packages)
             total_time.stop()
             total_time.display()
+            self.log.info("Dependency cache stats: %s", self.dependency_cache.get_stats())
         elif collection.latest_repo_resolved:
             # we don't have a new repo, but we can at least resolve new packages
             new_packages = self.get_packages(collection, only_new=True)
