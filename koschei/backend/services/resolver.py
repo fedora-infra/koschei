@@ -39,7 +39,8 @@ DepTuple = namedtuple(
 
 
 class DependencyCache(object):
-    def __init__(self, capacity):
+    def __init__(self, db, capacity):
+        self.db = db
         self.capacity = capacity
         self.nevras = {}
         self.ids = OrderedDict()
@@ -78,10 +79,10 @@ class DependencyCache(object):
         del self.nevras[(victim.name, victim.epoch, victim.version,
                          victim.release, victim.arch)]
 
-    def _get_or_create_nevra(self, db, nevra):
+    def _get_or_create_nevra(self, nevra):
         dep = self.nevras.get(nevra)
         if dep is None:
-            dep = db.query(*Dependency.inevra)\
+            dep = self.db.query(*Dependency.inevra)\
                 .filter((Dependency.name == nevra[0]) &
                         (Dependency.epoch == nevra[1]) &
                         (Dependency.version == nevra[2]) &
@@ -91,8 +92,8 @@ class DependencyCache(object):
             if dep is None:
                 kwds = dict(name=nevra[0], epoch=nevra[1], version=nevra[2],
                             release=nevra[3], arch=nevra[4])
-                dep_id = db.execute(insert(Dependency, [kwds],
-                                           returning=(Dependency.id,)))\
+                dep_id = self.db.execute(insert(Dependency, [kwds],
+                                         returning=(Dependency.id,)))\
                     .fetchone().id
                 dep = DepTuple(id=dep_id, **kwds)
                 self.inserts += 1
@@ -104,22 +105,22 @@ class DependencyCache(object):
             self._access(dep)
         return dep
 
-    def get_or_create_nevra(self, db, nevra):
+    def get_or_create_nevra(self, nevra):
         try:
-            with db.begin_nested():
-                return self._get_or_create_nevra(db, nevra)
+            with self.db.begin_nested():
+                return self._get_or_create_nevra(nevra)
         except IntegrityError:
             # If there was a concurrent insert, the next query must succeed
-            return self._get_or_create_nevra(db, nevra)
+            return self._get_or_create_nevra(nevra)
 
-    def get_or_create_nevras(self, db, nevras):
+    def get_or_create_nevras(self, nevras):
         res = []
         for nevra in nevras:
-            res.append(self._get_or_create_nevra(db, nevra))
+            res.append(self._get_or_create_nevra(nevra))
         return res
 
     @stopwatch(total_time, note='dependency cache')
-    def get_by_ids(self, db, ids):
+    def get_by_ids(self, ids):
         res = []
         missing = []
         for dep_id in ids:
@@ -132,7 +133,7 @@ class DependencyCache(object):
         self.misses += len(missing)
         self.hits += len(res)
         if missing:
-            deps = db.query(*Dependency.inevra).filter(Dependency.id.in_(missing)).all()
+            deps = self.db.query(*Dependency.inevra).filter(Dependency.id.in_(missing)).all()
             for dep in deps:
                 self._add(dep)
                 res.append(dep)
@@ -144,7 +145,7 @@ class Resolver(Service):
     def __init__(self, session):
         super(Resolver, self).__init__(session)
         capacity = get_config('dependency.dependency_cache_capacity')
-        self.dependency_cache = DependencyCache(capacity=capacity)
+        self.dependency_cache = DependencyCache(db=self.db, capacity=capacity)
 
     def get_build_group(self, collection, repo_id):
         """
@@ -175,8 +176,8 @@ class Resolver(Service):
         """
         Creates an intermediate representation of a dependency change
         (difference) between the two sets. The input format is a list of
-        objects with name, epoch, version, release, arch properties.
-        The output format is a list of dicts corresponding to UnappliedChange
+        objects with name, epoch, version, release, arch, distance properties.
+        The output format is a list of dicts corresponding to {Un,A}appliedChange
         table row.
 
         :param: rest Additional key-value parts to store in the output dicts
@@ -185,38 +186,30 @@ class Resolver(Service):
             # TODO packages with no deps
             return []
 
+        cache = self.dependency_cache
+
         def key(dep):
             return dep.name, dep.epoch, dep.version, dep.release, dep.arch
-
-        def create_change(**values):
-            new_change = dict(
-                prev_version=None, prev_epoch=None, prev_release=None, prev_arch=None,
-                curr_version=None, curr_epoch=None, curr_release=None, curr_arch=None,
-            )
-            new_change.update(rest)
-            new_change.update(values)
-            return new_change
 
         old = util.set_difference(deps1, deps2, key)
         new = util.set_difference(deps2, deps1, key)
 
         changes = {}
         for dependency in old:
-            change = create_change(
-                dep_name=dependency.name,
-                prev_version=dependency.version, prev_epoch=dependency.epoch,
-                prev_release=dependency.release, prev_arch=dependency.arch,
+            change = dict(
+                rest,
+                prev_dep_id=cache.get_or_create_nevra(key(dependency)).id,
+                curr_dep_id=None,
                 distance=None,
             )
             changes[dependency.name] = change
         for dependency in new:
             change = (
                 changes.get(dependency.name) or
-                create_change(dep_name=dependency.name)
+                dict(rest, distance=None, prev_dep_id=None)
             )
             change.update(
-                curr_version=dependency.version, curr_epoch=dependency.epoch,
-                curr_release=dependency.release, curr_arch=dependency.arch,
+                curr_dep_id=cache.get_or_create_nevra(key(dependency)).id,
                 distance=dependency.distance,
             )
             changes[dependency.name] = change

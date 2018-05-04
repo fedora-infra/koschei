@@ -613,40 +613,45 @@ class AppliedChange(Base):
 
 
 class UnappliedChange(Base):
+    __table_args__ = (
+        CheckConstraint(
+            'COALESCE(prev_dep_id, 0) <> COALESCE(curr_dep_id, 0)',
+            name='unapplied_change_dep_id_check'
+        ),
+    )
     id = Column(Integer, primary_key=True)
-    dep_name = Column(String, nullable=False)
-    prev_epoch = Column(Integer)
-    prev_version = Column(String)
-    prev_release = Column(String)
-    curr_epoch = Column(Integer)
-    curr_version = Column(String)
-    curr_release = Column(String)
-    distance = Column(Integer)
-
     package_id = Column(
         ForeignKey('package.id', ondelete='CASCADE'),
         index=True,
         nullable=False,
     )
-    _prev_evr = composite(
-        RpmEVR,
-        prev_epoch, prev_version, prev_release,
-        comparator_factory=RpmEVRComparator,
+    prev_dep_id = Column(ForeignKey('dependency.id'), index=True)
+    prev_dep = relationship(
+        Dependency,
+        foreign_keys=prev_dep_id,
+        uselist=False,
+        lazy='joined',
     )
+    curr_dep_id = Column(ForeignKey('dependency.id'), index=True)
+    curr_dep = relationship(
+        Dependency,
+        foreign_keys=curr_dep_id,
+        uselist=False,
+        lazy='joined',
+    )
+    distance = Column(Integer)
 
-    @hybrid_property
+    @property
+    def dep_name(self):
+        return self.curr_dep.name if self.curr_dep else self.prev_dep.name
+
+    @property
     def prev_evr(self):
-        return self._prev_evr if self.prev_version else None
+        return self.prev_dep.evr if self.prev_dep else None
 
-    _curr_evr = composite(
-        RpmEVR,
-        curr_epoch, curr_version, curr_release,
-        comparator_factory=RpmEVRComparator,
-    )
-
-    @hybrid_property
+    @property
     def curr_evr(self):
-        return self._curr_evr if self.curr_version else None
+        return self.curr_dep.evr if self.curr_dep else None
 
 
 class BuildrootProblem(Base):
@@ -897,7 +902,7 @@ Package.all_builds = relationship(
 Package.unapplied_changes = relationship(
     UnappliedChange,
     backref='package',
-    order_by=[UnappliedChange.distance, UnappliedChange.dep_name],
+    order_by=UnappliedChange.distance,
 )
 Build.dependency_changes = relationship(
     AppliedChange,

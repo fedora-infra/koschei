@@ -20,7 +20,7 @@ from sqlalchemy import literal_column
 
 from test.common import DBTest
 from koschei.db import RpmEVR
-from koschei.models import UnappliedChange
+from koschei.models import Dependency
 
 # run the following in RPM's source tree to regenerate the test data
 # ruby -nle 'if /^RPMVERCMP\(([^,]+),\s*([^,]+),\s*([^,]+)\)$/ then print "(\x27#{$1}\x27, \x27#{$2}\x27, #{$3})," end' tests/rpmvercmp.at
@@ -117,17 +117,18 @@ class RpmVercmpTest(DBTest):
         self.assertGreater(evr1, evr2)
 
     def test_rpmevr_db_comparison(self):
-        build = self.prepare_build('rnv')
-        change = UnappliedChange(
-            package_id=build.package.id, dep_name='foo',
-            prev_epoch=None, prev_version='1.1', prev_release='8.fc26',
-            curr_epoch=None, curr_version='1.1', curr_release='8.fc26',
-        )
-        self.db.add(change)
+        dep = Dependency(name='foo', version='1.1', release='8.fc26', arch='x86_64')
+        self.db.add(dep)
         evr = RpmEVR(0, '1.1', '11.fc26')
-        res = self.db.query(UnappliedChange)\
-            .filter(UnappliedChange.prev_evr > evr).first()
+        res = (
+            self.db.query(Dependency)
+            .filter(Dependency.evr > evr)
+            .first()
+        )
         self.assertIsNone(res)
-        res = self.db.query(UnappliedChange)\
-            .filter(UnappliedChange.prev_evr < evr).first()
-        self.assertEqual(change, res)
+        res = (
+            self.db.query(Dependency)
+            .filter(Dependency.evr < evr)
+            .first()
+        )
+        self.assertIs(dep, res)

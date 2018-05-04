@@ -247,12 +247,14 @@ class ResolverTest(DBTest):
         foo = self.db.query(Package).filter_by(name='foo').first()
         self.assertTrue(foo.resolved)
         self.assertEqual(20, foo.dependency_priority)
-        expected_changes = [(foo.id, 'C', 1, 1, '2', '3', '1.fc22', '1.fc22', 2),
-                            (foo.id, 'E', None, 0, None, '0.1', None, '1.fc22.1', 2)]
-        c = UnappliedChange
-        actual_changes = self.db.query(c.package_id, c.dep_name, c.prev_epoch,
-                                       c.curr_epoch, c.prev_version, c.curr_version,
-                                       c.prev_release, c.curr_release, c.distance).all()
+        expected_changes = [
+            ('C', 2, RpmEVR(1, '2', '1.fc22'), RpmEVR(1, '3', '1.fc22')),
+            ('E', 2, None, RpmEVR(0, '0.1', '1.fc22.1')),
+        ]
+        actual_changes = [
+            (c.dep_name, c.distance, c.prev_evr, c.curr_evr)
+            for c in foo.unapplied_changes
+        ]
         self.assertCountEqual(expected_changes, actual_changes)
         resolution_change = self.db.query(ResolutionChange)\
             .filter_by(package_id=foo.id)\

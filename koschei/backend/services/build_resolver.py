@@ -159,8 +159,7 @@ class BuildResolver(Resolver):
                     build_id=build.id,
                 )
                 if changes:
-                    applied_changes = [self.change_to_applied(c) for c in changes]
-                    self.db.execute(insert(AppliedChange, applied_changes))
+                    self.db.execute(insert(AppliedChange, changes))
             prev_build.dependency_keys = None
 
     def store_dependencies(self, build, installs):
@@ -175,7 +174,7 @@ class BuildResolver(Resolver):
             ) for install in installs
             if install.arch != 'src'
         ]
-        deps = self.dependency_cache.get_or_create_nevras(self.db, dep_tuples)
+        deps = self.dependency_cache.get_or_create_nevras(dep_tuples)
         build.dependency_keys = [dep.id for dep in deps]
 
     def get_build_dependencies(self, build):
@@ -183,29 +182,4 @@ class BuildResolver(Resolver):
         Fetches dependencies of a given build.
         """
         if build.dependency_keys:
-            return self.dependency_cache.get_by_ids(self.db, build.dependency_keys)
-
-    def change_to_applied(self, change):
-        """
-        Converts a single item from output of create_dependency_changes to
-        dicts suitable for AppliedChange insert.
-        """
-        applied_change = {
-            'distance': change['distance'],
-            'build_id': change['build_id'],
-        }
-        for state in ('prev', 'curr'):
-            def s(x, prefix=state):
-                return prefix + '_' + x
-            if change[s('version')]:
-                applied_change[s('dep_id')] = self.dependency_cache.get_or_create_nevra(
-                    self.db,
-                    (
-                        change['dep_name'],
-                        change[s('epoch')], change[s('version')],
-                        change[s('release')], change[s('arch')],
-                    )
-                ).id
-            else:
-                applied_change[s('dep_id')] = None
-        return applied_change
+            return self.dependency_cache.get_by_ids(build.dependency_keys)

@@ -238,15 +238,11 @@ class RepoResolver(Resolver):
                 prev_build = self.get_build_for_comparison(package)
                 if prev_build and prev_build.dependency_keys:
                     prev_deps = self.dependency_cache.get_by_ids(
-                        self.db, prev_build.dependency_keys
+                        prev_build.dependency_keys
                     )
                     changes = self.create_dependency_changes(
                         prev_deps, curr_deps, package_id=package.id,
                     )
-                    # UnappliedChange doesn't contain arch
-                    for change in changes:
-                        del change['prev_arch']
-                        del change['curr_arch']
             results.append(ResolutionOutput(
                 package=package,
                 prev_resolved=package.resolved,
