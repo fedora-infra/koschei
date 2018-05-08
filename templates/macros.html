@@ -258,8 +258,9 @@ affected by this dependency change"></i>
       {{ change.distance }}</span>
     {% elif change.curr_evr %}
     <span class="badge badge-pill badge-default" data-toggle="tooltip" data-placement="right"
-          title="{{ change.dep_name }} is not a build-dependency of {{ change.package.name }},
-but is part of minimal buildroot (buildsys-build group)">B</span>
+          title="{{ change.dep_name }} is either indirect, distant build-dependency of {{ change.package.name }},
+(distance > 4), part of minimal buildroot (buildsys-build group),
+or other transaction dependency (typically, scriplet dependency)">B</span>
     {% endif %}
   </div>
 </div>
