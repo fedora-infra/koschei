@@ -17,15 +17,9 @@
 #
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-import sys
-import os
 import re
-import mock
 
-sys.path.insert(0, os.path.join(os.path.dirname(
-    os.path.abspath(__file__)), '..'))
-with mock.patch('koschei.config.load_config'):
-    import admin
+from koschei.admin import Command
 
 
 print('''
@@ -37,11 +31,12 @@ _koschei_admin() {
 ''')
 
 cmd_names = ['-h', '--help']
-for Cmd in admin.Command.__subclasses__():
+for Cmd in Command.__subclasses__():
     cmd_args = ['-h', '--help']
     cmd_name = re.sub(r'([A-Z])', lambda s: '-' + s.group(0).lower(),
                       Cmd.__name__)[1:]
     cmd_names.append(cmd_name)
+
     class Parser(object):
         def add_argument(self, *args, **kwargs):
             if args[0][0] == '-':

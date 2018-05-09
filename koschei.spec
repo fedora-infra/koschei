@@ -164,7 +164,7 @@ sed 's|@CACHEDIR@|%{_localstatedir}/cache/%{name}|g
 %build
 %{__python3} setup.py build
 
-%{__python3} aux/gen-bash-completion.py >koschei-admin.bash
+PYTHONPATH=".:${PYTHONPATH}" %{__python3} aux/gen-bash-completion.py >koschei-admin.bash
 
 %install
 %{__python3} setup.py install --skip-build --root %{buildroot}
