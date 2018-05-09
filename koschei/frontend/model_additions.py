@@ -100,7 +100,7 @@ EVR_SEPARATORS_RE = re.compile(r'([-._~])')
 def dependency_change_pretty_evrs(change):
     s1, s2 = [
         EVR_SEPARATORS_RE.split(str(evr)) if evr else []
-        for evr in (change.prev_evr, change.curr_evr )
+        for evr in (change.prev_evr, change.curr_evr)
     ]
     for i in range(min(len(s1), len(s2))):
         if s1[i] != s2[i]:

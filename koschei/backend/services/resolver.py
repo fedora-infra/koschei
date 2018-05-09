@@ -92,9 +92,16 @@ class DependencyCache(object):
             if dep is None:
                 kwds = dict(name=nevra[0], epoch=nevra[1], version=nevra[2],
                             release=nevra[3], arch=nevra[4])
-                dep_id = self.db.execute(insert(Dependency, [kwds],
-                                         returning=(Dependency.id,)))\
+                dep_id = (
+                    self.db.execute(
+                        insert(
+                            Dependency,
+                            [kwds],
+                            returning=(Dependency.id,)
+                        )
+                    )
                     .fetchone().id
+                )
                 dep = DepTuple(id=dep_id, **kwds)
                 self.inserts += 1
             else:
@@ -133,7 +140,11 @@ class DependencyCache(object):
         self.misses += len(missing)
         self.hits += len(res)
         if missing:
-            deps = self.db.query(*Dependency.inevra).filter(Dependency.id.in_(missing)).all()
+            deps = (
+                self.db.query(*Dependency.inevra)
+                .filter(Dependency.id.in_(missing))
+                .all()
+            )
             for dep in deps:
                 self._add(dep)
                 res.append(dep)

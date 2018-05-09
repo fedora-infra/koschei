@@ -30,7 +30,6 @@ from sqlalchemy.sql.expression import (
 from sqlalchemy.orm import (
     relationship, column_property, configure_mappers, deferred, composite,
 )
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.dialects.postgresql import ARRAY
 
 from .config import get_config
