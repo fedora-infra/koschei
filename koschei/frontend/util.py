@@ -16,18 +16,25 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+"""
+A collection of generic frontend-specific utility functions/classes.
+"""
+
 from flask import abort, flash
 
 
 def flash_ack(message):
-    """Send flask flash with message about operation that was successfully
-       completed."""
+    """
+    Send flask flash with message about operation that was successfully completed.
+    """
     flash(message, 'success')
 
 
 def flash_nak(message):
-    """Send flask flash with with message about operation that was not
-       completed due to an error."""
+    """
+    Send flask flash with with message about operation that was not completed due to
+    an error.
+    """
     flash(message, 'danger')
 
 
@@ -37,6 +44,15 @@ def flash_info(message):
 
 
 class Reversed(object):
+    """
+    Wrapper for reversing order (ASC/DESC of ORDER BY) of SQLA expression, so that it can
+    be reversed again.
+
+    ```
+    Reversed(column) == column.desc()
+    Reversed(column).desc() == column
+    ```
+    """
     def __init__(self, content):
         self.content = content
 
@@ -48,11 +64,26 @@ class Reversed(object):
 
 
 class NullsLastOrder(Reversed):
+    """
+    Wrapper for Reversed order with NULLS LAST
+    """
     def asc(self):
         return self.content.desc().nullslast()
 
 
 def get_order(order_map, order_spec):
+    """
+    Parse desired order from query argument.
+    :param order_map: definitions of orders.
+                      Mapping of name -> column/Reversed/NullsLastOrder.
+    :param order_spec: the query argument specifyin order.
+                       In the format "column1,-column2,column3" (- means DESC)
+    :return: a tuple of order_names and orders.
+             order_names is a list of order names that can be fed back to `page_args` to
+             produce a link to page with this ordering.
+             orders is a list of expressions that can be passed to SQLA using
+             .order_by(*orders)
+    """
     orders = []
     components = order_spec.split(',')
     for component in components:

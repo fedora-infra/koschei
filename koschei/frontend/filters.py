@@ -16,6 +16,10 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+"""
+A collection of jinja2 filters made globally available.
+"""
+
 from datetime import datetime
 
 import humanize
@@ -37,6 +41,9 @@ def percentage(val):
 
 @app.template_filter('date')
 def date_filter(date):
+    """
+    Formats datetime as ISO date and time.
+    """
     return date.strftime("%F %T") if date else ''
 
 

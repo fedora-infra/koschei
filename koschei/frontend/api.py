@@ -16,6 +16,10 @@
 #
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
+"""
+Basic experimental REST API to get the list of packages with their current states.
+"""
+
 from flask import request, Response
 from sqlalchemy.sql import literal_column, case
 
@@ -29,6 +33,27 @@ def sql_if(cond, then, else_=None):
 
 @app.route('/api/v1/packages')
 def list_packages():
+    """
+    Return a list of all packages as JSON. Uses Postgres to generate all the JSON in a
+    single query.
+
+    Optional query parameters:
+    collection: filter by collection name (list, literal match)
+    name: filter by package name (list, literal match)
+
+    Response format:
+    [
+        {
+            "name": "foo",
+            "collection": "f29",
+            "state": "unresolved",
+            "last_complete_build": {
+                "task_id": 123
+            }
+        },
+        ...
+    ]
+    """
     query = (
         db.query(
             Package.name.label('name'),

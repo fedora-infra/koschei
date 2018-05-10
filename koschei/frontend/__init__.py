@@ -18,6 +18,7 @@
 
 from koschei.frontend.base import app
 
+# import all modules, so that global objects get registered
 import koschei.frontend.auth
 import koschei.frontend.filters
 import koschei.frontend.model_additions

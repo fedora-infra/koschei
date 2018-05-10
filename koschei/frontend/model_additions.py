@@ -17,6 +17,11 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
+"""
+This module monkey-patches additional properties/methods to model objects
+and adds few model specific global functions to templates.
+"""
+
 import re
 
 from flask import url_for
@@ -29,6 +34,9 @@ from koschei.models import (
 
 
 def icon(name, title=None):
+    """
+    Get `img` tag for an icon.
+    """
     url = url_for('static', filename='images/{}.png'.format(name))
     return Markup(
         '<img src="{url}" title="{title}"/>'
@@ -37,6 +45,14 @@ def icon(name, title=None):
 
 
 def package_state_icon(package_or_state):
+    """
+    Get `img` tag of an icon corresponding to package's state.
+
+    Available as `state_icon` method on Package.
+
+    :param package_or_state: package ORM object or state string
+    :return: directly renderable object
+    """
     state_string = getattr(package_or_state, 'state_string', package_or_state)
     icon_name = {
         'ok': 'complete',
@@ -46,17 +62,34 @@ def package_state_icon(package_or_state):
         'untracked': 'unknown'
     }.get(state_string, 'unknown')
     return icon(icon_name, state_string)
+
+
 Package.state_icon = property(package_state_icon)
 
 
 def package_running_icon(self):
+    """
+    Get `img` tag of an icon corresponding to package's running icon if it has a running
+    build.
+
+    Available as `running_icon` method on Package.
+
+    :return: directly renderable object
+    """
     if self.has_running_build:
         return icon('running')
     return ''
+
+
 Package.running_icon = property(package_running_icon)
 
 
 def resolution_state_icon(resolved):
+    """
+    Get `img` tag of an icon corresponding to resolution state.
+
+    :return: directly renderable object
+    """
     if resolved is None:
         return icon('unknown')
     if resolved is True:
@@ -65,6 +98,14 @@ def resolution_state_icon(resolved):
 
 
 def build_state_icon(build_or_state):
+    """
+    Get `img` tag of an icon corresponding to build's state.
+
+    Available as `state_icon` method on Build.
+
+    :param build_or_state: build ORM object or state string
+    :return: directly renderable object
+    """
     if build_or_state is None:
         return ""
     if isinstance(build_or_state, int):
@@ -72,10 +113,19 @@ def build_state_icon(build_or_state):
     else:
         state_string = getattr(build_or_state, 'state_string', build_or_state)
     return icon(state_string)
+
+
 Build.state_icon = property(build_state_icon)
 
 
 def build_css_class(build):
+    """
+    Get CSS class for a build row, determined by build's properties.
+
+    Available as `css_class` property of Build.
+
+    :return: CSS class string
+    """
     css = ''
     if build.untagged:
         css += " kk-untagged-build"
@@ -84,13 +134,24 @@ def build_css_class(build):
     if build.state == Build.FAILED:
         css += " table-warning"
     return css
+
+
 Build.css_class = property(build_css_class)
 
 
 def resolution_change_css_class(resolution_change):
+    """
+    Get CSS class for a resolution change row, determined by its properties.
+
+    Available as `css_class` property of ResolutionChange.
+
+    :return: CSS class string
+    """
     if resolution_change.resolved:
         return "table-success"
     return "table-danger"
+
+
 ResolutionChange.css_class = property(resolution_change_css_class)
 
 
@@ -98,6 +159,14 @@ EVR_SEPARATORS_RE = re.compile(r'([-._~])')
 
 
 def dependency_change_pretty_evrs(change):
+    """
+    Convert a dependency change to a form with highlighted changed version components.
+
+    Available as `pretty_evrs` method or both AppliedChange and UnappliedChange.
+
+    :return: a tuple of (prev, curr), where both are directly renderable representations
+             of the previous and current state.
+    """
     s1, s2 = [
         EVR_SEPARATORS_RE.split(str(evr)) if evr else []
         for evr in (change.prev_evr, change.curr_evr)

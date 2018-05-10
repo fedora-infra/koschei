@@ -17,6 +17,10 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
+"""
+Main frontend module providing all non-plugin endpoints.
+"""
+
 from textwrap import dedent
 from urllib.parse import urlencode
 
@@ -48,6 +52,16 @@ builds_per_page = frontend_config['builds_per_page']
 
 
 def populate_package_groups(packages):
+    """
+    Adds `visible_groups` field to package objects. It contains a list of PackageGroup
+    objects that are visible to current user - user is on Group's ACL.
+    Global groups are visible to everyone.
+
+    Ideally, this would be expressed using a SQLA relationship instead, but realtionships
+    don't allow additional inputs (current user).
+
+    :param packages: object with base_id attribute that allows adding attributes
+    """
     base_map = {}
     for package in packages:
         package.visible_groups = []
@@ -73,13 +87,29 @@ def populate_package_groups(packages):
 
 
 def package_view(template, query_fn=None, **template_args):
+    """
+    Dispatches to correct package view dependening on how many collections are selected.
+    Multiple (> 1) collections use "unified" view, which displays packages in multiple
+    collections at once.
+    Single collection uses collection-specific view with more details about the packages
+    in the collection.
+    """
     if len(g.current_collections) == 1:
         return collection_package_view(template, query_fn, **template_args)
     return unified_package_view(template, query_fn, **template_args)
 
 
 def collection_package_view(template, query_fn=None, **template_args):
+    """
+    Single-collection view of a list of packages.
+
+    :param template: name of jinja2 template to be used
+    :param query_fn: optional filter function of query -> filtered_query
+    :param template_args: additional arguments passed to the template
+    """
+    # should be called only when len(g.current_collections) == 1
     collection = g.current_collections[0]
+    # query current_priority separately as it's not a property of Package
     current_prio_expr = Package.current_priority_expression(
         collection=collection,
         last_build=Build,  # package is outerjoined with last_build
@@ -88,7 +118,9 @@ def collection_package_view(template, query_fn=None, **template_args):
         .filter(Package.collection_id == collection.id)
     if query_fn:
         package_query = query_fn(package_query.join(BasePackage))
+    # whether to show untracked packages as well
     untracked = request.args.get('untracked') == '1'
+    # determine correct ORDER BY
     order_name = request.args.get('order_by', 'running,state,name')
     order_map = {
         'name': [Package.name],
@@ -108,9 +140,12 @@ def collection_package_view(template, query_fn=None, **template_args):
                         .order_by(*order)
 
     page = pkgs.paginate(packages_per_page)
+    # monkeypatch the priority as an attribute for ease of use
     for pkg, priority in page.items:
         pkg.current_priority = priority
+    # extract only the package from the query results
     page.items = [pkg for pkg, _ in page.items]
+    # monkeypatch visible package groups
     populate_package_groups(page.items)
     return render_template(template, packages=page.items, page=page,
                            order=order_names, collection=collection,
@@ -118,6 +153,10 @@ def collection_package_view(template, query_fn=None, **template_args):
 
 
 class UnifiedPackage(object):
+    """
+    Object representation of package state in multiple collections.
+    Uses multiple detached Package objects as the packages attribute.
+    """
     def __init__(self, row):
         self.name = row.name
         self.has_running_build = row.has_running_build
@@ -139,14 +178,31 @@ class UnifiedPackage(object):
 
 
 def unified_package_view(template, query_fn=None, **template_args):
+    """
+    View of package in multiple collections at the same time.
+
+    :param template: name of jinja2 template to be used
+    :param query_fn: optional filter function of query -> filtered_query
+    :param template_args: additional arguments passed to the template
+    """
+    # whether to include untracked packages as well
     untracked = request.args.get('untracked') == '1'
     order_name = request.args.get('order_by', 'running,failing,name')
+    # all of the following variables are iteratively built in the follwoing loops (fold)
+    # columns queried for each collection
     exprs = []
+    # aliased package tables for each collection
     tables = []
+    # whether the package has a running build in any of the collections
     running_build_expr = false()
+    # whether the package has a failed build or is unresolved in any of the collections
     failing_expr = false()
+    # whether the package is tracked in any of the collections
     tracked_expr = false()
     order_map = {'name': [BasePackage.name]}
+    # All collections are queried in single query that has variable number of tables and
+    # columns. For each collection there's an additional joined aliased table.
+    # Now, build the aliased tables (no joins yet), their columns and boolean properties
     for collection in g.current_collections:
         table = aliased(Package)
         tables.append(table)
@@ -160,11 +216,15 @@ def unified_package_view(template, query_fn=None, **template_args):
         tracked_expr |= table.tracked == True
     running_build_expr = func.coalesce(running_build_expr, false())
     failing_expr = func.coalesce(failing_expr, false())
+    # Declare query columns
     query = db.query(BasePackage.name, BasePackage.id.label('base_id'),
                      running_build_expr.label('has_running_build'),
                      *exprs).filter(~BasePackage.all_blocked)
     if not untracked:
+        # TODO I'm not sure if this is necessary.
+        # We filter by "tracked" in JOIN's ON exprs
         query = query.filter(tracked_expr)
+    # Build joins and collection-specific order expressions
     for collection, table in zip(g.current_collections, tables):
         on_expr = BasePackage.id == table.base_id
         on_expr &= table.collection_id == collection.id
@@ -183,6 +243,7 @@ def unified_package_view(template, query_fn=None, **template_args):
 
     page = query.order_by(*order).paginate(packages_per_page)
     page.items = list(map(UnifiedPackage, page.items))
+    # monkey-patch visible groups on the row
     populate_package_groups(page.items)
     return render_template(template, packages=page.items, page=page,
                            order=order_names, collection=None, **template_args)
@@ -204,9 +265,12 @@ def collection_list():
         .options(joinedload(CollectionGroup.collections))\
         .order_by(CollectionGroup.name)\
         .all()
+    # collections belonging to a category
     categorized_ids = {
         collection.id for group in groups for collection in group.collections
     }
+    # collections that don't belong to any category and should be displayed in
+    # "Uncategorized collections" pseudo-category.
     uncategorized = [
         collection for collection in g.collections if collection.id not in categorized_ids
     ]
@@ -223,6 +287,8 @@ def package_list():
 @app.route('/')
 @package_tab
 def frontpage():
+    # What is displayed as frontpage is configuration dependent.
+    # Defaults to package_list()
     return app.view_functions[frontend_config['frontpage']](
         **frontend_config['frontpage_kwargs']
     )
@@ -237,10 +303,12 @@ def package_detail(name, form=None, collection=None):
     g.current_collections = [collection]
 
     base = db.query(BasePackage).filter_by(name=name).first_or_404()
+    # Get packages for all collections, so that we can display
+    # "State in other collections" table
     packages = {p.collection_id: p for p in db.query(Package).filter_by(base_id=base.id)}
 
-    # assign packages to collections in the right order, package may stay None
-    package = None
+    # assign packages to collections in the right order
+    package = None  # the current package, may stay None
     all_packages = []
     for coll in g.collections:
         p = packages.get(coll.id)
@@ -272,7 +340,8 @@ def package_detail(name, form=None, collection=None):
         base.available_groups = [group for group, checked in user_groups
                                  if not checked]
 
-    # history entry pagination pivot id
+    # History entry pagination pivot timestamp
+    # We only display entries older than this
     last_seen_ts = request.args.get('last_seen_ts')
     if last_seen_ts:
         try:
@@ -358,6 +427,11 @@ def build_detail(build_id):
 @package_tab
 @auth.login_required()
 def cancel_build(build_id):
+    """
+    Requests cancellation of a build by marking the build in the DB.
+    Doesn't do the cancellation itself, as frontend doens't have access to Koji.
+    Backend polls for the atttribute.
+    """
     if not g.user.admin:
         abort(403)
     build = db.query(Build).filter_by(id=build_id).first_or_404()
@@ -409,6 +483,11 @@ def group_detail(name=None, namespace=None):
 @my_packages_tab.master
 @auth.login_required()
 def user_packages(username):
+    """
+    Displays packages for the current user. What it means is defined by plugins.
+    In Fedora, pagure plugin is used, which queries pagure for packages maintained by
+    the user.
+    """
     names = []
     try:
         results = plugin.dispatch_event('get_user_packages',
@@ -428,21 +507,37 @@ def user_packages(username):
 
 
 def can_edit_group(group):
+    """
+    Whether the group is editable by the current user.
+
+    Available as `editable` property of PackageGroup.
+    """
+    # TODO move to model_additions where it belongs
     return g.user and (g.user.admin or
                        db.query(exists()
                                 .where((GroupACL.user_id == g.user.id) &
                                        (GroupACL.group_id == group.id)))
                        .scalar())
+
+
 PackageGroup.editable = property(can_edit_group)
 
 
 def process_group_form(group=None):
+    """
+    Validate and process submitted group form.
+    :param group:
+    :return:
+    """
     if request.method == 'GET':
+        # construct new form
         if group:
+            # edit form
             obj = dict(name=group.name, owners=[u.name for u in group.owners],
                        packages=[p.name for p in group.packages])
             form = forms.GroupForm(**obj)
         else:
+            # creation form
             form = forms.GroupForm(owners=[g.user.name])
         return render_template('edit-group.html', group=group, form=form)
     form = forms.GroupForm()
@@ -506,6 +601,7 @@ def delete_group(name, namespace=None):
     group = db.query(PackageGroup)\
               .options(joinedload(PackageGroup.packages))\
               .filter_by(name=name, namespace=namespace).first_or_404()
+    # Validate CSRF and permissions
     if not forms.EmptyForm().validate_or_flash() or not group.editable:
         abort(401)
     data.delete_group(session, group)
@@ -531,6 +627,9 @@ def confirm_delete_group(name, namespace=None):
 @add_packages_tab.master
 @auth.login_required()
 def add_packages():
+    """
+    Mark multiple packages as tracked. Optionally add them to a group.
+    """
     form = forms.AddPackagesForm()
     if request.method == 'POST':
         if not form.validate_or_flash():
@@ -547,6 +646,7 @@ def add_packages():
         except data.PackagesDontExist as e:
             db.rollback()
             flash_nak(str(e))
+            # frontend doesn't have Koji access, so it needs to rely on backend's polling
             flash_nak(dedent("""
                 If a package has been just created, it is possible that it
                 hasn't been propagated to our database yet. In that case,
@@ -590,6 +690,10 @@ def search():
 @app.route('/package/<name>/edit', methods=['POST'])
 @auth.login_required()
 def edit_package(name):
+    """
+    Edit package attributes or groups. Everyone can edit attributes, group membership
+    requires permissions.
+    """
     form = forms.EditPackageForm()
     collection = g.collections_by_id.get(form.collection_id.data) or abort(400)
     if not form.validate_or_flash():
@@ -598,6 +702,7 @@ def edit_package(name):
         .filter_by(name=name, collection_id=collection.id)\
         .first_or_404()
 
+    # Interpret group checkboxes
     for key, prev_val in request.form.items():
         if key.startswith('group-prev-'):
             group = db.query(PackageGroup).get_or_404(int(key[len('group-prev-'):]))
@@ -610,6 +715,7 @@ def edit_package(name):
                 else:
                     data.set_group_content(session, group, [package.name], delete=True)
 
+    # Using set_package_attribute to generate audit log events
     if form.tracked.data is not None:
         data.set_package_attribute(
             session, package, 'tracked',
@@ -642,6 +748,11 @@ def edit_package(name):
 
 @app.route('/bugreport/<name>')
 def bugreport(name):
+    """
+    Redirect to a pre-filled bugzilla new bug page.
+    """
+    # Package must have last build, so we can have rebuild instructions.
+    # It doesn't need to be failing, that's up to the user to check.
     package = db.query(Package)\
                 .filter(Package.name == name)\
                 .filter(Package.blocked == False)\
@@ -649,9 +760,11 @@ def bugreport(name):
                 .filter(Package.collection_id == g.current_collections[0].id)\
                 .options(joinedload(Package.last_complete_build))\
                 .first() or abort(404)
+    # Set up variables taht are interpolated into a template specified by configuration
     variables = package.srpm_nvra or abort(404)
     variables['package'] = package
     variables['collection'] = package.collection
+    # Absolute URL of this instance, for the link back to Koschei
     external_url = frontend_config.get('external_url', request.host_url).rstrip('/')
     package_url = url_for('package_detail', name=package.name)
     variables['url'] = f'{external_url}{package_url}'
@@ -684,6 +797,9 @@ def edit_collection(name):
 
 @app.route('/affected-by/<dep_name>')
 def affected_by(dep_name):
+    """
+    Display which packages are possibly affected by given dependency change.
+    """
     if len(g.current_collections) != 1:
         abort(400)
     collection = g.current_collections[0]
@@ -701,6 +817,9 @@ def affected_by(dep_name):
     except (KeyError, ValueError):
         abort(400)
 
+    # Dependencies in the evr1 to evr2 interval
+    # Note that evr comparisons are overloaded custom comparators that invoke RPM-correct
+    # comparisons implemented in rpmvercmp.sql
     deps_in = (
         db.query(Dependency.id)
         .filter(Dependency.name == dep_name)
@@ -708,30 +827,38 @@ def affected_by(dep_name):
         .filter(Dependency.evr < evr2)
         .cte('deps_in')
     )
+    # Dependencies with greater evr than evr2
     deps_higher = (
         db.query(Dependency.id)
         .filter(Dependency.name == dep_name)
         .filter(Dependency.evr >= evr2)
         .cte('deps_higher')
     )
+    # Dependencies with lesser evr than evr1
     deps_lower = (
         db.query(Dependency.id)
         .filter(Dependency.name == dep_name)
         .filter(Dependency.evr <= evr1)
         .cte('deps_lower')
     )
+    # Get only changes where the prev_evr to curr_evr interval overlaps with evr1 to evr2
     filtered_changes = union(
+        # Changes with previous evr in the evr1 to evr2 interval
         db.query(AppliedChange)
         .filter(AppliedChange.prev_dep_id.in_(db.query(deps_in))),
+        # Changes with current evr in the evr1 to evr2 interval
         db.query(AppliedChange)
         .filter(AppliedChange.curr_dep_id.in_(db.query(deps_in))),
+        # Changes with both evrs "around" the evr1 to evr2 interval
         db.query(AppliedChange)
         .filter(
             (AppliedChange.prev_dep_id.in_(db.query(deps_lower))) &
             (AppliedChange.curr_dep_id.in_(db.query(deps_higher)))
         ),
     ).alias('filtered_changes')
+
     prev_build = aliased(Build)
+    # Get a subquery for previous build state
     subq = db.query(prev_build.state.label('prev_state'))\
         .order_by(prev_build.started.desc())\
         .filter(prev_build.started < Build.started)\
@@ -759,12 +886,14 @@ def affected_by(dep_name):
         .join(curr_dep, AppliedChange.curr_dep)
         .join(AppliedChange.build).join(Build.package)
         .filter_by(blocked=False, tracked=True, collection_id=collection.id)
+        # Show only packages where the build after failed, but the previous one was ok
         .filter(Build.state == Build.FAILED)
         .filter(subq != Build.FAILED)
         .order_by(AppliedChange.distance, Build.started.desc())
         .all()
     )
 
+    # Auxiliary function to compute state string for the query row
     def package_state(row):
         return Package(
             tracked=True,
@@ -781,6 +910,10 @@ def affected_by(dep_name):
 @app.route('/stats')
 @stats_tab.master
 def statistics():
+    """
+    Show global and per-package statistics about build times etc.
+    Uses materialized views that are refreshed by backend's polling.
+    """
     now = db.query(func.now()).scalar()
     scalar_stats = db.query(ScalarStats).one()
     resource_query = db.query(ResourceConsumptionStats)\
@@ -794,6 +927,10 @@ def statistics():
 @app.route('/badge/<collection>/<name>.svg')
 @app.route('/badge/<collection>/<name>.png')
 def badge(name, collection):
+    """
+    Redirects to a status badge image for use in external pages,
+    such as GitHub's README.md of a project.
+    """
     c = g.collections_by_name.get(collection) or abort(404, "Collection not found")
     p = db.query(Package).filter_by(name=name, collection_id=c.id).first_or_404()
     image = 'images/badges/{}.{}'.format(p.state_string, request.path[-3:])

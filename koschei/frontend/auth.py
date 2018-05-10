@@ -17,6 +17,13 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
+"""
+Module handling authentication.
+Koschei delegates authentication to the environment (Apache httpd) and uses environment
+variables to get the logged in users.
+The login endpoint must be guarded by httpd's authentication.
+"""
+
 import functools
 import re
 
@@ -35,6 +42,11 @@ user_re = re.compile('^{}$'.format(user_re))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    """
+    Acknowledge the logged in user by adding it's name to session.
+    The login itself must have had already happened in httpd.
+    Adds the user to the database on first login.
+    """
     if bypass_login:
         identity = "none"
         user_name = bypass_login
@@ -58,6 +70,9 @@ def login():
 
 @app.before_request
 def lookup_current_user():
+    """
+    If logged in, bind the current user to g.user
+    """
     if request.endpoint == 'static':
         return
     g.user = None
@@ -68,6 +83,10 @@ def lookup_current_user():
 
 @app.route('/logout')
 def logout():
+    """
+    Remove the user from session cookie. It doesn't imply logging out of a federated login
+    provider.
+    """
     if session.pop('user', None):
         flash_ack('Successfully logged out.')
     else:
@@ -76,6 +95,11 @@ def logout():
 
 
 def login_required():
+    """
+    Decorates endpoint function that requires logged in user. If such endpoint is accessed
+    by non-logged user, it redirects him to login URL.
+    :return:
+    """
     def decorator(func):
         @functools.wraps(func)
         def decorated(*args, **kwargs):

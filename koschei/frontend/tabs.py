@@ -16,6 +16,10 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+"""
+Module defining page navigation tabs.
+"""
+
 from functools import wraps
 
 from flask import g, url_for
@@ -26,7 +30,22 @@ tabs = []
 
 
 class Tab(object):
+    """
+    A single tab of main page navigation. Used as a decorator on view functions to make
+    them visible/available under given tab.
+
+    If an endpoint is rendered, the associated tab is marked as active.
+    If an endpoint is marked as master (using the master method to get the decorator),
+    the tab will link to that endpoint.
+    """
     def __init__(self, name, order=0, requires_user=False):
+        """
+        :param name: Tab name
+        :param order: Tabs are ordered by this
+        :param requires_user: Whether the functionality needs the user to be logged in.
+                              Will be placed in the user menu instead. The view function
+                              must take 'username' parameter.
+        """
         self.name = name
         self.order = order
         self.requires_user = requires_user
@@ -39,6 +58,9 @@ class Tab(object):
             tabs.append(self)
 
     def __call__(self, fn):
+        """
+        Decorate given function to be visible under given tab.
+        """
         @wraps(fn)
         def decorated(*args, **kwargs):
             g.current_tab = self
@@ -46,11 +68,18 @@ class Tab(object):
         return decorated
 
     def master(self, fn):
+        """
+        Return a decorator that marks the tab as master. Master means that this view
+        function will be the target of the tab link.
+        """
         self.master_endpoint = fn
         return self(fn)
 
     @property
     def url(self):
+        """
+        Construct URL to the endpoint (master view) of this tab.
+        """
         name = self.master_endpoint.__name__
         if self.requires_user:
             return url_for(name, username=g.user.name)
@@ -58,10 +87,18 @@ class Tab(object):
 
     @staticmethod
     def get_tabs():
+        """
+        Get all tabs to be rendered in main navigation menu.
+        Available in templates as `get_tabs` global function.
+        """
         return [t for t in tabs if t.master_endpoint and not t.requires_user]
 
     @staticmethod
     def get_user_tabs():
+        """
+        Get all tabls to be rendered in the user menu.
+        Available in templates as `get_user_tabs` global function.
+        """
         return [t for t in tabs if t.master_endpoint and t.requires_user]
 
 

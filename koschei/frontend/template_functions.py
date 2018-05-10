@@ -17,6 +17,10 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
+"""
+A collection of functions used in jinja2 templates as global functions.
+"""
+
 import re
 
 from urllib.parse import urlencode, quote_plus
@@ -30,6 +34,17 @@ from koschei.models import AdminNotice, BuildrootProblem
 
 
 def page_args(clear=False, **kwargs):
+    """
+    Produces a query string for a URL while special-casing some of the arguments.
+    Retains current query arguments (for current request), unless clean is specified.
+
+    :param clear: Whether to clear current query arguments (passed to current request)
+    :param kwargs: Arguments converted to query arguments (urlencoded).
+                   order_by argument is special-cased as it accepts a list of order names
+                   and is converted to string representation first (removing redundant
+                   entries in the process).
+    :return:
+    """
     def proc_order(order):
         new_order = []
         for item in order:
@@ -47,6 +62,12 @@ def page_args(clear=False, **kwargs):
 
 
 def generate_links(package):
+    """
+    Generate list of links to a package in related applications (taken from config).
+
+    :param package: Package for which to generate links
+    :return: generates (name, url) tuples. name is the application name
+    """
     for link_dict in get_config('links'):
         name = link_dict['name']
         url = link_dict['url']
@@ -68,6 +89,12 @@ def generate_links(package):
 
 
 def get_global_notices():
+    """
+    Constructs a list of HTML elements representing current global notices taken from the
+    DB table AdminNotice and also adds a warning if the base buildroot is unresolved.
+
+    :return: List of directly renderable items. May be empty.
+    """
     notices = [n.content for n in
                db.query(AdminNotice.content).filter_by(key="global_notice")]
     for collection in g.current_collections:
@@ -82,6 +109,9 @@ def get_global_notices():
 
 
 def require_login():
+    """
+    Used to disable elements for non-logged-in sessions.
+    """
     return " " if g.user else ' disabled="true" '
 
 
@@ -89,6 +119,10 @@ __key_counter = 0
 
 
 def next_key():
+    """
+    Get a next unique integer from global sequence. Used to generate IDs of elements.
+    :return: integer id
+    """
     global __key_counter
     __key_counter += 1
     return __key_counter

@@ -17,6 +17,10 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
+"""
+This module defines all non-plugin Flask-WTF-based forms used by frontend.
+"""
+
 import re
 
 from flask_wtf import Form
@@ -48,6 +52,9 @@ class CheckBoxField(BooleanField):
 
 
 class StrippedStringField(StringField):
+    """
+    String field that automatically strips whitespace.
+    """
     # pylint:disable=arguments-differ
     def process_formdata(self, values):
         # pylint:disable=W0201
@@ -64,11 +71,17 @@ class ListFieldMixin(object):
 
 
 class ListField(ListFieldMixin, StringField):
+    """
+    Text field of comma- or whitespace-separated entries.
+    """
     def _value(self):
         return ', '.join(self.data or ())
 
 
 class ListAreaField(ListFieldMixin, TextAreaField):
+    """
+    TextArea field of comma- or whitespace-separated entries.
+    """
     def _value(self):
         return '\n'.join(self.data or ())
 
@@ -78,6 +91,9 @@ group_re = re.compile(r'^([a-zA-Z0-9.+_-]+(/[a-zA-Z0-9.+_-]+)?)?$')
 
 
 class NameListValidator(object):
+    """
+    Validator for a list of package names. Used for user names as well.
+    """
     def __init__(self, message):
         self.message = message
 
@@ -90,6 +106,12 @@ arch_override_re = re.compile(r'\^?(.*)')
 
 
 class ArchOverrideValidator(object):
+    """
+    Validates arch overide field format.
+    The field must be a list.
+    The allowed entries are specified by the configuration. They may have a caret prefixed
+    to signify a set complement.
+    """
     def __call__(self, _, field):
         allowed = get_koji_config('primary', 'build_arches')
         for arch in field.data:
@@ -99,6 +121,9 @@ class ArchOverrideValidator(object):
 
 
 class NonEmptyList(object):
+    """
+    List field validator that requires at least one item.
+    """
     def __init__(self, message):
         self.message = message
 
@@ -108,7 +133,15 @@ class NonEmptyList(object):
 
 
 class EmptyForm(Form):
+    """
+    Base of all our forms. Can be used on its own as an empty form that performs CSRF
+    validation on submit (for things like cancel or delete buttons).
+    """
     def validate_or_flash(self):
+        """
+        If the form is valid, returns True.
+        Otherwise sets appropriate validations errors as flash messages and returns False.
+        """
         if self.validate_on_submit():
             return True
         flash_nak("Validation errors: " +
@@ -117,6 +150,9 @@ class EmptyForm(Form):
 
 
 class GroupForm(EmptyForm):
+    """
+    Form for PackageGroup creation/editing
+    """
     name = StrippedStringField('name', [Regexp(name_re, message="Invalid group name")])
     packages = ListAreaField('packages', [NonEmptyList("Empty group not allowed"),
                                           NameListValidator("Invalid package list")])
@@ -125,6 +161,9 @@ class GroupForm(EmptyForm):
 
 
 class AddPackagesForm(EmptyForm):
+    """
+    Form for "Add package" view.
+    """
     packages = ListAreaField('packages', [NonEmptyList("No packages given"),
                                           NameListValidator("Invalid package list")])
     collection = StrippedStringField('collection')
@@ -132,6 +171,10 @@ class AddPackagesForm(EmptyForm):
 
 
 class EditPackageForm(EmptyForm):
+    """
+    Form for "Package detail" view which allows editing package's properties and group
+    membership.
+    """
     tracked = CheckBoxField('tracked')
     collection_id = IntegerField(
         'collection_id',
@@ -140,4 +183,4 @@ class EditPackageForm(EmptyForm):
     manual_priority = IntegerField('manual_priority')
     arch_override = ListField('arch_override', [ArchOverrideValidator()])
     skip_resolution = CheckBoxField('skip_resolution')
-    # groups checkboxes are processed manually
+    # groups' checkboxes are processed manually
