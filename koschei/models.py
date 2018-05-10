@@ -18,6 +18,14 @@
 
 # pylint:disable=no-self-argument
 
+"""
+Database schema definitions for Koschei.
+Tables are defined first. Indices and relationships are typically defined separately later
+in this file. DB utility functions belong to `koschei.db` module, not here.
+Frontend monkey-patches additional properties to the models in
+`koschei.frontend.model_additions`.
+"""
+
 import math
 
 from sqlalchemy import (
@@ -40,12 +48,44 @@ from koschei.db import (
 
 
 class User(Base):
+    """
+    User model used for:
+    - authentication and authorization
+    - querying user's packages (by user name)
+    - logging user actions
+
+    Note: existence of a User entry does not imply existence of a corresponding user in
+          the authentication system. For example, when adding group maintainers,
+          the User entry is created without checking for existence of the user.
+
+    Regular users can:
+    - edit packages (make tracked, set manual priority...)
+    - create groups in their namespace
+    - edit groups where marked as maintainers
+    - get a convenience "My packages" link, although anyone can get to the same page by
+      constructing the right URL
+
+    Admins can:
+    - edit all groups
+    - cancel builds
+    """
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
     admin = Column(Boolean, nullable=False, server_default=false())
 
 
 class Collection(Base):
+    """
+    A collection of packages with the same Koji configuration. In Fedora, it corresponds
+    to a Fedora release. Nearly everything in Koschei is grouped by collections.
+    Collections are created/edited using `koschei-admin` script.
+
+    Collections can be setup in two modes.
+    Primary mode is the default, where a single Koji instance is used for everything.
+    Secondary mode uses two Koji instances. One "primary" for performing the
+    scratch-builds and one "secondary" which is used read-only (unauthenticated) as
+    a source of repos, srpms, real builds and other data.
+    """
     __table_args__ = (
         CheckConstraint(
             '(latest_repo_resolved IS NULL) = (latest_repo_id IS NULL)',
@@ -57,37 +97,60 @@ class Collection(Base):
     order = Column(Integer, nullable=False, server_default="100")
     # name used in machine context (urls, fedmsg), e.g. "f24"
     name = Column(String, nullable=False, unique=True)
-    # name for ordinary people, e.g. "Fedora 24"
+    # name for ordinary people, e.g. "Fedora 24". Used in frontend, log messages
+    # and fedmsg (contains both names)
     display_name = Column(String, nullable=False)
 
     # whether this collection is in secondary or primary mode
     secondary_mode = Column(Boolean, nullable=False, server_default=false())
 
     # Koji configuration
+    # Koji target for scratch-builds
     target = Column(String, nullable=False)
+    # Koji tag used for querying packages and real builds. Usually set to the same value
+    # as `build_tag` (done by default by `koschei-admin` script).
     dest_tag = Column(String, nullable=False)
+    # Koji build tag of given target. Set automatically by `koschei-admin` when creating
+    # or editing the collection
     build_tag = Column(String, nullable=False)
 
-    # bugzilla template fields. If null, bug filling will be disabled
+    # Two fields interpolated into bugreport template. If null, bug filling will be
+    # disabled for this collection
     bugzilla_product = Column(String)
     bugzilla_version = Column(String)
 
-    # priority of packages in given collection is multiplied by this
+    # Priority of all packages in this collection is multiplied by this value.
+    # Can be used to deprioritize collections for older releases by setting it to a value
+    # less than 1
     priority_coefficient = Column(Float, nullable=False, server_default='1')
 
-    # build group name
+    # Koji build group name (in comps) for base buildroot. Used by resolvers.
     build_group = Column(String, nullable=False, server_default='build')
 
+    # Two fields marking the latest repo for this collection which was successfully
+    # resolved by `repo_resolver`. Sucessfully resolved means that build group was
+    # installable (but resolving packages may still be in progress).
+    # Setting both to null can be used to force resolution even if there's no repo.
+    # Used by:
+    # - repo_resolver to determine whether there is a newer repo
+    # - copr plugin to get baseline repo
+    # - repo_regen plugin to mirror the repo on primary
+    # - frontend to warn users when base buildroot is not installable
+    # The repo_id is Koji's repo ID
     latest_repo_id = Column(Integer)
     latest_repo_resolved = Column(Boolean)
 
-    # whether to poll builds for untracked packages
+    # whether to poll builds also for untracked packages
     poll_untracked = Column(Boolean, nullable=False, server_default=true())
 
+    # all package in the collection
     packages = relationship('Package', backref='collection', passive_deletes=True)
 
     @property
     def state_string(self):
+        """
+        :return: machine readable name of the collection state
+        """
         return {
             True: 'ok',
             False: 'unresolved',
@@ -99,6 +162,10 @@ class Collection(Base):
 
 
 class CollectionGroup(Base):
+    """
+    Grouping of collections (many-to-many).
+    Used only by frontend to show collections in groups, such as "Fedora".
+    """
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
     display_name = Column(String, nullable=False)
@@ -108,6 +175,9 @@ class CollectionGroup(Base):
 
 
 class CollectionGroupRelation(Base):
+    """
+    Relationship table for collection grouping.
+    """
     group_id = Column(
         ForeignKey('collection_group.id', ondelete='CASCADE'),
         primary_key=True
@@ -119,17 +189,24 @@ class CollectionGroupRelation(Base):
 
 
 class BasePackage(Base):
+    """
+    Common data about a package not specific to a particular collection.
+    For example the package name or being part of a group.
+    """
     id = Column(Integer, primary_key=True)
+    # Source package name (SRPM %{name})
     name = Column(String, nullable=False, unique=True)
+    # All collection-specific Package entities for this package
     packages = relationship('Package', backref='base', passive_deletes=True)
 
-    # updated by trigger
+    # Updated automatically by a trigger, used by frontend to speed up some queries
     all_blocked = Column(Boolean, nullable=False, server_default=true())
 
 
 class TimePriority(object):
     """
-    Container for lazy computation of static time priority inputs
+    Container for lazy computation of static time priority inputs.
+    Wrapped in a method because we cannot read config values during top-level execution
     """
     def __getattr__(self, name):
         assert name == 'inputs'
@@ -145,6 +222,10 @@ TIME_PRIORITY = TimePriority()
 
 
 class Package(Base):
+    """
+    Package data specific to particular collection (+ denormalized fields). Nonspecific
+    fields are in BasePackage.
+    """
     __table_args__ = (
         UniqueConstraint('base_id', 'collection_id',
                          name='package_unique_in_collection'),
@@ -165,12 +246,14 @@ class Package(Base):
     )
     collection = None  # backref, shut up pylint
 
+    # Used to override build architectures for scratch-builds. Can be set by normal users
+    # via frontend. See scheduler/koji_util for how exactly the overriding works.
     arch_override = Column(String)
-    # causes resolution to be skipped, package can be built even if it would be
-    # unresolved otherwise
+    # Do not ever try to resolve the package. Package then has resolved == None, but it is
+    # still considered resolved by scheduler or frontend.
     skip_resolution = Column(Boolean, nullable=False, server_default=false())
 
-    # denormalized fields, updated by trigger on inser/update (no delete)
+    # denormalized fields, updated by trigger on insert/update (no delete)
     last_complete_build_id = Column(
         ForeignKey(
             'build.id',
@@ -191,24 +274,37 @@ class Package(Base):
         ),
         nullable=True,
     )
+    # Whether all package dependencies were installable suring latest repo_resolver run.
+    # May be None if resolution was not attempted yet.
+    # When False, installation problems are stored in ResolutionProblem table.
     resolved = Column(Boolean)
 
     # priority calculation input values
     # priority set by (super)user, never reset by koschei
     static_priority = Column(Integer, nullable=False, server_default='0')
-    # priority set by user, reset after a build is registered
+    # priority set by any user, reset to 0 after a build is submitted/registered
     manual_priority = Column(Integer, nullable=False, server_default='0')
-    # priority based on build - build started to fail, build failed to resolve,
+    # priority based on builds: build started to fail, build failed to resolve,
     # last build wasn't resolved and thus new build is necessary
     build_priority = Column(Integer, nullable=False, server_default='0')
     # priority based on dependency changes since last build
     dependency_priority = Column(Integer, nullable=False, server_default='0')
 
+    # Whether Koschei "tracks" a package. It means that builds are scheduled for the
+    # package and it is shown in the frontend and its dependencies are periodically tested
+    # for installability.
+    # Untracked packages are still present in the DB, they can be shown in the frontend
+    # when user explicitly asks for them, their builds are polled depending on
+    # `poll_untracked` attribute of the collection. They are not resolved and no builds
+    # submitted for them.
     tracked = Column(Boolean, nullable=False, server_default=true())
+    # Whether the package is blocked in Koji. Blocked packages should not be considered by
+    # anything in Koschei. They're kept for the case if they become unblocked.
     blocked = Column(Boolean, nullable=False, server_default=false())
 
-    SKIPPED_NO_SRPM = 1
-    SKIPPED_NO_ARCH = 2
+    # Scheduler can mark why a particular package was not schedulable
+    SKIPPED_NO_SRPM = 1  # there was no SRPM found
+    SKIPPED_NO_ARCH = 2  # package cannot be built on any of the arches allowed by config
     scheduler_skip_reason = Column(Integer)
 
     @classmethod
@@ -216,6 +312,18 @@ class Package(Base):
         """
         Return computed value for packages priority or None if package is not
         schedulable.
+
+        :param: collection package's collection.
+                           It should either be the Collection class object,
+                           or it should be a concrete collection object if all packages
+                           have the same collection. This is done as an optimization to
+                           avoid adding join on collection table when the collection is
+                           known.
+        :param: last_build package's last complete build.
+                           As with the previous argument, should be either Build class
+                           object or particular last complete build object.
+
+        :returns: SQLA expression that, when evaluated in the DB, returns the priority
         """
         # if last_build is concrete object, it may be None
         # packages with no last build should have no priority
@@ -264,6 +372,10 @@ class Package(Base):
 
     @property
     def skip_reasons(self):
+        """
+        :return: A list of human-readable descriptions of why the package is not
+                 schedulable. Empty if the package is schedulable.
+        """
         reasons = []
         if self.scheduler_skip_reason == Package.SKIPPED_NO_SRPM:
             reasons.append("No suitable SRPM was found")
@@ -291,7 +403,13 @@ class Package(Base):
 
     @sql_property
     def state_string(cls):
-        """String representation of state used when disaplying to user"""
+        """
+        String representation of state used when displaying to user. Also used for as a
+        key for CSS class names or icon names.
+
+        :return: A string value if called on an instance. A SQLA expression when called
+                 on the class.
+        """
         return case(
             [
                 (cls.blocked, 'blocked'),
@@ -305,7 +423,10 @@ class Package(Base):
 
     @property
     def msg_state_string(self):
-        """String representation of state used when publishing messages"""
+        """
+        String representation of state used when publishing fedmsg messages. Kept distinct
+        from `state_string` for backwards-compatibility.
+        """
         state = self.state_string
         return state if state in ('ok', 'failing', 'unresolved') else 'ignored'
 
@@ -315,6 +436,10 @@ class Package(Base):
 
     @property
     def srpm_nvra(self):
+        """
+        :return: name-version-release-arch computed from last complete build in dictionary
+                 form. May be None if there's no build.
+        """
         return dict(name=self.name,
                     version=self.last_complete_build.version,
                     release=self.last_complete_build.release,
@@ -325,6 +450,11 @@ class Package(Base):
 
 
 class KojiTask(Base):
+    """
+    A Koji `buildArch` subtask of the `build` task. A Build has many KojiTasks.
+    Usually there's a single task for `noarch` builds and tasks for each arch for archful
+    builds.
+    """
     __table_args__ = (
         CheckConstraint('state BETWEEN 0 AND 5', name='koji_task_state_check'),
     )
@@ -335,14 +465,22 @@ class KojiTask(Base):
         nullable=False,
         index=True,
     )
+    # Koji task ID
     task_id = Column(Integer, nullable=False)
+    # Architecture in Koji's format
     arch = Column(String, nullable=False)
+    # Koji's TASK_STATE id
     state = Column(Integer, nullable=False)
+    # Time of task start
     started = Column(DateTime, nullable=False)
+    # Time of task finish. May be None. Unused.
     finished = Column(DateTime)
 
     @property
     def state_string(self):
+        """
+        :return: String representation of the task state. Used to lookup CSS classes.
+        """
         # return [state for state, num in koji.TASK_STATES.items()
         #         if num == self.state][0].lower()
         # pylint:disable=invalid-sequence-index
@@ -351,6 +489,9 @@ class KojiTask(Base):
 
     @property
     def _koji_config(self):
+        """
+        :return: Koschei's Koji config dict for corresponding instance.
+        """
         # pylint:disable=no-member
         if self.build.real:
             return get_config('secondary_koji_config')
@@ -358,6 +499,9 @@ class KojiTask(Base):
 
     @property
     def results_url(self):
+        """
+        :return: Absolute URL to Koji task results (logs) for this task
+        """
         # pathinfo = koji.PathInfo(topdir=self._koji_config['topurl'])
         # return pathinfo.task(self.task_id)
         return '{}/work/tasks/{}/{}'.format(
@@ -368,6 +512,9 @@ class KojiTask(Base):
 
     @property
     def taskinfo_url(self):
+        """
+         :return: Absolute URL to Koji task info page
+         """
         return '{}/taskinfo?taskID={}'.format(
             self._koji_config['weburl'],
             self.task_id,
@@ -375,6 +522,9 @@ class KojiTask(Base):
 
 
 class PackageGroupRelation(Base):
+    """
+    Relation table between PackageBase and PackageGroup.
+    """
     group_id = Column(
         ForeignKey('package_group.id', ondelete='CASCADE'),
         primary_key=True,  # there should be index on whole PK
@@ -387,6 +537,9 @@ class PackageGroupRelation(Base):
 
 
 class GroupACL(Base):
+    """
+    An entry of PackageGroup's maintainer list.
+    """
     group_id = Column(
         ForeignKey('package_group.id', ondelete='CASCADE'),
         primary_key=True,
@@ -398,10 +551,22 @@ class GroupACL(Base):
 
 
 class PackageGroup(Base):
+    """
+    Grouping of packages (many-to-many). Created and maintained by users. Has a list of
+    maintainers that can edit the group. Groups are namespaced by username by default,
+    but the namespace can be set to null (using `koschei-admin` only), in which case it is
+    displayed as global. Refers to BasePackage (not Package), so it's not
+    collection-specific.
+    """
     id = Column(Integer, primary_key=True)
+    # A namespace name. By default set to creator's username. Can be modified using
+    # `koschei-admin` only. Groups with null namespace are global groups.
     namespace = Column(String)
+    # Group name
     name = Column(String, nullable=False)
 
+    # List of people who can edit/delete the group. They can add other owners. Admins can
+    # edit all groups. Frontend shows "My groups" to a logged in user based on ownership.
     owners = relationship(
         User,
         secondary=GroupACL.__table__,
@@ -411,12 +576,21 @@ class PackageGroup(Base):
 
     @property
     def full_name(self):
+        """
+        :return: Qualified name in namespace/name format. Or just name for global groups.
+        """
         if self.namespace:
             return self.namespace + '/' + self.name
         return self.name
 
     @staticmethod
     def parse_name(name):
+        """
+        Inverse of `full_name`.
+        :param name Qualified name in namespace/name format. Or just name for global
+                    groups.
+        :return: namespace, name pair. Namespace will be None for a global group.
+        """
         if '/' not in name:
             return None, name
         ns, _, name = name.partition('/')
@@ -427,6 +601,14 @@ class PackageGroup(Base):
 
 
 class Build(Base):
+    """
+    A single build. Used both for builds submitted by Koschei and also builds done as
+    regular (not scratch) builds done by package maintainers. The latter builds are called
+    "real" builds.
+
+    Canceled builds are deleted.
+    Old builds can be deleted by `koschei-admin cleanup` (run from cron).
+    """
     __table_args__ = (
         CheckConstraint('state IN (2, 3, 5)', name='build_state_check'),
         CheckConstraint('state = 2 OR repo_id IS NOT NULL', name='build_repo_id_check'),
@@ -456,42 +638,75 @@ class Build(Base):
     id = Column(Integer, primary_key=True)
     package_id = Column(ForeignKey('package.id', ondelete='CASCADE'))
     package = None  # backref
+    # Build state as an integer. Can be either 2 (running), 3 (complete) or 5 (failed).
     state = Column(Integer, nullable=False, default=RUNNING)
+    # Koji task ID
     task_id = Column(Integer, nullable=False)
+    # Task creation time. Used for ordering builds and relating them to ResolutionChanges
     started = Column(DateTime, nullable=False)
+    # Task finish time. May be null
     finished = Column(DateTime)
+
+    # RPM version components: epoch, version and release. Epoch may be null, should be
+    # treated same as 0
     epoch = Column(Integer)
     version = Column(String)
     release = Column(String)
+
+    # Koji repo ID in which the build was done. Used to get the repo for dependency
+    # resolution
     repo_id = Column(Integer)
-    # whether this build is the last complete build for corresponding package
+    # Whether this build is the last complete build for corresponding package.
+    # Used as an optimization to speed up certain queries.
+    # Populated by a DB trigger.
     last_complete = Column(Boolean, nullable=False, default=False)
 
+    # Whether admin requested cancelation via frontend
     cancel_requested = Column(Boolean, nullable=False, server_default=false())
 
-    # deps_resolved is null before the build resolution is attempted
+    # Whether all dependencies were installable in the same repo as the build was done.
+    # Is null before the build resolution is attempted.
     deps_resolved = Column(Boolean)
 
+    # Koji `buildArch` tasks
     build_arch_tasks = relationship(
         KojiTask,
         backref='build',
         order_by=KojiTask.arch,
         passive_deletes=True,
     )
-    # was the build done by koschei or was it real build done by packager
+    # Was the build done by koschei (False) or was it real build done by packager (True)
+    # Real builds are displayed differently in the frontend.
+    # In secondary mode, real builds are done on secondary Koji, whereas normal
+    # scratch-builds are done on primary Koji
     real = Column(Boolean, nullable=False, server_default=false())
 
-    # was the build untagged/deleted on Koji
+    # Was the build untagged/deleted on Koji
+    # Untagged builds are displayed differently in the frontend and are ignored by
+    # resolvers and scheduler
     untagged = Column(Boolean, nullable=False, server_default=false())
 
+    # List of IDs of dependencies in the Dependency table. Stored as a compressed
+    # byte-array for space-saving reasons, but the code can use it as normal list of
+    # integers, thanks to custom SQLA type.
+    # Stored only if the build is the last complete, otherwise set to null to save space.
+    # Used only by resolver. Deferred = not fetched from DB by default.
     dependency_keys = deferred(Column(CompressedKeyArray))
 
     @property
     def state_string(self):
+        """
+        :return: String representation of the build state. Displayed to the user and used
+                 to lookup CSS classes and icons.
+        """
         return self.REV_STATE_MAP[self.state]
 
     @property
     def srpm_nvra(self):
+        """
+        :return: name-version-release-arch computed from last complete build in dictionary
+                 form.
+        """
         # pylint:disable=no-member
         return {
             'name': self.package.name,
@@ -502,6 +717,9 @@ class Build(Base):
 
     @property
     def taskinfo_url(self):
+        """
+        :return: Absolute URL to Koji task info page for the build's main task
+        """
         if self.real:
             koji_config = get_config('secondary_koji_config')
         else:
@@ -521,8 +739,17 @@ class Build(Base):
 
 
 class ResolutionChange(Base):
+    """
+    An entry representing that a particular package's reslution state (whether its
+    dependencies were installable) has changed at given point of time. Used only the
+    frontend to show past changes. The use-case is that without this feature, people
+    often saw a fedmsg that a package failed to resolve, but by the time they opened
+    Koschei, it had already been resolved again and they had no idea what had been wrong.
+    """
     id = Column(Integer, primary_key=True)
+    # Whether package's dependencies were installable or not
     resolved = Column(Boolean, nullable=False)
+    # Timestamp of the resolution, used to order them and relate them to builds
     timestamp = Column(DateTime, nullable=False, server_default=func.clock_timestamp())
     package_id = Column(
         ForeignKey(Package.id, ondelete='CASCADE'),
@@ -532,6 +759,10 @@ class ResolutionChange(Base):
 
 
 class ResolutionProblem(Base):
+    """
+    A string representation of a problem in dependency installation. Produced by resolver
+    straight from hawkey/libdnf output.
+    """
     id = Column(Integer, primary_key=True)
     resolution_id = Column(
         ForeignKey(ResolutionChange.id, ondelete='CASCADE'),
@@ -546,6 +777,12 @@ class ResolutionProblem(Base):
 
 
 class Dependency(Base):
+    """
+    A binary RPM name-epoch-version-release-arch. Kind of a flyweight pattern to avoid
+    storing the same NEVRAs multiple times as they consume a lot space.
+    Each NEVRA must be unique (there's a unique index defined later).
+    Referenced by Build.dependency_keys and Applied/UnappliedChange.prev/curr_dep_id
+    """
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     epoch = Column(Integer)
@@ -553,6 +790,8 @@ class Dependency(Base):
     release = Column(String, nullable=False)
     arch = Column(String, nullable=False)
 
+    # Composite property that can be used for queries that need to compare EVRs
+    # RPM's way
     evr = composite(
         RpmEVR, epoch, version, release,
         comparator_factory=RpmEVRComparator,
@@ -564,6 +803,23 @@ class Dependency(Base):
 
 
 class AppliedChange(Base):
+    """
+    Representation of a change in installed dependencies between the build referenced by
+    it and the previous one. Dependency changes are caused by changes in the repo or in
+    package's BuildRequires (real builds only). Represented as a row with EVR of a
+    dependency of the previous build (prev_evr) and EVR of the same dependency of the
+    current build. The dependencies must have the same name. The EVRs must be different.
+    Either of them (but not both at the same time) can be null to signify that a new
+    dependency appeared or disappeared.
+
+    Dependency changes have a distance computed as a distance of the dependency in the
+    dependency graph from the package. Direct BuildRequires have distance 1. Indirect
+    dependencies have distance > 1 and < 8 (arbitrary max depth, may change). Distance may
+    be null, which means that it is either a build group dependency, too distant
+    dependency or another transaction dependency (scriptlet).
+
+    Generated by build_resolver for each build. Displayed by frontend.
+    """
     __table_args__ = (
         CheckConstraint(
             'COALESCE(prev_dep_id, 0) <> COALESCE(curr_dep_id, 0)',
@@ -612,6 +868,16 @@ class AppliedChange(Base):
 
 
 class UnappliedChange(Base):
+    """
+    The same type of dependency change as in AppliedChange, but the difference is done
+    between package's last complete build and package's current set of dependencies.
+    It references the package instead of the build.
+
+    Unapplied changes are used to compute depedency priority used as the main scheduling
+    criteria. This computation happens only once when they're generated.
+
+    Generated by repo_resolver. Displayed by frontend.
+    """
     __table_args__ = (
         CheckConstraint(
             'COALESCE(prev_dep_id, 0) <> COALESCE(curr_dep_id, 0)',
@@ -654,6 +920,15 @@ class UnappliedChange(Base):
 
 
 class BuildrootProblem(Base):
+    """
+    Same as ResolutionProblem, but for the entire base builroot (install build group).
+    The reason for the separation is that Koschei doesn't resolve individual packages
+    when base buildroot is not resolvable.
+
+    Generated by repo_resolver. Presence of buildroot problems is indicated by
+    collection's latest_repo_resolved field.
+    Displayed by the frontend as a global warning.
+    """
     id = Column(Integer, primary_key=True)
     collection_id = Column(
         ForeignKey(Collection.id, ondelete='CASCADE'),
@@ -663,11 +938,23 @@ class BuildrootProblem(Base):
 
 
 class AdminNotice(Base):
+    """
+    Global notice shown on every page in the frontend. Used to inform about outages etc.
+    Key is always "global_notice", other keys are not presently used.
+    Set or cleared by koschei-admin script.
+    """
     key = Column(String, primary_key=True)
     content = Column(String, nullable=False)
 
 
 class LogEntry(Base):
+    """
+    An audit log of a particular effective action (DB modification) done, such as changing
+    package's attributes by user.
+    Append-only table. Currently not displayed by anything. Can be used by administrators
+    manually via SQL.
+    Produced mostly by frontend and koschei-admin.
+    """
     __table_args__ = (
         CheckConstraint(
             "user_id IS NOT NULL or environment = 'backend'",
@@ -675,6 +962,7 @@ class LogEntry(Base):
         ),
     )
     id = Column(Integer, primary_key=True)
+    # ID of a user, may be root for koschei-admin entries, is null for backend entries
     user_id = Column(
         ForeignKey('user.id', ondelete='CASCADE'),
         nullable=True,
@@ -689,7 +977,9 @@ class LogEntry(Base):
         nullable=False,
         server_default=func.clock_timestamp(),
     )
+    # Readable description of the event that occured
     message = Column(String, nullable=False)
+    # Package to which the action pertains, if any
     base_id = Column(
         ForeignKey('base_package.id', ondelete='CASCADE'),
         nullable=True,
@@ -697,13 +987,27 @@ class LogEntry(Base):
 
 
 class RepoMapping(Base):
-    secondary_id = Column(Integer, primary_key=True)  # repo_id on secondary
-    primary_id = Column(Integer)  # repo_id on primary, not known at the beginning
-    task_id = Column(Integer, nullable=False)  # newRepo task ID
+    """
+    Used in secondary mode only.
+    Maps Koji repo IDs between primary and secondary Koji. Used to convert Builds'
+    repo IDs to secondary Koji repo IDs, so that resolver can process the uniformly.
+    Also used by new repo check in repo_resolver.
+    """
+    # repo_id on secondary
+    secondary_id = Column(Integer, primary_key=True)
+    # repo_id on primary, not known at the beginning
+    primary_id = Column(Integer)
+    # newRepo task ID
+    task_id = Column(Integer, nullable=False)
 
 
 class CoprRebuildRequest(Base):
+    """
+    Used by copr plugin to represent a users request to rebuild packages with additional
+    copr repo added, in order to test whether his changes break anything.
+    """
     id = Column(Integer, primary_key=True)
+    # Requestor
     user_id = Column(
         ForeignKey('user.id', ondelete='CASCADE'),
         nullable=False,
@@ -712,17 +1016,25 @@ class CoprRebuildRequest(Base):
         ForeignKey('collection.id', ondelete='CASCADE'),
         nullable=False,
     )
+    # String refering to copr used to abtain the repo
+    # format: copr:owner/name or copr:name
     repo_source = Column(String, nullable=False)
-    yum_repo = Column(String)  # set by resolver to raw yum repo path
+    # Set by resolver to raw yum repo URL
+    yum_repo = Column(String)
+    # Creation time
     timestamp = Column(
         DateTime,
         nullable=False,
         server_default=func.clock_timestamp(),
     )
+    # Descirption entered by the user. Informative only
     description = Column(String)
+    # Koji repo ID used to obtain the base repo, taken from colection.latest_repo_id
+    # at resolution time
     repo_id = Column(Integer)
-    # how many builds should be scheduled. User can bump this value
+    # How many builds should be scheduled. User can bump this value
     schedule_count = Column(Integer)
+    # Current cursor into the build queue
     scheduler_queue_index = Column(Integer)
 
     state = Column(
@@ -744,6 +1056,10 @@ class CoprRebuildRequest(Base):
 
 
 class CoprResolutionChange(Base):
+    """
+    Like ResolutionChange, but for copr rebuilds. Signifies that a package failed to
+    resolve with the copr repo added while it was ok without it (or the other way around).
+    """
     request_id = Column(
         ForeignKey('copr_rebuild_request.id', ondelete='CASCADE'),
         primary_key=True,
@@ -758,6 +1074,11 @@ class CoprResolutionChange(Base):
 
 
 class CoprRebuild(Base):
+    """
+    A build scheduled or done by copr plugin (in copr).
+    Created for every package, whose dependencies changed after adding the copr repo.
+    Only first `schedule_count` builds are actually submitted.
+    """
     # TODO migration
     __table_args__ = (
         UniqueConstraint('request_id', 'package_id', 'order',
@@ -777,10 +1098,13 @@ class CoprRebuild(Base):
         primary_key=True,
     )
     copr_build_id = Column(Integer)
+    # State of the last complete build of the package at the time of creation of
+    # this build
     prev_state = Column(Integer, nullable=False)
+    # Current state
     state = Column(Integer)
     approved = Column(Boolean)  # TODO what was it again?
-    # set by resolver, can be altered by frontend
+    # Order in the rebuild queue. Set by resolver, can be altered by frontend
     order = Column(Integer, nullable=False)
 
     @property
@@ -797,6 +1121,11 @@ def count_query(entity):
 
 
 class ScalarStats(MaterializedView):
+    """
+    Materialized view for statistics page. Regenerated by polling.
+
+    Contains global statistics.
+    """
     view = select((
         func.now().label('refresh_time'),
         count_query(Package).label('packages'),
@@ -837,6 +1166,11 @@ def _resource_consumption_stats_view():
 
 
 class ResourceConsumptionStats(MaterializedView):
+    """
+    Materialized view for statistics page. Regenerated by polling.
+
+    Contains per-package statistics.
+    """
     view = _resource_consumption_stats_view()
     name = Column(String, primary_key=True)
     arch = Column(String, primary_key=True)
@@ -972,4 +1306,5 @@ CoprRebuild.package = relationship(Package)
 CoprRebuild.request = relationship(CoprRebuildRequest)
 CoprResolutionChange.package = relationship(Package)
 
+# Finalize ORM setup, no DB entities should be defined past this
 configure_mappers()
