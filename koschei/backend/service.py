@@ -16,6 +16,10 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+"""
+This module provides base class for all backend service.
+"""
+
 import sys
 import importlib
 import logging
@@ -28,6 +32,10 @@ from koschei.config import get_config
 
 
 def load_service(name):
+    """
+    Used to import and create the service instance for given name.
+    Looks into service modules of backend and all plugins.
+    """
     for module in list(sys.modules):
         if re.match(r'^koschei\.(?:.+\.)?backend', module):
             try:
@@ -39,6 +47,10 @@ def load_service(name):
 
 
 class Service(object):
+    """
+    Base class of all backend services. Contains the session. Takes care of running the
+    main method in a loop while doing memory checks and watchdog invocations.
+    """
     def __init__(self, session):
         self.session = session
         self.db = session.db
@@ -55,6 +67,10 @@ class Service(object):
         raise NotImplementedError()
 
     def memory_check(self):
+        """
+        Check whether the process exceeds memory limits specified in configuration
+        (by default there is no limit). If it does, the process exits with code 3.
+        """
         resident_limit = self.service_config.get("memory_limit", None)
         virtual_limit = self.service_config.get("virtual_memory_limit", None)
         if resident_limit or virtual_limit:
@@ -73,6 +89,9 @@ class Service(object):
                 sys.exit(3)
 
     def run_service(self):
+        """
+        Run service's main method in a loop with sleep in between.
+        """
         interval = self.service_config.get('interval', 3)
         self.log.info("{name} started".format(name=self.get_name()))
         while True:
@@ -87,6 +106,9 @@ class Service(object):
 
     @classmethod
     def find_service(cls, name):
+        """
+        Find service class by name.
+        """
         if name == cls.get_name():
             return cls
         # pylint: disable=E1101
@@ -96,5 +118,8 @@ class Service(object):
                 return ret
 
     def notify_watchdog(self):
+        """
+        Notify systemd watchdog (if enabled) that the process is not stuck.
+        """
         if get_config('services.{}.watchdog'.format(self.get_name()), None):
             util.sd_notify("WATCHDOG=1")

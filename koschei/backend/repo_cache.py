@@ -17,6 +17,11 @@
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 # Author: Michael Simacek <msimacek@redhat.com>
 
+"""
+This module provides a filesystem cache for repos.
+It is safe to be used from multiple processes, but it is *not thread-safe*.
+"""
+
 import logging
 import os
 import contextlib
@@ -26,6 +31,7 @@ from koschei.backend import repo_util
 from koschei.backend.file_cache import FileCache
 
 
+# TODO remove, seems unused
 class CacheVersionMismatch(Exception):
     pass
 

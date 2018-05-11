@@ -17,6 +17,11 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
+"""
+This module contains functions wrapping dependency resolution functionality
+from hawkey/libdnf.
+"""
+
 import hawkey
 
 from koschei.config import get_config
@@ -35,6 +40,22 @@ def _get_builddep_selector(sack, dep):
 
 
 def run_goal(sack, br, group):
+    """
+    Perform resolution (simulated installation) of given dependencies and build group.
+    The only difference in treatment of dependencies vs. packages from the build group is
+    that missing packages in build group are silently skipped, whereas missing packages
+    in dependencies are reported as problems and fail the resolution.
+
+    :param sack: hawkey.Sack to use for the resolution.
+    :param br: List of dependencies (strings from BuildRequires)
+    :param group: list of packages in the build group (strings)
+    :return: If the resolution succeeded:
+             (True, [], installs), where installs is list of string names of packages
+             that would be installed.
+             If the resolution failed (something was not installable):
+             (False, problems, None), where problems is a list of human-readable strings
+             describing the problems that prevent installation.
+    """
     # pylint:disable=E1101
     goal = hawkey.Goal(sack)
     problems = []
@@ -60,6 +81,10 @@ def run_goal(sack, br, group):
 
 
 class DependencyWithDistance(object):
+    """
+    Object with same fields as Dependency + additional distance field used to represent
+    distance from first-level dependencies in the object graph.
+    """
     def __init__(self, name, epoch, version, release, arch):
         self.name = name
         self.epoch = epoch
@@ -70,6 +95,21 @@ class DependencyWithDistance(object):
 
 
 def compute_dependency_distances(sack, br, deps):
+    """
+    Computes dependency distance of given dependencies.
+    Dependency distance is the length of the shortest path from any of the first-level
+    dependencies (BuildRequires) to the dependency node in the dependency graph.
+    The algorithm is only a best-effort approximation that uses hawkey queries.
+    It is a variant of depth-limited BFS (depth limit is hardcoded to 5).
+    Dependency objects are mutated in place. Objects that weren't reached keep their
+    original distance (None).
+
+    :param sack: hawkey.Sack used for dependency queries
+    :param br: List of BuildRequires -- first-level dependencies. Build group should not
+               be included.
+    :param deps: List of DependencyWithDistance objects for all dependencies that were
+                 marked to be installed.
+    """
     dep_map = {dep.name: dep for dep in deps}
     visited = set()
     level = 1

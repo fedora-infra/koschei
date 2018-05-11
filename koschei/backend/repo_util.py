@@ -16,6 +16,10 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+"""
+Utility functions for downloading repos.
+"""
+
 import os
 import hawkey
 import librepo

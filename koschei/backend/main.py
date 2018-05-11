@@ -16,6 +16,14 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+"""
+Executable. Main entry point for backend services.
+Takes a single argument that specifies the service name.
+
+Takes care of loading the configuration, loading plugins, looking up the service,
+initializing the envirnoment and running the service.
+"""
+
 import argparse
 import logging
 import signal
@@ -53,6 +61,7 @@ def main():
         raise
     except KeyboardInterrupt:
         sys.exit(0)
+
 
 if __name__ == '__main__':
     main()

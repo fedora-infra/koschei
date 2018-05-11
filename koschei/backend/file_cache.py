@@ -16,6 +16,10 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
+"""
+Provides generic cache of files/directories with locking scheme using POSIX locks.
+"""
+
 import logging
 import os
 import shutil

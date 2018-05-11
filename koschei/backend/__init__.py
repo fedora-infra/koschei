@@ -38,6 +38,13 @@ from koschei.plugin import dispatch_event
 
 
 class KoscheiBackendSession(KoscheiSession):
+    """
+    Global context for all operations. It provides the following:
+    - DB session
+    - Koji session(s)
+    - Repository cache
+    - Generic caches
+    """
     def __init__(self):
         super(KoscheiBackendSession, self).__init__()
         self._db = None
@@ -100,13 +107,22 @@ class KoscheiBackendSession(KoscheiSession):
 
 
 def submit_build(session, package, arch_override=None):
+    """
+    Submits a scratch-build to Koji for given package.
+
+    :param session: KoscheiBackendSession
+    :param package: A package for which to submit build
+    :param arch_override: optional list of architectures that will be used intead of
+                          Koji's default
+    :return:
+    """
     assert package.collection.latest_repo_id
     build = Build(package_id=package.id, state=Build.RUNNING)
     name = package.name
     build_opts = {}
     if arch_override:
         build_opts['arch_override'] = ' '.join(arch_override)
-    # on secondary collections SRPMs are taken from secondary, primary
+    # on secondary Koji, collections SRPMs are taken from secondary, primary
     # needs to be able to build from relative URL constructed against
     # secondary (internal redirect)
     srpm_res = koji_util.get_last_srpm(
@@ -131,7 +147,7 @@ def submit_build(session, package, arch_override=None):
             target,
             name,
             srpm_url,
-            build_opts
+            build_opts,
         )
         build.started = datetime.now()
         build.epoch = srpm['epoch']
@@ -143,6 +159,13 @@ def submit_build(session, package, arch_override=None):
 
 
 def get_newer_build_if_exists(session, package):
+    """
+    Return Koji buildInfo of a newer build than the package's last build if there is one.
+
+    :param session: KoscheiBackendSession
+    :param package: The package whose build should be compared
+    :return: buildInfo or None
+    """
     [info] = session.secondary_koji_for(package.collection)\
         .listTagged(package.collection.dest_tag, latest=True,
                     package=package.name, inherit=True) or [None]
@@ -234,6 +257,7 @@ def register_real_builds(session, collection, package_build_infos):
 def set_failed_build_priority(session, package, last_build):
     """
     Sets packages failed build priority based on the newly registered build.
+    Only has effect when the last build failed, but previous build was ok.
     """
     failed_priority_value = get_config('priorities.failed_build_priority')
     if last_build.state == Build.FAILED:
@@ -246,6 +270,9 @@ def set_failed_build_priority(session, package, last_build):
 
 
 def clear_priority_data(session, packages):
+    """
+    Set non-static priorities to 0 and clear UnappliedChanges.
+    """
     for package in packages:
         package.manual_priority = 0
         package.dependency_priority = 0
@@ -268,6 +295,8 @@ def update_build_state(session, build, task_state):
         task_timeout = timedelta(0, get_config('koji_config.task_timeout'))
         time_threshold = datetime.now() - task_timeout
         canceled = task_state == 'CANCELED'
+        # Cancel builds that were running for too long. Prevents starvations of resources
+        # as Koji would sometimes keep builds running for weeks without complaining.
         if (not canceled and task_state not in Build.KOJI_STATE_MAP and
                 (build.started and build.started < time_threshold or
                  build.cancel_requested)):
@@ -278,15 +307,22 @@ def update_build_state(session, build, task_state):
                 pass
             canceled = True
         if canceled or task_state in Build.KOJI_STATE_MAP:
+            # The build has finished.
             build_state = Build.KOJI_STATE_MAP.get(task_state)
+            # We need to lock build to prevent duplicate inserts and fedmsg.
+            # It is necessary to be careful here. We need to get the row we lock, but
+            # SQLA "caches" rows and would happily return stale data despite the lock.
+            # We need to expire the objects, so that they're fetched anew.
+            # We also need to avoid accessing any property (including ids) of the objects
+            # before the locking, otherwise the fetch would occur prematurely and there
+            # would be the same race condition we tried to avoid using the expiration.
             build_id = build.id
             package_id = build.package_id
             session.db.expire_all()
-            # lock build
             build = session.db.query(Build).filter_by(id=build_id)\
                 .with_lockmode('update').first()
             if not build or build.state == build_state:
-                # other process did the job already
+                # Another process did the job already in parallel, nothing to do
                 session.db.rollback()
                 return
             if canceled:
@@ -296,7 +332,10 @@ def update_build_state(session, build, task_state):
                 session.db.commit()
                 return
             assert build_state in (Build.COMPLETE, Build.FAILED)
+            # Detect if the build ended with a "Koji fault". A "Koji fault" is an
+            # exception that occured due to Koji itself, like faulty network
             if koji_util.is_koji_fault(session.koji('primary'), build.task_id):
+                # Delete such build, it is most likely a false positive
                 session.log.info('Deleting build {0} because it ended with Koji fault'
                                  .format(build))
                 session.db.delete(build)
@@ -305,34 +344,41 @@ def update_build_state(session, build, task_state):
             session.log.info('Setting build {build} state to {state}'
                              .format(build=build,
                                      state=Build.REV_STATE_MAP[build_state]))
+            # Get buildArch subtasks and repo_id
             tasks = sync_tasks(session, build.package.collection, [build])
             if build.repo_id is None:
-                # Koji problem, no need to bother packagers with this
+                # This shouldn't normally happen. May be Koji problem.
+                # We cannot resolve build with no repo_id, so it's better to throw it away
                 session.log.info('Deleting build {0} because it has no repo_id'
                                  .format(build))
                 session.db.delete(build)
                 session.db.commit()
                 return
+            # Persist the tasks
             insert_koji_tasks(session, tasks)
+            # Lock package, so there are no concurrent state changes.
+            # Again, as with the previous locking, we need to be careful
+            # with property access and expiration
             session.db.expire(build.package)
-            # lock package so there are no concurrent state changes
-            # (locking order needs to be build -> package)
+            # To prevent deadlocks, locking order always needs to be "build, then package"
             package = session.db.query(Package).filter_by(id=package_id)\
                 .with_lockmode('update').one()
-            # reset priorities
+            # Reset priorities, delete UnappliedChanges
             clear_priority_data(session, [package])
-            # acquire previous state
-            # ! this needs to be done *before* updating the build state
+            # Acquire previous state, we need it for the previous state field of fedmsg
+            # This needs to be done *before* updating the build state.
             prev_state = package.msg_state_string
             build.state = build_state
+            # Bump build_priority if needed (most likely not)
             set_failed_build_priority(session, package, build)
-            # refresh package so it haves trigger updated fields
             session.db.flush()
+            # Re-fetch package so it has fields updated by triggers
             session.db.expire(package)
             new_state = package.msg_state_string
-            # unlock
+            # Unlock both build and package
             session.db.commit()
             if prev_state != new_state:
+                # Send fedmsg if there was a change
                 dispatch_event(
                     'package_state_change',
                     session=session,
@@ -341,18 +387,21 @@ def update_build_state(session, build, task_state):
                     new_state=new_state,
                 )
         else:
+            # The build is still running, but we can at least get the buildArch tasks and
+            # repo_id, so that resolver can already resolve its dependencies
             tasks = sync_tasks(session, build.package.collection, [build])
             insert_koji_tasks(session, tasks)
             session.db.commit()
     except (StaleDataError, ObjectDeletedError, IntegrityError):
-        # build was deleted concurrently
+        # Build was deleted concurrently by another process, nothing to do
         session.db.rollback()
 
 
 def refresh_repo_mappings(session):
     """
+    Only useful in secondary mode.
     Polls primary koji for createrepo tasks that have secondary counterparts
-    and updates their repo mapping in the database
+    and updates their repo mapping in the database.
     """
     primary = session.koji('primary')
     for mapping in session.db.query(RepoMapping)\
@@ -373,6 +422,17 @@ def refresh_repo_mappings(session):
 
 
 def set_build_repo_id(session, build, task, secondary_mode):
+    """
+    Set repo_id of a build according to the task. When in secondary mode, the repo_id is
+    replaced with corresponding repo_id in secondary Koji, in order to simplify resolver's
+    work (so that it can order builds by repo_id).
+
+    :param session: KoscheiBackendSession
+    :param build: Build
+    :param task: Koji taskInfo of a buildArch subtask
+    :param secondary_mode: whether the collection is in secondary mode
+    :return:
+    """
     if build.repo_id:
         return
     try:
@@ -437,6 +497,12 @@ def sync_tasks(session, collection, builds, real=False):
 
 
 def insert_koji_tasks(session, tasks):
+    """
+    Persists KojiTasks to the DB.
+
+    :param session: KoscheiBackendSession
+    :param tasks: The output of `sync_tasks` function.
+    """
     tasks = [task for build_task in tasks.values() for task in build_task]
     build_ids = [t.build_id for t in tasks]
     if build_ids:
@@ -458,8 +524,8 @@ def insert_koji_tasks(session, tasks):
 
 def refresh_packages(session):
     """
-    Refresh packages from Koji: add packages not yet known by Koschei
-    and update blocked flag.
+    Refresh package list from Koji. Add packages not yet known by Koschei
+    and update blocked flag of existing packages.
     """
     bases = {base.name: base for base
              in session.db.query(BasePackage.id, BasePackage.name)}
@@ -472,12 +538,15 @@ def refresh_packages(session):
         packages = session.db.query(Package.id, Package.name, Package.blocked)\
             .filter_by(collection_id=collection.id)\
             .all()
+        # Find packages which need to be blocked/unblocked
         to_update = [p.id for p in packages if p.blocked == (p.name in whitelisted)]
         if to_update:
             session.db.query(Package).filter(Package.id.in_(to_update))\
                 .update({'blocked': ~Package.blocked}, synchronize_session=False)
         existing_names = {p.name for p in packages}
+        # Find packages to be added
         to_add = []
+        # Add PackageBases
         for pkg_dict in koji_packages:
             name = pkg_dict['package_name']
             if name not in bases.keys():
@@ -486,6 +555,7 @@ def refresh_packages(session):
                 to_add.append(base)
         session.db.bulk_insert(to_add)
         to_add = []
+        # Add Packages
         for pkg_dict in koji_packages:
             name = pkg_dict['package_name']
             if name not in existing_names:
@@ -504,8 +574,11 @@ def _check_untagged_builds(session, collection, package_map, build_infos):
     """
     for info in build_infos:
         package = package_map.get(info['package_name'])
+        # info contains the last build for the package that Koji knows
         if package and util.is_build_newer(info, package.last_build):
-            # the last build (possibly more) we have was untagged/deleted
+            # The last build (possibly more) we have is newer than last build in Koji.
+            # That means it was untagged or deleted.
+            # Get the last build we have that was not untagged.
             last_valid_build_query = (
                 session.db.query(Build)
                 .filter(
@@ -518,9 +591,10 @@ def _check_untagged_builds(session, collection, package_map, build_infos):
             )
             last_valid_build = last_valid_build_query.first()
             if not last_valid_build:
-                # we don't have the build anymore, register it first
+                # We don't have the build anymore, register it again
                 register_real_builds(session, collection,
                                      [(package.id, info)])
+                # Now, it must find it as we've just inserted it
                 last_valid_build = last_valid_build_query.first()
             # set all following builds as untagged
             # last_build pointers get reset by the trigger
@@ -540,8 +614,10 @@ def _check_retagged_builds(session, collection, package_map, build_infos):
     """
     for info in build_infos:
         package = package_map.get(info['package_name'])
+        # info contains the last build for the package that Koji knows
         if package:
             (
+                # Set the same build in our DB as tagged. Most likely a no-op.
                 session.db.query(Build)
                 .filter(
                     (Build.package_id == package.id) &
@@ -559,6 +635,7 @@ def _check_new_real_builds(session, collection, package_map, build_infos):
     Checks Koji for latest builds of packages and registers possible
     new real builds.
     """
+    # Find task ids we have
     existing_task_ids = (
         session.db.query(Build.task_id)
         .join(Build.package)
@@ -566,11 +643,13 @@ def _check_new_real_builds(session, collection, package_map, build_infos):
         .filter(Build.real)
         .all_flat(set)
     )
+    # Find task ids we don't have and add them
     to_add = [info for info in build_infos if info['task_id'] not in existing_task_ids]
     if to_add:
         package_build_infos = []
         for info in to_add:
             package = package_map.get(info['package_name'])
+            # If the build is old, ignore it. It's of no use and might confuse other parts
             if (
                     package and
                     (package.tracked or collection.poll_untracked) and
@@ -607,6 +686,7 @@ def refresh_latest_builds(session):
         session.db.commit()
 
 
+# TODO remove as it seems unused
 def sync_tracked(session, tracked, collection_id=None):
     """
     Synchronize package tracked status. End result is that all
