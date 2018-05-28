@@ -225,6 +225,10 @@ class RepoResolver(Resolver):
         results = []
 
         build_group = self.get_build_group(collection, repo_id)
+        if build_group is None:
+            raise RuntimeError(
+                f"No build group found for {collection.name} at repo_id {repo_id}"
+            )
         gen = ((package, self.resolve_dependencies(sack, br, build_group))
                for package, br in zip(packages, brs))
         queue_size = get_config('dependency.resolver_queue_size')
