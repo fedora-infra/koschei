@@ -164,7 +164,7 @@ class Resolver(Service):
         """
         group = koji_util.get_build_group_cached(
             self.session,
-            self.session.koji('secondary'),
+            self.session.secondary_koji_for(collection),
             collection.build_tag,
             collection.build_group,
             repo_id,

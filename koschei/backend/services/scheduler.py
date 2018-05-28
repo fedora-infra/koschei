@@ -74,7 +74,7 @@ class Scheduler(Service):
                 package.collection.build_tag,
             )
             arches = koji_util.get_srpm_arches(
-                koji_session=self.session.koji('secondary'),
+                koji_session=self.session.secondary_koji_for(package.collection),
                 all_arches=all_arches,
                 nvra=package.srpm_nvra,
                 arch_override=package.arch_override,
