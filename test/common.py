@@ -152,8 +152,10 @@ class AbstractTest(unittest.TestCase):
 
                 def get_koji(koji_id):
                     assert koji_id in ('primary', 'secondary')
-                    if koji_id == 'secondary' and secondary_mode:
-                        return secondary_mock
+                    if koji_id == 'secondary':
+                        if secondary_mode:
+                            return secondary_mock
+                        return DummyKoji('secondary')
                     return primary_mock
 
                 with patch.object(self, 'koji', new_callable=lambda: get_koji):
