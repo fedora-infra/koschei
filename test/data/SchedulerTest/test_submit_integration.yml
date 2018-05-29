@@ -1,0 +1,1188 @@
+- method: getBuildConfig
+  args:
+  - f29-build
+  result:
+    arches: armv7hl i686 x86_64 aarch64 ppc64 ppc64le s390x
+    extra:
+      mock.package_manager: dnf
+    id: 3428
+    locked: false
+    maven_include_all: false
+    maven_support: false
+    name: f29-build
+    perm: null
+    perm_id: null
+- method: getRPMHeaders
+  kwargs:
+    headers:
+    - BUILDARCHS
+    - EXCLUDEARCH
+    - EXCLUSIVEARCH
+    rpmID:
+      arch: src
+      name: maven
+      release: 2.fc29
+      version: 3.5.3
+  result:
+    BUILDARCHS:
+    - noarch
+    - noarch
+    EXCLUDEARCH: []
+    EXCLUSIVEARCH: []
+- method: getChannel
+  args:
+  - default
+  result:
+    id: 1
+    name: default
+- method: listHosts
+  args:
+  - - armv7hl
+    - i686
+    - x86_64
+    - aarch64
+    - ppc64
+    - ppc64le
+    - s390x
+  - 1
+  kwargs:
+    enabled: true
+  result:
+  - arches: s390x
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 323
+    name: buildvm-s390x-08.s390.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 3933
+  - arches: ppc64
+    capacity: 2.0
+    comment: null
+    description: null
+    enabled: true
+    id: 340
+    name: buildvm-ppc64-16.ppc.fedoraproject.org
+    ready: false
+    task_load: 3.45566421125
+    user_id: 4078
+  - arches: ppc64
+    capacity: 2.0
+    comment: null
+    description: null
+    enabled: true
+    id: 342
+    name: buildvm-ppc64-18.ppc.fedoraproject.org
+    ready: false
+    task_load: 4.22049064875
+    user_id: 4080
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 60
+    name: buildvm-02.phx2.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 1998
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 61
+    name: buildvm-03.phx2.fedoraproject.org
+    ready: false
+    task_load: 5.42835828020833
+    user_id: 1999
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 62
+    name: buildvm-04.phx2.fedoraproject.org
+    ready: true
+    task_load: 1.5
+    user_id: 2000
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 63
+    name: buildvm-05.phx2.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 2152
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 64
+    name: buildvm-06.phx2.fedoraproject.org
+    ready: true
+    task_load: 1.5
+    user_id: 2153
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 65
+    name: buildvm-07.phx2.fedoraproject.org
+    ready: true
+    task_load: 2.6079133475
+    user_id: 2154
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 66
+    name: buildvm-08.phx2.fedoraproject.org
+    ready: true
+    task_load: 2.5
+    user_id: 2155
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 67
+    name: buildvm-09.phx2.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 2156
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 68
+    name: buildvm-10.phx2.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 2157
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 69
+    name: buildvm-11.phx2.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 2158
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 70
+    name: buildvm-12.phx2.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 2159
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 71
+    name: buildvm-13.phx2.fedoraproject.org
+    ready: true
+    task_load: 3.45566421125
+    user_id: 2160
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 72
+    name: buildvm-14.phx2.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 2161
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 73
+    name: buildvm-15.phx2.fedoraproject.org
+    ready: true
+    task_load: 1.57977721854167
+    user_id: 2162
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 74
+    name: buildvm-16.phx2.fedoraproject.org
+    ready: true
+    task_load: 1.5
+    user_id: 2163
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 75
+    name: buildvm-17.phx2.fedoraproject.org
+    ready: true
+    task_load: 3.0
+    user_id: 2170
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 76
+    name: buildvm-18.phx2.fedoraproject.org
+    ready: true
+    task_load: 3.0
+    user_id: 2171
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 77
+    name: buildvm-19.phx2.fedoraproject.org
+    ready: true
+    task_load: 1.5
+    user_id: 2172
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 78
+    name: buildvm-20.phx2.fedoraproject.org
+    ready: true
+    task_load: 1.5
+    user_id: 2173
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 79
+    name: buildvm-21.phx2.fedoraproject.org
+    ready: true
+    task_load: 1.5
+    user_id: 2174
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 80
+    name: buildvm-22.phx2.fedoraproject.org
+    ready: true
+    task_load: 3.45566421125
+    user_id: 2175
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 81
+    name: buildvm-23.phx2.fedoraproject.org
+    ready: false
+    task_load: 4.22049064875
+    user_id: 2176
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 82
+    name: buildvm-24.phx2.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 2177
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 83
+    name: buildvm-25.phx2.fedoraproject.org
+    ready: true
+    task_load: 1.5
+    user_id: 2178
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 84
+    name: buildvm-26.phx2.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 2179
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 85
+    name: buildvm-27.phx2.fedoraproject.org
+    ready: true
+    task_load: 1.5
+    user_id: 2180
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 86
+    name: buildvm-28.phx2.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 2181
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 87
+    name: buildvm-29.phx2.fedoraproject.org
+    ready: false
+    task_load: 4.01937498354167
+    user_id: 2182
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 88
+    name: buildvm-30.phx2.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 2183
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 89
+    name: buildvm-31.phx2.fedoraproject.org
+    ready: false
+    task_load: 5.72010128375
+    user_id: 2184
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 90
+    name: buildvm-32.phx2.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 2185
+  - arches: s390x
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 324
+    name: buildvm-s390x-09.s390.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 3934
+  - arches: aarch64
+    capacity: 2.0
+    comment: null
+    description: null
+    enabled: true
+    id: 332
+    name: buildhw-aarch64-04.arm.fedoraproject.org
+    ready: false
+    task_load: 2.6079133475
+    user_id: 4056
+  - arches: ppc64
+    capacity: 2.0
+    comment: null
+    description: null
+    enabled: true
+    id: 341
+    name: buildvm-ppc64-17.ppc.fedoraproject.org
+    ready: false
+    task_load: 2.51937498354167
+    user_id: 4079
+  - arches: x86_64 i386
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 100
+    name: buildhw-02.phx2.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 2199
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 200
+    name: buildvm-aarch64-03.arm.fedoraproject.org
+    ready: false
+    task_load: 6.0
+    user_id: 3608
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 202
+    name: buildvm-aarch64-05.arm.fedoraproject.org
+    ready: true
+    task_load: 1.96494467208333
+    user_id: 3610
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 204
+    name: buildvm-aarch64-07.arm.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 3612
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 206
+    name: buildvm-aarch64-09.arm.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 3614
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 208
+    name: buildvm-aarch64-11.arm.fedoraproject.org
+    ready: false
+    task_load: 5.72010128375
+    user_id: 3616
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 210
+    name: buildvm-aarch64-13.arm.fedoraproject.org
+    ready: true
+    task_load: 1.91839737604167
+    user_id: 3618
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 212
+    name: buildvm-aarch64-15.arm.fedoraproject.org
+    ready: false
+    task_load: 4.22049064875
+    user_id: 3620
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 216
+    name: buildvm-aarch64-19.arm.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 3624
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 218
+    name: buildvm-aarch64-21.arm.fedoraproject.org
+    ready: false
+    task_load: 6.0
+    user_id: 3626
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 221
+    name: buildvm-aarch64-24.arm.fedoraproject.org
+    ready: true
+    task_load: 2.51937498354167
+    user_id: 3629
+  - arches: ppc ppc64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 225
+    name: buildvm-ppc64-03.ppc.fedoraproject.org
+    ready: true
+    task_load: 3.92835828020833
+    user_id: 3668
+  - arches: ppc ppc64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 227
+    name: buildvm-ppc64-05.ppc.fedoraproject.org
+    ready: true
+    task_load: 3.16666627354167
+    user_id: 3670
+  - arches: ppc ppc64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 229
+    name: buildvm-ppc64-07.ppc.fedoraproject.org
+    ready: false
+    task_load: 5.72010128375
+    user_id: 3672
+  - arches: ppc ppc64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 231
+    name: buildvm-ppc64-09.ppc.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 3674
+  - arches: ppc64le
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 235
+    name: buildvm-ppc64le-03.ppc.fedoraproject.org
+    ready: true
+    task_load: 1.5
+    user_id: 3678
+  - arches: ppc64le
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 237
+    name: buildvm-ppc64le-05.ppc.fedoraproject.org
+    ready: true
+    task_load: 3.177980471875
+    user_id: 3680
+  - arches: ppc64le
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 239
+    name: buildvm-ppc64le-07.ppc.fedoraproject.org
+    ready: true
+    task_load: 1.5
+    user_id: 3682
+  - arches: ppc64le
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 241
+    name: buildvm-ppc64le-09.ppc.fedoraproject.org
+    ready: true
+    task_load: 1.5
+    user_id: 3684
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 153
+    name: buildhw-03.phx2.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 2948
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 154
+    name: buildhw-04.phx2.fedoraproject.org
+    ready: true
+    task_load: 1.5
+    user_id: 2949
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 155
+    name: buildhw-05.phx2.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 2950
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 156
+    name: buildhw-06.phx2.fedoraproject.org
+    ready: true
+    task_load: 1.0
+    user_id: 2951
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 157
+    name: buildhw-07.phx2.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 2952
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 158
+    name: buildhw-08.phx2.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 2953
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 159
+    name: buildhw-09.phx2.fedoraproject.org
+    ready: true
+    task_load: 1.0
+    user_id: 2954
+  - arches: i386 x86_64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 160
+    name: buildhw-10.phx2.fedoraproject.org
+    ready: true
+    task_load: 1.5
+    user_id: 2955
+  - arches: s390x
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 325
+    name: buildvm-s390x-10.s390.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 3935
+  - arches: ppc64
+    capacity: 2.0
+    comment: null
+    description: null
+    enabled: true
+    id: 343
+    name: buildvm-ppc64-19.ppc.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 4081
+  - arches: ppc64le
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 243
+    name: buildvm-ppc64le-11.ppc.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 3732
+  - arches: ppc64le
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 244
+    name: buildvm-ppc64le-12.ppc.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 3733
+  - arches: ppc64le
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 245
+    name: buildvm-ppc64le-13.ppc.fedoraproject.org
+    ready: false
+    task_load: 4.22049064875
+    user_id: 3734
+  - arches: ppc64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 276
+    name: buildvm-ppc64-11.ppc.fedoraproject.org
+    ready: false
+    task_load: 4.35789185625
+    user_id: 3765
+  - arches: ppc64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 277
+    name: buildvm-ppc64-12.ppc.fedoraproject.org
+    ready: false
+    task_load: 6.082816975
+    user_id: 3766
+  - arches: ppc64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 278
+    name: buildvm-ppc64-13.ppc.fedoraproject.org
+    ready: false
+    task_load: 5.72857306979167
+    user_id: 3767
+  - arches: ppc64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 279
+    name: buildvm-ppc64-14.ppc.fedoraproject.org
+    ready: false
+    task_load: 4.22049064875
+    user_id: 3768
+  - arches: ppc64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 280
+    name: buildvm-ppc64-15.ppc.fedoraproject.org
+    ready: true
+    task_load: 3.11366638604167
+    user_id: 3769
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 201
+    name: buildvm-aarch64-04.arm.fedoraproject.org
+    ready: false
+    task_load: 6.60897474166667
+    user_id: 3609
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 203
+    name: buildvm-aarch64-06.arm.fedoraproject.org
+    ready: true
+    task_load: 3.16666627354167
+    user_id: 3611
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 205
+    name: buildvm-aarch64-08.arm.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 3613
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 207
+    name: buildvm-aarch64-10.arm.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 3615
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 209
+    name: buildvm-aarch64-12.arm.fedoraproject.org
+    ready: false
+    task_load: 6.0
+    user_id: 3617
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 211
+    name: buildvm-aarch64-14.arm.fedoraproject.org
+    ready: true
+    task_load: 2.32389841458333
+    user_id: 3619
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 213
+    name: buildvm-aarch64-16.arm.fedoraproject.org
+    ready: true
+    task_load: 1.96494467208333
+    user_id: 3621
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 215
+    name: buildvm-aarch64-18.arm.fedoraproject.org
+    ready: false
+    task_load: 5.42835828020833
+    user_id: 3623
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 217
+    name: buildvm-aarch64-20.arm.fedoraproject.org
+    ready: false
+    task_load: 5.75783134083333
+    user_id: 3625
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 219
+    name: buildvm-aarch64-22.arm.fedoraproject.org
+    ready: true
+    task_load: 1.91839737604167
+    user_id: 3627
+  - arches: aarch64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 220
+    name: buildvm-aarch64-23.arm.fedoraproject.org
+    ready: true
+    task_load: 3.11366638604167
+    user_id: 3628
+  - arches: ppc ppc64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 226
+    name: buildvm-ppc64-04.ppc.fedoraproject.org
+    ready: true
+    task_load: 1.5
+    user_id: 3669
+  - arches: ppc ppc64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 228
+    name: buildvm-ppc64-06.ppc.fedoraproject.org
+    ready: false
+    task_load: 6.0
+    user_id: 3671
+  - arches: ppc ppc64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 230
+    name: buildvm-ppc64-08.ppc.fedoraproject.org
+    ready: true
+    task_load: 3.71346416375
+    user_id: 3673
+  - arches: ppc ppc64
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 232
+    name: buildvm-ppc64-10.ppc.fedoraproject.org
+    ready: true
+    task_load: 1.5
+    user_id: 3675
+  - arches: ppc64le
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 236
+    name: buildvm-ppc64le-04.ppc.fedoraproject.org
+    ready: false
+    task_load: 5.61708779875
+    user_id: 3679
+  - arches: ppc64le
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 238
+    name: buildvm-ppc64le-06.ppc.fedoraproject.org
+    ready: true
+    task_load: 1.5
+    user_id: 3681
+  - arches: ppc64le
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 240
+    name: buildvm-ppc64le-08.ppc.fedoraproject.org
+    ready: true
+    task_load: 2.31176601770833
+    user_id: 3683
+  - arches: ppc64le
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 242
+    name: buildvm-ppc64le-10.ppc.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 3685
+  - arches: ppc64le
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 281
+    name: buildvm-ppc64le-14.ppc.fedoraproject.org
+    ready: true
+    task_load: 3.45566421125
+    user_id: 3770
+  - arches: ppc64le
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 282
+    name: buildvm-ppc64le-15.ppc.fedoraproject.org
+    ready: false
+    task_load: 4.22049064875
+    user_id: 3771
+  - arches: s390x
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 326
+    name: buildvm-s390x-11.s390.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 3936
+  - arches: s390x
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 327
+    name: buildvm-s390x-12.s390.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 3937
+  - arches: ppc64le
+    capacity: 2.0
+    comment: null
+    description: null
+    enabled: true
+    id: 345
+    name: buildvm-ppc64le-16.ppc.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 4083
+  - arches: s390x
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 328
+    name: buildvm-s390x-13.s390.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 3938
+  - arches: ppc64le
+    capacity: 2.0
+    comment: null
+    description: null
+    enabled: true
+    id: 346
+    name: buildvm-ppc64le-17.ppc.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 4084
+  - arches: s390x
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 329
+    name: buildvm-s390x-14.s390.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 3939
+  - arches: ppc64le
+    capacity: 2.0
+    comment: null
+    description: null
+    enabled: true
+    id: 347
+    name: buildvm-ppc64le-18.ppc.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 4085
+  - arches: ppc64le
+    capacity: 2.0
+    comment: null
+    description: null
+    enabled: true
+    id: 348
+    name: buildvm-ppc64le-19.ppc.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 4086
+  - arches: s390x
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 310
+    name: buildvm-s390x-03.s390.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 3871
+  - arches: s390x
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 311
+    name: buildvm-s390x-04.s390.fedoraproject.org
+    ready: true
+    task_load: 3.45566421125
+    user_id: 3872
+  - arches: s390x
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 312
+    name: buildvm-s390x-05.s390.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 3873
+  - arches: s390x
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 313
+    name: buildvm-s390x-06.s390.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 3874
+  - arches: s390x
+    capacity: 4.0
+    comment: null
+    description: null
+    enabled: true
+    id: 314
+    name: buildvm-s390x-07.s390.fedoraproject.org
+    ready: true
+    task_load: 0.0
+    user_id: 3875
+- method: listTagged
+  args:
+  - f29-build
+  kwargs:
+    inherit: true
+    latest: true
+    package: maven
+  result:
+  - build_id: 1072874
+    completion_time: '2018-04-18 10:59:28.028023'
+    creation_event_id: 32758426
+    creation_time: '2018-04-18 10:55:11.022463'
+    epoch: 1
+    id: 1072874
+    name: maven
+    nvr: maven-3.5.3-2.fc29
+    owner_id: 2045
+    owner_name: mizdebsk
+    package_id: 11290
+    package_name: maven
+    release: 2.fc29
+    start_time: '2018-04-18 10:55:11.022463'
+    state: 1
+    tag_id: 3418
+    tag_name: f29
+    task_id: 26436673
+    version: 3.5.3
+    volume_id: 0
+    volume_name: DEFAULT
+- method: listRPMs
+  kwargs:
+    arches: src
+    buildID: 1072874
+  result:
+  - arch: src
+    build_id: 1072874
+    buildroot_id: 12165514
+    buildtime: 1524048961
+    epoch: 1
+    external_repo_id: 0
+    external_repo_name: INTERNAL
+    extra: null
+    id: 13776009
+    metadata_only: false
+    name: maven
+    nvr: maven-3.5.3-2.fc29
+    payloadhash: a4d249cbcf2648437442396115d1137a
+    release: 2.fc29
+    size: 2711568
+    version: 3.5.3
+- method: build
+  args:
+  - ../packages/maven/3.5.3/2.fc29/src/maven-3.5.3-2.fc29.src.rpm
+  - f29
+  - scratch: true
+  kwargs:
+    priority: 30
+  result: 27278005

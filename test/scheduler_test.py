@@ -20,7 +20,7 @@ from mock import Mock, patch
 from sqlalchemy import literal_column
 from datetime import datetime
 
-from test.common import DBTest
+from test.common import DBTest, with_koji_cassette
 from koschei.models import Build, Package
 from koschei.backend.services.scheduler import Scheduler
 
@@ -166,3 +166,29 @@ class SchedulerTest(DBTest):
         self.db.query(Package).filter_by(name='rnv').first().skip_resolution = True
         self.db.commit()
         self.assert_scheduled('rnv')
+
+    @with_koji_cassette
+    def test_submit_integration(self):
+        """Test submission without mocking koji_util"""
+        collection = self.prepare_collection('f29')
+        maven = self.prepare_package(
+            name='maven',
+            collection=collection,
+            manual_priority=10000,
+            resolved=True,
+        )
+        build = self.prepare_build(
+            package=maven,
+            state='complete',
+            version='3.5.3',
+            release='2.fc29',
+            started=datetime.now(),
+        )
+        scheduler = Scheduler(self.session)
+        scheduler.main()
+        new_build = maven.last_build
+        self.assertIsNot(build, new_build)
+        self.assertEqual(Build.RUNNING, new_build.state)
+        self.assertEqual(27278005, new_build.task_id)
+        self.assertEqual('3.5.3', new_build.version)
+        self.assertEqual('2.fc29', new_build.release)
