@@ -433,6 +433,16 @@ def patch_config(key, value):
         config_dict[last] = old_value
 
 
+def with_config(key, value):
+    def decorator(fn):
+        @wraps(fn)
+        def decorated(*args, **kwargs):
+            with patch_config(key, value):
+                return fn(*args, **kwargs)
+        return decorated
+    return decorator
+
+
 def with_koji_cassette(*cassettes):
     """
     Decorator version of `AbstractTest.koji_cassette`, see its documentation.
