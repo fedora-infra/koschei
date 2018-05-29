@@ -259,8 +259,11 @@ class BackendTest(DBTest):
 
     @with_koji_cassette
     def test_refresh_packages(self):
-        eclipse = self.prepare_package('eclipse')
-        rnv = self.prepare_package('rnv', blocked=False)
+        # XXX there should not be global collection
+        self.db.delete(self.collection)
+        collection = self.prepare_collection('f29')
+        eclipse = self.prepare_package('eclipse', collection=collection)
+        rnv = self.prepare_package('rnv', collection=collection, blocked=False)
         backend.refresh_packages(self.session)
         tools = self.db.query(Package).filter_by(name='maven-doxia-tools').one()
         self.assertFalse(eclipse.blocked)
