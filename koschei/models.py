@@ -488,16 +488,6 @@ class KojiTask(Base):
         return states[self.state]
 
     @property
-    def _koji_config(self):
-        """
-        :return: Koschei's Koji config dict for corresponding instance.
-        """
-        # pylint:disable=no-member
-        if self.build.real:
-            return get_config('secondary_koji_config')
-        return get_config('koji_config')
-
-    @property
     def results_url(self):
         """
         :return: Absolute URL to Koji task results (logs) for this task
@@ -505,7 +495,7 @@ class KojiTask(Base):
         # pathinfo = koji.PathInfo(topdir=self._koji_config['topurl'])
         # return pathinfo.task(self.task_id)
         return '{}/work/tasks/{}/{}'.format(
-            self._koji_config['topurl'],
+            self.build.koji_config['topurl'],
             self.task_id % 10000,
             self.task_id,
         )
@@ -516,7 +506,7 @@ class KojiTask(Base):
          :return: Absolute URL to Koji task info page
          """
         return '{}/taskinfo?taskID={}'.format(
-            self._koji_config['weburl'],
+            self.build.koji_config['weburl'],
             self.task_id,
         )
 
@@ -716,15 +706,21 @@ class Build(Base):
         }
 
     @property
+    def koji_config(self):
+        """
+        :return: Koschei's Koji config dict for corresponding instance.
+        """
+        # pylint:disable=no-member
+        if self.real and self.package.collection.secondary_mode:
+            return get_config('secondary_koji_config')
+        return get_config('koji_config')
+
+    @property
     def taskinfo_url(self):
         """
         :return: Absolute URL to Koji task info page for the build's main task
         """
-        if self.real:
-            koji_config = get_config('secondary_koji_config')
-        else:
-            koji_config = get_config('koji_config')
-        return '{}/taskinfo?taskID={}'.format(koji_config['weburl'], self.task_id)
+        return '{}/taskinfo?taskID={}'.format(self.koji_config['weburl'], self.task_id)
 
     def __repr__(self):
         # pylint: disable=W1306

@@ -27,6 +27,46 @@ from koschei.models import (
 from test.common import DBTest
 
 
+class BuildURLTest(DBTest):
+    PRI_BUILD_URL = 'https://primary-koji.test/koji/taskinfo?taskID=123456'
+    SEC_BUILD_URL = 'https://secondary-koji.test/koji/taskinfo?taskID=123456'
+    PRI_TASK_URL = 'https://primary-koji.test/koji/taskinfo?taskID=456789'
+    SEC_TASK_URL = 'https://secondary-koji.test/koji/taskinfo?taskID=456789'
+    PRI_RESULT_URL = 'https://primary-koji.test/work/tasks/6789/456789'
+    SEC_RESULT_URL = 'https://secondary-koji.test/work/tasks/6789/456789'
+
+    def prepare_data(self, *, secondary_mode, real):
+        collection = self.prepare_collection('f29', secondary_mode=secondary_mode)
+        package = self.prepare_package('rnv', collection=collection)
+        build = self.prepare_build(package, real=real, task_id=123456, state='complete')
+        task = self.prepare_task(build, task_id=456789)
+        return build, task
+
+    def test_scratch_build_primary_url(self):
+        build, task = self.prepare_data(secondary_mode=False, real=False)
+        self.assertEqual(self.PRI_BUILD_URL, build.taskinfo_url)
+        self.assertEqual(self.PRI_TASK_URL, task.taskinfo_url)
+        self.assertEqual(self.PRI_RESULT_URL, task.results_url)
+
+    def test_scratch_build_secondary_url(self):
+        build, task = self.prepare_data(secondary_mode=True, real=False)
+        self.assertEqual(self.PRI_BUILD_URL, build.taskinfo_url)
+        self.assertEqual(self.PRI_TASK_URL, task.taskinfo_url)
+        self.assertEqual(self.PRI_RESULT_URL, task.results_url)
+
+    def test_real_build_primary_url(self):
+        build, task = self.prepare_data(secondary_mode=False, real=True)
+        self.assertEqual(self.PRI_BUILD_URL, build.taskinfo_url)
+        self.assertEqual(self.PRI_TASK_URL, task.taskinfo_url)
+        self.assertEqual(self.PRI_RESULT_URL, task.results_url)
+
+    def test_real_build_secondary_url(self):
+        build, task = self.prepare_data(secondary_mode=True, real=True)
+        self.assertEqual(self.SEC_BUILD_URL, build.taskinfo_url)
+        self.assertEqual(self.SEC_TASK_URL, task.taskinfo_url)
+        self.assertEqual(self.SEC_RESULT_URL, task.results_url)
+
+
 class GroupTest(DBTest):
     def test_group_name_format(self):
         group1 = self.prepare_group('foo', content=['foo'])

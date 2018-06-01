@@ -316,6 +316,21 @@ class DBTest(AbstractTest):
         self.db.commit()
         return pkgs
 
+    def prepare_task(self, build, state=1, arch='x86_64', started=None, task_id=None):
+        if not task_id:
+            task_id = self.task_id_counter
+            self.task_id_counter += 1
+        task = KojiTask(
+            build=build,
+            state=state,
+            arch=arch,
+            task_id=task_id,
+            started=started or datetime.fromtimestamp(task_id),
+        )
+        self.db.add(task)
+        self.db.commit()
+        return task
+
     def prepare_build(self, package, state=None, repo_id=None, resolved=True,
                       arches=(), task_id=None, started=None, untagged=False,
                       epoch=None, version='1', release='1.fc25', real=False):

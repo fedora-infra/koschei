@@ -163,6 +163,6 @@ class KojiUtilOtherTest(AbstractTest):
         self.assertEqual('f29-build', desc.build_tag)
         self.assertEqual(888027, desc.repo_id)
         self.assertEqual(
-            'koji.fake/repos/f29-build/888027/x86_64',
+            'https://primary-koji.test/repos/f29-build/888027/x86_64',
             desc.url,
         )
