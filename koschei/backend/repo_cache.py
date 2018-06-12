@@ -31,7 +31,6 @@ from koschei.backend import repo_util
 from koschei.backend.file_cache import FileCache
 
 
-# TODO remove, seems unused
 class CacheVersionMismatch(Exception):
     pass
 

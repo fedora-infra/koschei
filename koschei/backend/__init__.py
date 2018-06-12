@@ -684,23 +684,3 @@ def refresh_latest_builds(session):
         _check_untagged_builds(session, collection, package_map, build_infos)
         _check_retagged_builds(session, collection, package_map, build_infos)
         session.db.commit()
-
-
-# TODO remove as it seems unused
-def sync_tracked(session, tracked, collection_id=None):
-    """
-    Synchronize package tracked status. End result is that all
-    specified packages are present in Koschei and are set to be
-    tracked, and all other packages are not tracked.
-    """
-    packages = session.db.query(Package)
-    if collection_id is not None:
-        packages = packages.filter_by(collection_id=collection_id)
-    packages = packages.all()
-    to_update = [p.id for p in packages if p.tracked != (p.name in tracked)]
-    if to_update:
-        query = session.db.query(Package).filter(Package.id.in_(to_update))
-        query.lock_rows()
-        query.update({'tracked': ~Package.tracked}, synchronize_session=False)
-        session.db.expire_all()
-        session.db.flush()
