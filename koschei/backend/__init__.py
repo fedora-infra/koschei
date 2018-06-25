@@ -601,7 +601,10 @@ def _check_untagged_builds(session, collection, package_map, build_infos):
             (
                 session.db.query(Build)
                 .filter(Build.package_id == package.id)
-                .filter(Build.started > last_valid_build.started)
+                .filter(
+                    Build.started > last_valid_build.started
+                    if last_valid_build else true()
+                )
                 .update({'untagged': True})
             )
             session.log.info("{} is no longer tagged".format(package.last_build))
