@@ -237,6 +237,30 @@ class BackendTest(DBTest):
         self.assertIs(False, log4j_build.untagged)
         self.assertIs(log4j_build, log4j.last_build)
 
+    # regression test for #263
+    @with_koji_cassette
+    def test_refresh_latest_builds_latest_no_repo_id(self):
+        self.db.delete(self.collection)
+        collection = self.prepare_collection('f29')
+
+        # modified by hand to contain no repo_id
+        rnv = self.prepare_package('rnv', collection=collection)
+        # artificial build to trigger untagging
+        rnv_build = self.prepare_build(
+            rnv, 'failed', version='1.7.11', release='30.fc29',
+            task_id=250385580, started='2019-02-14 11:16:55',
+        )
+
+        with patch('koschei.backend.dispatch_event'):
+            backend.refresh_latest_builds(self.session)
+            self.db.commit()
+
+        # It should untag the build and leave no latest build set
+        self.assertIs(True, rnv_build.untagged)
+        self.assertIsNone(rnv.last_build_id)
+        self.assertIsNone(rnv.last_complete_build_id)
+        self.assertIsNone(rnv.last_complete_build_state)
+
     @with_koji_cassette
     def test_cancel(self):
         self.prepare_packages('rnv')
