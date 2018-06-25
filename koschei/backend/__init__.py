@@ -22,17 +22,17 @@ import koji
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
-from sqlalchemy.sql import insert
+from sqlalchemy.sql import true
 
 from koschei import util
 from koschei.session import KoscheiSession
 from koschei.config import get_config
 from koschei.backend import koji_util
 from koschei.backend.koji_util import itercall
-from koschei.db import Session, get_engine
+from koschei.db import Session
 from koschei.models import (
-    Build, UnappliedChange, KojiTask, Package, PackageGroup,
-    PackageGroupRelation, BasePackage, Collection, RepoMapping, LogEntry,
+    Build, UnappliedChange, KojiTask, Package, BasePackage, Collection, RepoMapping,
+    LogEntry,
 )
 from koschei.plugin import dispatch_event
 
