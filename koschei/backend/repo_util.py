@@ -94,5 +94,5 @@ def load_sack(repo_dir, repo_descriptor, download=False):
     sack = hawkey.Sack(arch=for_arch, cachedir=cache_dir)
     repo = get_repo(repo_dir, repo_descriptor, download)
     if repo:
-        sack.load_yum_repo(repo, load_filelists=True, build_cache=download)
+        sack.load_repo(repo, load_filelists=True, build_cache=download)
         return sack

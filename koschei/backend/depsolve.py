@@ -71,13 +71,17 @@ def run_goal(sack, br, group):
             problems.append("No package found for: {}".format(r))
         else:
             goal.install(select=sltr)
-    if not problems:
-        kwargs = {}
-        if get_config('dependency.ignore_weak_deps'):
-            kwargs = {'ignore_weak_deps': True}
-        resolved = goal.run(**kwargs)
-        return resolved, goal.problems, goal.list_installs() if resolved else None
-    return False, problems, None
+    kwargs = {}
+    if get_config('dependency.ignore_weak_deps'):
+        kwargs = {'ignore_weak_deps': True}
+    goal.run(**kwargs)
+    for first, *rest in goal.problem_rules():
+        problems.append(
+            f"Problem: {first}" +
+            ''.join(f'\n - {problem}' for problem in rest)
+        )
+    resolved = not problems
+    return resolved, problems, goal.list_installs() if resolved else None
 
 
 class DependencyWithDistance(object):

@@ -24,12 +24,12 @@ and adds few model specific global functions to templates.
 
 import re
 
-from flask import url_for
+from flask import url_for, escape
 from jinja2 import Markup
 
 from koschei.frontend.base import app
 from koschei.models import (
-    Package, Build, ResolutionChange, AppliedChange, UnappliedChange,
+    Package, Build, ResolutionChange, AppliedChange, UnappliedChange, ResolutionProblem,
 )
 
 
@@ -153,6 +153,13 @@ def resolution_change_css_class(resolution_change):
 
 
 ResolutionChange.css_class = property(resolution_change_css_class)
+
+
+def problem_html(self):
+    return str(escape(str(self))).replace('\n', '<br>')
+
+
+ResolutionProblem.__html__ = problem_html
 
 
 EVR_SEPARATORS_RE = re.compile(r'([-._~])')
