@@ -9,8 +9,8 @@ DECLARE
     b_seg varchar;
 BEGIN
     IF a = b THEN RETURN 0; END IF;
-    a_segments := array(SELECT (regexp_matches(a, '(\d+|[a-zA-Z]+|~)', 'g'))[1]);
-    b_segments := array(SELECT (regexp_matches(b, '(\d+|[a-zA-Z]+|~)', 'g'))[1]);
+    a_segments := array(SELECT (regexp_matches(a, '(\d+|[a-zA-Z]+|[~^])', 'g'))[1]);
+    b_segments := array(SELECT (regexp_matches(b, '(\d+|[a-zA-Z]+|[~^])', 'g'))[1]);
     a_len := array_length(a_segments, 1);
     b_len := array_length(b_segments, 1);
     FOR i IN 1..coalesce(least(a_len, b_len) + 1, 0) LOOP
@@ -36,6 +36,12 @@ BEGIN
             END IF;
         ELSIF b_seg = '~' THEN
             RETURN 1;
+        ELSIF a_seg = '^' THEN
+            IF b_seg != '^' THEN
+                RETURN 1;
+            END IF;
+        ELSIF b_seg = '^' THEN
+            RETURN -1;
         END IF;
         IF a_seg != b_seg THEN
             IF a_seg < b_seg THEN RETURN -1; ELSE RETURN 1; END IF;
@@ -43,6 +49,8 @@ BEGIN
     END LOOP;
     IF b_segments[a_len + 1] = '~' THEN RETURN 1; END IF;
     IF a_segments[b_len + 1] = '~' THEN RETURN -1; END IF;
+    IF b_segments[a_len + 1] = '^' THEN RETURN -1; END IF;
+    IF a_segments[b_len + 1] = '^' THEN RETURN 1; END IF;
     IF a_len > b_len THEN RETURN 1; END IF;
     IF a_len < b_len THEN RETURN -1; END IF;
     RETURN 0;
