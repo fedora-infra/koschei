@@ -1,0 +1,19 @@
+- import_playbook: pod.yml
+
+- name: create db
+  hosts: db:!running
+  tasks:
+    - name: spin up database container
+      local_action: shell podman run --name db --pod koschei-dev -d -e POSTGRES_USER=koschei postgres
+    - name: wait for database server to start up
+      local_action: wait_for port=5432 delay=2
+    - name: initialize koschei database
+      local_action: shell podman run --rm --pod koschei-dev -e SUDO_USER=koschei-admin koschei koschei-admin create-db
+    - name: create initial collection
+      local_action: shell podman run --rm --pod koschei-dev -e SUDO_USER=koschei-admin koschei koschei-admin create-collection rawhide --display-name Rawhide --target rawhide --poll-untracked false
+
+- name: create frontend
+  hosts: frontend:!running
+  tasks:
+    - name: spin up frontend container
+      local_action: shell podman run --name frontend --pod koschei-dev -d koschei koschei-frontend

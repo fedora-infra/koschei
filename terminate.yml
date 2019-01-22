@@ -1,0 +1,7 @@
+- import_playbook: pod.yml
+
+- name: terminate running containers
+  hosts: containers
+  tasks:
+    - name: stop and remove running container
+      local_action: shell podman rm -f "{{ container.ID }}"
