@@ -1,0 +1,26 @@
+- name: deploy koschei locally
+  hosts: localhost
+  tasks:
+    - name: gather facts about pod
+      shell: podman pod inspect koschei-dev
+      register: facts
+      changed_when: false
+      failed_when: facts.rc not in (0, 125)
+
+    - name: create pod
+      shell: podman pod create --name koschei-dev -p 8080 -p 5432
+      when: facts.rc == 125
+
+    - name: gather facts about containers
+      shell: "podman inspect{% for c in (facts.stdout|from_json).Containers %}{% if c.id != (facts.stdout|from_json).State.infraContainerID %} {{ c.id }}{% endif %}{% endfor %}"
+      register: inspect
+      when: facts.rc == 0 and (facts.stdout|from_json).Containers|length > 1
+      changed_when: false
+
+    - name: add containers to dynamic inventory
+      add_host: name="{{ item.Name }}" container="{{ item }}" groups="containers,{{ item.State.Status }}"
+      when: facts.rc == 0 and (facts.stdout|from_json).Containers|length > 1
+      changed_when: false
+      with_items: "{{ (inspect.stdout | from_json) }}"
+      loop_control:
+        label: "{{ item.Name }}, state={{ item.State.Status }}"
