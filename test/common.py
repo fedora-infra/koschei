@@ -291,7 +291,7 @@ class DBTest(AbstractTest):
         self.db.commit()
         return collection
 
-    def prepare_package(self, name=None, collection=None, **kwargs):
+    def prepare_package(self, name=None, collection=None, tracked=True, **kwargs):
         if 'collection_id' not in kwargs:
             if collection is None:
                 collection = self.collection
@@ -301,7 +301,7 @@ class DBTest(AbstractTest):
         base = self.db.query(BasePackage).filter_by(name=name).first()
         if not base:
             base = BasePackage(name=name)
-        pkg = Package(name=name, base=base, collection=collection, **kwargs)
+        pkg = Package(name=name, base=base, collection=collection, tracked=tracked, **kwargs)
         self.db.add(pkg)
         self.db.commit()
         return pkg

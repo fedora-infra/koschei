@@ -297,7 +297,8 @@ class Package(Base):
     # when user explicitly asks for them, their builds are polled depending on
     # `poll_untracked` attribute of the collection. They are not resolved and no builds
     # submitted for them.
-    tracked = Column(Boolean, nullable=False, server_default=true())
+    # TODO migrations
+    tracked = Column(Boolean, nullable=False, server_default=false())
     # Whether the package is blocked in Koji. Blocked packages should not be considered by
     # anything in Koschei. They're kept for the case if they become unblocked.
     blocked = Column(Boolean, nullable=False, server_default=false())
