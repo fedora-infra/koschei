@@ -428,7 +428,7 @@ class CreateOrEditCollectionCommand(object):
                             "First collection becomes the default")
         parser.add_argument('--build-group',
                             help="Build group name")
-        parser.add_argument('--poll-untracked',
+        parser.add_argument('--poll-untracked', type=bool,
                             help="Whether to poll builds for untracked packages. "
                             "Defaults to true")
         parser.add_argument('--bugzilla-product',
