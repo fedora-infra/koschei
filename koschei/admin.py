@@ -41,7 +41,9 @@ class KoscheiAdminSession(backend.KoscheiBackendSession):
         self.log = logging.getLogger('koschei.admin')
 
     def log_user_action(self, message, **kwargs):
-        username = os.environ.get('SUDO_USER', pwd.getpwuid(os.getuid()).pw_name)
+        username = os.environ.get('SUDO_USER')
+        if not username:
+            username = pwd.getpwuid(os.getuid()).pw_name
         user = get_or_create(self.db, User, name=username)
         self.db.add(LogEntry(environment='admin', user=user, message=message, **kwargs))
         print(message)
