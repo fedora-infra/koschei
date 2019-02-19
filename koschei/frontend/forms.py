@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2016 Red Hat, Inc.
+# Copyright (C) 2014-2019 Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@ This module defines all non-plugin Flask-WTF-based forms used by frontend.
 
 import re
 
-from flask_wtf import Form
+from flask_wtf import FlaskForm
 from wtforms import (
     StringField, TextAreaField, IntegerField, BooleanField,
 )
@@ -132,7 +132,7 @@ class NonEmptyList(object):
             raise ValidationError(self.message)
 
 
-class EmptyForm(Form):
+class EmptyForm(FlaskForm):
     """
     Base of all our forms. Can be used on its own as an empty form that performs CSRF
     validation on submit (for things like cancel or delete buttons).
