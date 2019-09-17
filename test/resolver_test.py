@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2016  Red Hat, Inc.
+# Copyright (C) 2014-2019  Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@ from unittest import skipIf
 
 import hawkey
 import koji
+from fedora_messaging.api import Message
 from contextlib import contextmanager
 from mock import Mock, patch
 
@@ -93,7 +94,7 @@ class ResolverTest(DBTest):
                   return_value=repo_info), \
             patch('koschei.backend.koji_util.create_repo_descriptor',
                   return_value=descriptor):
-            with patch('fedmsg.publish') as fedmsg_mock:
+            with patch('fedora_messaging.api.publish') as fedmsg_mock:
                 yield fedmsg_mock
 
     def prepare_foo_build(self, repo_id=123, version='4'):
@@ -106,14 +107,15 @@ class ResolverTest(DBTest):
 
     def assert_collection_fedmsg_emitted(self, fedmsg_mock, prev_state, new_state):
         fedmsg_mock.assert_called_once_with(
-            modname='koschei',
-            msg={'old': prev_state,
-                 'new': new_state,
-                 'koji_instance': 'primary',
-                 'collection': 'f25',
-                 'collection_name': 'Fedora Rawhide',
-                 'repo_id': self.collection.latest_repo_id},
-            topic='collection.state.change'
+            Message(
+                topic='koschei.collection.state.change',
+                body={'old': prev_state,
+                      'new': new_state,
+                      'koji_instance': 'primary',
+                      'collection': 'f25',
+                      'collection_name': 'Fedora Rawhide',
+                      'repo_id': self.collection.latest_repo_id},
+            )
         )
 
     def test_process_build(self):
@@ -314,17 +316,18 @@ class ResolverTest(DBTest):
             self.assertFalse(result.resolved)
             self.assertIn('nonexistent', ''.join(map(str, result.problems)))
             fedmsg_mock.assert_called_once_with(
-                modname='koschei',
-                msg={'koji_instance': 'primary',
-                     'repo': 'f25',
-                     'old': 'ok',
-                     'name': 'foo',
-                     'groups': ['bar'],
-                     'collection_name':
-                     'Fedora Rawhide',
-                     'new': 'unresolved',
-                     'collection': 'f25'},
-                topic='package.state.change',
+                Message(
+                    topic='koschei.package.state.change',
+                    body={'koji_instance': 'primary',
+                          'repo': 'f25',
+                          'old': 'ok',
+                          'name': 'foo',
+                          'groups': ['bar'],
+                          'collection_name':
+                          'Fedora Rawhide',
+                          'new': 'unresolved',
+                          'collection': 'f25'},
+                )
             )
 
         # third run, still fail, should not produce additional RR
@@ -356,17 +359,18 @@ class ResolverTest(DBTest):
             self.assertTrue(result.resolved)
             self.assertEqual([], result.problems)
             fedmsg_mock.assert_called_once_with(
-                modname='koschei',
-                msg={'koji_instance': 'primary',
-                     'repo': 'f25',
-                     'old': 'unresolved',
-                     'name': 'foo',
-                     'groups': ['bar'],
-                     'collection_name':
-                     'Fedora Rawhide',
-                     'new': 'ok',
-                     'collection': 'f25'},
-                topic='package.state.change',
+                Message(
+                    topic='koschei.package.state.change',
+                    body={'koji_instance': 'primary',
+                          'repo': 'f25',
+                          'old': 'unresolved',
+                          'name': 'foo',
+                          'groups': ['bar'],
+                          'collection_name':
+                          'Fedora Rawhide',
+                          'new': 'ok',
+                          'collection': 'f25'},
+                )
             )
 
         # sixth run, shouldn't produce additional RR
