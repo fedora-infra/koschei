@@ -17,7 +17,7 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-import fedmsg
+import fedora_messaging.api as fedmsg
 
 from koschei import plugin, backend
 from koschei.config import get_config
@@ -58,8 +58,10 @@ class Watcher(Service):
                 )
 
     def main(self):
-        for _, _, topic, msg in fedmsg.tail_messages():
+        def callback(message):
             self.notify_watchdog()
+            topic = message.topic
+            msg = {'msg': message.body}
             try:
                 if topic.startswith(get_config('fedmsg.topic') + '.'):
                     self.consume(topic, msg)
@@ -67,3 +69,4 @@ class Watcher(Service):
             finally:
                 self.db.rollback()
             self.memory_check()
+        fedmsg.consume(callback)

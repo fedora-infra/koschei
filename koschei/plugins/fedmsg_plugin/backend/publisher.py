@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2016  Red Hat, Inc.
+# Copyright (C) 2014-2019  Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,8 +15,9 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 # Author: Michael Simacek <msimacek@redhat.com>
+# Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-import fedmsg
+import fedora_messaging.api as fedmsg
 
 from koschei.config import get_config
 from koschei.plugin import listen_event
@@ -25,8 +26,12 @@ from koschei.plugin import listen_event
 def publish_fedmsg(session, message):
     if not get_config('fedmsg-publisher.enabled', False):
         return
+    message = fedmsg.Message(
+        topic='{modname}.{topic}'.format(**message),
+        body=message['msg'],
+    )
     session.log.info('Publishing fedmsg:\n' + str(message))
-    fedmsg.publish(**message)
+    fedmsg.publish(message)
 
 
 @listen_event('package_state_change')

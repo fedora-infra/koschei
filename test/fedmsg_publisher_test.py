@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2016 Red Hat, Inc.
+# Copyright (C) 2014-2019 Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 
 from mock import patch
 from test.common import DBTest
+from fedora_messaging.api import Message
 from koschei import plugin
 from koschei.models import PackageGroup, PackageGroupRelation
 
@@ -31,37 +32,43 @@ class FedmsgSenderTest(DBTest):
         package = self.prepare_package('rnv')
         self.prepare_group('c', content=['rnv'])
         self.prepare_group('xml', namespace='foo', content=['rnv'])
-        with patch('fedmsg.publish') as publish:
+        with patch('fedora_messaging.api.publish') as publish:
             plugin.dispatch_event('package_state_change', self.session, package=package,
                                   prev_state='failed', new_state='ok')
-            publish.assert_called_once_with(topic='package.state.change',
-                                            modname='koschei',
-                                            msg={'name': 'rnv',
-                                                 'old': 'failed',
-                                                 'new': 'ok',
-                                                 'repo': 'f25',
-                                                 'collection': 'f25',
-                                                 'collection_name': 'Fedora Rawhide',
-                                                 'koji_instance': 'primary',
-                                                 'groups': ['c', 'foo/xml']})
+            publish.assert_called_once_with(
+                Message(
+                    topic='koschei.package.state.change',
+                    body={'name': 'rnv',
+                          'old': 'failed',
+                          'new': 'ok',
+                          'repo': 'f25',
+                          'collection': 'f25',
+                          'collection_name': 'Fedora Rawhide',
+                          'koji_instance': 'primary',
+                          'groups': ['c', 'foo/xml']}
+                )
+            )
             publish.reset_mock()
             plugin.dispatch_event('collection_state_change', self.session, collection=package.collection,
                                   prev_state='unresolved', new_state='ok')
-            publish.assert_called_once_with(topic='collection.state.change',
-                                            modname='koschei',
-                                            msg={'old': 'unresolved',
-                                                 'new': 'ok',
-                                                 'collection': 'f25',
-                                                 'collection_name': 'Fedora Rawhide',
-                                                 'repo_id': 123,
-                                                 'koji_instance': 'primary'})
+            publish.assert_called_once_with(
+                Message(
+                    topic='koschei.collection.state.change',
+                    body={'old': 'unresolved',
+                          'new': 'ok',
+                          'collection': 'f25',
+                          'collection_name': 'Fedora Rawhide',
+                          'repo_id': 123,
+                          'koji_instance': 'primary'}
+                )
+            )
 
 
     def test_same_state(self):
         package = self.prepare_package('rnv')
         self.prepare_group('c', content=['rnv'])
         self.prepare_group('xml', namespace='foo', content=['rnv'])
-        with patch('fedmsg.publish') as publish:
+        with patch('fedora_messaging.api.publish') as publish:
             plugin.dispatch_event('package_state_change', self.session, package=package,
                                   prev_state='ok', new_state='ok')
             self.assertFalse(publish.called)

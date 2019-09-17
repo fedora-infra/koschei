@@ -26,7 +26,7 @@ BuildRequires:  python3-koji
 BuildRequires:  python3-hawkey
 BuildRequires:  python3-librepo
 BuildRequires:  python3-rpm
-BuildRequires:  python3-fedmsg-core
+BuildRequires:  python3-fedora-messaging
 BuildRequires:  python3-psycopg2
 BuildRequires:  python3-flask
 BuildRequires:  python3-flask-sqlalchemy
@@ -117,8 +117,7 @@ Requires:       python3-requests
 Summary:        Fedora-specific Koschei backend plugins
 Requires:       %{name}-backend = %{version}-%{release}
 Requires:       %{name}-common-fedora = %{version}-%{release}
-Requires:       python3-fedmsg-core
-Requires:       python3-fedmsg-meta-fedora-infrastructure
+Requires:       python3-fedora-messaging
 
 Requires(post): systemd
 Requires(preun): systemd
