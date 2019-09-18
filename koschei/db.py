@@ -69,7 +69,7 @@ class Query(sqlalchemy.orm.Query):
         """
         mapper = self._only_full_mapper_zero("lock_rows")
         return self.order_by(*mapper.primary_key)\
-            .with_lockmode('update')\
+            .with_for_update()\
             .all()
 
     def all_flat(self, ctor=list):

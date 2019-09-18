@@ -310,7 +310,7 @@ class RepoResolver(Resolver):
             self.db.query(Package.id)
             .filter(Package.id.in_(package_ids))
             .order_by(Package.id)  # ordering to prevent deadlocks
-            .with_lockmode('update')
+            .with_for_update()
             .all()
         )
 

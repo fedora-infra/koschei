@@ -320,7 +320,7 @@ def update_build_state(session, build, task_state):
             package_id = build.package_id
             session.db.expire_all()
             build = session.db.query(Build).filter_by(id=build_id)\
-                .with_lockmode('update').first()
+                .with_for_update().first()
             if not build or build.state == build_state:
                 # Another process did the job already in parallel, nothing to do
                 session.db.rollback()
@@ -362,7 +362,7 @@ def update_build_state(session, build, task_state):
             session.db.expire(build.package)
             # To prevent deadlocks, locking order always needs to be "build, then package"
             package = session.db.query(Package).filter_by(id=package_id)\
-                .with_lockmode('update').one()
+                .with_for_update().one()
             # Reset priorities, delete UnappliedChanges
             clear_priority_data(session, [package])
             # Acquire previous state, we need it for the previous state field of fedmsg
