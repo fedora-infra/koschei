@@ -93,7 +93,7 @@ class KoscheiDbSession(sqlalchemy.orm.session.Session):
 
     def get_bind(self, mapper=None, clause=None):
         if not self.__connection:
-            self.__connection = self.__engine.contextual_connect()
+            self.__connection = self.__engine.connect()
         return self.__connection
 
     def close_connection(self):
