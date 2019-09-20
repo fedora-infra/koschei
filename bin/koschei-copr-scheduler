@@ -1,0 +1,6 @@
+#!/bin/bash
+set -e
+
+. koschei-config backend
+
+exec python3 -m koschei.backend.main copr_scheduler "${@}"

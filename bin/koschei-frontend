@@ -1,0 +1,6 @@
+#!/bin/sh
+set -e
+
+. koschei-config frontend
+
+exec httpd -DNO_DETACH -DFOREGROUND -f /usr/share/koschei/httpd.conf "${@}"
