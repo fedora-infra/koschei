@@ -1,0 +1,6 @@
+#!/bin/bash
+set -e
+
+. koschei-config backend admin
+
+exec /usr/share/koschei/admin.py "${@}"

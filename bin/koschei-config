@@ -1,0 +1,15 @@
+#!/bin/sh
+set -e
+
+_load_conf() {
+    if [[ -e "${1}" ]]; then
+        KOSCHEI_CONFIG="${KOSCHEI_CONFIG}:${1}"
+    fi
+}
+
+KOSCHEI_CONFIG=/usr/share/koschei/config.cfg
+_load_conf "/etc/koschei/config.cfg"
+for kind; do
+    _load_conf "/etc/koschei/config-${kind}.cfg"
+done
+export KOSCHEI_CONFIG
