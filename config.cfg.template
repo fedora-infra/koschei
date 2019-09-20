@@ -23,7 +23,7 @@ config = {
         "weburl": "https://koji.fedoraproject.org/koji",
         "srpm_relative_path_root": "..",
         # name of login method on KojiSession
-        "login_method": "ssl_login",
+        "login_method": "logout",
         # arguments passed to the login method
         "login_args": {
             # "cert": "/etc/koschei/fedora.cert",
