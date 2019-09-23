@@ -1,6 +1,6 @@
-[![Build Status](https://travis-ci.org/msimacek/koschei.svg?branch=master)](https://travis-ci.org/msimacek/koschei)
-[![test coverage](https://img.shields.io/codecov/c/github/msimacek/koschei/master.svg)](https://codecov.io/gh/msimacek/koschei)
-[![copr status](https://copr.fedorainfracloud.org/coprs/msimacek/koschei/package/koschei/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/msimacek/koschei/)
+[![Build Status](https://travis-ci.org/fedora-infra/koschei.svg?branch=master)](https://travis-ci.org/msimacek/koschei)
+[![test coverage](https://img.shields.io/codecov/c/github/fedora-infra/koschei/master.svg)](https://codecov.io/gh/msimacek/koschei)
+[![copr status](https://copr.fedorainfracloud.org/coprs/fedora-infra/koschei/package/koschei/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/msimacek/koschei/)
 
 
 
@@ -85,7 +85,7 @@ Deployment
 ----------
 For production deployment install koschei RPM packages.
 Development snapshots are available at
-https://copr.fedorainfracloud.org/coprs/msimacek/koschei/
+https://copr.fedorainfracloud.org/coprs/fedora-infra/koschei/
 
 Koschei is split into multiple components that can function independently -
 backend, frontend and admin. Each are installed as separate RPM,

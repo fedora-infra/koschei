@@ -22,6 +22,6 @@ Vagrant.configure(2) do |config|
   config.vm.post_up_message = <<-EOF
 Provisioning complete.
 Koschei frontend should be running at http://localhost:5000/
-See also: https://github.com/msimacek/koschei/#development
+See also: https://github.com/fedora-infra/koschei/#development
 EOF
 end

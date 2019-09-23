@@ -100,13 +100,13 @@ Install main Koschei package:
 
     # dnf -y install koschei
 
-Install [config.cfg](https://github.com/msimacek/koschei/blob/master/doc/howto/devel-instance-in-vm/config.cfg) (main config file) into `/etc/koschei/` (you can adjust the config as needed):
+Install [config.cfg](https://github.com/fedora-infra/koschei/blob/master/doc/howto/devel-instance-in-vm/config.cfg) (main config file) into `/etc/koschei/` (you can adjust the config as needed):
 
-    # curl -s https://raw.githubusercontent.com/msimacek/koschei/master/doc/howto/devel-instance-in-vm/config.cfg >/etc/koschei/config.cfg
+    # curl -s https://raw.githubusercontent.com/fedora-infra/koschei/master/doc/howto/devel-instance-in-vm/config.cfg >/etc/koschei/config.cfg
 
-Likewise, install [config-admin.cfg](https://github.com/msimacek/koschei/blob/master/doc/howto/devel-instance-in-vm/config-admin.cfg) (credentials for admin user):
+Likewise, install [config-admin.cfg](https://github.com/fedora-infra/koschei/blob/master/doc/howto/devel-instance-in-vm/config-admin.cfg) (credentials for admin user):
 
-    # curl -s https://raw.githubusercontent.com/msimacek/koschei/master/doc/howto/devel-instance-in-vm/config-admin.cfg >/etc/koschei/config-admin.cfg
+    # curl -s https://raw.githubusercontent.com/fedora-infra/koschei/master/doc/howto/devel-instance-in-vm/config-admin.cfg >/etc/koschei/config-admin.cfg
 
 Install Fedora server CA certificate:
 

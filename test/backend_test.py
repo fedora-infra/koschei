@@ -148,7 +148,7 @@ class BackendTest(DBTest):
             self.assertEqual(koji.TASK_STATES['CLOSED'], tasks[2].state)
             self.assertEqual('x86_64', tasks[2].arch)
 
-    # Regression test for https://github.com/msimacek/koschei/issues/27
+    # Regression test for https://github.com/fedora-infra/koschei/issues/27
     @with_koji_cassette
     def test_update_state_inconsistent(self):
         collection = self.prepare_collection('f29')
