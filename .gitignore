@@ -24,9 +24,8 @@
 /.settings/
 /.metadata/
 
-# Vagrant + Ansible
+# Ansible
 *.retry
-.vagrant
 
 # Test coverage data
 /.coverage
