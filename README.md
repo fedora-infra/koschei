@@ -16,7 +16,7 @@ Dependencies
 
 Python code dependencies:
 - alembic
-- fedmsg
+- fedora_messaging
 - flask
 - flask-sqlalchemy
 - hawkey
@@ -36,7 +36,7 @@ Infrastructure:
 - httpd with mod_wsgi (other WSGI servers should work too, but were not tested)
 - postgresql (can be external service)
 - koji hub (can be external service)
-- fedmsg (optional)
+- fedora-messaging (optional)
 
 
 Development
@@ -81,11 +81,12 @@ just the top-level ones.
 
 Deployment
 ----------
-For production deployment install koschei RPM packages.
+For production deployment use Koschei container images.
 
-Koschei is split into multiple components that can function independently -
-backend, frontend and admin. Each are installed as separate RPM,
-configured separately and can be deployed on different machines.
+Koschei is split into multiple components that can function
+independently - backend, frontend and admin.  Each are configured
+separately and can be deployed in different containers on different
+machines.
 
 Setting up the database:
 - Install PostgreSQL server with `dnf install postgresql-server`. Other
@@ -102,15 +103,15 @@ Setting up the database:
   (see its help for parameters)
 
 
-Koschei administration script `koschei-admin` is shipped in koschei-admin RPM
-package and can be installed independently from other services. It is used to
-perform various administration tasks such as adding packages or creating
-collections. See its help (`-h` option) for list of commands and help of
-individual commands (such as `koschei-admin create-collection -h`).
+Koschei administration script `koschei-admin` is independent from
+other services.  It is used to perform various administration tasks
+such as adding packages or creating collections. See its help (`-h`
+option) for list of commands and help of individual commands (such as
+`koschei-admin create-collection -h`).
 
-Koschei backend consists of multiple systemd services that can be started
-separately.
-For fully working instance you'll want to start all of them, for passive
+Koschei backend consists of multiple services that can be ran
+separately, for example in different containers.
+For fully working instance you'll want to run all of them, for passive
 instance that doesn't submit builds, you'll want to skip koschei-scheduler.
 For submiting builds, you need to install a koji certificate at
 `/home/koschei/.fedora.cert` (and also the CA and server CA certificates). The
@@ -118,20 +119,18 @@ cert files have the same layout as when generated using fedora-cert and using
 fedpkg or koji client. If you want to use different locations, you can specify
 them in the `config-backend.cfg` file.
 
-The web frontend is a WSGi application, which can be run within Apache Server.
-The `koschei-frontend` RPM package ships httpd configuration file that should work
-out-of-the-box as you start httpd. You should override the
-application secret used for authentication in `/etc/koschei/config-frontend.cfg`.
+The web frontend is a WSGi application, which can be run within Apache
+httpd server.  Koschei ships httpd configuration file that should work
+out-of-the-box as you start httpd. You should override the application
+secret used for authentication in `/etc/koschei/config-frontend.cfg`.
 
 
 Updating
 --------
-After a koschei package update to a newer version, you need to manually stop
-the services (including httpd) and execute DB migrations. Migrations are
-executed by `alembic -c /usr/share/koschei/alembic.ini upgrade head` on the
-machine where `koschei-admin` is installed (it's using
-/etc/koschei/config-admin.cfg configuration). Then the services can be started
-again.
+After Koschei update to a newer version, you need to manually stop the
+services (including httpd) and execute DB migrations. Migrations are
+executed by `koschei-admin alembic upgrade head`.  Then the services
+can be started again.
 
 
 Copying
