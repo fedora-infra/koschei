@@ -116,19 +116,6 @@ def compare_evr(evr1, evr2):
     return rpm.labelCompare(evr1, evr2)
 
 
-def sd_notify(msg):
-    sock_path = os.environ.get('NOTIFY_SOCKET', None)
-    if not sock_path:
-        raise RuntimeError("NOTIFY_SOCKET not set")
-    if sock_path[0] == '@':
-        sock_path = '\0' + sock_path[1:]
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-    try:
-        sock.sendto(msg.encode('utf-8'), sock_path)
-    finally:
-        sock.close()
-
-
 def merge_sorted(iterable1, iterable2, key):
     """Merge two sorted iterables."""
     iters = [iter(g) for g in (iterable1, iterable2)]
