@@ -37,7 +37,6 @@ Infrastructure:
 - postgresql (can be external service)
 - koji hub (can be external service)
 - fedmsg (optional)
-- systemd (optional)
 
 
 Development
