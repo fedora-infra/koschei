@@ -119,7 +119,11 @@ class Service(object):
 
     def notify_watchdog(self):
         """
-        Notify systemd watchdog (if enabled) that the process is not stuck.
+        Notify watchdog (if enabled) that the process is not stuck.
         """
         if get_config('services.{}.watchdog'.format(self.get_name()), None):
-            util.sd_notify("WATCHDOG=1")
+            path = os.environ.get('WATCHDOG_PATH', None)
+            if not path:
+                raise RuntimeError("WATCHDOG_PATH not set")
+            with open(path, 'w'):
+                pass
