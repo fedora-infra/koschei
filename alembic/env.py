@@ -1,10 +1,7 @@
 from alembic import context
 from logging.config import fileConfig
 
-from koschei.config import load_config
 from koschei.db import Base, grant_db_access, get_engine
-
-load_config(['/usr/share/koschei/config.cfg', '/etc/koschei/config-admin.cfg'])
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
