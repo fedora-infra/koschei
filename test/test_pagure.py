@@ -26,7 +26,7 @@ class TestPagure(DBTest):
         super(TestPagure, self).setUp()
         plugin.load_plugins('frontend', ['pagure'])
 
-    @my_vcr.use_cassette('pagure_msimacek')
+    @my_vcr.use_cassette('user_page')
     def test_get_my_packages(self):
         results = []
         for r in plugin.dispatch_event('get_user_packages',
