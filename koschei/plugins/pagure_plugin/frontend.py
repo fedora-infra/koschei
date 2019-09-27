@@ -1,4 +1,4 @@
-# Copyright (C) 2017 Red Hat, Inc.
+# Copyright (C) 2017-2019 Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,6 +15,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 # Author: Michael Simacek <msimacek@redhat.com>
+# Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 import requests
 
@@ -22,28 +23,23 @@ from koschei.config import get_config
 from koschei.plugin import listen_event
 
 
-def query_pagure(session, url):
-    baseurl = get_config('pagure.api_url')
-    req = requests.get(baseurl + '/' + url)
+def get_packages_per_user(session):
+    session.log.debug("Requesting pagure_owner_alias.json")
+    req = requests.get(get_config('pagure.owner_alias_url'))
     if not req.ok:
-        session.log.info("pagure query failed %s, status=%d",
-                         url, req.status_code)
-        return None
-    return req.json()
-
-
-def query_users_packages(session, username):
-    session.log.debug("Requesting pagure packages for {}".format(username))
-    user = query_pagure(session, 'user/{}'.format(username))
-    if not user:
-        return None
-    return [repo['name'] for repo in user['repos'] if repo['namespace'] == 'rpms']
+        session.log.info("Failed to get pagure_owner_alias.json, status=%d",
+                         req.status_code)
+        return {}
+    pkgs_per_user = {}
+    for pkg, users in req.json()['rpms'].items():
+        for user in users:
+            pkgs_per_user.setdefault(user, []).append(pkg)
+    return pkgs_per_user
 
 
 @listen_event('get_user_packages')
 def get_user_packages(session, username):
     def create():
-        names = query_users_packages(session, username)
-        return names
-
-    return session.cache('pagure.users').get_or_create(str(username), create)
+        return get_packages_per_user(session)
+    pkg_map = session.cache('pagure.users').get_or_create('packages_per_user', create)
+    return pkg_map.get(str(username))

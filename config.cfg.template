@@ -145,7 +145,7 @@ config = {
     },
     # pagure plugin
     "pagure": {
-        "api_url": "https://src.fedoraproject.org/api/0",
+        "owner_alias_url": "https://src.fedoraproject.org/extras/pagure_owner_alias.json",
     },
     # copr rebuild plugin
     "copr": {
