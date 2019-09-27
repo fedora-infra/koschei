@@ -1,0 +1,8 @@
+#!/bin/sh
+# Mark all packages in global group as tracked
+# Usage: koschei-track-group <group-name>
+
+set -e
+test -n "$1"
+
+exec koschei-admin psql <<<"UPDATE package SET tracked = TRUE WHERE id IN (SELECT p.id FROM package p JOIN package_group_relation pgr ON p.base_id = pgr.base_id JOIN package_group g ON g.id = pgr.group_id WHERE NOT p.tracked AND g.name = '$1' AND g.namespace IS NULL)"
