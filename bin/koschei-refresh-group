@@ -1,12 +1,15 @@
 #!/bin/bash
-if [ "$#" -lt 2 ]; then
-    echo "Usage: refresh-group <group-name> <repoquery-args>..."
+if [ "$#" -ne 2 ]; then
+    echo "Usage: refresh-group <group-name> <regex>"
     exit 1
 fi
 set -e
-repodata=`find /var/cache/koschei/repodata/ -path '*/primary-f*' -name repomd.xml | sort -nr | head -n1 | xargs dirname | xargs dirname`
-repoid=`grep -o 'primary-[^/]*' <<< "$repodata"`
+
 group=$1
 shift
-dnf repoquery -q --available --repofrompath "$repoid,$repodata" --disablerepo \* --enablerepo "$repoid" --qf '%{sourcerpm}' "$@" | sed 's|-[^-]*-[^-]*$||' \
+
+curl https://kojipkgs.fedoraproject.org/repos/rawhide/latest/src/pkglist \
+    | sed 's|.*/||;s|-[^-]*-[^-]*$||' \
+    | egrep "$@" \
+    | sort -u \
     | koschei-admin edit-group "$group" --content-from-file - --append
