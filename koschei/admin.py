@@ -578,6 +578,77 @@ class BranchCollection(CreateOrEditCollectionCommand, Command):
         )
 
 
+class ForkCollection(CreateOrEditCollectionCommand, Command):
+    """
+    Fork collection.
+    """
+
+    def setup_parser(self, parser):
+        parser.add_argument(
+            'master_collection',
+            help="Master collection from which new collection should be branched",
+        )
+        parser.add_argument(
+            'new_name',
+            help="New name for the master collection after the branched copy is created",
+        )
+        parser.add_argument(
+            '-d', '--display-name',
+            required=True,
+            help="Human readable name for forked collection",
+        )
+        parser.add_argument(
+            '-t', '--target',
+            required=True,
+            help="New Koji target for forked collection",
+        )
+        parser.add_argument(
+            '--dest-tag',
+            help="Destination tag for forked collection (defaults to build tag)",
+        )
+
+    def execute(self, session, master_collection, new_name, display_name,
+                target, dest_tag):
+        master = (
+            session.db.query(Collection)
+            .filter_by(name=master_collection)
+        ).one()
+        if not master:
+            sys.exit("Collection not found")
+        forked = (
+            session.db.query(Collection)
+            .filter_by(name=new_name)
+        ).first()
+        if forked:
+            sys.exit("Forked collection already exists")
+        forked = Collection(
+            name=new_name,
+            target=target,
+            dest_tag=dest_tag,
+            order=master.order,
+            display_name=display_name,
+        )
+        for key in ('secondary_mode', 'priority_coefficient', 'bugzilla_product',
+                    'poll_untracked', 'build_group', 'bugzilla_version'):
+            setattr(forked, key, getattr(master, key))
+        self.set_koji_tags(session, forked)
+        session.db.add(forked)
+        session.db.flush()
+        for group_rel in (
+                session.db.query(CollectionGroupRelation)
+                .filter_by(collection_id=master.id)
+        ):
+            session.db.add(CollectionGroupRelation(
+                collection_id=forked.id,
+                group_id=group_rel.group_id,
+            ))
+
+        data.copy_collection(session, master, forked, minimal=True)
+        session.log_user_action(
+            "Collection {} forked from {}".format(new_name, master_collection)
+        )
+
+
 class CreateOrEditCollectionGroupCommand(object):
     create = True
 

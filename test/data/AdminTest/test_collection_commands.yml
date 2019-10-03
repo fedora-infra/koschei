@@ -18,3 +18,9 @@
     dest_tag_name: f29-pending
     id: 2032
     name: f29
+- method: getBuildTarget
+  args:
+  - f28-side-42
+  result:
+    build_tag_name: f28-side-42
+    dest_tag_name: f28-side-42
