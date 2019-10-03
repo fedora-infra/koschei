@@ -39,6 +39,7 @@ from koschei.models import (
     Package, Build, Collection, BasePackage,
     PackageGroupRelation, PackageGroup, GroupACL, User,
     KojiTask, Dependency, AppliedChange, LogEntry,
+    ResolutionChange, ResolutionProblem
 )
 from koschei.backend import KoscheiBackendSession, repo_util, service, koji_util
 
@@ -419,6 +420,20 @@ class DBTest(AbstractTest):
         self.db.add(change)
         self.db.commit()
         return change
+
+    def prepare_resolution_change(self, package, problems):
+        resolution_change = ResolutionChange(
+            package_id=package.id,
+            resolved=not problems,
+        )
+        self.db.add(resolution_change)
+        self.db.flush()
+        for problem in problems:
+            self.db.add(ResolutionProblem(
+                resolution_id=resolution_change.id,
+                problem=problem,
+            ))
+        self.db.commit()
 
     @staticmethod
     def parse_pkg(string):
