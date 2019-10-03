@@ -167,6 +167,33 @@ class AdminTest(DBTest):
         self.assertEqual(1, len(group.collections))
         self.assertIs(collection, group.collections[0])
 
+        # test fork collection
+        self.call_command(
+            'fork-collection f28 f28-side-42 -d"Side tag 42" -t f28-side-42'
+        )
+        forked = self.db.query(Collection).filter_by(name='f28-side-42').one()
+        self.assertIsNot(forked, collection)
+        self.assertEqual("f28-side-42", forked.target)
+        self.assertEqual("f28-side-42", forked.build_tag)
+        self.assertEqual("f28-side-42", forked.dest_tag)
+        self.assertEqual("rawhide", forked.bugzilla_version)
+        self.assertEqual(128, forked.order)
+        self.assertEqual("f28", collection.target)
+        self.assertEqual("f28-build", collection.build_tag)
+        self.assertEqual("f28-build", collection.dest_tag)
+        self.assertEqual("rawhide", collection.bugzilla_version)
+        self.assertEqual(128, collection.order)
+        rnv_forked = (
+            self.db.query(Package)
+            .filter_by(name='rnv', collection=forked)
+            .one()
+        )
+        self.assertIsNot(rnv_forked, rnv)
+        self.assertEqual(2, len(group.collections))
+        self.assertCountEqual([collection, forked], group.collections)
+
+        self.db.execute("DISCARD TEMP")
+
         # test branch collection
         self.call_command(
             'branch-collection f28 f29 -d"Fedora 28" -t f29 --bugzilla-version 28'
@@ -189,8 +216,8 @@ class AdminTest(DBTest):
             .one()
         )
         self.assertIsNot(rnv_branched, rnv)
-        self.assertEqual(2, len(group.collections))
-        self.assertCountEqual([collection, branched], group.collections)
+        self.assertEqual(3, len(group.collections))
+        self.assertCountEqual([collection, branched, forked], group.collections)
 
         # test delete collection
         self.call_command('delete-collection --force f28')
@@ -199,11 +226,12 @@ class AdminTest(DBTest):
         with self.assertRaises(InvalidRequestError):
             self.db.refresh(rnv_branched)
 
-        self.assertEqual(1, len(group.collections))
+        self.assertEqual(2, len(group.collections))
 
         self.assert_action_log(
             "Collection f28 created",
             "Collection f28 modified",
+            "Collection f28-side-42 forked from f28",
             "Collection f29 branched from f28",
             "Collection f28 deleted",
         )
