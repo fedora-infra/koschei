@@ -208,7 +208,7 @@ def set_collection_group_content(session, group, collection_names):
         session.db.execute(insert(CollectionGroupRelation, rels))
 
 
-def copy_collection(session, source, copy):
+def copy_collection(session, source, copy, minimal=False):
 
     def get_cols(entity, exclude=(), qualify=False):
         return ', '.join(
@@ -276,13 +276,13 @@ def copy_collection(session, source, copy):
     deepcopy_table(
         Build,
         whereclause="""
-            WHERE started > now() - '1 month'::interval
+            WHERE (NOT {minimal} AND started > now() - '1 month'::interval)
                   OR build.id IN (
                         SELECT last_complete_build_id
                         FROM package
                         WHERE collection_id = {copy.id}
                   )
-        """.format(copy=copy),
+        """.format(copy=copy, minimal=minimal),
     )
 
     deepcopy_table(KojiTask)
