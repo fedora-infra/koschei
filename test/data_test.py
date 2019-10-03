@@ -187,3 +187,65 @@ class DataTest(DBTest):
 
         self.assertEqual("It's broken", self.db.query(ResolutionChange).
                          filter_by(package_id=fork_maven.id).one().problems[0].problem)
+
+    def test_copy_collection_minimal(self):
+        self.prepare_build('rnv')
+        self.prepare_build('eclipse')
+        # the next build is old and shouldn't be copied
+        base_maven_ancient = self.prepare_build(
+            package='maven',
+            state=True,
+            arches=('ppc', 'sparc'),
+            started='2000-01-01',
+        )
+        base_maven_quondam = self.prepare_build(
+            package='maven',
+            state=True,
+            arches=('ppc', 'sparc'),
+            started=datetime.fromtimestamp(time.time() - 29*24*60*60),
+            real=True,
+        )
+        base_maven_current = self.prepare_build(
+            package='maven',
+            state=True,
+            arches=('ppc', 'sparc'),
+            started=datetime.fromtimestamp(time.time() - 10),
+        )
+        base_maven_running = self.prepare_build(
+            package='maven',
+            state=None,
+            arches=('ppc', 'sparc'),
+            started=datetime.now(),
+        )
+        self.prepare_depchange(dep_name='foo',
+                               prev_epoch=1, prev_version='v1', prev_release='r1',
+                               curr_epoch=2, curr_version='v2', curr_release='r2',
+                               build_id=base_maven_current.id, distance=3)
+        base_maven = base_maven_current.package
+        self.prepare_resolution_change(base_maven, ["It's broken"])
+
+        base = self.collection
+        fork = self.prepare_collection('fork')
+        data.copy_collection(self.session, base, fork, minimal=True)
+        self.db.commit()
+
+        fork_maven = self.db.query(Package).filter_by(collection=fork, name='maven').one()
+        self.assertIsNotNone(fork_maven)
+        self.assertNotEqual(base_maven.id, fork_maven.id)
+        self.assertEqual(base.id, base_maven.collection_id)
+        self.assertEqual(fork.id, fork_maven.collection_id)
+        self.assertEqual('maven', fork_maven.name)
+
+        self.assertEqual(1, len(fork_maven.all_builds))
+        fork_maven_current = fork_maven.all_builds[0]
+        self.assertNotEqual(base_maven_current.id, fork_maven_current.id)
+        self.assertEqual(base_maven_running.id, base_maven.last_build_id)
+        self.assertEqual(base_maven_current.id, base_maven.last_complete_build_id)
+        self.assertEqual(fork_maven_current.id, fork_maven.last_build_id)
+        self.assertEqual(fork_maven_current.id, fork_maven.last_complete_build_id)
+
+        self.assertEqual(1, len(fork_maven_current.dependency_changes))
+        self.assertEqual('r2', fork_maven_current.dependency_changes[0].curr_dep.release)
+
+        self.assertEqual("It's broken", self.db.query(ResolutionChange).
+                         filter_by(package_id=fork_maven.id).one().problems[0].problem)
