@@ -345,7 +345,8 @@ class DBTest(AbstractTest):
         if isinstance(state, (bool, str)):
             state = states[state]
         if isinstance(package, str):
-            found = self.db.query(Package).filter_by(name=package).first()
+            found = self.db.query(Package).\
+                filter_by(name=package, collection_id=self.collection.id).first()
             package = found or self.prepare_package(package)
         build = Build(package=package, state=state,
                       repo_id=repo_id or (1 if state != Build.RUNNING else None),

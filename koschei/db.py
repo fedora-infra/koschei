@@ -33,7 +33,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import URL
 from sqlalchemy.event import listen
 from sqlalchemy.types import TypeDecorator
-from sqlalchemy.sql import func, column, operators
+from sqlalchemy.sql import func, column, operators, literal_column
 from sqlalchemy.sql.schema import MetaData
 from sqlalchemy.dialects.postgresql import BYTEA
 
@@ -81,6 +81,16 @@ class Query(sqlalchemy.orm.Query):
         """
         subq = self.subquery()
         return self.session.query(column(subq.name)).select_from(subq).as_scalar()
+
+    def json(self):
+        subq = self.subquery('json_query')
+        return (
+            self.session.query(
+            literal_column("coalesce(array_to_json(array_agg(row_to_json(json_query)))::text, '[]')")
+            .label('q'))
+            .select_from(subq)
+            .scalar()
+        )
 
 
 class KoscheiDbSession(sqlalchemy.orm.session.Session):

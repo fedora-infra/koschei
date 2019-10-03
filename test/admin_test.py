@@ -210,8 +210,8 @@ class AdminTest(DBTest):
 
     @with_koji_cassette
     def test_submit_build(self):
-        collection = self.prepare_collection('f29')
-        rnv = self.prepare_package('rnv', collection=collection)
+        self.collection = self.prepare_collection('f29')
+        rnv = self.prepare_package('rnv')
         self.prepare_build('rnv', state='complete', version='1.7.11', release='15.fc28')
         with patch('koschei.backend.submit_build') as submit_build_mock:
             self.call_command('submit-build rnv')

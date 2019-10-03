@@ -149,3 +149,29 @@ class ApiTest(FrontendTest):
                             state='failing', last_task_id=1341)
         self.assert_package(rnv, name='rnv', collection='epel7', state='ok',
                             last_task_id=1340)
+
+    def test_collections_diff(self):
+        self.prepare_build('good', True)
+        self.prepare_build('bad', False)
+        self.prepare_build('broken', True)
+        self.prepare_build('fixed', False)
+        self.db.commit()
+        self.collection = Collection(
+            name="epel7", display_name="EPEL 7", target="epel7",
+            dest_tag='epel7', build_tag="epel7-build", priority_coefficient=0.2,
+            latest_repo_resolved=False, latest_repo_id=456,
+        )
+        self.db.add(self.collection)
+        self.prepare_build('good', True)
+        self.prepare_build('bad', False)
+        self.prepare_build('broken', False)
+        self.prepare_build('fixed', True)
+        [broken, fixed] = self.api_call('collections/diff/f25/epel7')
+        self.assertDictEqual(broken, {
+            'name': 'broken',
+            'state': {'f25': 'ok', 'epel7': 'failing'}
+        })
+        self.assertDictEqual(fixed, {
+            'name': 'fixed',
+            'state': {'f25': 'failing', 'epel7': 'ok'}
+        })

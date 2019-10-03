@@ -22,9 +22,10 @@ Basic experimental REST API to get the list of packages with their current state
 
 from flask import request, Response
 from sqlalchemy.sql import literal_column, case
+from sqlalchemy.orm import aliased
 
 from koschei.frontend.base import db, app
-from koschei.models import Package, Collection, Build
+from koschei.models import BasePackage, Package, Collection, Build
 
 
 def sql_if(cond, then, else_=None):
@@ -79,12 +80,47 @@ def list_packages():
     if 'collection' in request.args:
         query = query.filter(Collection.name.in_(request.args.getlist('collection')))
 
-    result = (
-        db.query(literal_column(
-            "coalesce(array_to_json(array_agg(row_to_json(pkg_query)))::text, '[]')"
-        ).label('q'))
-        .select_from(query.subquery('pkg_query'))
-        .scalar()
+    return Response(query.json(), mimetype='application/json')
+
+
+@app.route('/api/v1/collections/diff/<name1>/<name2>')
+def diff_collections(name1, name2):
+    """
+    Compare two collections and return a list of packages with differing states
+    packages as JSON. Uses Postgres to generate all the JSON in a single query.
+
+    Response format:
+    [
+        {
+            "name": "foo",
+            "state: {
+                "f25": "ok",
+                "f26": "failing",
+            }
+        },
+        ...
+    ]
+    """
+    Package1 = aliased(Package)
+    Package2 = aliased(Package)
+    collection1 = db.query(Collection).filter_by(name=name1).first_or_404()
+    collection2 = db.query(Collection).filter_by(name=name2).first_or_404()
+    query = (
+        db.query(
+            BasePackage.name.label('name'),
+            db.query(
+                Package1.state_string.label(collection1.name),
+                Package2.state_string.label(collection2.name),
+            )
+            .correlate(Package1, Package2)
+            .as_record().label('state'),
+        )
+        .join(Package1, Package1.base_id == BasePackage.id)
+        .join(Package2, Package2.base_id == BasePackage.id)
+        .filter(Package1.state_string != Package2.state_string)
+        .filter(Package1.collection_id == collection1.id)
+        .filter(Package2.collection_id == collection2.id)
+        .order_by(BasePackage.name)
     )
 
-    return Response(result, mimetype='application/json')
+    return Response(query.json(), mimetype='application/json')
