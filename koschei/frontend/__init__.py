@@ -29,3 +29,6 @@ import koschei.frontend.views
 from koschei import plugin
 
 plugin.load_plugins('frontend')
+
+from werkzeug.contrib.fixers import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app)
