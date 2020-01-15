@@ -1,0 +1,33 @@
+{
+  "$id": "pipeline",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Common attributes for testing pipeline.",
+  "properties": {
+    "id": {
+      "description": "Unique identification string. If two messages relate to the same test (or other event), executed by the same system, on the same artifact, that is \"the same pipeline\", so they should have the same pipeline 'id' and 'name'. So all the messages for a given single test execution should have the same id, and all the messages for a re-trigger of that same test on that same artifact should also have that same id). Useful for constructing tree of rebuilds of the same artifact in the Web UI. Note that it is up to the CI system to implement. If the CI system itself does not exactly have this concept, the id can be created when publishing a message, so long as it follows the rules. Replaces thread_id from previous versions of the spec. The value must be unique among all systems reporting on the artifact, it is advised to prefix it with a unique string, e.g. the name of the CI system, etc.",
+      "examples": [
+        "baseos-ci-ac11dcddf99a"
+      ],
+      "type": "string"
+    },
+    "name": {
+      "description": "A human readable name of the pipeline. As with the id, a specific event run on a specific artifact by a specific test system is a \"pipeline\", so two messages should have the same pipeline id and name if they relate to the execution of the same event, on the same artifact, by the same test system.",
+      "type": "string"
+    },
+    "build": {
+      "description": "An optional pipeline build number.",
+      "examples": [
+        10340
+      ],
+      "type": "string"
+    },
+    "stage": {
+      "$ref": "stage.json"
+    }
+  },
+  "required": [
+    "id",
+    "name"
+  ],
+  "type": "object"
+}

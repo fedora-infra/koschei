@@ -1,0 +1,45 @@
+{
+  "$id": "koji-build-group.test.error",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Testing has aborted, it was not finished, e.g. because of infrastructure error, CI system error, etc. Note that a test failure is not an error.\nTest failures should be exposed under the <namespace>.group.test.complete topic.\nThis is a mandatory message.",
+  "properties": {
+    "contact": {
+      "$ref": "contact.json"
+    },
+    "run": {
+      "$ref": "run.json"
+    },
+    "artifact": {
+      "$ref": "rpm-build-group.json"
+    },
+    "pipeline": {
+      "$ref": "pipeline.json"
+    },
+    "test": {
+      "$ref": "test-common.json"
+    },
+    "error": {
+      "$ref": "error.json"
+    },
+    "notification": {
+      "$ref": "notification.json"
+    },
+    "generated_at": {
+      "$ref": "common.json#properties/generated_at"
+    },
+    "version": {
+      "$ref": "common.json#properties/version"
+    }
+  },
+  "required": [
+    "contact",
+    "run",
+    "artifact",
+    "pipeline",
+    "test",
+    "error",
+    "generated_at",
+    "version"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,40 @@
+- method: repoInfo
+  args:
+  - 1041788
+  result:
+    create_event: 38576329
+    create_ts: 1544477688.53855
+    creation_time: '2018-12-10 21:34:48.538552'
+    dist: false
+    id: 1041788
+    state: 3
+    tag_id: 5564
+    tag_name: f30-kde
+- method: listTagged
+  args:
+  - f30-kde
+  - 38576329
+  kwargs:
+    latest: true
+  result:
+  - build_id: 1170640
+    completion_time: '2018-12-07 22:00:07.793437'
+    creation_event_id: 38505455
+    creation_time: '2018-12-07 18:59:21.460832'
+    epoch: null
+    id: 1170640
+    name: qt5-qtbase
+    nvr: qt5-qtbase-5.11.3-1.fc30
+    owner_id: 160
+    owner_name: rdieter
+    package_id: 15742
+    package_name: qt5-qtbase
+    release: 1.fc30
+    start_time: '2018-12-07 18:59:21.460832'
+    state: 1
+    tag_id: 5564
+    tag_name: f30-kde
+    task_id: 31335448
+    version: 5.11.3
+    volume_id: 0
+    volume_name: DEFAULT

@@ -1,0 +1,55 @@
+{
+  "$id": "koji-build-group.test.complete",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Testing of the group (side-tag with its associated builds) has been completed.\nThis is a mandatory message.",
+  "properties": {
+    "contact": {
+      "$ref": "contact.json"
+    },
+    "run": {
+      "$ref": "run.json"
+    },
+    "artifact": {
+      "$ref": "rpm-build-group.json"
+    },
+    "pipeline": {
+      "$ref": "pipeline.json"
+    },
+    "test": {
+      "allOf": [
+        {
+          "$ref": "test-common.json"
+        },
+        {
+          "$ref": "test-complete.json"
+        }
+      ]
+    },
+    "notification": {
+      "$ref": "notification.json"
+    },
+    "system": {
+      "type": "array",
+      "items": {
+        "$ref": "system.json"
+      }
+    },
+    "generated_at": {
+      "$ref": "common.json#properties/generated_at"
+    },
+    "version": {
+      "$ref": "common.json#properties/version"
+    }
+  },
+  "required": [
+    "contact",
+    "run",
+    "artifact",
+    "pipeline",
+    "test",
+    "system",
+    "generated_at",
+    "version"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,38 @@
+{
+  "$id": "koji-build-group.test.queued",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Testing has been queued, but not yet started.\nThis is an optional message.",
+  "properties": {
+    "contact": {
+      "$ref": "contact.json"
+    },
+    "run": {
+      "$ref": "run.json"
+    },
+    "artifact": {
+      "$ref": "rpm-build-group.json"
+    },
+    "pipeline": {
+      "$ref": "pipeline.json"
+    },
+    "test": {
+      "$ref": "test-common.json"
+    },
+    "generated_at": {
+      "$ref": "common.json#properties/generated_at"
+    },
+    "version": {
+      "$ref": "common.json#properties/version"
+    }
+  },
+  "required": [
+    "contact",
+    "run",
+    "artifact",
+    "pipeline",
+    "test",
+    "generated_at",
+    "version"
+  ],
+  "type": "object"
+}
