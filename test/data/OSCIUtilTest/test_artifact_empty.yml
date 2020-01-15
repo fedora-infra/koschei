@@ -1,0 +1,19 @@
+- method: repoInfo
+  args:
+  - 1041751
+  result:
+    create_event: 38574934
+    create_ts: 1544471647.01246
+    creation_time: '2018-12-10 19:54:07.012464'
+    dist: false
+    id: 1041751
+    state: 3
+    tag_id: 5564
+    tag_name: f30-kde
+- method: listTagged
+  args:
+  - f30-kde
+  - 38574934
+  kwargs:
+    latest: true
+  result: []

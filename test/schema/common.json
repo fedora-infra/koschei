@@ -1,0 +1,29 @@
+{
+  "$id": "common",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Common attributes used in multiple messages.",
+  "properties": {
+    "generated_at": {
+      "description": "Time when the requested was generated. This can be useful to track various lags in the system of messages, e.g. datagrepper lagging in logging a message. This should be a string of UTC time in ISO 8601 format. In Python. You can generate the format via\nimport datetime datetime.datetime.utcnow().isoformat() + 'Z'",
+      "examples": [
+        "2018-09-14T18:50:26.143559Z"
+      ],
+      "type": "string"
+    },
+    "note": {
+      "description": "Arbitrary note.",
+      "examples": [
+        "Some notes."
+      ],
+      "type": "string"
+    },
+    "version": {
+      "description": "Version of the specification. Following semantic versioning (https://semver.org/). Current version is 0.2.5.",
+      "examples": [
+        "0.2.5"
+      ],
+      "type": "string"
+    }
+  },
+  "type": "object"
+}

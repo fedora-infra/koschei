@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<repomd xmlns="http://linux.duke.edu/metadata/repo" xmlns:rpm="http://linux.duke.edu/metadata/rpm">
+  <data type="primary">
+    <location href="repodata/primary.xml"/>
+  </data>
+  <data type="filelists">
+    <location href="repodata/filelists.xml"/>
+  </data>
+</repomd>

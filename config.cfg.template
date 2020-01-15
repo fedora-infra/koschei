@@ -364,4 +364,33 @@ config = {
     # chunk size for real build insertions. Override only if you have
     # performance problems related to build insertion
     "real_builds_insert_chunk": 50,
+    # OSCI plugin
+    "osci": {
+        # Topic namespace to use in fedmsg messages
+        "namespace": "osci",
+        # Type of build artifact, either "koji-build" or "brew-build"
+        "build_artifact_type": "koji-build",
+        # Type of build group artifact, either "koji-build-group" or "brew-build-group"
+        "build_group_artifact_type": "koji-build-group",
+        # https://pagure.io/fedora-ci/messages/blob/master/f/schemas/contact.yaml
+        "contact": {
+            "name": "Koschei",
+            "team": "Koschei team",
+            "docs": "https://koschei.test/docs.html",
+            "email": "koschei@example.com",
+            "irc": "#koschei",
+            "url": "https://koschei.test/",
+        },
+        # https://pagure.io/fedora-ci/messages/blob/master/f/schemas/pipeline.yaml
+        "pipeline": {
+            "id": "koschei-pipeline",
+            "name": "Koschei pipeline",
+        },
+        # https://pagure.io/fedora-ci/messages/blob/master/f/schemas/test-common.yaml
+        "test": {
+            "type": "koschei",
+            "category": "integration",
+            "namespace": "koschei",
+        },
+    },
 }

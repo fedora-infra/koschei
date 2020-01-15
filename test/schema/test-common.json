@@ -1,0 +1,94 @@
+{
+  "$id": "test",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Common attributes for a test. Not all atributes make sense for all event statuses (i.e. queued, running, complete and error).",
+  "properties": {
+    "category": {
+      "description": "Test category.",
+      "enum": [
+        "functional",
+        "integration",
+        "interoperability",
+        "static-analysis",
+        "system",
+        "validation"
+      ],
+      "examples": [
+        "functional",
+        "integration"
+      ],
+      "type": "string"
+    },
+    "docs": {
+      "description": "Provides link to documentation for testing events for distributed CI systems to make them sustainable. Should contain information about how to contribute to the specific test, how to reproduce it, ideally on localhost and how to retrigger the test.",
+      "examples": [
+        "https://my-ci-system/docs"
+      ],
+      "type": "string",
+      "format": "uri"
+    },
+    "label": {
+      "description": "List of additional labels to distinguish the same test types from each other, i.e. [ \"tier1 - slow\", \"x86_64\" ]",
+      "examples": [
+        [
+          "tier1",
+          "x86_64"
+        ],
+        [
+          "tier2",
+          "s390x"
+        ]
+      ],
+      "type": "array"
+    },
+    "lifetime": {
+      "description": "Number of minutes the test is expected to run. Makes most sense for queued event status.",
+      "examples": [
+        5,
+        10,
+        15
+      ],
+      "type": "integer"
+    },
+    "namespace": {
+      "description": "A namespace used to prefix the ResultsDB testcase name. This is usually something identifying your team.\nIt **must** match the namespace used in the topic hierarchy.  Otherwise, a system with rights to publish to one topic namespace may publish results for testcase names belonging to another namespace.  The impact of this depends on how test results are used, typically for gating or automatic promotion of content.\nIf it contains a dot, only the text before the first dot must match the namespace in the topic hierarchy.\nFor example, if namespace is \"a-team.some.test.prefix\", the namespace in topic must be \"a-team\".",
+      "examples": [
+        "osci",
+        "rtt",
+        "baseosci"
+      ],
+      "type": "string"
+    },
+    "progress": {
+      "description": "Percentage indicator of progress, expressed as a number from 0 to 100.",
+      "examples": [
+        10
+      ],
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "type": {
+      "description": "Test type. Identifies the test(s) being run in this execution. Depending on your test system this may indicate a single test (possibly with 'scenario' information as well), a group of tests, or you may only ever use one value here if your test system does not emit separate messages per test or test group. A good way to think of this is \"the information a consumer would need to identify runs of 'the same test(s)' on two different artifacts\".",
+      "examples": [
+        "tier1",
+        "tier2",
+        "tier3",
+        "rpmdiff-analysis",
+        "rpmdiff-comparison",
+        "covscan",
+        "pipeline",
+        "autocloud",
+        "base_selinux KDE-live-iso x86_64 64bit",
+        "Any other identifier that makes sense for your test system"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "category",
+    "namespace",
+    "type"
+  ],
+  "type": "object"
+}

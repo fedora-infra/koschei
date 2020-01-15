@@ -1,0 +1,44 @@
+{
+  "$id": "rpm-build-group",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Details about the rpm build group being tested.",
+  "properties": {
+    "id": {
+      "description": "The package group is identified by assigned side-tag.",
+      "examples": [
+        "selinux-update-345"
+      ],
+      "type": "string"
+    },
+    "type": {
+      "description": "Artifact type.",
+      "enum": [
+        "brew-build-group",
+        "koji-build-group"
+      ],
+      "type": "string"
+    },
+    "builds": {
+      "description": "List of the rpm-builds in the group.",
+      "type": "array",
+      "items": {
+        "$ref": "rpm-build.json"
+      }
+    },
+    "repository": {
+      "description": "Url of the repository with packages from the side-tag.",
+      "examples": [
+        "https://some.url/repo"
+      ],
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "builds",
+    "repository"
+  ],
+  "type": "object"
+}

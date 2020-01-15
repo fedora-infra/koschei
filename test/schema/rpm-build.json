@@ -1,0 +1,88 @@
+{
+  "$id": "rpm-build",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Details about the koji/brew build being tested.",
+  "properties": {
+    "type": {
+      "description": "Artifact type, in this case 'koji-build' or 'brew-build'.",
+      "enum": [
+        "koji-build",
+        "brew-build"
+      ],
+      "type": "string"
+    },
+    "id": {
+      "description": "Task ID of the koji/brew build.",
+      "examples": [
+        14546276
+      ],
+      "type": "integer"
+    },
+    "component": {
+      "description": "Name of the component tested.",
+      "examples": [
+        "bash",
+        "python",
+        "firefox"
+      ],
+      "type": "string"
+    },
+    "issuer": {
+      "description": "Build issuer of the artifact.",
+      "examples": [
+        "ovasik"
+      ],
+      "type": "string"
+    },
+    "scratch": {
+      "description": "Indication if the build is a scratch build.",
+      "examples": [
+        true,
+        false
+      ],
+      "type": "boolean"
+    },
+    "nvr": {
+      "description": "Name-version-release of the artifact.",
+      "examples": [
+        "setup-2.8.71-7.el7_4"
+      ],
+      "type": "string"
+    },
+    "baseline": {
+      "description": "Name-version-release of baseline koji/brew build (for comparison).",
+      "examples": [
+        "setup-2.8.71-6.el7_4"
+      ],
+      "type": "string"
+    },
+    "dependencies": {
+      "items": {
+        "description": "NVR’s of additional dependencies that were needed to install the koji/brew rpm build artifact. Note that usually to install a package, you might need to include packages, not yet in production repositories.",
+        "examples": [
+          "gcc-3.8.2-1.el7",
+          "make-2.3.1-2.el7_4"
+        ],
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "source": {
+      "description": "The first item in the request field from task details. This is usually a link to git repository with a reference, delimited with the '#' sign. In case of a scratch build or other build built via uploading a src.rpm the build task source will look like the bash scratch build.",
+      "examples": [
+        "git+https://src.fedoraproject.org/rpms/setup.git?#5e0ae23a",
+        "cli-build/1498396792.492652.jYJCrkUF/bash-4.4.12-5.fc26.src.rpm"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "type",
+    "id",
+    "issuer",
+    "component",
+    "nvr",
+    "scratch"
+  ],
+  "type": "object"
+}

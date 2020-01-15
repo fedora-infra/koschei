@@ -1112,6 +1112,15 @@ class CoprRebuild(Base):
         )
 
 
+class BuildGroup(Base):
+    id = Column(Integer, primary_key=True)
+    repo_id = Column(Integer)
+    collection_id = Column(ForeignKey(Collection.id, ondelete='SET NULL'))
+    base_collection_id = Column(ForeignKey(Collection.id, ondelete='SET NULL'))
+    state = Column(String)
+    collection = relationship(Collection, foreign_keys=collection_id, uselist=False, lazy='joined')
+
+
 def count_query(entity):
     return select([func.count(entity.id)]).select_from(entity)
 

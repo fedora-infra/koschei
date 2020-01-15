@@ -1,0 +1,62 @@
+{
+  "$id": "run",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "CI run. For Jenkins CI this is a build of a job.",
+  "properties": {
+    "url": {
+      "description": "Specific build URL (e.g. Jenkins build URL).",
+      "examples": [
+        "https://somewhere.com/job/ci-openstack/4794"
+      ],
+      "type": "string",
+      "format": "uri"
+    },
+    "log": {
+      "description": "URL of build log. Can be an HTML page.",
+      "examples": [
+        "https://somewhere.com/job/ci-openstack/4794/console"
+      ],
+      "type": "string"
+    },
+    "log_raw": {
+      "description": "URL of a plain-text build log.",
+      "examples": [
+        "https://somewhere.com/job/ci-openstack/4794/consoleText"
+      ],
+      "type": "string"
+    },
+    "log_stream": {
+      "description": "URL of a plain-text build log, which can be followed for progress.\nServes different goal than log_raw - while these two may share the value, it is also quite possible that log_raw would point to some external (cold) storage, making it unsuitable for streaming the output. They also disagree on the time when they are valid - log_raw is supposed to be valid as long as log while log_stream makes sense only when the testing process is running.",
+      "examples": [
+        "https://somewhere.com/job/ci-openstack/4794/consoleText"
+      ],
+      "type": "string"
+    },
+    "rebuild": {
+      "description": "URL to rebuild the run. Usually leads to a separate page with rebuild options.",
+      "examples": [
+        "https://somewhere.com/job/ci-openstack/4794/rebuild/parametrized"
+      ],
+      "type": "string"
+    },
+    "trigger_rebuild": {
+      "description": "URL to trigger a rebuild of a run. GET request to this URL triggers rebuild.",
+      "examples": [
+        "https://somewhere.com/job/ci-openstack/4794/rebuild/parametrized?param1=value1&param2=value2"
+      ],
+      "type": "string"
+    },
+    "debug": {
+      "description": "URL of debug log.",
+      "examples": [
+        "https://somewhere.com/job/ci-openstack/4794/artifacts/debug.txt"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "url",
+    "log"
+  ],
+  "type": "object"
+}

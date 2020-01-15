@@ -1,0 +1,77 @@
+{
+  "$id": "contact",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Information about the team and the system which is performing the event.",
+  "properties": {
+    "name": {
+      "description": "A human readable name for the system.",
+      "examples": [
+        "BaseOS CI",
+        "OSCI Compose Gating Bot"
+      ],
+      "type": "string"
+    },
+    "team": {
+      "description": "A human readable name of the team running the testing or gating. This is useful for example to distinguish multiple teams running on the same Jenkins instance.",
+      "examples": [
+        "BaseOS QE",
+        "Libvirt QE",
+        "RTT",
+        "OSCI"
+      ],
+      "type": "string"
+    },
+    "docs": {
+      "description": "Link to documentation with details about the system.",
+      "examples": [
+        "https://somewhere.com/user-documentation"
+      ],
+      "type": "string",
+      "format": "uri"
+    },
+    "email": {
+      "description": "Contact email address.",
+      "examples": [
+        "osci@somewhere.com"
+      ],
+      "type": "string",
+      "format": "email"
+    },
+    "url": {
+      "description": "URL link to the system or system's web interface.",
+      "examples": [
+        "https://jenkins-continuous-infra.apps.ci.centos.org"
+      ],
+      "type": "string",
+      "format": "uri"
+    },
+    "irc": {
+      "description": "IRC contact for help (prefix with '#' for channel).",
+      "examples": [
+        "#osci"
+      ],
+      "type": "string"
+    },
+    "slack": {
+      "description": "Slack contact for help (prefix with '#' for channel).",
+      "examples": [
+        "#aos-art"
+      ],
+      "type": "string"
+    },
+    "version": {
+      "description": "Version of the system.",
+      "examples": [
+        1.2
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "team",
+    "docs",
+    "email"
+  ],
+  "type": "object"
+}

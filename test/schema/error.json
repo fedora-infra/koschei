@@ -1,0 +1,27 @@
+{
+  "$id": "error",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Information related to error reporting.",
+  "properties": {
+    "issue_url": {
+      "description": "If the CI system is able to automatically file an issue/ticket for the error, put the URL here.",
+      "examples": [
+        "http://sentry.somewhere.com/baseos/production/issues/1149/"
+      ],
+      "type": "string",
+      "format": "uri"
+    },
+    "reason": {
+      "description": "Reason of the error.",
+      "examples": [
+        "CI pipeline aborted.",
+        "No test results available after 24 hours."
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "reason"
+  ],
+  "type": "object"
+}

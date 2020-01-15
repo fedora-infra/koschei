@@ -1,0 +1,61 @@
+- method: repoInfo
+  args:
+  - 1041857
+  result:
+    create_event: 38576896
+    create_ts: 1544480443.06001
+    creation_time: '2018-12-10 22:20:43.060013'
+    dist: false
+    id: 1041857
+    state: 3
+    tag_id: 5564
+    tag_name: f30-kde
+- method: listTagged
+  args:
+  - f30-kde
+  - 38576896
+  kwargs:
+    latest: true
+  result:
+  - build_id: 1171326
+    completion_time: '2018-12-10 22:20:00.797414'
+    creation_event_id: 38576784
+    creation_time: '2018-12-10 22:15:54.062980'
+    epoch: null
+    id: 1171326
+    name: qt5-qtimageformats
+    nvr: qt5-qtimageformats-5.11.3-1.fc30
+    owner_id: 160
+    owner_name: rdieter
+    package_id: 16925
+    package_name: qt5-qtimageformats
+    release: 1.fc30
+    start_time: '2018-12-10 22:15:54.062980'
+    state: 1
+    tag_id: 5564
+    tag_name: f30-kde
+    task_id: 31396426
+    version: 5.11.3
+    volume_id: 0
+    volume_name: DEFAULT
+  - build_id: 1170640
+    completion_time: '2018-12-07 22:00:07.793437'
+    creation_event_id: 38505455
+    creation_time: '2018-12-07 18:59:21.460832'
+    epoch: null
+    id: 1170640
+    name: qt5-qtbase
+    nvr: qt5-qtbase-5.11.3-1.fc30
+    owner_id: 160
+    owner_name: rdieter
+    package_id: 15742
+    package_name: qt5-qtbase
+    release: 1.fc30
+    start_time: '2018-12-07 18:59:21.460832'
+    state: 1
+    tag_id: 5564
+    tag_name: f30-kde
+    task_id: 31335448
+    version: 5.11.3
+    volume_id: 0
+    volume_name: DEFAULT

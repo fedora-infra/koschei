@@ -1,0 +1,63 @@
+{
+  "$id": "test-complete",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Common attributes for a test in complete messages.",
+  "properties": {
+    "result": {
+      "description": "Result of the completed testing in conformance with ResultsDB 2.0 API valid outcome values (passed, failed, info, needs_inspection). Use \"not_applicable\" to when result is not applicable or skipped. https://resultsdb20.docs.apiary.io/#introduction/changes-since-1.0",
+      "enum": [
+        "passed",
+        "failed",
+        "info",
+        "needs_inspection",
+        "not_applicable"
+      ],
+      "examples": [
+        "passed",
+        "failed"
+      ],
+      "type": "string"
+    },
+    "runtime": {
+      "description": "Number of seconds the test run was running.",
+      "examples": [
+        1245
+      ],
+      "type": "number"
+    },
+    "output": {
+      "description": "This is a raw test run output, such as a one-liner from a perf test. This field should be limited in length, say 500 chars or less. If you need more use the output urls field.",
+      "examples": [
+        "average response time 0.2s"
+      ],
+      "type": "string"
+    },
+    "output_urls": {
+      "description": "If the test run output is too large provide list of urls to the output_files.",
+      "examples": [
+        "http://example.com/output1",
+        "http://example.com/output2"
+      ],
+      "type": "array"
+    },
+    "xunit": {
+      "description": "Gzipped xunit with detailed results or URL link to xunit/junit results.",
+      "examples": [
+        "https://somewhere.com/job/ci-openstack/4794/artifacts/results.xml"
+      ],
+      "type": "string"
+    },
+    "xunit_urls": {
+      "description": "Array with URL links to xunit/junit results.",
+      "examples": [
+        "https://somewhere.com/job/ci-openstack/4794/artifacts/results1.xml",
+        "https://somewhere.com/job/ci-openstack/4794/artifacts/results2.xml"
+      ],
+      "type": "array"
+    }
+  },
+  "required": [
+    "result"
+  ],
+  "type": "object"
+}
