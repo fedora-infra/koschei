@@ -328,3 +328,19 @@ class BackendTest(DBTest):
         self.db.commit()
         self.assertEqual(25560834, package.last_build.task_id)
         self.assertEqual(123, package.last_build.repo_id)
+
+    @with_koji_cassette
+    def test_submit_build_from_scm(self):
+        collection = self.prepare_collection('f29')
+        collection.scm_url = 'my-scm-url-for-%{package}-package'
+        package = self.prepare_package('rnv', collection=collection)
+        backend.submit_build(self.session, package)
+        self.db.commit()
+        self.assertIsNotNone(package.last_build)
+        self.assertEqual(Build.RUNNING, package.last_build.state)
+        self.assertEqual(25560834, package.last_build.task_id)
+        self.assertIsNone(package.last_build.repo_id)
+        self.assertIsNone(package.last_build.epoch)
+        self.assertIsNone(package.last_build.version)
+        self.assertIsNone(package.last_build.release)
+        self.assertIsNotNone(package.last_build.started)
