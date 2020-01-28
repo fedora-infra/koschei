@@ -125,37 +125,44 @@ def submit_build(session, package, arch_override=None):
     # on secondary Koji, collections SRPMs are taken from secondary, primary
     # needs to be able to build from relative URL constructed against
     # secondary (internal redirect)
-    srpm_res = koji_util.get_last_srpm(
-        session.secondary_koji_for(package.collection),
-        package.collection.dest_tag,
-        name,
-        relative=True
-    )
-    if srpm_res:
-        srpm, srpm_url = srpm_res
-        if session.build_from_repo_id:
-            target = None
-            build.repo_id = package.collection.latest_repo_id
-            build_opts.update({'repo_id': build.repo_id})
-        else:
-            target = package.collection.target
-        # priorities are reset after the build is done
-        # - the reason for that is that the build might be canceled and we want
-        # the priorities to be retained in that case
-        build.task_id = koji_util.koji_scratch_build(
-            session.koji('primary'),
-            target,
+    if package.collection.scm_url:
+        srpm = None
+        source = package.collection.scm_url.replace('%{package}', package.name)
+    else:
+        srpm_res = koji_util.get_last_srpm(
+            session.secondary_koji_for(package.collection),
+            package.collection.dest_tag,
             name,
-            srpm_url,
-            build_opts,
+            relative=True
         )
-        build.started = datetime.now()
+        if not srpm_res:
+            return
+        srpm, source = srpm_res
+
+    if session.build_from_repo_id:
+        target = None
+        build.repo_id = package.collection.latest_repo_id
+        build_opts.update({'repo_id': build.repo_id})
+    else:
+        target = package.collection.target
+    # priorities are reset after the build is done
+    # - the reason for that is that the build might be canceled and we want
+    # the priorities to be retained in that case
+    build.task_id = koji_util.koji_scratch_build(
+        session.koji('primary'),
+        target,
+        name,
+        source,
+        build_opts,
+    )
+    build.started = datetime.now()
+    if srpm:
         build.epoch = srpm['epoch']
         build.version = srpm['version']
         build.release = srpm['release']
-        session.db.add(build)
-        session.db.flush()
-        return build
+    session.db.add(build)
+    session.db.flush()
+    return build
 
 
 def get_newer_build_if_exists(session, package):

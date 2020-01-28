@@ -119,6 +119,10 @@ class Collection(Base):
     bugzilla_product = Column(String)
     bugzilla_version = Column(String)
 
+    # SCM URL template. %{name} is substituted with package name.
+    # If null, builds are submitted from SRPM.
+    scm_url = Column(String)
+
     # Priority of all packages in this collection is multiplied by this value.
     # Can be used to deprioritize collections for older releases by setting it to a value
     # less than 1
