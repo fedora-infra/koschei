@@ -14,7 +14,7 @@ from alembic import op
 
 def upgrade():
     op.execute("""
-        DROP FUNCTION rpmvercmp;
+        DROP FUNCTION rpmvercmp(varchar, varchar);
         CREATE FUNCTION rpmvercmp(a character varying, b character varying) RETURNS integer
             LANGUAGE plpgsql IMMUTABLE COST 1000
             AS $$
@@ -78,7 +78,7 @@ def upgrade():
 
 def downgrade():
     op.execute("""
-        DROP FUNCTION rpmvercmp;
+        DROP FUNCTION rpmvercmp(varchar, varchar);
         CREATE FUNCTION rpmvercmp(a character varying, b character varying) RETURNS integer
             LANGUAGE plpgsql IMMUTABLE COST 1000
             AS $$
