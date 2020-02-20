@@ -1,0 +1,62 @@
+- method: getTaskInfo
+  args:
+  - 41111817
+  result:
+    arch: noarch
+    awaited: null
+    channel_id: 1
+    completion_time: '2020-01-27 23:52:02.639836'
+    completion_ts: 1580169122.63984
+    create_time: '2020-01-27 23:50:27.744662'
+    create_ts: 1580169027.74466
+    host_id: 83
+    id: 41111817
+    label: null
+    method: build
+    owner: 3199
+    parent: null
+    priority: 50
+    start_time: '2020-01-27 23:50:28.087738'
+    start_ts: 1580169028.08774
+    state: 5
+    waiting: true
+    weight: 0.2
+- method: getTaskResult
+  args:
+  - 41111817
+  exception:
+    type:
+      module: koji
+      class: BuildError
+    args:
+    - error building srpm, mock exited with status 1; see root.log for more information
+- method: getTaskChildren
+  args:
+  - 41111817
+  kwargs:
+    request: true
+  result:
+  - arch: noarch
+    awaited: false
+    channel_id: 1
+    completion_time: '2020-01-27 23:51:45.372959'
+    completion_ts: 1580169105.37296
+    create_time: '2020-01-27 23:50:28.804249'
+    create_ts: 1580169028.80425
+    host_id: 294
+    id: 41111818
+    label: srpm
+    method: rebuildSRPM
+    owner: 3199
+    parent: 41111817
+    priority: 49
+    request:
+    - ../packages/python-debtcollector/1.22.0/2.fc32/src/python-debtcollector-1.22.0-2.fc32.src.rpm
+    - 11522
+    - repo_id: 1344909
+      scratch: true
+    start_time: '2020-01-27 23:50:29.351542'
+    start_ts: 1580169029.35154
+    state: 5
+    waiting: null
+    weight: 1.0

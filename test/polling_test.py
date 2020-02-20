@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2016  Red Hat, Inc.
+# Copyright (C) 2014-2020  Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,11 +15,12 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 # Author: Michael Simacek <msimacek@redhat.com>
+# Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
-import koji
 from mock import patch, call
 
 from test.common import DBTest, with_koji_cassette
+from koschei.models import Build
 from koschei.backend.services.polling import Polling
 
 
@@ -46,3 +47,20 @@ class PollingTest(DBTest):
                  call(self.session, eclipse_build, 'CLOSED')],
                 any_order=True,
             )
+
+    @with_koji_cassette
+    def test_poll_failed_rebuildSRPM(self):
+        build = self.prepare_build('python-debtcollector', 'running', task_id=41111817)
+        with patch('koschei.backend.dispatch_event') as event:
+            Polling(self.session).poll_builds()
+            event.assert_called_once()
+            event.assert_called_once_with(
+                'package_state_change',
+                session=self.session,
+                package=build.package,
+                prev_state='ignored',
+                new_state='failing',
+            )
+        build = self.db.query(Build).one()
+        self.assertEqual(build.state, Build.FAILED)
+        self.assertEqual(build.repo_id, 1344909)
