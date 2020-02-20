@@ -429,14 +429,19 @@ def set_build_repo_id(session, build, task, secondary_mode):
 
     :param session: KoscheiBackendSession
     :param build: Build
-    :param task: Koji taskInfo of a buildArch subtask
+    :param task: Koji taskInfo of subtask of build task
     :param secondary_mode: whether the collection is in secondary mode
     :return:
     """
     if build.repo_id:
         return
     try:
-        repo_id = task['request'][4]['repo_id']
+        if task['method'] == 'buildArch':
+            repo_id = task['request'][4]['repo_id']
+        elif task['method'] == 'rebuildSRPM':
+            repo_id = task['request'][2]['repo_id']
+        else:
+            return
     except KeyError:
         return
     if repo_id:
@@ -480,18 +485,17 @@ def sync_tasks(session, collection, builds, real=False):
     build_tasks = {}
     for build, subtasks in zip(valid_builds, call):
         tasks = []
-        build_arch_tasks = [task for task in subtasks
-                            if task['method'] == 'buildArch']
-        for task in build_arch_tasks:
+        for task in subtasks:
             set_build_repo_id(session, build, task, collection.secondary_mode)
-            db_task = KojiTask(task_id=task['id'])
-            db_task.build_id = build.id
-            db_task.state = task['state']
-            db_task.arch = task['arch']
-            db_task.started = datetime.fromtimestamp(task['create_ts'])
-            if task.get('completion_ts'):
-                db_task.finished = datetime.fromtimestamp(task['completion_ts'])
-            tasks.append(db_task)
+            if task['method'] == 'buildArch':
+                db_task = KojiTask(task_id=task['id'])
+                db_task.build_id = build.id
+                db_task.state = task['state']
+                db_task.arch = task['arch']
+                db_task.started = datetime.fromtimestamp(task['create_ts'])
+                if task.get('completion_ts'):
+                    db_task.finished = datetime.fromtimestamp(task['completion_ts'])
+                tasks.append(db_task)
         build_tasks[build] = tasks
     return build_tasks
 
