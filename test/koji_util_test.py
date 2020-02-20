@@ -166,3 +166,23 @@ class KojiUtilOtherTest(AbstractTest):
             'https://primary-koji.test/repos/f29-build/888027/x86_64',
             desc.url,
         )
+
+    @with_koji_cassette
+    def test_koji_fault(self):
+        koji_sesion = self.koji('primary')
+        # Successful task
+        self.assertFalse(koji_util.is_koji_fault(koji_sesion, 1337))
+        # Cancelled task
+        self.assertFalse(koji_util.is_koji_fault(koji_sesion, 12345))
+        # Failed buildArch task (non-fault)
+        self.assertFalse(koji_util.is_koji_fault(koji_sesion, 41684693))
+        # Failed build task (non-fault)
+        self.assertFalse(koji_util.is_koji_fault(koji_sesion, 41684668))
+        # Failed rebuildSRPM (non-fault)
+        self.assertFalse(koji_util.is_koji_fault(koji_sesion, 41111818))
+        # Failed scratch build from SRPM (non-fault)
+        self.assertFalse(koji_util.is_koji_fault(koji_sesion, 41111817))
+        # Failed build task due to HTTPError: HTTP Error 503: Backend fetch failed
+        self.assertTrue(koji_util.is_koji_fault(koji_sesion, 32738401))
+        # Failed buildArch task due to HTTPError: HTTP Error 503: Backend fetch failed
+        self.assertTrue(koji_util.is_koji_fault(koji_sesion, 32738626))

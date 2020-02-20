@@ -1,0 +1,115 @@
+- method: getTaskResult
+  args:
+  - 1337
+  result:
+  - tasks/1337
+  - - repomd.xml
+    - other.xml.gz
+    - filelists.xml.gz
+    - primary.xml.gz
+    - comps.xml
+- method: getTaskResult
+  args:
+  - 12345
+  exception:
+    type:
+      module: koji
+      class: GenericError
+    args:
+    - Task 12345 is canceled
+- method: getTaskResult
+  args:
+  - 41684693
+  exception:
+    type:
+      module: koji
+      class: BuildError
+    args:
+    - error building package (arch armv7hl), mock exited with status 1; see root.log
+      for more information
+- method: getTaskResult
+  args:
+  - 41684668
+  exception:
+    type:
+      module: koji
+      class: BuildError
+    args:
+    - error building package (arch armv7hl), mock exited with status 1; see root.log
+      for more information
+- method: getTaskResult
+  args:
+  - 41111818
+  exception:
+    type:
+      module: koji
+      class: BuildError
+    args:
+    - error building srpm, mock exited with status 1; see root.log for more information
+- method: getTaskResult
+  args:
+  - 41111817
+  exception:
+    type:
+      module: koji
+      class: BuildError
+    args:
+    - error building srpm, mock exited with status 1; see root.log for more information
+- method: getTaskResult
+  args:
+  - 32738401
+  exception:
+    type:
+      module: xmlrpc.client
+      class: Fault
+    args:
+    - 1
+    - "Traceback (most recent call last):\n  File \"/usr/lib/python2.7/site-packages/koji/daemon.py\"\
+      , line 1244, in runTask\n    response = (handler.run(),)\n  File \"/usr/lib/python2.7/site-packages/koji/tasks.py\"\
+      , line 307, in run\n    return koji.util.call_with_argcheck(self.handler, self.params,\
+      \ self.opts)\n  File \"/usr/lib/python2.7/site-packages/koji/util.py\", line\
+      \ 216, in call_with_argcheck\n    return func(*args, **kwargs)\n  File \"/usr/sbin/kojid\"\
+      , line 1268, in handler\n    broot.init()\n  File \"/usr/sbin/kojid\", line\
+      \ 526, in init\n    self.session.host.setBuildRootList(self.id,self.getPackageList())\n\
+      \  File \"/usr/sbin/kojid\", line 615, in getPackageList\n    self.markExternalRPMs(ret)\n\
+      \  File \"/usr/sbin/kojid\", line 722, in markExternalRPMs\n    fo = koji.openRemoteFile(relpath,\
+      \ **opts)\n  File \"/usr/lib/python2.7/site-packages/koji/__init__.py\", line\
+      \ 1605, in openRemoteFile\n    src = six.moves.urllib.request.urlopen(url)\n\
+      \  File \"/usr/lib64/python2.7/urllib2.py\", line 154, in urlopen\n    return\
+      \ opener.open(url, data, timeout)\n  File \"/usr/lib64/python2.7/urllib2.py\"\
+      , line 435, in open\n    response = meth(req, response)\n  File \"/usr/lib64/python2.7/urllib2.py\"\
+      , line 548, in http_response\n    'http', request, response, code, msg, hdrs)\n\
+      \  File \"/usr/lib64/python2.7/urllib2.py\", line 473, in error\n    return\
+      \ self._call_chain(*args)\n  File \"/usr/lib64/python2.7/urllib2.py\", line\
+      \ 407, in _call_chain\n    result = func(*args)\n  File \"/usr/lib64/python2.7/urllib2.py\"\
+      , line 556, in http_error_default\n    raise HTTPError(req.get_full_url(), code,\
+      \ msg, hdrs, fp)\nHTTPError: HTTP Error 503: Backend fetch failed\n"
+- method: getTaskResult
+  args:
+  - 32738626
+  exception:
+    type:
+      module: xmlrpc.client
+      class: Fault
+    args:
+    - 1
+    - "Traceback (most recent call last):\n  File \"/usr/lib/python2.7/site-packages/koji/daemon.py\"\
+      , line 1244, in runTask\n    response = (handler.run(),)\n  File \"/usr/lib/python2.7/site-packages/koji/tasks.py\"\
+      , line 307, in run\n    return koji.util.call_with_argcheck(self.handler, self.params,\
+      \ self.opts)\n  File \"/usr/lib/python2.7/site-packages/koji/util.py\", line\
+      \ 216, in call_with_argcheck\n    return func(*args, **kwargs)\n  File \"/usr/sbin/kojid\"\
+      , line 1268, in handler\n    broot.init()\n  File \"/usr/sbin/kojid\", line\
+      \ 526, in init\n    self.session.host.setBuildRootList(self.id,self.getPackageList())\n\
+      \  File \"/usr/sbin/kojid\", line 615, in getPackageList\n    self.markExternalRPMs(ret)\n\
+      \  File \"/usr/sbin/kojid\", line 722, in markExternalRPMs\n    fo = koji.openRemoteFile(relpath,\
+      \ **opts)\n  File \"/usr/lib/python2.7/site-packages/koji/__init__.py\", line\
+      \ 1605, in openRemoteFile\n    src = six.moves.urllib.request.urlopen(url)\n\
+      \  File \"/usr/lib64/python2.7/urllib2.py\", line 154, in urlopen\n    return\
+      \ opener.open(url, data, timeout)\n  File \"/usr/lib64/python2.7/urllib2.py\"\
+      , line 435, in open\n    response = meth(req, response)\n  File \"/usr/lib64/python2.7/urllib2.py\"\
+      , line 548, in http_response\n    'http', request, response, code, msg, hdrs)\n\
+      \  File \"/usr/lib64/python2.7/urllib2.py\", line 473, in error\n    return\
+      \ self._call_chain(*args)\n  File \"/usr/lib64/python2.7/urllib2.py\", line\
+      \ 407, in _call_chain\n    result = func(*args)\n  File \"/usr/lib64/python2.7/urllib2.py\"\
+      , line 556, in http_error_default\n    raise HTTPError(req.get_full_url(), code,\
+      \ msg, hdrs, fp)\nHTTPError: HTTP Error 503: Backend fetch failed\n"
