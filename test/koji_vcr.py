@@ -136,7 +136,7 @@ class KojiVCR(object):
                 else:
                     module = builtins
                 exc_class = getattr(module, classname)
-                return exc_class(*replay['exception']['args'])
+                raise exc_class(*replay['exception']['args'])
             return replay['result']
         if not self.recording:
             arguments = [f'{arg!r}' for arg in args]
@@ -161,6 +161,8 @@ class KojiVCR(object):
             record_item['exception']['type']['module'] = type(e).__module__
             record_item['exception']['type']['class'] = type(e).__name__
             record_item['exception']['args'] = list(e.args)
+            if type(e).__module__ == 'xmlrpc.client' and type(e).__name__ == 'Fault':
+                record_item['exception']['args'] = [e.__dict__['faultCode'], e.__dict__['faultString']]
             self.record_list.append(record_item)
             raise e
 
