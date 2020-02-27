@@ -47,7 +47,7 @@ class OSCIUtilTest(DBTest):
         expected = {'type': 'koji-build-group',
                     'builds': [],
                     'repository': 'https://primary-koji.test/repos/f30-kde/1041751/x86_64',
-                    'id': ''}
+                    'id': 'sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'}
         self.assertDictEqual(expected, artifact)
 
     @with_koji_cassette
@@ -62,7 +62,7 @@ class OSCIUtilTest(DBTest):
                                 'nvr': 'qt5-qtbase-5.11.3-1.fc30',
                                 'scratch': False}],
                     'repository': 'https://primary-koji.test/repos/f30-kde/1041788/x86_64',
-                    'id': 'qt5-qtbase-5.11.3-1.fc30'}
+                    'id': 'sha256:3f1d00be3daa508db0366bfa154445ea02ce1949f7d375d9bab13b65e4954edc'}
         self.assertDictEqual(expected, artifact)
 
     @with_koji_cassette
@@ -70,7 +70,7 @@ class OSCIUtilTest(DBTest):
         artifact = get_artifact(self.session, 1041857, 'f30-kde')
         validate_schema(artifact, 'rpm-build-group')
         self.assertEqual(2, len(artifact['builds']))
-        self.assertEqual('qt5-qtbase-5.11.3-1.fc30,qt5-qtimageformats-5.11.3-1.fc30', artifact['id'])
+        self.assertEqual('sha256:7f16732fc11cd6a8744cc7ede57b2b9fb93a1a7569f2d64b828879602287d536', artifact['id'])
 
     @with_koji_cassette
     def test_message_queued(self):

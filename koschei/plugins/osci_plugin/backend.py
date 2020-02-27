@@ -17,6 +17,7 @@
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 import datetime
+import hashlib
 import fedora_messaging.api as fedmsg
 from koschei.models import Collection, Build, Package
 from koschei.config import get_config, get_koji_config
@@ -36,8 +37,9 @@ def koji_build_to_osci_build(koji_build):
 
 
 def artifact_id_from_builds(builds):
-    nvrs = [build['nvr'] for build in builds]
-    return ",".join(sorted(nvrs))
+    payload = ''.join(sorted(str(build['id']) for build in builds))
+    hexdigest = hashlib.sha256(payload.encode('ascii')).hexdigest()
+    return f'sha256:{hexdigest}'
 
 
 def repo_path(repo_id, repo_tag):
