@@ -1,4 +1,4 @@
-FROM registry.fedoraproject.org/fedora:31
+FROM registry.fedoraproject.org/fedora:33
 ENV PYTHONPATH=/usr/share/koschei
 EXPOSE 8080
 
