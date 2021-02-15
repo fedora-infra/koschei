@@ -26,7 +26,10 @@ import koji
 import logging
 
 from functools import total_ordering
-from rpm import RPMSENSE_LESS, RPMSENSE_GREATER, RPMSENSE_EQUAL
+from rpm import (
+    RPMSENSE_LESS, RPMSENSE_GREATER, RPMSENSE_EQUAL,
+    RPMSENSE_FIND_REQUIRES
+)
 
 from koschei.config import get_config, get_koji_config
 
@@ -288,6 +291,7 @@ def get_rpm_requires(koji_session, nvras, chunk_size=None):
         requires = []
         for dep in deps:
             flags = dep['flags']
+            flags &= ~RPMSENSE_FIND_REQUIRES
             if flags & ~(RPMSENSE_LESS | RPMSENSE_GREATER | RPMSENSE_EQUAL):
                 continue
             order = ""
