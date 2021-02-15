@@ -521,4 +521,4 @@ def service_ctor(name, plugin_name=None, plugin_endpoint='backend'):
 
 
 def rpmvercmp(v1, v2):
-    return rpm.labelCompare((None, None, v1), (None, None, v2))
+    return rpm.labelCompare(('0', '0', v1), ('0', '0', v2))
