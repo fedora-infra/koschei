@@ -48,7 +48,7 @@ class CheckBoxField(BooleanField):
     def __call__(self, **kwargs):
         marker = '<input type="hidden" name="{name}__present" value="1"/>'\
             .format(name=self.name)
-        return HTMLString(self.meta.render_field(self, kwargs) + marker)
+        return self.meta.render_field(self, kwargs) + HTMLString(marker)
 
 
 class StrippedStringField(StringField):
