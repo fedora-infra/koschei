@@ -37,6 +37,9 @@ RUN : \
  && pip-3 install koschei-messages==1.0.1 \
  && :
 
+# Avoid version conflict between fedora-bootstrap and jQuery
+RUN curl https://code.jquery.com/jquery-3.3.1.min.js -o /usr/share/web-assets/jquery/latest/jquery.min.js
+
 COPY bin/ /usr/bin/
 COPY ./ /usr/share/koschei/
 
