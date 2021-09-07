@@ -6,4 +6,19 @@ fi
 set -e
 group_name="${1}"; shift
 distgit_group_name="${1}"; shift
-curl -s "https://src.fedoraproject.org/api/0/group/${distgit_group_name}?projects=1" | jq -r '.projects[]|select(.namespace=="rpms").name' | koschei-admin edit-group "${group_name}" --content-from-file - "${@}"
+
+# How many pages of 100 results do we have
+pages=$(curl -s "https://src.fedoraproject.org/api/0/group/${distgit_group_name}?projects=1&per_page=100" | jq -r '.pagination.pages')
+
+# Create empty file that we will save our list to
+echo -n > "${distgit_group_name}.txt"
+
+# Iterate over all pages to get all packages
+for p in $(seq 1 ${pages})
+do
+    curl -s "https://src.fedoraproject.org/api/0/group/${distgit_group_name}?projects=1&per_page=100&page=${p}" | jq -r '.projects[]|select(.namespace=="rpms").name' >> "${distgit_group_name}.txt"
+done
+
+# Add packages to koschei and remove file
+cat "${distgit_group_name}.txt" | koschei-admin edit-group "${group_name}" --content-from-file - "${@}"
+rm "${distgit_group_name}.txt"
