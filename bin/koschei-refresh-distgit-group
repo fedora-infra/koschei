@@ -6,4 +6,5 @@ fi
 set -e
 group_name="${1}"; shift
 distgit_group_name="${1}"; shift
-curl -s "https://src.fedoraproject.org/api/0/group/${distgit_group_name}?projects=1" | jq -r '.projects[]|select(.namespace=="rpms").name' | koschei-admin edit-group "${group_name}" --content-from-file - "${@}"
+
+curl -s https://src.fedoraproject.org/extras/pagure_bz.json | jq -r '.rpms|to_entries[]|select(.value[]=="@'"${distgit_group_name}"'").key' | koschei-admin edit-group "${group_name}" --content-from-file - "${@}"
