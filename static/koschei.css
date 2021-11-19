@@ -43,15 +43,6 @@ html { font-size: 14px; }
 /* TODO: eliminate usage of ASCII-art */
 .kk-task-tree { line-height: 17px; }
 
-/* Used by Copr plugin */
-.kk-copr-rebuild-unschedulable { background-color: #eee; }
-.kk-copr-rebuild-fixed         { background-color: #efd; }
-.kk-copr-rebuild-ok            { }
-.kk-copr-rebuild-failing       { }
-.kk-copr-rebuild-broken        { background-color: #f3dddd; }
-.kk-copr-action-column         { width: 0; white-space: nowrap; }
-.kk-copr-description           { padding-bottom: 20px; }
-
 .kk-untagged-build { filter: contrast(0.6); }
 
 .kk-evr-diff { font-weight: bold; }

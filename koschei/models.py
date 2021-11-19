@@ -997,120 +997,6 @@ class RepoMapping(Base):
     task_id = Column(Integer, nullable=False)
 
 
-class CoprRebuildRequest(Base):
-    """
-    Used by copr plugin to represent a users request to rebuild packages with additional
-    copr repo added, in order to test whether his changes break anything.
-    """
-    id = Column(Integer, primary_key=True)
-    # Requestor
-    user_id = Column(
-        ForeignKey('user.id', ondelete='CASCADE'),
-        nullable=False,
-    )
-    collection_id = Column(
-        ForeignKey('collection.id', ondelete='CASCADE'),
-        nullable=False,
-    )
-    # String refering to copr used to abtain the repo
-    # format: copr:owner/name or copr:name
-    repo_source = Column(String, nullable=False)
-    # Set by resolver to raw yum repo URL
-    yum_repo = Column(String)
-    # Creation time
-    timestamp = Column(
-        DateTime,
-        nullable=False,
-        server_default=func.clock_timestamp(),
-    )
-    # Descirption entered by the user. Informative only
-    description = Column(String)
-    # Koji repo ID used to obtain the base repo, taken from colection.latest_repo_id
-    # at resolution time
-    repo_id = Column(Integer)
-    # How many builds should be scheduled. User can bump this value
-    schedule_count = Column(Integer)
-    # Current cursor into the build queue
-    scheduler_queue_index = Column(Integer)
-
-    state = Column(
-        Enum(
-            'new',  # just submitted by user
-            'in progress',  # resolved, scheduling in progress
-            'scheduled',  # every build was scheduled
-            'finished',  # every build completed
-            'failed',  # error occured, processing stopped
-            name='rebuild_request_state',
-        ),
-        nullable=False,
-        server_default='new',
-    )
-    error = Column(String)
-
-    def __str__(self):
-        return 'copr-request-{}'.format(self.id)
-
-
-class CoprResolutionChange(Base):
-    """
-    Like ResolutionChange, but for copr rebuilds. Signifies that a package failed to
-    resolve with the copr repo added while it was ok without it (or the other way around).
-    """
-    request_id = Column(
-        ForeignKey('copr_rebuild_request.id', ondelete='CASCADE'),
-        primary_key=True,
-    )
-    package_id = Column(
-        ForeignKey('package.id', ondelete='CASCADE'),
-        primary_key=True,
-    )
-    prev_resolved = Column(Boolean, nullable=False)
-    curr_resolved = Column(Boolean, nullable=False)
-    problems = Column(ARRAY(String))
-
-
-class CoprRebuild(Base):
-    """
-    A build scheduled or done by copr plugin (in copr).
-    Created for every package, whose dependencies changed after adding the copr repo.
-    Only first `schedule_count` builds are actually submitted.
-    """
-    # TODO migration
-    __table_args__ = (
-        UniqueConstraint('request_id', 'package_id', 'order',
-                         name='copr_rebuild_order'),
-        CheckConstraint('state IS NULL OR copr_build_id IS NOT NULL',
-                        name='copr_rebuild_scheduled_build_has_copr_id_check'),
-        CheckConstraint('state BETWEEN 2 AND 5',
-                        name='copr_rebuild_state_check'),
-    )
-
-    request_id = Column(
-        ForeignKey('copr_rebuild_request.id', ondelete='CASCADE'),
-        primary_key=True,
-    )
-    package_id = Column(
-        ForeignKey('package.id', ondelete='CASCADE'),
-        primary_key=True,
-    )
-    copr_build_id = Column(Integer)
-    # State of the last complete build of the package at the time of creation of
-    # this build
-    prev_state = Column(Integer, nullable=False)
-    # Current state
-    state = Column(Integer)
-    approved = Column(Boolean)  # TODO what was it again?
-    # Order in the rebuild queue. Set by resolver, can be altered by frontend
-    order = Column(Integer, nullable=False)
-
-    @property
-    def copr_name(self):
-        return '{}-{}-{}'.format(
-            get_config('copr.name_prefix'),
-            self.request_id,
-            self.package_id,
-        )
-
 
 class BuildGroup(Base):
     id = Column(Integer, primary_key=True)
@@ -1300,16 +1186,6 @@ CollectionGroup.collections = relationship(
     order_by=(Collection.order.desc(), Collection.name.desc()),
     passive_deletes=True,
 )
-CoprRebuildRequest.collection = relationship(Collection)
-CoprRebuildRequest.resolution_changes = relationship(CoprResolutionChange)
-CoprRebuildRequest.rebuilds = relationship(
-    CoprRebuild,
-    order_by=CoprRebuild.order,
-)
-CoprRebuildRequest.user = relationship(User)
-CoprRebuild.package = relationship(Package)
-CoprRebuild.request = relationship(CoprRebuildRequest)
-CoprResolutionChange.package = relationship(Package)
 
 # Finalize ORM setup, no DB entities should be defined past this
 configure_mappers()
