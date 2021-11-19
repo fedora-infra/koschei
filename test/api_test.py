@@ -17,6 +17,7 @@
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 from unittest import skip
+from datetime import datetime
 
 from flask import json
 
@@ -51,7 +52,14 @@ class ApiTest(FrontendTest):
 
     def assert_package(self, package, **kwargs):
         if kwargs['last_task_id']:
-            kwargs['last_complete_build'] = {'task_id': kwargs['last_task_id']}
+            kwargs['last_complete_build'] = {
+                'task_id': kwargs['last_task_id'],
+                'time_started': datetime.fromtimestamp(kwargs['last_task_id']).isoformat(),
+                'time_finished': None,
+                'epoch': None,
+                'version': '1',
+                'release': '1.fc25',
+            }
         else:
             kwargs['last_complete_build'] = None
         del kwargs['last_task_id']

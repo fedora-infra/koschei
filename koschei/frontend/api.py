@@ -63,7 +63,12 @@ def list_packages():
             Package.state_string.label('state'),
             sql_if(
                 Build.id != None,
-                db.query(Build.task_id.label('task_id'))
+                db.query(Build.task_id.label('task_id'),
+                         Build.started.label('time_started'),
+                         Build.finished.label('time_finished'),
+                         Build.epoch.label('epoch'),
+                         Build.version.label('version'),
+                         Build.release.label('release'))
                 .correlate(Build)
                 .as_record()
             ).label('last_complete_build')
