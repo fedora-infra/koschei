@@ -214,6 +214,7 @@ class DBTest(AbstractTest):
         with psycopg2.connect(dbname='postgres') as conn:
             conn.autocommit = True
             with conn.cursor() as cur:
+                cur.execute("ROLLBACK")
                 cur.execute("DROP DATABASE IF EXISTS {0}".format(dbname))
                 cur.execute("CREATE DATABASE {0}".format(dbname))
                 for option, value in DBTest.POSTGRES_OPTS.items():
