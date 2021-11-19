@@ -114,7 +114,7 @@ class KojiVCR(object):
 
     def load_cassette(self, cassette):
         with open(cassette) as fo:
-            self.replay_list += yaml.load(fo)
+            self.replay_list += yaml.load(fo, Loader=yaml.SafeLoader)
 
     def find_replay(self, method, args, kwargs):
         for entry in self.replay_list + self.record_list:
