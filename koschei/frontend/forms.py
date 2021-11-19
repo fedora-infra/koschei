@@ -28,7 +28,8 @@ from wtforms import (
     StringField, TextAreaField, IntegerField, BooleanField,
 )
 from wtforms.validators import Regexp, ValidationError
-from wtforms.widgets import HTMLString, HiddenInput
+from wtforms.widgets import HiddenInput
+from markupsafe import Markup
 
 from koschei.config import get_koji_config
 from koschei.frontend.util import flash_nak
@@ -48,7 +49,7 @@ class CheckBoxField(BooleanField):
     def __call__(self, **kwargs):
         marker = '<input type="hidden" name="{name}__present" value="1"/>'\
             .format(name=self.name)
-        return self.meta.render_field(self, kwargs) + HTMLString(marker)
+        return self.meta.render_field(self, kwargs) + Markup(marker)
 
 
 class StrippedStringField(StringField):

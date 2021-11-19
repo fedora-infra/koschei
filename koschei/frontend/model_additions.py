@@ -25,7 +25,7 @@ and adds few model specific global functions to templates.
 import re
 
 from flask import url_for, escape
-from jinja2 import Markup
+from markupsafe import Markup
 
 from koschei.frontend.base import app
 from koschei.models import (

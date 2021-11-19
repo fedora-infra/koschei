@@ -26,7 +26,7 @@ import re
 from urllib.parse import urlencode, quote_plus
 
 from flask import request, g
-from jinja2 import Markup, escape
+from markupsafe import Markup, escape
 
 from koschei.config import get_config
 from koschei.frontend.base import app, db

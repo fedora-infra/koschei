@@ -23,7 +23,7 @@ A collection of jinja2 filters made globally available.
 from datetime import datetime
 
 import humanize
-from jinja2 import Markup
+from markupsafe import Markup
 
 from koschei.frontend.base import app
 

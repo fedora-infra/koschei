@@ -14,6 +14,7 @@ RUN : \
       python3-wtforms \
       python3-humanize \
       python3-jinja2 \
+      python3-markupsafe \
       python3-memcached \
       python3-mod_wsgi \
       python3-fedora-messaging \
