@@ -80,7 +80,7 @@ class Query(sqlalchemy.orm.Query):
         Casts a select query to postgres record type
         """
         subq = self.subquery()
-        return self.session.query(column(subq.name)).select_from(subq).as_scalar()
+        return self.session.query(column(subq.name)).select_from(subq).scalar_subquery()
 
     def json(self):
         subq = self.subquery('json_query')
@@ -168,7 +168,7 @@ def get_engine():
     global __engine
     if __engine:
         return __engine
-    db_url = get_config('db_url', None) or URL(**get_config('database_config'))
+    db_url = get_config('db_url', None) or URL.create(**get_config('database_config'))
     __engine = create_engine(db_url, echo=False, pool_size=10)
     return __engine
 
@@ -265,17 +265,13 @@ def create_all():
         bdr = True
     except Exception:
         bdr = False
-    tx = conn.begin()
-    try:
+    with conn.begin():
         if bdr:
             conn.execute("SET LOCAL bdr.permit_ddl_locking = true")
         load_ddl()
         Base.metadata.create_all(conn, tables=Base.metadata.non_materialized_view_tables)
         for mv in Base.metadata.materialized_views:
             mv.create(conn)
-        tx.commit()
-    finally:
-        tx.rollback()
 
 
 class CmpMixin(object):

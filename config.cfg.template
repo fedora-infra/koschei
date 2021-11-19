@@ -3,7 +3,7 @@
 config = {
     # database connection properties
     "database_config": {
-        "drivername": "postgres",
+        "drivername": "postgresql",
         "host": "localhost",
         # "database": "koschei",
         # "username": "koschei",

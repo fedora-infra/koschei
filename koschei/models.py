@@ -1038,7 +1038,7 @@ class ScalarStats(MaterializedView):
 def _resource_consumption_stats_view():
     time_difference_expr = func.sum(KojiTask.finished - KojiTask.started)
     time_difference = extract('EPOCH', time_difference_expr)
-    time_difference_all = select([time_difference]).select_from(KojiTask)
+    time_difference_all = select([time_difference]).select_from(KojiTask).scalar_subquery()
     return (
         select([
             Package.name,
@@ -1146,7 +1146,7 @@ PackageGroup.package_count = column_property(
            join(BasePackage, PackageGroupRelation,
                 PackageGroupRelation.base_id == BasePackage.id))
     .where(~BasePackage.all_blocked)
-    .correlate(PackageGroup).as_scalar(),
+    .correlate(PackageGroup).scalar_subquery(),
     deferred=True)
 # pylint: disable=E1101
 BasePackage.groups = relationship(
@@ -1155,7 +1155,7 @@ BasePackage.groups = relationship(
     secondaryjoin=(PackageGroup.id == PackageGroupRelation.group_id),
     primaryjoin=(PackageGroupRelation.base_id == BasePackage.id),
     order_by=PackageGroup.name,
-    passive_deletes=True,
+    viewonly=True,
 )
 Package.groups = relationship(
     PackageGroup,
@@ -1163,7 +1163,7 @@ Package.groups = relationship(
     secondaryjoin=(PackageGroup.id == PackageGroupRelation.group_id),
     primaryjoin=(PackageGroupRelation.base_id == Package.base_id),
     order_by=PackageGroup.name,
-    passive_deletes=True,
+    viewonly=True,
 )
 PackageGroup.packages = relationship(
     BasePackage,
@@ -1171,20 +1171,20 @@ PackageGroup.packages = relationship(
     primaryjoin=(PackageGroup.id == PackageGroupRelation.group_id),
     secondaryjoin=(PackageGroupRelation.base_id == BasePackage.id),
     order_by=BasePackage.name,
-    passive_deletes=True,
+    viewonly=True,
 )
 PackageGroupRelation.group = relationship(PackageGroup)
 User.groups = relationship(
     PackageGroup,
     secondary=GroupACL.__table__,
     order_by=[PackageGroup.namespace, PackageGroup.name],
-    passive_deletes=True,
+    viewonly=True,
 )
 CollectionGroup.collections = relationship(
     Collection,
     secondary=CollectionGroupRelation.__table__,
     order_by=(Collection.order.desc(), Collection.name.desc()),
-    passive_deletes=True,
+    viewonly=True,
 )
 
 # Finalize ORM setup, no DB entities should be defined past this

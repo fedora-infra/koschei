@@ -864,7 +864,7 @@ def affected_by(dep_name):
         .filter(prev_build.started < Build.started)\
         .filter(prev_build.package_id == Build.package_id)\
         .limit(1)\
-        .correlate().as_scalar()
+        .correlate().scalar_subquery()
     prev_dep = aliased(Dependency)
     curr_dep = aliased(Dependency)
     failed = (
