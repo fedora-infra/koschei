@@ -1,0 +1,10 @@
+#!/bin/bash
+if [ "$#" -lt 2 ]; then
+    echo "Usage: refresh-group <group-name> <user-name> [...]"
+    exit 1
+fi
+set -e
+group_name="${1}"; shift
+user_name="${1}"; shift
+
+curl -s https://src.fedoraproject.org/extras/pagure_bz.json | jq -r '.rpms|to_entries[]|select(.value[]=="'"${user_name}"'").key' | koschei-admin edit-group "${group_name}" --content-from-file - "${@}"
