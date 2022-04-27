@@ -272,13 +272,13 @@ config = {
     # displayed
     "links": [
         {"name": "Packages",
-         "url": "https://apps.fedoraproject.org/packages/{package.name}"},
+         "url": "https://packages.fedoraproject.org/pkgs/{package.name}"},
         {"name": "Bugzilla",
          "url": "https://bugzilla.redhat.com/buglist.cgi?product={package.collection.bugzilla_product}&component={package.name}"},
         {"name": "Bodhi",
          "url": "https://bodhi.fedoraproject.org/updates?packages={package.name}"},
         {"name": "Dist-git",
-         "url": "https://src.fedoraproject.org/cgit/rpms/{package.name}.git"},
+         "url": "https://src.fedoraproject.org/rpms/{package.name}.git"},
         {"name": "Koji",
          "url": "https://koji.fedoraproject.org/koji/packageinfo?packageID={package.name}"}
     ],
