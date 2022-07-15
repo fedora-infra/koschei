@@ -66,7 +66,7 @@ Setting up the database:
   database servers are not supported and won't work.
 - Execute `postgresql-setup initdb` to initialize the database
 - Enable the service with `systemctl enable postgresql-server`
-  and start it with `systemctl start postgresq-server`
+  and start it with `systemctl start postgresql-server`
 - Create the database with `createdb koschei`
 - If your database is on separate host or you didn't follow the steps here
   exactly, you'll need to configure the database connection in respective
