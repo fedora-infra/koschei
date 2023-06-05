@@ -18,6 +18,8 @@
 # Author: Mikolaj Izdebski <mizdebsk@redhat.com>
 
 import fedora_messaging.api as fedmsg
+from koschei_messages.package import PackageStateChange
+from koschei_messages.collection import CollectionStateChange
 
 from koschei.config import get_config
 from koschei.plugin import listen_event
@@ -26,10 +28,6 @@ from koschei.plugin import listen_event
 def publish_fedmsg(session, message):
     if not get_config('fedmsg-publisher.enabled', False):
         return
-    message = fedmsg.Message(
-        topic='{modname}.{topic}'.format(**message),
-        body=message['msg'],
-    )
     session.log.info('Publishing fedmsg:\n' + str(message))
     fedmsg.publish(message)
 
@@ -39,10 +37,11 @@ def emit_package_state_update(session, package, prev_state, new_state):
     if prev_state == new_state:
         return
     group_names = [group.full_name for group in package.groups]
-    message = dict(
-        topic='package.state.change',
-        modname=get_config('fedmsg-publisher.modname'),
-        msg=dict(
+    message = PackageStateChange(
+        topic='{modname}.package.state.change'.format(
+            modname=get_config('fedmsg-publisher.modname')
+        ),
+        body=dict(
             name=package.name,
             old=prev_state,
             new=new_state,
@@ -60,10 +59,11 @@ def emit_package_state_update(session, package, prev_state, new_state):
 def emit_collection_state_update(session, collection, prev_state, new_state):
     if prev_state == new_state:
         return
-    message = dict(
-        topic='collection.state.change',
-        modname=get_config('fedmsg-publisher.modname'),
-        msg=dict(
+    message = CollectionStateChange(
+        topic='{modname}.collection.state.change'.format(
+            modname=get_config('fedmsg-publisher.modname')
+        ),
+        body=dict(
             old=prev_state,
             new=new_state,
             koji_instance=get_config('fedmsg.instance'),

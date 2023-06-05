@@ -18,7 +18,8 @@
 
 from mock import patch
 from test.common import DBTest
-from fedora_messaging.api import Message
+from koschei_messages.package import PackageStateChange
+from koschei_messages.collection import CollectionStateChange
 from koschei import plugin
 from koschei.models import PackageGroup, PackageGroupRelation
 
@@ -36,7 +37,7 @@ class FedmsgSenderTest(DBTest):
             plugin.dispatch_event('package_state_change', self.session, package=package,
                                   prev_state='failed', new_state='ok')
             publish.assert_called_once_with(
-                Message(
+                PackageStateChange(
                     topic='koschei.package.state.change',
                     body={'name': 'rnv',
                           'old': 'failed',
@@ -52,7 +53,7 @@ class FedmsgSenderTest(DBTest):
             plugin.dispatch_event('collection_state_change', self.session, collection=package.collection,
                                   prev_state='unresolved', new_state='ok')
             publish.assert_called_once_with(
-                Message(
+                CollectionStateChange(
                     topic='koschei.collection.state.change',
                     body={'old': 'unresolved',
                           'new': 'ok',
@@ -71,8 +72,8 @@ class FedmsgSenderTest(DBTest):
         with patch('fedora_messaging.api.publish') as publish:
             plugin.dispatch_event('package_state_change', self.session, package=package,
                                   prev_state='ok', new_state='ok')
-            self.assertFalse(publish.called)
+            publish.assert_not_called()
             publish.reset_mock()
             plugin.dispatch_event('collection_state_change', self.session, collection=package.collection,
                                   prev_state='ok', new_state='ok')
-            self.assertFalse(publish.called)
+            publish.assert_not_called()

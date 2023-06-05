@@ -21,9 +21,10 @@ from unittest import skipIf
 
 import hawkey
 import koji
-from fedora_messaging.api import Message
 from contextlib import contextmanager
 from mock import Mock, patch
+from koschei_messages.collection import CollectionStateChange
+from koschei_messages.package import PackageStateChange
 
 from test.common import DBTest, RepoCacheMock, rpmvercmp
 from koschei import plugin
@@ -107,7 +108,7 @@ class ResolverTest(DBTest):
 
     def assert_collection_fedmsg_emitted(self, fedmsg_mock, prev_state, new_state):
         fedmsg_mock.assert_called_once_with(
-            Message(
+            CollectionStateChange(
                 topic='koschei.collection.state.change',
                 body={'old': prev_state,
                       'new': new_state,
@@ -316,7 +317,7 @@ class ResolverTest(DBTest):
             self.assertFalse(result.resolved)
             self.assertIn('nonexistent', ''.join(map(str, result.problems)))
             fedmsg_mock.assert_called_once_with(
-                Message(
+                PackageStateChange(
                     topic='koschei.package.state.change',
                     body={'koji_instance': 'primary',
                           'repo': 'f25',
@@ -359,7 +360,7 @@ class ResolverTest(DBTest):
             self.assertTrue(result.resolved)
             self.assertEqual([], result.problems)
             fedmsg_mock.assert_called_once_with(
-                Message(
+                PackageStateChange(
                     topic='koschei.package.state.change',
                     body={'koji_instance': 'primary',
                           'repo': 'f25',

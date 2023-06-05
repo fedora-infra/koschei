@@ -31,6 +31,12 @@ RUN : \
  && useradd koschei \
  && :
 
+# Install koschei-messages from PyPI as it is not packaged yet
+RUN : \
+ && dnf -y install python3-pip \
+ && pip-3 install koschei-messages==1.0.1 \
+ && :
+
 COPY bin/ /usr/bin/
 COPY ./ /usr/share/koschei/
 
