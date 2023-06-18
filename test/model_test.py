@@ -192,8 +192,8 @@ class PackagePriorityTest(DBTest):
         if expected:
             self.assertIsNotNone(priority)
             self.assertIsNotNone(priority_join)
-            self.assertAlmostEqual(expected, priority)
-            self.assertAlmostEqual(expected, priority_join)
+            self.assertAlmostEqual(expected, float(priority))
+            self.assertAlmostEqual(expected, float(priority_join))
         else:
             self.assertIsNone(priority)
             self.assertIsNone(priority_join)
