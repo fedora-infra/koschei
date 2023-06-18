@@ -543,7 +543,7 @@ class WebTest(FrontendTest):
     def test_user_page_unauthenticated(self):
         reply = self.client.get('/user/mizdebsk')
         self.assertEqual(302, reply.status_code)
-        self.assertEqual("http://localhost/login?", reply.location[:23])
+        self.assertEqual("/login?", reply.location[:7])
 
     @authenticate
     @my_vcr.use_cassette('user_page')
