@@ -16,18 +16,11 @@
 #
 # Author: Michael Simacek <msimacek@redhat.com>
 
-import re
 from setuptools import setup, find_packages
-
-with open('koschei.spec') as specfile:
-    for line in specfile:
-        match = re.match(r'^Version:\s*([0-9.]+)', line)
-        if match:
-            version = match.group(1)
 
 setup(
     name='koschei',
-    version=version,
+    version='2.4.0',
     description='',
     author='',
     author_email='',
