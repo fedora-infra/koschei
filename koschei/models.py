@@ -30,7 +30,7 @@ import math
 
 from sqlalchemy import (
     Column, Integer, String, Boolean, ForeignKey, DateTime, Index, Float,
-    CheckConstraint, UniqueConstraint, Enum, Interval,
+    CheckConstraint, UniqueConstraint, Enum, Interval, BigInteger
 )
 from sqlalchemy.sql.expression import (
     func, select, join, false, true, extract, case, null, cast,
@@ -880,7 +880,7 @@ class UnappliedChange(Base):
             name='unapplied_change_dep_id_check'
         ),
     )
-    id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, primary_key=True)
     package_id = Column(
         ForeignKey('package.id', ondelete='CASCADE'),
         index=True,
