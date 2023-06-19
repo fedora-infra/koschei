@@ -51,14 +51,13 @@ Cheat-sheet
 
 To set environment variables and aliases:
 
-    . aux/set-env.sh
-    alias koschei_alembic="KOSCHEI_CONFIG=$PWD/config.cfg.template:<(echo 'config={\"database_config\":{\"database\":\"koschei\"},\"alembic\":{\"alembic_ini\":\"alembic.ini\"}}') python3 admin.py alembic"
+    export PGDATABASE=koschei PGHOST=localhost PGUSER=koschei PGGSSENCMODE=disable PGSSLMODE=disable
+    export KOSCHEI_CONFIG=$PWD/config.cfg.template:<(echo 'config={\"alembic\":{\"alembic_ini\":\"alembic.ini\"}}')
+    alias koschei_alembic="python3 admin.py alembic"
 
 To create clean DB for tests:
 
-    rm -rf test/db/
-    pg_init
-    pg_start
+    ansible-playbook start.yml
 
 To check current revision in filesystem:
 
@@ -66,7 +65,7 @@ To check current revision in filesystem:
 
 To check current revision in database:
 
-    psql koschei <<<'SELECT * FROM alembic_version'
+    psql <<<'SELECT * FROM alembic_version'
 
 To upgrade database to latest revision from filesystem:
 
@@ -75,7 +74,7 @@ To upgrade database to latest revision from filesystem:
 Run tests and dump DB schema:
 
     nosetests-3
-    pg_dump -s koschei_testdb | less
+    pg_dump -s | less
 
 Add new Alembic revision, to manually enter create and drop DDL
 instructions:
