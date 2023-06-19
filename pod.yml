@@ -8,11 +8,11 @@
       failed_when: facts.rc not in (0, 125)
 
     - name: create pod
-      shell: podman pod create --name koschei-dev -p 8080 -p 5432
+      shell: podman pod create --name koschei-dev -p 8080:8080 -p 5432:5432
       when: facts.rc == 125
 
     - name: gather facts about containers
-      shell: "podman inspect{% for c in (facts.stdout|from_json).Containers %}{% if c.id != (facts.stdout|from_json).State.infraContainerID %} {{ c.id }}{% endif %}{% endfor %}"
+      shell: "podman inspect{% for c in (facts.stdout|from_json).Containers %}{% if c.Id != (facts.stdout|from_json).InfraContainerID %} {{ c.Id }}{% endif %}{% endfor %}"
       register: inspect
       when: facts.rc == 0 and (facts.stdout|from_json).Containers|length > 1
       changed_when: false

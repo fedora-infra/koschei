@@ -4,7 +4,7 @@
   hosts: db:!running
   tasks:
     - name: spin up database container
-      local_action: shell podman run --name db --pod koschei-dev -d -e POSTGRES_USER=koschei postgres
+      local_action: shell podman run --name db --pod koschei-dev -d -e POSTGRES_USER=koschei -e POSTGRES_HOST_AUTH_METHOD=trust docker.io/library/postgres:latest
     - name: wait for database server to start up
       local_action: wait_for port=5432 delay=2
     - name: initialize koschei database

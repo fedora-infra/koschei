@@ -4,4 +4,4 @@
   hosts: containers
   tasks:
     - name: stop and remove running container
-      local_action: shell podman rm -f "{{ container.ID }}"
+      local_action: shell podman rm -f "{{ container.Id }}"
