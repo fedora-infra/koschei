@@ -33,8 +33,9 @@ from functools import wraps
 
 from test import testdir, config, koji_vcr
 from koschei import plugin
+from koschei.admin import CreateDb
 from koschei.config import get_config
-from koschei.db import get_engine, create_all, Base, get_or_create
+from koschei.db import get_engine, Base, get_or_create
 from koschei.models import (
     Package, Build, Collection, BasePackage,
     PackageGroupRelation, PackageGroup, GroupACL, User,
@@ -221,7 +222,8 @@ class DBTest(AbstractTest):
                     cur.execute("ALTER DATABASE {0} SET {1} TO '{2}'".format(dbname,
                                                                              option,
                                                                              value))
-        create_all()
+        # Populate DB with schema and stamp it with Alembic
+        CreateDb().execute()
 
     def __init__(self, *args, **kwargs):
         super(DBTest, self).__init__(*args, **kwargs)
