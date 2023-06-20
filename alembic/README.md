@@ -73,7 +73,7 @@ To upgrade database to latest revision from filesystem:
 
 Run tests and dump DB schema:
 
-    nosetests-3
+    pytest-3
     pg_dump -s | less
 
 Add new Alembic revision, to manually enter create and drop DDL
