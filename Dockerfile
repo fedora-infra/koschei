@@ -5,6 +5,7 @@ EXPOSE 8080
 RUN : \
  && dnf -y --refresh update \
  && dnf -y install \
+      python3-pip \
       python3-sqlalchemy \
       python3-psycopg2 \
       python3-rpm \
@@ -33,7 +34,6 @@ RUN : \
 
 # Install koschei-messages from PyPI as it is not packaged yet
 RUN : \
- && dnf -y install python3-pip \
  && pip-3 install koschei-messages==1.0.1 \
  && :
 
