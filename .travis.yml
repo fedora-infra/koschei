@@ -1,7 +1,0 @@
-language: generic
-sudo: required
-services: docker
-install: docker build -f .travis/Dockerfile -t koschei-testimg .
-script: |
-  ci_env=`bash <(curl -s https://codecov.io/env)`
-  docker run $ci_env koschei-testimg
