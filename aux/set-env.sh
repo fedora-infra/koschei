@@ -22,8 +22,13 @@ if [ ! -f $PWD/koschei/models.py ]; then
     return 1
 fi
 
+export KOSCHEI_CONFIG=$PWD/config.cfg.template:$PWD/test/test_config.cfg:$PWD/alembic/alembic_config.cfg
+
 export PGHOST=$PWD/test/db
 export PGDATA=$PWD/test/db
+export PGDATABASE=koschei_testdb
+export PGGSSENCMODE=disable
+export PGSSLMODE=disable
 
 pg_init()
 {

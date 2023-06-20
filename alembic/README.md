@@ -49,19 +49,23 @@ Recommended workflow
 Cheat-sheet
 -----------
 
-To set environment variables and aliases:
+To set environment variables:
 
-    export PGDATABASE=koschei PGHOST=localhost PGUSER=koschei PGGSSENCMODE=disable PGSSLMODE=disable
-    export KOSCHEI_CONFIG=$PWD/config.cfg.template:<(echo 'config={\"alembic\":{\"alembic_ini\":\"alembic.ini\"}}')
-    alias koschei_alembic="python3 admin.py alembic"
+    . aux/set-env.sh
 
 To create clean DB for tests:
 
-    ansible-playbook start.yml
+    rm -rf test/db/
+    pg_init
+    pg_start
+
+To run tests that populate database:
+
+    pytest-3
 
 To check current revision in filesystem:
 
-    koschei_alembic show head
+    python3 admin.py alembic show head
 
 To check current revision in database:
 
@@ -69,20 +73,19 @@ To check current revision in database:
 
 To upgrade database to latest revision from filesystem:
 
-    koschei_alembic upgrade head
+    python3 admin.py alembic upgrade head
 
-Run tests and dump DB schema:
+Dump DB schema:
 
-    pytest-3
     pg_dump -s | less
 
 Add new Alembic revision, to manually enter create and drop DDL
 instructions:
 
-    koschei_alembic revision -m 'Alter table foo, add column bar'
+    python3 admin.py alembic revision -m 'Alter table foo, add column bar'
     git add alembic/versions/
 
 To test upgrade or downgrade of newly-created revision:
 
-    koschei_alembic downgrade -1
-    koschei_alembic upgrade +1
+    python3 admin.py alembic downgrade -1
+    python3 admin.py alembic upgrade +1
