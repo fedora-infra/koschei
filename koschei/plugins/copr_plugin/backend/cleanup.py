@@ -42,8 +42,8 @@ def copr_cleanup(session, older_than):
             .all()
         for rebuild in rebuilds:
             try:
-                copr_client.delete_project(
-                    username=get_config('copr.copr_owner'),
+                copr_client.project_proxy.delete_project(
+                    ownername=get_config('copr.copr_owner'),
                     projectname=rebuild.copr_name,
                 )
             except CoprException as e:

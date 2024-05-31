@@ -17,13 +17,13 @@
 # Author: Michael Simacek <msimacek@redhat.com>
 
 import os
-import copr
+import copr.v3
 
 from koschei.config import get_config
 from koschei.models import CoprRebuildRequest
 from koschei.backend.koji_util import KojiRepoDescriptor
 
-copr_client = copr.client.CoprClient.create_from_file_config(
+copr_client = copr.v3.Client.create_from_config_file(
     get_config('copr.config_path')
 )
 

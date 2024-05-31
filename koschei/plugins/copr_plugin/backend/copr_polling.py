@@ -24,8 +24,8 @@ from .common import copr_client
 
 
 def refresh_build_state(session, build):
-    copr_build = copr_client.get_build_details(build.copr_build_id).data
-    state = copr_build['chroots'][get_config('copr.chroot_name')]
+    copr_build = copr_client.build_proxy.get(build.copr_build_id)
+    state = copr_build['state']
     # Map of "finished" states of Copr builds
     # For reference, see function Build.finished()
     # at frontend/coprs_frontend/coprs/models.py (in Copr sources)
