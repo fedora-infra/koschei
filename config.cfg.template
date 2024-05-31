@@ -127,7 +127,7 @@ config = {
         },
     },
     # which plugins are loaded (name is their filename without extension)
-    # "plugins": ['fedmsg', 'pagure'],
+    # "plugins": ['fedmsg', 'pagure', 'copr'],
     "plugins": [],
     # fedora message bus configuration
     "fedmsg": {
@@ -146,6 +146,45 @@ config = {
     # pagure plugin
     "pagure": {
         "owner_alias_url": "https://src.fedoraproject.org/extras/pagure_owner_alias.json",
+    },
+    # copr rebuild plugin
+    "copr": {
+        # URL to copr frontend (used to construct links in UI)
+        "frontend_url": "https://copr.fedorainfracloud.org/",
+        # URL to build.log
+        "build_log_url": "https://copr-be.cloud.fedoraproject.org/results/"
+                         "{copr_owner}/{copr_name}/{copr_chroot}/"
+                         "{build_id:08d}-{package_name}/build.log.gz",
+        # copr user under which builds are done
+        "copr_owner": "koschei",
+        # chroot in which builds are done
+        "chroot_name": "custom-1-x86_64",
+        # path to copr config with API token
+        "config_path": "@CONFDIR@/copr-config",
+        # whether older versions of duplicate packages should be
+        # excluded when resolving dependencies.
+        "overriding_by_exclusions": True,
+        # maximum number of copr builds running at the same time
+        "max_builds": 15,
+        # fedmsg topic to listen to if watcher is enabled, ignored otherwise
+        "fedmsg_topic": "org.fedoraproject.prod.copr.build.end",
+        # suggested number of builds done per-request. User can override
+        "default_schedule_count": 8,
+        # prefix of created projects
+        "name_prefix": "k",
+        # require admin permission to request new Copr rebuilds
+        "require_admin": False,
+        # description of copr project
+        "description": """
+        This Copr project was created automatically by Koschei as part
+        of rebuild request {request_id}.  To find more information
+        about this project, see Koschei documentation.
+        """,
+        # installation instructions of copr project
+        "instructions": """
+        This Copr project is used internally by Koschei and its
+        contents are not meant to be installed by users.
+        """,
     },
     # koschei uses dogpile.cache to cache external query results
     # it's possible to use various backends, such as memcached. The
@@ -254,6 +293,11 @@ config = {
             },
             "dogpile.core.dogpile": {
                 "level": "INFO",
+            },
+            "copr": {
+                # copr logs every exception as error, even though it's expected
+                # and handled
+                "level": "CRITICAL",
             },
         },
         "handlers": {

@@ -28,6 +28,7 @@ RUN : \
       python3-dogpile-cache \
       python3-alembic \
       postgresql \
+      python3-copr \
  && dnf -y clean all \
  && useradd koschei \
  && :

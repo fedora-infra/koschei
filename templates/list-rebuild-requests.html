@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% import "macros.html" as macros %}
+
+{% block subheader %}
+<h2>{{ user.name }}'s rebuild requests</h2>
+{{ macros.user_rebuilds_description() }}
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-sm-8">
+    <div class="card mb-3">
+      <h3 class="card-header">User requests</h3>
+      <ul class="list-group list-group-flush">
+	{% for request in requests %}
+	<li class="list-group-item flex-column">
+	  <div class="d-flex w-100 row">
+	    <div class="col-sm-1">
+	      <a class="float-right" href="{{ url_for('rebuild_request_detail', request_id=request.id) }}">#{{ request.id }}</a>
+	    </div>
+	    <div class="col-sm-2">
+	      {{ request.state }}
+	    </div>
+	    <div class="col-sm-3" data-toggle="tooltip" title="{{ request.timestamp|date }}">
+	      {{ request.timestamp|naturaltime }}
+	    </div>
+	    <div class="col-sm-6">
+	      {{ request.repo_source }}
+	    </div>
+	  </div>
+	</li>
+	{% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% if form %}
+  <div class="col-sm-4">
+    <div class="card mb-3">
+      <h3 class="card-header">New request</h3>
+      <div class="card-block">
+	<form method="post" action="{{ url_for('new_rebuild_request') }}">
+	  {{ form.csrf_token }}
+	  <div class="form-group">
+	    <label for="collection">Base package collection</label>
+            <select id="collection" name="collection" class="form-control">
+              {% for collection in g.collections %}
+              <option value="{{ collection.name }}">{{ collection }}</option>
+              {% endfor %}
+            </select>
+	  </div>
+	  <div class="form-group">
+            <label for="copr_name">Copr repo name<br/>
+	      <small>(owner/name or just name if you're the owner)</small></label>
+            {{ form.copr_name(class="form-control") }}
+	  </div>
+	  <div class="form-group">
+            <label for="description">Description</label>
+	    {{ form.description(class="form-control") }}
+	  </div>
+	  <div class="form-group">
+            <label for="schedule_count">Max scheduled builds<br/>
+	      <small>(use 0 to suppress automatic build start)</small></label>
+            {{ form.schedule_count(class="form-control") }}
+	  </div>
+	  <div>
+            <button class="btn btn-primary" type="submit">Submit request</button>
+	  </div>
+	</form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
