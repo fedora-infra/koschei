@@ -29,8 +29,8 @@ from koschei.backend.repo_util import get_repo
 
 CoprResolver = service_ctor('copr_resolver', 'copr')
 
-REPO_URL = 'http://copr-be-dev.cloud.fedoraproject.org/results/msimacek/'\
-    'input/fedora-26-x86_64/'
+REPO_URL = 'https://download.copr-dev.fedorainfracloud.org/results/mizdebsk/'\
+    'isync-gmail/fedora-rawhide-x86_64/'
 
 
 def get_repo_mock(repo_dir, descriptor, download=False):
@@ -50,7 +50,7 @@ class CoprResolverTest(DBTest):
         self.request = CoprRebuildRequest(
             user_id=self.prepare_user(name='user').id,
             collection_id=self.collection.id,
-            repo_source='copr:msimacek/input',
+            repo_source='copr:mizdebsk/isync-gmail',
         )
         self.db.add(self.request)
         self.db.commit()

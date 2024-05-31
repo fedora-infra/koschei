@@ -56,18 +56,18 @@ class CoprScheduler(Service):
 
         try:
             # there may be leftover project from crashed process
-            copr_client.delete_project(
+            copr_client.project_proxy.delete(
                 projectname=copr_name,
-                username=self.copr_owner,
+                ownername=self.copr_owner,
             )
         except CoprRequestException:
             pass
 
-        copr_client.create_project(
+        copr_client.project_proxy.add(
             projectname=copr_name,
-            username=self.copr_owner,
+            ownername=self.copr_owner,
             chroots=[self.chroot_name],
-            disable_createrepo=True,
+            devel_mode=False,
             enable_net=False,
             repos=[request.yum_repo, koji_repo.url],
             unlisted_on_hp=True,
@@ -84,12 +84,12 @@ class CoprScheduler(Service):
             self.session.repo_cache.get_sack(repo_descriptor)
             prepare_comps(self.session, request, repo_descriptor)
 
-        copr_client.edit_chroot(
+        copr_client.project_chroot_proxy.edit(
             projectname=copr_name,
-            ownername=self.copr_owner,  # such API consistency
+            ownername=self.copr_owner,
             chrootname=self.chroot_name,
-            upload_comps=comps,
-            packages='@' + request.collection.build_group,
+            comps=comps,
+            additional_packages=['@' + request.collection.build_group],
         )
         self.log.debug("Created copr project " + copr_name)
 
@@ -99,12 +99,14 @@ class CoprScheduler(Service):
                                            rebuild.package.collection.dest_tag,
                                            rebuild.package.name)[1]
         self.create_copr_project(rebuild.request, rebuild.copr_name)
-        copr_build = copr_client.create_new_build(
+        copr_build = copr_client.build_proxy.create_from_url(
             projectname=rebuild.copr_name,
-            username=self.copr_owner,
-            pkgs=[srpm_url],
-            background=True,
-        ).data
+            ownername=self.copr_owner,
+            url=srpm_url,
+            buildopts={
+                'background': True,
+            },
+        )
         rebuild.copr_build_id = copr_build['ids'][0]
         rebuild.state = Build.RUNNING
         self.db.commit()

@@ -51,14 +51,14 @@ class CoprResolver(Service):
     def set_source_repo_url(self, request):
         owner, name = re.match(r'^copr:([^/]+)/([^/]+)$', request.repo_source).groups()
         try:
-            project = copr_client.get_project_details(name, username=owner).data
+            project = copr_client.project_proxy.get(projectname=name, ownername=owner)
         except CoprRequestException as e:
             raise RequestProcessingError("Couldn't obtain copr project: " + str(e))
 
         # TODO make customizable or at least configurable
-        input_chroots = 'fedora-rawhide-x86_64', 'fedora-26-x86_64'
+        input_chroots = ('fedora-rawhide-x86_64',)
         for chroot in input_chroots:
-            request.yum_repo = project['detail']['yum_repos'].get(chroot)
+            request.yum_repo = project['chroot_repos'].get(chroot)
             if request.yum_repo:
                 break
         else:
