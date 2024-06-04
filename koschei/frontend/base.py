@@ -24,7 +24,7 @@ global resources, such as the Flask app or the database.
 import logging
 
 from flask import Flask, abort, request, g
-from flask_sqlalchemy import BaseQuery, Pagination
+from flask_sqlalchemy import BaseQuery
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 from koschei.config import get_config
@@ -42,34 +42,7 @@ frontend_config = get_config('frontend')
 
 
 class FrontendQuery(Query, BaseQuery):
-    """
-    Custom query subclass of Flask-SQLAlchemy's BaseQuery extended with custom pagination
-    wrapper.
-    """
-    # pylint:disable=arguments-differ
-    def paginate(self, items_per_page):
-        """
-        Sets up pagination based on request query arguments.
-        Raises 404 is the page is out-of-bounds.
-
-        :return: Flask-SQLAlchemy's Pagination wrapper.
-        """
-        try:
-            page = int(request.args.get('page', 1))
-        except ValueError:
-            abort(400)
-        if page < 1:
-            abort(404)
-        items = self.limit(items_per_page)\
-                    .offset((page - 1) * items_per_page).all()
-        if not items and page != 1:
-            abort(404)
-        if page == 1 and len(items) < items_per_page:
-            total = len(items)
-        else:
-            total = self.order_by(None).count()
-        return Pagination(self, page, items_per_page, total, items)
-
+    pass
 
 # Thread-local database session
 db = scoped_session(sessionmaker(autocommit=False, bind=get_engine(),

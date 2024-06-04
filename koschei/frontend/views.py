@@ -139,7 +139,7 @@ def collection_package_view(template, query_fn=None, **template_args):
                         .options(contains_eager(Package.last_build))\
                         .order_by(*order)
 
-    page = pkgs.paginate(packages_per_page)
+    page = pkgs.paginate(per_page=packages_per_page)
     # monkeypatch the priority as an attribute for ease of use
     for pkg, priority in page.items:
         pkg.current_priority = priority
@@ -241,7 +241,7 @@ def unified_package_view(template, query_fn=None, **template_args):
 
     order_names, order = get_order(order_map, order_name)
 
-    page = query.order_by(*order).paginate(packages_per_page)
+    page = query.order_by(*order).paginate(per_page=packages_per_page)
     page.items = list(map(UnifiedPackage, page.items))
     # monkey-patch visible groups on the row
     populate_package_groups(page.items)
@@ -918,7 +918,7 @@ def statistics():
     scalar_stats = db.query(ScalarStats).one()
     resource_query = db.query(ResourceConsumptionStats)\
         .order_by(ResourceConsumptionStats.time.desc().nullslast())\
-        .paginate(20)
+        .paginate(per_page=20)
     return render_template("stats.html", now=now, stats=scalar_stats,
                            packages=resource_query.items,
                            page=resource_query)
