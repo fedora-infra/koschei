@@ -81,8 +81,8 @@ class CoprScheduler(Service):
             # should only happen after we lose storage, such as when respawning
             # the machine, so it's not worth optimizing
             repo_descriptor = repo_descriptor_for_request(request)
-            self.session.repo_cache.get_sack(repo_descriptor)
-            prepare_comps(self.session, request, repo_descriptor)
+            with self.session.repo_cache.get_sack(repo_descriptor) as sack:
+                prepare_comps(self.session, request, repo_descriptor)
 
         copr_client.project_chroot_proxy.edit(
             projectname=copr_name,
