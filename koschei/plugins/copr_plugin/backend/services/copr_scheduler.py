@@ -69,7 +69,7 @@ class CoprScheduler(Service):
             chroots=[self.chroot_name],
             devel_mode=False,
             enable_net=False,
-            repos=[request.yum_repo, koji_repo.url],
+            additional_repos=[request.yum_repo, koji_repo.url],
             unlisted_on_hp=True,
             description=description,
             instructions=instructions,
