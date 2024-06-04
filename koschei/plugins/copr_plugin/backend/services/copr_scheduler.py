@@ -107,7 +107,7 @@ class CoprScheduler(Service):
                 'background': True,
             },
         )
-        rebuild.copr_build_id = copr_build['ids'][0]
+        rebuild.copr_build_id = copr_build.id
         rebuild.state = Build.RUNNING
         self.db.commit()
         self.log.info("Build {} scheduled". format(rebuild.copr_build_id))
