@@ -18,7 +18,7 @@
 
 import shutil
 
-from copr.exceptions import CoprException
+from copr.v3.exceptions import CoprException
 from sqlalchemy import literal_column
 
 from koschei.config import get_config

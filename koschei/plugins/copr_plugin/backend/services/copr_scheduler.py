@@ -20,7 +20,7 @@
 import os
 
 from sqlalchemy.sql.expression import func
-from copr.exceptions import CoprRequestException
+from copr.v3.exceptions import CoprNoResultException
 from textwrap import dedent
 
 from koschei.models import Build, CoprRebuildRequest, CoprRebuild
@@ -60,7 +60,7 @@ class CoprScheduler(Service):
                 projectname=copr_name,
                 ownername=self.copr_owner,
             )
-        except CoprRequestException:
+        except CoprNoResultException:
             pass
 
         copr_client.project_proxy.add(

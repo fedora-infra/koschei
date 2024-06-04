@@ -24,7 +24,7 @@ from collections import defaultdict
 from functools import cmp_to_key
 
 from sqlalchemy.sql import insert
-from copr.exceptions import CoprRequestException
+from copr.v3.exceptions import CoprRequestException
 
 from koschei import util
 from koschei.models import (Package, CoprRebuildRequest, CoprRebuild,
