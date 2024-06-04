@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+
+mkdir /tmp/koschei-selfcheck
+trap "rm -rf /tmp/koschei-selfcheck" 0
+cd /tmp/koschei-selfcheck
+cp -a /usr/share/koschei/ .
+cd ./koschei
+. aux/set-env.sh
+pg_init
+pg_start
+trap "pg_stop; rm -rf /tmp/koschei-selfcheck" 0
+python3 -m pytest -v

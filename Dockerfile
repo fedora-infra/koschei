@@ -1,4 +1,4 @@
-FROM registry.fedoraproject.org/fedora:35
+FROM registry.fedoraproject.org/fedora:38
 ENV PYTHONPATH=/usr/share/koschei
 EXPOSE 8080
 
@@ -29,6 +29,10 @@ RUN : \
       python3-alembic \
       postgresql \
       python3-copr \
+      postgresql-server \
+      python3-pytest \
+      python3-mock \
+      python3-vcrpy \
  && dnf -y clean all \
  && useradd koschei \
  && :
@@ -43,6 +47,8 @@ RUN curl https://code.jquery.com/jquery-3.3.1.min.js -o /usr/share/web-assets/jq
 
 COPY bin/ /usr/bin/
 COPY ./ /usr/share/koschei/
+
+RUN sudo -u koschei koschei-selfcheck
 
 RUN : \
  && sed 's|@CACHEDIR@|/var/cache/koschei|g; s|@DATADIR@|/usr/share/koschei|g; s|@CONFDIR@|/etc/koschei|g; s|@STATEDIR@|/var/lib/koschei|g' /usr/share/koschei/config.cfg.template >/usr/share/koschei/config.cfg \
