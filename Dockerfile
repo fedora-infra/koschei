@@ -46,7 +46,7 @@ COPY ./ /usr/share/koschei/
 
 RUN : \
  && sed 's|@CACHEDIR@|/var/cache/koschei|g; s|@DATADIR@|/usr/share/koschei|g; s|@CONFDIR@|/etc/koschei|g; s|@STATEDIR@|/var/lib/koschei|g' /usr/share/koschei/config.cfg.template >/usr/share/koschei/config.cfg \
- && sed -i s/@VERSION@/$(sed 's/\(.......\).*/\1/' /usr/share/koschei/.git/$(cat /usr/share/koschei/.git/HEAD | sed 's/.*: *//'))/ /usr/share/koschei/config.cfg \
+ && sed -i s/@VERSION@/$(/usr/share/koschei/aux/version.sh /usr/share/koschei)/ /usr/share/koschei/config.cfg \
  && chmod -R a+rwX /usr/share/koschei/ \
  && mkdir -m 777 /var/cache/koschei/ /var/cache/koschei/repodata/ \
  && :
