@@ -60,7 +60,7 @@ def repo_descriptor_for_request(request):
 
 
 def prepare_comps(session, request, descriptor):
-    os.makedirs(get_request_cachedir(request))
+    os.makedirs(get_request_cachedir(request), exist_ok=True)
     comps = session.repo_cache.get_comps_path(descriptor)
     target = get_request_comps_path(request)
     # hardlink
