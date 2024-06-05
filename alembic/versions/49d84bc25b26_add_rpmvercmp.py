@@ -20,8 +20,8 @@ CREATE INDEX ix_applied_change_dep_name on applied_change(dep_name);
 CREATE OR REPLACE FUNCTION rpmvercmp(a varchar, b varchar)
     RETURNS integer AS $$
 DECLARE
-    a_segments varchar[] = array(SELECT (regexp_matches(a, '(\d+|[a-zA-Z]+|~)', 'g'))[1]);
-    b_segments varchar[] = array(SELECT (regexp_matches(b, '(\d+|[a-zA-Z]+|~)', 'g'))[1]);
+    a_segments varchar[] = array(SELECT (regexp_matches(a, '(\\d+|[a-zA-Z]+|~)', 'g'))[1]);
+    b_segments varchar[] = array(SELECT (regexp_matches(b, '(\\d+|[a-zA-Z]+|~)', 'g'))[1]);
     a_len integer = array_length(a_segments, 1);
     b_len integer = array_length(b_segments, 1);
     a_seg varchar;
@@ -37,8 +37,8 @@ BEGIN
         ELSIF b_seg = '~' THEN
             RETURN 1;
         END IF;
-        IF a_seg ~ '^\d' THEN
-            IF b_seg ~ '^\d' THEN
+        IF a_seg ~ '^\\d' THEN
+            IF b_seg ~ '^\\d' THEN
                 a_seg = ltrim(a_seg, '0');
                 b_seg = ltrim(b_seg, '0');
                 CASE
@@ -49,7 +49,7 @@ BEGIN
             ELSE
                 RETURN 1;
             END IF;
-        ELSIF b_seg ~ '^\d' THEN
+        ELSIF b_seg ~ '^\\d' THEN
             RETURN -1;
         END IF;
         IF a_seg != b_seg THEN
