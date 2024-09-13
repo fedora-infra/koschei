@@ -2,3 +2,4 @@ User-agent: *
 Crawl-delay: 1
 Disallow: /login
 Disallow: /bugreport
+Disallow: /affected-by
