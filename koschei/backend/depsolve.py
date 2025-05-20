@@ -67,10 +67,10 @@ def run_goal(sack, br, group):
     for r in br:
         sltr = _get_builddep_selector(sack, r)
         # pylint: disable=E1103
-        if not sltr.matches():
-            problems.append("No package found for: {}".format(r))
-        else:
+        if sltr.matches():
             goal.install(select=sltr)
+        elif not r.startswith("("):
+            problems.append("No package found for: {}".format(r))
     kwargs = {}
     if get_config('dependency.ignore_weak_deps'):
         kwargs = {'ignore_weak_deps': True}
